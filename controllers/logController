@@ -1,0 +1,6 @@
+const ApiError = require('../error/ApiError');
+class LogController {
+	async create(req, res) {}
+}
+
+module.exports = new LogController();
