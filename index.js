@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -24,7 +27,7 @@ app.use(errorMiddleware);
 const start = async () => {
 	try {
 		await sequelize.authenticate();
-		await sequelize.sync();
+		await sequelize.sync({ alter: true });
 		app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 	} catch (e) {
 		console.log(e);

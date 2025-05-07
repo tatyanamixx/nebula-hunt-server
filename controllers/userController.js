@@ -3,37 +3,17 @@ const telegram = require('@telegram-apps/init-data-node');
 const token = process.env.TG_BOT_API_KEY;
 const userService = require('../service/user-service');
 
-const parseInitData = (initData) => {
-	const params = new URLSearchParams(initData);
-	return {
-		user: JSON.parse(params.get('user')),
-		hash: params.get('hash'),
-		auth_date: params.get('auth_date'),
-		start_param: params.get('start_param'),
-		chat_type: params.get('chat_type'),
-		chat_instance: params.get('chat_instance'),
-	};
-};
-
 class UserController {
 	async registration(req, res, next) {
-		// telegram validation
-		const { initDataRaw } = req.body;
-		const initData = parseInitData(initDataRaw);
+		
 		try {
-			telegram.validate(initDataRaw, token);
-		} catch (err) {
-			next(err);
-		}
-		// check BD
-		try {
-			const tgId = initData.user.id;
-			const tgUserName = initData.user.username;
+			const tgId = req.user.id;
+			const tgUserName = req.user.username;
 			const userData = await userService.registration(tgId, tgUserName);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 7 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
-				seen: true,
+				// seen: true,
 			});
 			return res.json(userData);
 		} catch (err) {
@@ -42,7 +22,27 @@ class UserController {
 	}
 
 	async login(req, res, next) {
+		
 		try {
+			const tgId = initData.user.id;
+			const tgUserName = initData.user.username;
+			const userData = await userService.login(tgId, tgUserName);
+			res.cookie('refreshToken', userData.refreshToken, {
+				maxAge: 7 * 24 * 60 * 60 * 1000,
+				httpOnly: true,
+				// seen: true,
+			});
+			return res.json(userData);
+		} catch (err) {
+			next(err);
+		}
+	}
+	async logout(req, res, next) {
+		try {
+			const { refreshToken } = req.cookies;
+			const token = await userService.logout(refreshToken);
+			res.clearCookie('refreshToken');
+			return res.json(token);
 		} catch (err) {
 			next(err);
 		}
@@ -50,6 +50,14 @@ class UserController {
 
 	async refresh(req, res, next) {
 		try {
+			const { refreshToken } = req.cookies;
+			const userData = await userService.refresh(refreshToken);
+			res.cookie('refreshToken', userData.refreshToken, {
+				maxAge: 7 * 24 * 60 * 60 * 1000,
+				httpOnly: true,
+				// seen: true,
+			});
+			return res.json(userData);
 		} catch (err) {
 			next(err);
 		}
@@ -57,13 +65,12 @@ class UserController {
 
 	async getUsers(req, res, next) {
 		try {
-			res.json([123], [456]);
+			const users = await userService.getUsers;
 		} catch (err) {
 			next(err);
 		}
 	}
 
-	async auth(req, res, next) {}
 }
 
 module.exports = new UserController();
