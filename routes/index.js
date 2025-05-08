@@ -9,6 +9,6 @@ router.post('/registration', tmaMiddleware, userController.registration);
 router.post('/login', userController.login);
 router.get('/refresh', userController.refresh);
 
-router.get ('/users', userController.getUsers)
+router.get ('/users', userController.getLeaderBoard)
 
 module.exports = router;

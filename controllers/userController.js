@@ -5,11 +5,15 @@ const userService = require('../service/user-service');
 
 class UserController {
 	async registration(req, res, next) {
-		
 		try {
 			const tgId = req.user.id;
 			const tgUserName = req.user.username;
-			const userData = await userService.registration(tgId, tgUserName);
+			const { galaxies } = req.body;
+			const userData = await userService.registration(
+				tgId,
+				tgUserName,
+				galaxies
+			);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 7 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -22,7 +26,6 @@ class UserController {
 	}
 
 	async login(req, res, next) {
-		
 		try {
 			const tgId = initData.user.id;
 			const tgUserName = initData.user.username;
@@ -63,14 +66,13 @@ class UserController {
 		}
 	}
 
-	async getUsers(req, res, next) {
+	async getLeaderBoard(req, res, next) {
 		try {
-			const users = await userService.getUsers;
+			const users = await userService.getLeaderBoard;
 		} catch (err) {
 			next(err);
 		}
 	}
-
 }
 
 module.exports = new UserController();
