@@ -1,4 +1,4 @@
-const { User, UserState, Galaxy } = require('../models/models');
+const { UserState} = require('../models/models');
 
 class UserStateService {
 	async getUserState(userId) {
@@ -6,13 +6,31 @@ class UserStateService {
 		return state;
 	}
 
-	async createUserState(userId, galaxy) {
+	async createUserState(userId) {
+		const stateData = await UserState.findOne({
+			where: { userId: userId },
+		});
+		if (stateData) {
+			return stateData;
+		}
 		const state = await UserState.create({
 			userId: userId,
 		});
 		return state;
 	}
 
-	async setUserState(userId, params) {}
+	async saveUserState(userId, userState) {
+		const stateData = await UserState.findOne({
+			where: { userId: userId },
+		});
+		if (stateData) {
+			stateData = userState
+			return stateData.save();
+		}
+		const state = await UserState.create({
+			userId: userId,
+		});
+		return state;
+	}
 }
-module.exports = new UserStateService()
+module.exports = new UserStateService();

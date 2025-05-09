@@ -8,12 +8,6 @@ const sequelize = require('../db');
 
 class UserService {
 	async registration(tgId, tgUserName, galaxies) {
-		const candidate = await User.findOne({ where: { tgId: tgId } });
-		if (candidate) {
-			// branch for restore old user!
-			throw ApiError.BadRequest('User alredy exist');
-		}
-
 		let verse = await User.findOne({ where: { role: 'VERSE' } });
 		if (!verse) {
 			verse = await User.create({
@@ -25,26 +19,32 @@ class UserService {
 		if (!verse) {
 			throw ApiError.BadRequest('Verse is not define');
 		}
+		let user = await User.findOne({ where: { tgId: tgId } });
+		if (!user) {
+			user = await User.create({ tgId, tgUserName });
+		}
 
-		const user = await User.create({ tgId, tgUserName });
 		const userDto = new UserDto(user);
 
 		const userState = await userStateService.createUserState(userDto.id);
 
 		for (let i = 0; i < galaxies.length; i++) {
-			const userId = galaxies[i].owner == 'USER' ? userDto.id : verse.id;
+			let userId = galaxies[i].owner == 'USER' ? userDto.id : verse.id;
 			let galaxy = galaxySevice.createGalaxy(userId, galaxies[i]);
 		}
 
-		const userGalaxy = galaxySevice.getUserGalaxy(userDto.id);
+		const userGalaxeis = galaxySevice.getUserGalaxies(userDto.id);
 
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
+		console.log(userState);
+		console.log(userGalaxeis);
+		console.log('лоалыоалоыалоалылаоыаоыаолоаылол');
 		return {
 			...tokens,
 			user: userDto,
 			userState,
-			userGalaxy,
+			userGalaxeis,
 		};
 	}
 
@@ -56,14 +56,14 @@ class UserService {
 		}
 		const userDto = new UserDto(user);
 		const userState = userStateService.getUserState(userDto.id);
-		const userGalaxy = galaxySevice.getUserGalaxy(userDto.id);
+		const userGalaxeis = galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
 			...tokens,
 			user: userDto,
 			userState,
-			userGalaxy,
+			userGalaxeis,
 		};
 	}
 
