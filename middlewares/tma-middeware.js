@@ -27,11 +27,8 @@ module.exports = function (req, res, next) {
 		try {
 			validate(initData, tma_token);
 		} catch (err) {
-			next(ApiError.TMAuthorizedError(err.message));
+			next(ApiError.TMAuthorizedError('tma unauthorization'));
 		}
-
-		// if (!isValid(initData, tma_token))
-		// 	throw next(ApiError.TMAuthorizedError(err.message));
 
 		req.tmaInitdata = parse(initData).user;
 		next();

@@ -56,7 +56,7 @@ class UserService {
 	}
 
 	async login() {
-		const user = await User.findOne({ where: { tgId: tgId } });
+		const user = await User.findOne({ where: { tmaId: tmaId } });
 		if (!user) {
 			// branch for ??? user
 			throw ApiError.BadRequest('User not found');

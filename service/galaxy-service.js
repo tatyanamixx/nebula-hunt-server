@@ -28,6 +28,7 @@ class UserGalaxyService {
 	async createGalaxy(userId, galaxy) {
 		const galaxyNew = await Galaxy.create({
 			userId: userId,
+			stars:galaxy.stars,
 			galaxyData: galaxy.galaxyData,
 			owner: galaxy.galaxyData.owner,
 			galaxySetting: galaxy.galaxySetting,
@@ -36,10 +37,10 @@ class UserGalaxyService {
 	}
 
 	// save new param for galaxy
-	async saveGalaxy(galaxy) {
+	async saveGalaxyParams(galaxy) {
 		const galaxyRaw = await Galaxy.findById(galaxy.Id);
 		if (galaxyRaw) {
-			galaxyRaw.galaxyData = galaxy.galaxyData;
+			galaxyRaw.stars= galaxy.stars;
 			galaxyRaw.owner = galaxy.owner;
 			galaxyRaw.userId = galaxy.userid;
 			//galaxyRaw.galaxySetting = galaxy.galaxySetting;

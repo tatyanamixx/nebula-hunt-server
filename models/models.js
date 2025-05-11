@@ -44,6 +44,7 @@ const Galaxy = sequelize.define('galaxy', {
 		type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
 		defaultValue: 'VERSE',
 	},
+	stars: { type: DataTypes.INTEGER, defaultValue: 100 },
 	galaxyData: { type: DataTypes.JSONB },
 	galaxySetting: { type: DataTypes.JSON },
 });
