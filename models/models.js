@@ -1,27 +1,30 @@
 const sequelize = require('../db');
 const { DataTypes } = require('sequelize');
 
-const User = sequelize.define('user', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	tgId: { type: DataTypes.BIGINT },
-	tgUserName: { type: DataTypes.STRING },
-	role: {
-		type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
-		defaultValue: 'USER',
+const User = sequelize.define(
+	'user',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		tmaId: { type: DataTypes.BIGINT, allowNull: false, unique: true },
+		tmaUsername: { type: DataTypes.STRING },
+		referral: { type: DataTypes.BIGINT },
+		role: {
+			type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
+			defaultValue: 'USER',
+		},
 	},
-});
+	{ indexes: [{ unique: true, fields: ['tmaId'] }, { fields: ['referral'] }] }
+);
 
-const UserState = sequelize.define('userstate', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	amountToken: { type: DataTypes.INTEGER, defaultValue: 0 },
-	totalGalaxy: { type: DataTypes.INTEGER, defaultValue: 1 },
-	totalStars: { type: DataTypes.INTEGER, defaultValue: 100 },
-	totalTgStars: { type: DataTypes.INTEGER, defaultValue: 0 },
-	rateFarm: { type: DataTypes.INTEGER, defaultValue: 100 },
-	storageFarm: { type: DataTypes.INTEGER, defaultValue: 100 },
-	intervalFarm: { type: DataTypes.INTEGER, defaultValue: 1 },
-	autoBoost: { type: DataTypes.BOOLEAN, defaultValue: false },
-});
+const UserState = sequelize.define(
+	'userstate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		stars: { type: DataTypes.INTEGER, defaultValue: 0 },
+		state: { type: DataTypes.JSONB },
+	},
+	{ indexes: [{ fields: ['stars'] }] }
+);
 
 const Log = sequelize.define('log', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
@@ -37,22 +40,11 @@ const Token = sequelize.define('token', {
 
 const Galaxy = sequelize.define('galaxy', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	starsMin: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 100 },
-	starsCurrent: {
-		type: DataTypes.INTEGER,
-		allowNull: false,
-		defaultValue: 100,
-	},
-	starsMax: {
-		type: DataTypes.INTEGER,
-		allowNull: false,
-		defaultValue: 100000,
-	},
 	owner: {
 		type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
 		defaultValue: 'VERSE',
 	},
-	price: { type: DataTypes.INTEGER, defaultValue: 0 },
+	galaxyData: { type: DataTypes.JSONB },
 	galaxySetting: { type: DataTypes.JSON },
 });
 

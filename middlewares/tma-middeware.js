@@ -1,4 +1,4 @@
-const ApiError = require('../exceprtions/api-error');
+const ApiError = require('../exceptions/api-error');
 const {
 	validate3rd,
 	parse,
@@ -33,7 +33,7 @@ module.exports = function (req, res, next) {
 		// if (!isValid(initData, tma_token))
 		// 	throw next(ApiError.TMAuthorizedError(err.message));
 
-		req.user = parse(initData).user;
+		req.tmaInitdata = parse(initData).user;
 		next();
 	} catch (err) {
 		return next(ApiError.UnthorizedError());

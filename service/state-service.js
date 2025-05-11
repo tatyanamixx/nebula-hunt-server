@@ -1,22 +1,28 @@
-const { UserState} = require('../models/models');
+const { UserState } = require('../models/models');
 
 class UserStateService {
 	async getUserState(userId) {
-		const state = await UserState.findOne({ where: { userId: userId } });
-		return state;
+		const userState = await UserState.findOne({
+			where: { userId: userId },
+		});
+		return userState;
 	}
 
-	async createUserState(userId) {
+	async createUserState(userId, userState) {
 		const stateData = await UserState.findOne({
 			where: { userId: userId },
 		});
 		if (stateData) {
-			return stateData;
+			stateData.stars = userState.stars;
+			stateData.state = userState.state;
+			return stateData.save();
 		}
-		const state = await UserState.create({
+		const stateNew = await UserState.create({
 			userId: userId,
+			stars: userState.stars,
+			state: userState.state,
 		});
-		return state;
+		return stateNew;
 	}
 
 	async saveUserState(userId, userState) {
@@ -24,13 +30,16 @@ class UserStateService {
 			where: { userId: userId },
 		});
 		if (stateData) {
-			stateData = userState
+			stateData.stars = userState.stars;
+			stateData.state = userState.state;
 			return stateData.save();
 		}
-		const state = await UserState.create({
+		const stateNew = await UserState.create({
 			userId: userId,
+			stars: userState.stars,
+			state: userState.state,
 		});
-		return state;
+		return stateNew;
 	}
 }
 module.exports = new UserStateService();

@@ -1,4 +1,4 @@
-const ApiError = require('../exceprtions/api-error');
+const ApiError = require('../exceptions/api-error');
 const telegram = require('@telegram-apps/init-data-node');
 const token = process.env.TG_BOT_API_KEY;
 const userService = require('../service/user-service');
@@ -6,12 +6,14 @@ const userService = require('../service/user-service');
 class UserController {
 	async registration(req, res, next) {
 		try {
-			const tgId = req.user.id;
-			const tgUserName = req.user.username;
-			const { galaxies } = req.body;
+			const tmaId = req.tmaInitdata.id;
+			const tmaUsername = req.tmaInitdata.username;
+			const { referral, userState, galaxies } = req.body;
 			const userData = await userService.registration(
-				tgId,
-				tgUserName,
+				tmaId,
+				tmaUsername,
+				referral,
+				userState,
 				galaxies
 			);
 			res.cookie('refreshToken', userData.refreshToken, {
@@ -27,9 +29,8 @@ class UserController {
 
 	async login(req, res, next) {
 		try {
-			const tgId = initData.user.id;
-			const tgUserName = initData.user.username;
-			const userData = await userService.login(tgId, tgUserName);
+			const tgId = req.userToken.id;
+			const userData = await userService.login(tgId);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 7 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -66,7 +67,7 @@ class UserController {
 		}
 	}
 
-	async getLeaderBoard(req, res, next) {
+	async getleaderboard(req, res, next) {
 		try {
 			const users = await userService.getLeaderBoard;
 		} catch (err) {

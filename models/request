@@ -1,0 +1,70 @@
+{ "userState":
+    {
+    "stars":0,
+    "state": {
+        "galaxies":0,
+        "tmaStars":0,
+        "totalToke":0,
+        "totalGalaxy":0,
+        "rateFerm":100,
+        "intervalFarm":1,
+        "autoBoost": false
+        }
+    },
+    "galaxies": 
+    [ {"galaxyData":{ 
+        "starsMin":100, 
+        "starsCurrent":100, 
+        "price":100, 
+        "starsMax":10000, 
+        "owner": "USER"},
+
+        "galaxySetting":{
+            "seed": "abc123",
+            "type": "spiral",
+            "colorPalette": {
+                    "insideColor": "#ff1493",
+                    "outsideColor": "#00ffff",
+                    "coreColor": "#ffd700",
+                    "armColor": "#ff4500"
+                    },
+            "branches": 5,
+            "radius": 4.2,
+            "randomness": 0.5,
+            "randomnessPower": 2.3,
+            "armWidth": 0.25,
+            "tilt": 0.4,
+            "warp": 0.1,
+            "rotation": 1.57,
+            "scale": 0.5,
+            "coreRadius": 0.3,
+            "coreDensity": 0.001
+            }},
+        {"galaxyData":
+            {"starsMin":100, 
+            "starsCurrent":1000, 
+            "price":1000,
+            "starsMax":10000, 
+            "owner": "VERSE"},
+        "galaxySetting":{
+            "seed": "abc123430403493094943",
+            "type": "spiral",
+            "colorPalette": {
+                    "insideColor": "#ff1493",
+                    "outsideColor": "#00ffff",
+                    "coreColor": "#ffd700",
+                    "armColor": "#ff4500"
+                    },
+            "branches": 5,
+            "radius": 4.2,
+            "randomness": 0.5,
+  "randomnessPower": 2.3,
+  "armWidth": 0.25,
+  "tilt": 0.4,
+  "warp": 0.1,
+  "rotation": 1.57,
+  "scale": 0.5,
+  "coreRadius": 0.3,
+  "coreDensity": 0.001
+        }}
+    ] }

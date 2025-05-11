@@ -1,15 +1,25 @@
 const { User, Galaxy } = require('../models/models');
+const { Op } = require('sequelize');
 
 class UserGalaxyService {
 	// list galaxis for user
 	async getUserGalaxies(userId) {
-		const galaxies = await Galaxy.findOne({ where: { userId: userId } });
-		console.log(galaxies);
+		const galaxiesRaw = await Galaxy.findAll({ where: { userId: userId } });
+		if (!galaxiesRaw) return null;
+		const galaxies = galaxiesRaw.map((item) => item.toJSON());
+		return galaxies;
+	}
+	async getShowGalaxies(userId) {
+		const galaxiesRaw = await Galaxy.findAll({
+			where: { userId: { [Op.ne]: userId } },
+		});
+		if (!galaxiesRaw) return null;
+		const galaxies = galaxiesRaw.map((item) => item.toJSON());
 		return galaxies;
 	}
 
 	// one galaxy
-	async getGalaxi(Id) {
+	async getGalaxy(Id) {
 		const galaxy = await Galaxy.findById(Id);
 		return galaxy;
 	}
@@ -18,11 +28,8 @@ class UserGalaxyService {
 	async createGalaxy(userId, galaxy) {
 		const galaxyNew = await Galaxy.create({
 			userId: userId,
-			starsMin: galaxy.starsMin,
-			starsCurrent: galaxy.starsCurrent,
-			starsMax: galaxy.starsMax,
-			price: galaxy.price,
-			owner: galaxy.owner,
+			galaxyData: galaxy.galaxyData,
+			owner: galaxy.galaxyData.owner,
 			galaxySetting: galaxy.galaxySetting,
 		});
 		return galaxyNew;
@@ -30,23 +37,23 @@ class UserGalaxyService {
 
 	// save new param for galaxy
 	async saveGalaxy(galaxy) {
-		const galaxyData = await Galaxy.findById(galaxy.Id);
-		if (galaxyData) {
-			galaxyData = galaxy;
-			return galaxyData.save();
+		const galaxyRaw = await Galaxy.findById(galaxy.Id);
+		if (galaxyRaw) {
+			galaxyRaw.galaxyData = galaxy.galaxyData;
+			galaxyRaw.owner = galaxy.owner;
+			galaxyRaw.userId = galaxy.userid;
+			//galaxyRaw.galaxySetting = galaxy.galaxySetting;
+			return galaxyRaw.save();
 		}
 		// not found--> save as VERSE (can't go to waste!)
 		const verse = await User.findOne({ where: { role: 'VERSE' } });
 		const galaxyNew = await Galaxy.create({
-			userId: verse.Id,
-			starsMin: galaxy.starsMin,
-			starsCurrent: galaxy.starsCurrent,
-			starsMax: galaxy.starsMax,
-			price: galaxy.price,
+			galaxyData: galaxy.galaxyData,
 			owner: galaxy.owner,
+			userId: verse.userId,
 			galaxySetting: galaxy.galaxySetting,
 		});
-		return galaxyNew;
+		return galaxyNew.toJSON();
 	}
 }
 

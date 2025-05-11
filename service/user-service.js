@@ -3,43 +3,50 @@ const tokenService = require('./token-service');
 const galaxySevice = require('./galaxy-service');
 const userStateService = require('./state-service');
 const UserDto = require('../dtos/user-dto');
-const ApiError = require('../exceprtions/api-error');
+const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 
 class UserService {
-	async registration(tgId, tgUserName, galaxies) {
+	async registration(tmaId, tmaUsername, reqUserState, galaxies) {
 		let verse = await User.findOne({ where: { role: 'VERSE' } });
 		if (!verse) {
 			verse = await User.create({
-				tgId: -1,
-				tgUserName: 'universe',
+				tmaId: -1,
+				tmaUsername: 'universe',
 				role: 'VERSE',
 			});
 		}
 		if (!verse) {
 			throw ApiError.BadRequest('Verse is not define');
 		}
-		let user = await User.findOne({ where: { tgId: tgId } });
+		let userNew = false;
+		let user = await User.findOne({ where: { tmaId: tmaId } });
 		if (!user) {
-			user = await User.create({ tgId, tgUserName });
+			userNew = true;
+			user = await User.create({ tmaId, tmaUsername });
 		}
 
 		const userDto = new UserDto(user);
 
-		const userState = await userStateService.createUserState(userDto.id);
+		const userState = await userStateService.createUserState(
+			userDto.id,
+			reqUserState
+		);
 
 		for (let i = 0; i < galaxies.length; i++) {
-			let userId = galaxies[i].owner == 'USER' ? userDto.id : verse.id;
-			let galaxy = galaxySevice.createGalaxy(userId, galaxies[i]);
+			if (galaxies[i].galaxyData.owner == 'VERSE') {
+				await galaxySevice.createGalaxy(verse.id, galaxies[i]);
+			}
+			if (galaxies[i].galaxyData.owner == 'USER' && userNew) {
+				await galaxySevice.createGalaxy(userDto.id, galaxies[i]);
+			}
 		}
 
-		const userGalaxeis = galaxySevice.getUserGalaxies(userDto.id);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
 
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
-		console.log(userState);
-		console.log(userGalaxeis);
-		console.log('лоалыоалоыалоалылаоыаоыаолоаылол');
+
 		return {
 			...tokens,
 			user: userDto,
@@ -48,15 +55,15 @@ class UserService {
 		};
 	}
 
-	async login(tgId) {
+	async login() {
 		const user = await User.findOne({ where: { tgId: tgId } });
 		if (!user) {
 			// branch for ??? user
 			throw ApiError.BadRequest('User not found');
 		}
 		const userDto = new UserDto(user);
-		const userState = userStateService.getUserState(userDto.id);
-		const userGalaxeis = galaxySevice.getUserGalaxies(userDto.id);
+		const userState = await userStateService.getUserState(userDto.id);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
@@ -77,7 +84,7 @@ class UserService {
 			throw ApiError.UnauthorizedError();
 		}
 		const userData = tokenService.validateRefreshToken(refreshToken);
-		const tokenFromDb = tokenService.findToken(refreshToken);
+		const tokenFromDb = await tokenService.findToken(refreshToken);
 		if (!userData || !tokenFromDb) {
 			throw ApiError.UnauthorizedError();
 		}
@@ -85,8 +92,8 @@ class UserService {
 		const user = await User.findById(userData.Id);
 
 		const userDto = new UserDto(user);
-		const userState = userStateService.getUserState(userDto.id);
-		const userGalaxy = galaxySevice.getUserGalaxy(userDto.id);
+		const userState = await userStateService.getUserState(userDto.id);
+		const userGalaxy = await galaxySevice.getUserGalaxy(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
@@ -97,6 +104,10 @@ class UserService {
 		};
 	}
 
-	async getLeaderBoard() {}
+	async getLeaderBoard() {
+		const usersQuery = await User.findAll();
+		const users = usersQuery.map((item) => item.toJSON());
+		return users;
+	}
 }
 module.exports = new UserService();
