@@ -29,8 +29,8 @@ class UserController {
 
 	async login(req, res, next) {
 		try {
-			const tgId = req.userToken.id;
-			const userData = await userService.login(tgId);
+			const tmaId = req.tmaInitdata.id;
+			const userData = await userService.login(tmaId);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 7 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -67,9 +67,10 @@ class UserController {
 		}
 	}
 
-	async getleaderboard(req, res, next) {
+	async leaderboard(req, res, next) {
 		try {
-			const users = await userService.getLeaderBoard;
+			const users = await userService.leaderboard();
+			return res.json(users);
 		} catch (err) {
 			next(err);
 		}

@@ -1,4 +1,4 @@
-const { User } = require('../models/models');
+const { User, UserState } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxySevice = require('./galaxy-service');
 const userStateService = require('./state-service');
@@ -7,7 +7,7 @@ const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 
 class UserService {
-	async registration(tmaId, tmaUsername, reqUserState, galaxies) {
+	async registration(tmaId, tmaUsername, referral, reqUserState, galaxies) {
 		let verse = await User.findOne({ where: { role: 'VERSE' } });
 		if (!verse) {
 			verse = await User.create({
@@ -23,7 +23,7 @@ class UserService {
 		let user = await User.findOne({ where: { tmaId: tmaId } });
 		if (!user) {
 			userNew = true;
-			user = await User.create({ tmaId, tmaUsername });
+			user = await User.create({ tmaId, tmaUsername, referral });
 		}
 
 		const userDto = new UserDto(user);
@@ -55,7 +55,7 @@ class UserService {
 		};
 	}
 
-	async login() {
+	async login(tmaId) {
 		const user = await User.findOne({ where: { tmaId: tmaId } });
 		if (!user) {
 			// branch for ??? user
@@ -89,11 +89,11 @@ class UserService {
 			throw ApiError.UnauthorizedError();
 		}
 
-		const user = await User.findById(userData.Id);
+		const user = await User.findOne({ where: { id: userData.id } });
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxy = await galaxySevice.getUserGalaxy(userDto.id);
+		const userGalaxy = await galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
@@ -104,9 +104,14 @@ class UserService {
 		};
 	}
 
-	async getLeaderBoard() {
-		const usersQuery = await User.findAll();
-		const users = usersQuery.map((item) => item.toJSON());
+	async leaderboard() {
+		const userlist = await UserState.findAll({
+			include: User,
+			order: [['stars', 'DESC']],
+			limit: 100,
+			attributes: ['stars', 'state'],
+		});
+		const users = userlist.map((item) => item.toJSON());
 		return users;
 	}
 }

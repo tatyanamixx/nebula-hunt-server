@@ -50,10 +50,10 @@ const Galaxy = sequelize.define('galaxy', {
 });
 
 User.hasOne(UserState);
-Log.belongsTo(User);
+UserState.belongsTo(User);
 
 User.hasOne(Token);
-Log.belongsTo(User);
+Token.belongsTo(User);
 
 User.hasMany(Log);
 Log.belongsTo(User);

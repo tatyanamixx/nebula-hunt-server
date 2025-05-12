@@ -19,42 +19,46 @@ class UserGalaxyService {
 	}
 
 	// one galaxy
-	async getGalaxy(Id) {
-		const galaxy = await Galaxy.findById(Id);
+	async getGalaxy(id) {
+		const galaxy = await Galaxy.findOne({ where: { id: id } });
 		return galaxy;
 	}
 
 	// create one galaxy
-	async createGalaxy(userId, galaxy) {
-		const galaxyNew = await Galaxy.create({
+	async createGalaxy(userId, galaxynew) {
+		const galaxy = await Galaxy.create({
 			userId: userId,
-			stars:galaxy.stars,
-			galaxyData: galaxy.galaxyData,
-			owner: galaxy.galaxyData.owner,
-			galaxySetting: galaxy.galaxySetting,
+			stars: galaxynew.stars,
+			galaxyData: galaxynew.galaxyData,
+			owner: galaxynew.galaxyData.owner,
+			galaxySetting: galaxynew.galaxySetting,
 		});
-		return galaxyNew;
+		return galaxy;
 	}
 
 	// save new param for galaxy
-	async saveGalaxyParams(galaxy) {
-		const galaxyRaw = await Galaxy.findById(galaxy.Id);
-		if (galaxyRaw) {
-			galaxyRaw.stars= galaxy.stars;
-			galaxyRaw.owner = galaxy.owner;
-			galaxyRaw.userId = galaxy.userid;
-			//galaxyRaw.galaxySetting = galaxy.galaxySetting;
-			return galaxyRaw.save();
+	async updateGalaxyStars(id, stars) {
+		const galaxy = await Galaxy.findById(id);
+		if (galaxy) {
+			galaxy.stars = stars;
+			await galaxy.save();
+			return galaxy;
 		}
-		// not found--> save as VERSE (can't go to waste!)
-		const verse = await User.findOne({ where: { role: 'VERSE' } });
-		const galaxyNew = await Galaxy.create({
-			galaxyData: galaxy.galaxyData,
-			owner: galaxy.owner,
-			userId: verse.userId,
-			galaxySetting: galaxy.galaxySetting,
-		});
-		return galaxyNew.toJSON();
+		return galaxy;
+	}
+
+	// save new param for galaxy
+	async updateGalaxyParams(galaxynew) {
+		const galaxy = await Galaxy.findById(galaxynew.Id);
+		if (galaxyRaw) {
+			galaxy.stars = galaxynew.stars;
+			galaxy.owner = galaxynew.owner;
+			galaxy.userId = galaxynew.userid;
+			//galaxyRaw.galaxyData = galaxy.galaxyData;
+			await galaxy.save();
+			return galaxy;
+		}
+		return null;
 	}
 }
 
