@@ -12,6 +12,7 @@ class UserStateService {
 		const stateData = await UserState.findOne({
 			where: { userId: userId },
 		});
+		console.log(' craete userStare', userId);
 		if (stateData) {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
@@ -25,21 +26,22 @@ class UserStateService {
 		return stateNew;
 	}
 
-	async saveUserState(userId, userState) {
+	async updateUserState(userId, userState) {
 		const stateData = await UserState.findOne({
 			where: { userId: userId },
 		});
 		if (stateData) {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
-			return stateData.save();
+			stateData.save();
+			return { userId, userState: stateData };
 		}
 		const stateNew = await UserState.create({
 			userId: userId,
 			stars: userState.stars,
 			state: userState.state,
 		});
-		return stateNew;
+		return { userId, userState: stateNew };
 	}
 
 	async leaderboard() {

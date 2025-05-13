@@ -9,20 +9,60 @@ const userstateController = require('../controllers/userstateController.js');
 
 router.post('/registration', tmaMiddleware, userController.registration);
 router.post('/login', tmaMiddleware, userController.login);
-router.get('/refresh', userController.refresh);
+router.get('/refresh', tmaMiddleware, userController.refresh);
 
-router.get('/getgalaxy/:id', galaxyController.getgalaxy);
-router.get('/getusergalaxies/:id', galaxyController.getusergalaxies);
-router.get('/getshowgalaxies/:id', galaxyController.getshowgalaxies);
+router.get(
+	'/friends',
+	tmaMiddleware,
+	authMiddleware,
+	userController.getfriends
+);
 
-router.post('/updategalaxystars/:id&:stars', galaxyController.updategalaxystars);
-router.post('/updategalaxyparams', galaxyController.updateparams);
+router.get(
+	'/getgalaxy/:id',
+	tmaMiddleware,
+	authMiddleware,
+	galaxyController.getgalaxy
+);
+router.get(
+	'/getusergalaxies',
+	tmaMiddleware,
+	authMiddleware,
+	galaxyController.getusergalaxies
+);
+
+router.get(
+	'/getshowgalaxies',
+	tmaMiddleware,
+	authMiddleware,
+	galaxyController.getshowgalaxies
+);
+
+router.post(
+	'/updategalaxystars/:id&:stars',
+	tmaMiddleware,
+	authMiddleware,
+	galaxyController.updategalaxystars
+);
+router.post(
+	'/updategalaxyowner/:id&:userId',
+	tmaMiddleware,
+	authMiddleware,
+	galaxyController.updategalaxyowner
+);
 
 router.get(
 	'/leaderboard',
 	tmaMiddleware,
 	authMiddleware,
 	userstateController.leaderboard
+);
+
+router.post(
+	'/updateuserstate',
+	tmaMiddleware,
+	authMiddleware,
+	userstateController.updateuserstate
 );
 
 module.exports = router;

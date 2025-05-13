@@ -1,4 +1,4 @@
-const { User} = require('../models/models');
+const { User } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxySevice = require('./galaxy-service');
 const userStateService = require('./state-service');
@@ -42,11 +42,11 @@ class UserService {
 			}
 		}
 
-		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.tmaId);
 
 		const tokens = tokenService.generateTokens({ ...userDto });
-		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 
+		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
 			...tokens,
 			user: userDto,
@@ -89,7 +89,7 @@ class UserService {
 			throw ApiError.UnauthorizedError();
 		}
 
-		const user = await User.findOne({ where: { id: userData.id } });
+		const user = await User.findByPk(userData.id);
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
@@ -102,6 +102,11 @@ class UserService {
 			userState,
 			userGalaxis,
 		};
+	}
+
+	async getfriends(tmaId) {
+		const friends = await User.findAll({ where: { referral: tmaId } });
+		return friends;
 	}
 }
 module.exports = new UserService();

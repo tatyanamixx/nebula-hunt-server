@@ -1,0 +1,14 @@
+{
+	"userId": 3,
+	"userState": {
+		"stars": 183928,
+		"state": {
+			"galaxies": 12,
+			"tmaStars": 3873,
+			"totalToken": 732,
+			"rateFerm": 100,
+			"intervalFarm": 1,
+			"autoBoost": false
+		}
+	}
+}

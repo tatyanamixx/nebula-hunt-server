@@ -67,7 +67,16 @@ class UserController {
 		}
 	}
 
-	
+	async getfriends(req, res, next) {
+		try {
+			const tmaId = req.tmaInitdata.id;
+			const friends = await userService.getfriends(tmaId);
+			//return res.json(friends);
+			return res.json(friends);
+		} catch (err) {
+			next(err);
+		}
+	}
 }
 
 module.exports = new UserController();

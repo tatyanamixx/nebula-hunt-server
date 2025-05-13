@@ -19,11 +19,8 @@ class GalaxyController {
 
 	async getusergalaxies(req, res, next) {
 		try {
-			const { id } = req.params;
-			if (!id) {
-				return next(ApiError.BadRequest('Param not defind Id'));
-			}
-			const galaxies = await galaxyService.getUserGalaxies(id);
+			const tmaId = req.tmaInitdata.id;
+			const galaxies = await galaxyService.getUserGalaxies(tmaId);
 			res.json(galaxies);
 		} catch (err) {
 			next(err);
@@ -32,11 +29,8 @@ class GalaxyController {
 
 	async getshowgalaxies(req, res, next) {
 		try {
-			const { id } = req.params;
-			if (!id) {
-				return next(ApiError.BadRequest('Param not defind Id'));
-			}
-			const galaxies = await galaxyService.getShowGalaxies(id);
+			const tmaId = req.tmaInitdata.id;
+			const galaxies = await galaxyService.getShowGalaxies(tmaId);
 			res.json(galaxies);
 		} catch (err) {
 			next(err);
@@ -53,11 +47,10 @@ class GalaxyController {
 		}
 	}
 
-	async updateparams(req, res, next) {
+	async updategalaxyowner(req, res, next) {
 		try {
-			console.log('что-то пошло не так');
-			let { galaxy } = req.body;
-			galaxy = await galaxyService.updateGalaxyParams(galaxy);
+			const { id, userId } = req.params;
+			const galaxy = await galaxyService.updateGalaxyOwner(id, userId);
 			res.json(galaxy);
 		} catch (err) {
 			next(err);
