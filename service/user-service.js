@@ -63,7 +63,7 @@ class UserService {
 		}
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.tmaId);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
@@ -93,7 +93,7 @@ class UserService {
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxis = await galaxySevice.getUserGalaxies(userDto.id);
+		const userGalaxis = await galaxySevice.getUserGalaxies(userDto.tmaId);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
