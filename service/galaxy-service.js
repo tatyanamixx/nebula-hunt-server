@@ -10,17 +10,42 @@ class UserGalaxyService {
 		return galaxies;
 	}
 	async getShowGalaxies(userId) {
+		const count = await Galaxy.count({
+			where: { userId: { [Op.ne]: userId } },
+		});
+		const page = Math.ceil(count / 20);
+		const pagerandom = Math.round(Math.random() * (page - 1));
+		const offset = pagerandom * 20;
+
+		const countmock = 2872110;
+		const pagemock = Math.ceil(countmock / 20);
+		const pagerandommock = Math.round(Math.random() * (pagemock - 1));
+		const offsetrandommock = pagerandommock * 20 + 1;
+
 		const galaxiesRaw = await Galaxy.findAll({
 			where: { userId: { [Op.ne]: userId } },
+			offset: offset,
+			limit: 20,
 		});
 		if (!galaxiesRaw) return null;
 		const galaxies = galaxiesRaw.map((item) => item.toJSON());
-		return galaxies;
+		return {
+			info: {
+				count: count,
+				page: page,
+				pagerandom,
+				offset: offset,
+				pagemock,
+				pagerandommock,
+				offsetrandommock,
+			},
+			galaxies,
+		};
 	}
 
 	// one galaxy
 	async getGalaxy(id) {
-		const galaxy = await Galaxy.findOne({ where: { id: id } });
+		const galaxy = await Galaxy.findByPk(id);
 		return galaxy;
 	}
 
@@ -38,7 +63,7 @@ class UserGalaxyService {
 
 	// save new param for galaxy
 	async updateGalaxyStars(id, stars) {
-		const galaxy = await Galaxy.findById(id);
+		const galaxy = await Galaxy.findByPk(id);
 		if (galaxy) {
 			galaxy.stars = stars;
 			await galaxy.save();
@@ -48,9 +73,9 @@ class UserGalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyParams(galaxynew) {
-		const galaxy = await Galaxy.findById(galaxynew.Id);
-		if (galaxyRaw) {
+	async updateGalaxyOwner(galaxynew) {
+		const galaxy = await Galaxy.findByPk(galaxynew.Id);
+		if (galaxy) {
 			galaxy.stars = galaxynew.stars;
 			galaxy.owner = galaxynew.owner;
 			galaxy.userId = galaxynew.userid;

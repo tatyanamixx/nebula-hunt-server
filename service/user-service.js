@@ -1,4 +1,4 @@
-const { User, UserState } = require('../models/models');
+const { User} = require('../models/models');
 const tokenService = require('./token-service');
 const galaxySevice = require('./galaxy-service');
 const userStateService = require('./state-service');
@@ -93,26 +93,15 @@ class UserService {
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxy = await galaxySevice.getUserGalaxies(userDto.id);
+		const userGalaxis = await galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
 			...tokens,
 			user: userDto,
 			userState,
-			userGalaxy,
+			userGalaxis,
 		};
-	}
-
-	async leaderboard() {
-		const userlist = await UserState.findAll({
-			include: User,
-			order: [['stars', 'DESC']],
-			limit: 100,
-			attributes: ['stars', 'state'],
-		});
-		const users = userlist.map((item) => item.toJSON());
-		return users;
 	}
 }
 module.exports = new UserService();

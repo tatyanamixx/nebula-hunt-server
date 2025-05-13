@@ -1,4 +1,4 @@
-const { UserState } = require('../models/models');
+const { UserState, User } = require('../models/models');
 
 class UserStateService {
 	async getUserState(userId) {
@@ -40,6 +40,17 @@ class UserStateService {
 			state: userState.state,
 		});
 		return stateNew;
+	}
+
+	async leaderboard() {
+		const userlist = await UserState.findAll({
+			include: User,
+			order: [['stars', 'DESC']],
+			limit: 100,
+			attributes: ['stars', 'state'],
+		});
+		const users = userlist.map((item) => item.toJSON());
+		return { leaderboard: users };
 	}
 }
 module.exports = new UserStateService();

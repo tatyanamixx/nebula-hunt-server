@@ -67,14 +67,7 @@ class UserController {
 		}
 	}
 
-	async leaderboard(req, res, next) {
-		try {
-			const users = await userService.leaderboard();
-			return res.json(users);
-		} catch (err) {
-			next(err);
-		}
-	}
+	
 }
 
 module.exports = new UserController();
