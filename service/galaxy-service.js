@@ -1,4 +1,5 @@
 const { User, Galaxy } = require('../models/models');
+const loggerService = require('./logger-service');
 const { Op } = require('sequelize');
 
 class UserGalaxyService {
@@ -10,6 +11,24 @@ class UserGalaxyService {
 		});
 		if (!galaxiesRaw) return null;
 		const galaxies = galaxiesRaw.map((item) => item.toJSON());
+
+		await loggerService.logging(
+			user.id,
+			'GET',
+			`The user ${tmaId} requested a list of galaxies`,
+			0
+		);
+
+		return galaxies;
+	}
+	async getUserGalaxiesByUserId(userId) {
+		//const user = await User.findOne({ where: { user: tmaId } });
+		const galaxiesRaw = await Galaxy.findAll({
+			where: { userId: userId },
+		});
+		if (!galaxiesRaw) return null;
+		const galaxies = galaxiesRaw.map((item) => item.toJSON());
+
 		return galaxies;
 	}
 	async getShowGalaxies(tmaId) {
@@ -33,6 +52,13 @@ class UserGalaxyService {
 		});
 		if (!galaxiesRaw) return null;
 		const galaxies = galaxiesRaw.map((item) => item.toJSON());
+
+		await loggerService.logging(
+			user.id,
+			'GET',
+			`The user ${tmaId} requested a list of galaxies for sale`,
+			0
+		);
 		return {
 			info: {
 				count: count,
@@ -68,6 +94,14 @@ class UserGalaxyService {
 	// save new param for galaxy
 	async updateGalaxyStars(id, stars) {
 		const galaxy = await Galaxy.findByPk(id);
+		const user = await User.findOne({ where: { id: galaxy.userId } });
+
+		await loggerService.logging(
+			galaxy.userId,
+			'UPDATE',
+			`The user ${user.tmaId} updated a stars of galaxies`,
+			stars
+		);
 		if (galaxy) {
 			galaxy.stars = stars;
 			await galaxy.save();
@@ -79,6 +113,13 @@ class UserGalaxyService {
 	// save new param for galaxy
 	async updateGalaxyOwner(id, userId) {
 		const galaxy = await Galaxy.findByPk(id);
+		const user = await User.findOne({ where: { id: userId } });
+		await loggerService.logging(
+			galaxy.userId,
+			'UPDATE',
+			`The galaxy ${galaxy.id} has changed its owner to ${user.tmaId} `,
+			stars
+		);
 		if (galaxy) {
 			galaxy.owner = 'USER';
 			galaxy.userId = userId;

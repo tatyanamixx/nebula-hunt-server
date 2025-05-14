@@ -32,6 +32,6 @@ module.exports = function (req, res, next) {
 		req.tmaInitdata = parse(initData).user;
 		next();
 	} catch (err) {
-		return next(ApiError.UnthorizedError());
+		return next(ApiError.UnauthorizedError(err.message));
 	}
 };

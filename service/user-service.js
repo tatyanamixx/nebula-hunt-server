@@ -2,6 +2,7 @@ const { User } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxySevice = require('./galaxy-service');
 const userStateService = require('./state-service');
+const loggerService = require('./logger-service');
 const UserDto = require('../dtos/user-dto');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
@@ -42,9 +43,18 @@ class UserService {
 			}
 		}
 
-		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.tmaId);
+		const userGalaxeis = await galaxySevice.getUserGalaxiesByUserId(
+			userDto.id
+		);
 
 		const tokens = tokenService.generateTokens({ ...userDto });
+
+		const log = loggerService.logging(
+			userDto.id,
+			'REGISTRATION',
+			`The user ${userDto.tmaId}:${tmaUsername} is registered`,
+			0
+		);
 
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		return {
@@ -63,9 +73,18 @@ class UserService {
 		}
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.tmaId);
+		const userGalaxeis = await galaxySevice.getUserGalaxiesByUserId(
+			userDto.id
+		);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
+		await loggerService.logging(
+			userDto.id,
+			'LOGIN',
+			`The user ${userDto.tmaId} logged in`,
+			0
+		);
+
 		return {
 			...tokens,
 			user: userDto,
@@ -83,6 +102,7 @@ class UserService {
 		if (!refreshToken) {
 			throw ApiError.UnauthorizedError();
 		}
+
 		const userData = tokenService.validateRefreshToken(refreshToken);
 		const tokenFromDb = await tokenService.findToken(refreshToken);
 		if (!userData || !tokenFromDb) {
@@ -93,9 +113,18 @@ class UserService {
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxis = await galaxySevice.getUserGalaxies(userDto.tmaId);
+		const userGalaxis = await galaxySevice.getUserGalaxiesByUserId(
+			userDto.id
+		);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
+
+		await loggerService.logging(
+			userDto.id,
+			'REFRESH',
+			`The user ${userDto.tmaId} has updated the refreshToken`,
+			0
+		);
 		return {
 			...tokens,
 			user: userDto,
@@ -106,6 +135,13 @@ class UserService {
 
 	async getfriends(tmaId) {
 		const friends = await User.findAll({ where: { referral: tmaId } });
+		const user = await User.findOne({ where: { tmaId: tmaId } });
+		await loggerService.logging(
+			user.id,
+			'GET',
+			`The user ${tmaId} requested a list of friends`,
+			0
+		);
 		return friends;
 	}
 }

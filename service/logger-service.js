@@ -1,5 +1,5 @@
 const { Log } = require('../models/models');
-const ApiError = require('../exceprtions/api-error');
+const ApiError = require('../exceptions/api-error');
 
 class LoggerService {
 	async logging(userId, opCode, opDesc, opAmount) {

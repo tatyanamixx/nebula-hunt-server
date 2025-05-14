@@ -1,4 +1,5 @@
 const { UserState, User } = require('../models/models');
+const loggerService = require('./logger-service');
 
 class UserStateService {
 	async getUserState(userId) {
@@ -34,6 +35,14 @@ class UserStateService {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
 			stateData.save();
+			await loggerService.logging(
+				galaxy.userId,
+				'UPDATE',
+				`The user ${userId} updated a state ${JSON.stingify(
+					userState.state
+				)}`,
+				userState.stars
+			);
 			return { userId, userState: stateData };
 		}
 		const stateNew = await UserState.create({
@@ -52,6 +61,7 @@ class UserStateService {
 			attributes: ['stars', 'state'],
 		});
 		const users = userlist.map((item) => item.toJSON());
+
 		return { leaderboard: users };
 	}
 }
