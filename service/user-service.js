@@ -43,9 +43,7 @@ class UserService {
 			}
 		}
 
-		const userGalaxeis = await galaxySevice.getUserGalaxiesByUserId(
-			userDto.id
-		);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
 
 		const tokens = tokenService.generateTokens({ ...userDto });
 
@@ -73,9 +71,7 @@ class UserService {
 		}
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxeis = await galaxySevice.getUserGalaxiesByUserId(
-			userDto.id
-		);
+		const userGalaxeis = await galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 		await loggerService.logging(
@@ -113,9 +109,7 @@ class UserService {
 
 		const userDto = new UserDto(user);
 		const userState = await userStateService.getUserState(userDto.id);
-		const userGalaxis = await galaxySevice.getUserGalaxiesByUserId(
-			userDto.id
-		);
+		const userGalaxis = await galaxySevice.getUserGalaxies(userDto.id);
 		const tokens = tokenService.generateTokens({ ...userDto });
 		await tokenService.saveToken(userDto.id, tokens.refreshToken);
 
@@ -133,16 +127,19 @@ class UserService {
 		};
 	}
 
-	async getfriends(tmaId) {
-		const friends = await User.findAll({ where: { referral: tmaId } });
-		const user = await User.findOne({ where: { tmaId: tmaId } });
-		await loggerService.logging(
-			user.id,
-			'GET',
-			`The user ${tmaId} requested a list of friends`,
-			0
-		);
-		return friends;
+	async getfriends(id, tmaId) {
+		if (tmaId) {
+			const friends = await User.findAll({ where: { referral: tmaId } });
+			//const user = await User.findOne({ where: { tmaId: tmaId } });
+			await loggerService.logging(
+				id,
+				'GET',
+				`The user ${tmaId} requested a list of friends`,
+				0
+			);
+			return friends;
+		}
+		return null;
 	}
 }
 module.exports = new UserService();

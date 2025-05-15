@@ -5,7 +5,7 @@ const { where } = require('sequelize');
 class TokenService {
 	generateTokens(payload) {
 		const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-			expiresIn: '5m',
+			expiresIn: '7d',
 		});
 		const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
 			expiresIn: '7d',
@@ -18,7 +18,7 @@ class TokenService {
 			const userData = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 			return userData;
 		} catch (err) {
-			return null;
+			return userData;
 		}
 	}
 
@@ -27,12 +27,11 @@ class TokenService {
 			const userData = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 			return userData;
 		} catch (err) {
-			return null;
+			return userData;
 		}
 	}
 
 	async saveToken(userId, refreshToken) {
-		console.log('saveToken', userId, refreshToken);
 		const tokenData = await Token.findOne({ where: { userId: userId } });
 
 		if (tokenData) {

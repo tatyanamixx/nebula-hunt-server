@@ -35,11 +35,12 @@ class UserStateService {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
 			stateData.save();
+			const string = JSON.stringify(stateData.state);
+
 			await loggerService.logging(
-				galaxy.userId,
+				userId,
 				'UPDATE',
-				`The user ${userId} updated a state ${JSON.stingify(
-					userState.state
+				`The user ${userId} updated a state ${string}
 				)}`,
 				userState.stars
 			);

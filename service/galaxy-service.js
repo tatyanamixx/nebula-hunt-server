@@ -4,24 +4,24 @@ const { Op } = require('sequelize');
 
 class UserGalaxyService {
 	// list galaxis for user
-	async getUserGalaxies(tmaId) {
-		const user = await User.findOne({ where: { tmaId: tmaId } });
-		const galaxiesRaw = await Galaxy.findAll({
-			where: { userId: user.id },
-		});
-		if (!galaxiesRaw) return null;
-		const galaxies = galaxiesRaw.map((item) => item.toJSON());
+	// async getUserGalaxies(tmaId) {
+	// 	const user = await User.findOne({ where: { tmaId: tmaId } });
+	// 	const galaxiesRaw = await Galaxy.findAll({
+	// 		where: { userId: user.id },
+	// 	});
+	// 	if (!galaxiesRaw) return null;
+	// 	const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-		await loggerService.logging(
-			user.id,
-			'GET',
-			`The user ${tmaId} requested a list of galaxies`,
-			0
-		);
+	// 	await loggerService.logging(
+	// 		user.id,
+	// 		'GET',
+	// 		`The user ${tmaId} requested a list of galaxies`,
+	// 		0
+	// 	);
 
-		return galaxies;
-	}
-	async getUserGalaxiesByUserId(userId) {
+	// 	return galaxies;
+	// }
+	async getUserGalaxies(userId) {
 		//const user = await User.findOne({ where: { user: tmaId } });
 		const galaxiesRaw = await Galaxy.findAll({
 			where: { userId: userId },
@@ -29,8 +29,16 @@ class UserGalaxyService {
 		if (!galaxiesRaw) return null;
 		const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
+		await loggerService.logging(
+			userId,
+			'GET',
+			`The user id: ${userId} requested a own galaxies `,
+			0
+		);
+
 		return galaxies;
 	}
+
 	async getShowGalaxies(tmaId) {
 		const user = await User.findOne({ where: { tmaId: tmaId } });
 		const count = await Galaxy.count({
@@ -56,7 +64,7 @@ class UserGalaxyService {
 		await loggerService.logging(
 			user.id,
 			'GET',
-			`The user ${tmaId} requested a list of galaxies for sale`,
+			`The user tmaId: ${tmaId} requested a galaxies for sale`,
 			0
 		);
 		return {
@@ -99,7 +107,7 @@ class UserGalaxyService {
 		await loggerService.logging(
 			galaxy.userId,
 			'UPDATE',
-			`The user ${user.tmaId} updated a stars of galaxies`,
+			`The user tmaId:${user.tmaId} updated a stars of galaxies`,
 			stars
 		);
 		if (galaxy) {
@@ -117,8 +125,8 @@ class UserGalaxyService {
 		await loggerService.logging(
 			galaxy.userId,
 			'UPDATE',
-			`The galaxy ${galaxy.id} has changed its owner to ${user.tmaId} `,
-			stars
+			`The galaxy id:${galaxy.id} has changed its owner to tmaId:${user.tmaId} `,
+			galaxy.stars
 		);
 		if (galaxy) {
 			galaxy.owner = 'USER';

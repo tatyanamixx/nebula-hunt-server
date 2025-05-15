@@ -19,8 +19,8 @@ class GalaxyController {
 
 	async getusergalaxies(req, res, next) {
 		try {
-			const tmaId = req.tmaInitdata.id;
-			const galaxies = await galaxyService.getUserGalaxies(tmaId);
+			const id = req.userToken.id;
+			const galaxies = await galaxyService.getUserGalaxies(id);
 			res.json(galaxies);
 		} catch (err) {
 			next(err);
