@@ -12,6 +12,7 @@ const User = sequelize.define(
 			type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
 			defaultValue: 'USER',
 		},
+		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
 	},
 	{ indexes: [{ unique: true, fields: ['tmaId'] }, { fields: ['referral'] }] }
 );
@@ -28,16 +29,28 @@ const UserState = sequelize.define(
 
 const Log = sequelize.define('log', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	operation: { type: DataTypes.ENUM('REGISTRATION','LOGIN','REFRESH','UPDATE','GET'), allowNull: false },
+	operation: {
+		type: DataTypes.ENUM(
+			'REGISTRATION',
+			'LOGIN',
+			'REFRESH',
+			'UPDATE',
+			'GET'
+		),
+		allowNull: false,
+	},
 	description: { type: DataTypes.STRING },
 	amount: { type: DataTypes.INTEGER, defaultValue: 0 },
 });
 
-const Token = sequelize.define('token', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	refreshToken: { type: DataTypes.STRING, allowNull: false },
-},
-{ indexes: [{ fields: ['refreshToken'] }] });
+const Token = sequelize.define(
+	'token',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		refreshToken: { type: DataTypes.STRING, allowNull: false },
+	},
+	{ indexes: [{ fields: ['refreshToken'] }] }
+);
 
 const Galaxy = sequelize.define('galaxy', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
