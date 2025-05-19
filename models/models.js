@@ -63,6 +63,34 @@ const Galaxy = sequelize.define('galaxy', {
 	galaxySetting: { type: DataTypes.JSON },
 });
 
+const Task = sequelize.define('task', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	name: { type: DataTypes.STRING },
+	description: { type: DataTypes.STRING },
+	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+	active: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const UserTask = sequelize.define('usertask', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+});
+
+const Achievement = sequelize.define('achievement', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	name: { type: DataTypes.STRING },
+	description: { type: DataTypes.STRING },
+	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+	active: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const UserAchievement = sequelize.define('userachievement', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+});
+
 User.hasOne(UserState);
 UserState.belongsTo(User);
 
@@ -75,10 +103,26 @@ Log.belongsTo(User);
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
+User.hasMany(UserTask);
+UserTask.belongsTo(User);
+
+Task.hasMany(UserTask);
+UserTask.belongsTo(Task);
+
+User.hasMany(UserAchievement);
+UserAchievement.belongsTo(User);
+
+Achievement.hasMany(UserAchievement);
+UserAchievement.belongsTo(Achievement);
+
 module.exports = {
 	User,
 	UserState,
 	Token,
 	Log,
 	Galaxy,
+	Task,
+	UserTask,
+	Achievement,
+	UserAchievement,
 };

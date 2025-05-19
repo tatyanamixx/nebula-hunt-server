@@ -6,6 +6,7 @@ const tmaMiddleware = require('../middlewares/tma-middeware.js');
 const userController = require('../controllers/userController.js');
 const galaxyController = require('../controllers/galaxyController.js');
 const userstateController = require('../controllers/userstateController.js');
+const taskController = require('../controllers/taskController.js');
 
 router.post('/registration', tmaMiddleware, userController.registration);
 router.post('/login', tmaMiddleware, userController.login);
@@ -51,6 +52,13 @@ router.post(
 	galaxyController.updategalaxyowner
 );
 
+router.post(
+	'/updateuserstate',
+	tmaMiddleware,
+	authMiddleware,
+	userstateController.updateuserstate
+);
+
 router.get(
 	'/leaderboard',
 	tmaMiddleware,
@@ -58,11 +66,21 @@ router.get(
 	userstateController.leaderboard
 );
 
-router.post(
-	'/updateuserstate',
+
+
+// не проверено!
+router.get(
+	'/useractivetasks',
 	tmaMiddleware,
 	authMiddleware,
-	userstateController.updateuserstate
+	taskController.useractivetasks
+);
+
+router.post(
+	'/completedtask/:id',
+	tmaMiddleware,
+	authMiddleware,
+	taskController.completedtask
 );
 
 module.exports = router;
