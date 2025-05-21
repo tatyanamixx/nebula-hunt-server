@@ -3,24 +3,7 @@ const loggerService = require('./logger-service');
 const { Op } = require('sequelize');
 
 class UserGalaxyService {
-	// list galaxis for user
-	// async getUserGalaxies(tmaId) {
-	// 	const user = await User.findOne({ where: { tmaId: tmaId } });
-	// 	const galaxiesRaw = await Galaxy.findAll({
-	// 		where: { userId: user.id },
-	// 	});
-	// 	if (!galaxiesRaw) return null;
-	// 	const galaxies = galaxiesRaw.map((item) => item.toJSON());
-
-	// 	await loggerService.logging(
-	// 		user.id,
-	// 		'GET',
-	// 		`The user ${tmaId} requested a list of galaxies`,
-	// 		0
-	// 	);
-
-	// 	return galaxies;
-	// }
+	
 	async getUserGalaxies(userId) {
 		//const user = await User.findOne({ where: { user: tmaId } });
 		const galaxiesRaw = await Galaxy.findAll({

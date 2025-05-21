@@ -1,0 +1,28 @@
+{
+	"tasks": [
+		{
+			"keyWord": "tmacanal",
+			"description": "Subcribe to canal ",
+			"reward": 10,
+			"active": true
+		},
+		{
+			"keyWord": "twitter",
+			"description": "Subcribe to twitter",
+			"reward": 10,
+			"active": true
+		},
+		{
+			"keyWord": "youtube",
+			"description": "Subcribe to youtube",
+			"reward": 20,
+			"active": true
+		},
+		{
+			"keyWord": "tmacanalnew",
+			"description": "Subcribe to canal ",
+			"reward": 5,
+			"active": false
+		}
+	]
+}

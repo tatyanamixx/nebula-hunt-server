@@ -2,7 +2,7 @@ const Router = require('express');
 const router = new Router();
 
 const authMiddleware = require('../middlewares/auth-middleware.js');
-const tmaMiddleware = require('../middlewares/tma-middeware.js');
+const tmaMiddleware = require('../middlewares/tma-middleware.js');
 const userController = require('../controllers/userController.js');
 const galaxyController = require('../controllers/galaxyController.js');
 const userstateController = require('../controllers/userstateController.js');
@@ -66,21 +66,19 @@ router.get(
 	userstateController.leaderboard
 );
 
+// systems request
+router.post('/createtasks', taskController.createtasks);
 
+// проверено --- userId - забираем из initData после tmaMiddleware --- исправлеям в taskController!
+router.post('/activateusertasks/:userId', taskController.activateusertasks);
 
-// не проверено!
-router.get(
-	'/useractivetasks',
-	tmaMiddleware,
-	authMiddleware,
-	taskController.useractivetasks
-);
+router.get('/getusertasks/:userId', taskController.getusertasks);
 
 router.post(
-	'/completedtask/:id',
-	tmaMiddleware,
-	authMiddleware,
-	taskController.completedtask
+	'/completedusertask/:userId&:taskId',
+	taskController.completedusertask
 );
+
+
 
 module.exports = router;

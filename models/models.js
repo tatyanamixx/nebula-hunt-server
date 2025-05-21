@@ -65,7 +65,7 @@ const Galaxy = sequelize.define('galaxy', {
 
 const Task = sequelize.define('task', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	name: { type: DataTypes.STRING },
+	keyWord: { type: DataTypes.STRING },
 	description: { type: DataTypes.STRING },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
@@ -79,10 +79,15 @@ const UserTask = sequelize.define('usertask', {
 
 const Achievement = sequelize.define('achievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	name: { type: DataTypes.STRING },
+	keyWord: { type: DataTypes.STRING },
 	description: { type: DataTypes.STRING },
-	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+const AchievementReward = sequelize.define('achievementreward', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	from: { type: DataTypes.INTEGER, defaultValue: 0 },
+	to: { type: DataTypes.INTEGER, defaultValue: 0 },
+	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 });
 
 const UserAchievement = sequelize.define('userachievement', {
@@ -106,14 +111,17 @@ Galaxy.belongsTo(User);
 User.hasMany(UserTask);
 UserTask.belongsTo(User);
 
-Task.hasMany(UserTask);
-UserTask.belongsTo(Task);
-
 User.hasMany(UserAchievement);
 UserAchievement.belongsTo(User);
 
+Task.hasMany(UserTask);
+UserTask.belongsTo(Task);
+
 Achievement.hasMany(UserAchievement);
 UserAchievement.belongsTo(Achievement);
+
+Achievement.hasMany(AchievementReward);
+AchievementReward.belongsTo(Achievement);
 
 module.exports = {
 	User,

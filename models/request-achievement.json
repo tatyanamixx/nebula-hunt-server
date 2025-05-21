@@ -1,0 +1,30 @@
+{
+	"achievement": [
+		{
+			"keyWord": "invitefrieds",
+			"description": "Invite friends",
+			"levels": [
+				{ "from": 10, "to": 99, "reward": 1 },
+				{ "from": 100, "to": 999, "reward": 5 },
+				{ "from": 1000, "to": 99999999, "reward": 10 }
+			],
+			"active": true
+		},
+		{
+			"keyWord": "galaxiesowner",
+			"description": "Own the galaxy",
+			"levels": [
+				{ "from": 3, "to": 14, "reward": 1 },
+				{ "from": 15, "to": 39, "reward": 5 },
+				{ "from": 40, "to": 99999999, "reward": 10 }
+			],
+			"active": true
+		},
+		{
+			"keyWord": "subscribe",
+			"description": "Subcribe to the official channel",
+			"levels": [{ "from": 1, "to": 1, "reward": 50 }],
+			"active": true
+		}
+	]
+}

@@ -2,7 +2,7 @@ const ApiError = require('../exceptions/api-error');
 const galaxyService = require('../service/galaxy-service');
 
 class GalaxyController {
-	async create(req, res) {}
+	async create(req, res, next) {}
 
 	async getgalaxy(req, res, next) {
 		try {
