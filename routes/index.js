@@ -7,6 +7,7 @@ const userController = require('../controllers/userController.js');
 const galaxyController = require('../controllers/galaxyController.js');
 const userstateController = require('../controllers/userstateController.js');
 const taskController = require('../controllers/taskController.js');
+const achievementController = require('../controllers/achievementController.js');
 
 router.post('/registration', tmaMiddleware, userController.registration);
 router.post('/login', tmaMiddleware, userController.login);
@@ -68,6 +69,7 @@ router.get(
 
 // systems request
 router.post('/createtasks', taskController.createtasks);
+router.post('/createachievement', achievementController.createachievements);
 
 // проверено --- userId - забираем из initData после tmaMiddleware --- исправлеям в taskController!
 router.post('/activateusertasks/:userId', taskController.activateusertasks);

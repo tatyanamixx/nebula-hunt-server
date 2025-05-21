@@ -85,6 +85,7 @@ const Achievement = sequelize.define('achievement', {
 });
 const AchievementReward = sequelize.define('achievementreward', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	level: { type: DataTypes.INTEGER, defaultValue: 0 },
 	from: { type: DataTypes.INTEGER, defaultValue: 0 },
 	to: { type: DataTypes.INTEGER, defaultValue: 0 },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
@@ -132,5 +133,6 @@ module.exports = {
 	Task,
 	UserTask,
 	Achievement,
+	AchievementReward,
 	UserAchievement,
 };

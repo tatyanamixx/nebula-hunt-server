@@ -6,7 +6,6 @@ const { where } = require('sequelize');
 class TaskService {
 	async createTasks(tasks) {
 		try {
-			console.log(tasks.length);
 			for (let i = 0; i < tasks.length; i++) {
 				let task = await Task.findOne({
 					where: { keyWord: tasks[i].keyWord },
