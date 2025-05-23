@@ -1,11 +1,5 @@
 const ApiError = require('../exceptions/api-error');
-const {
-	validate3rd,
-	parse,
-	validate,
-	isValid,
-	isValid3rd,
-} = require('@telegram-apps/init-data-node');
+const { parse, validate } = require('@telegram-apps/init-data-node');
 const tma_token = process.env.TG_BOT_API_KEY;
 
 module.exports = function (req, res, next) {
@@ -16,14 +10,13 @@ module.exports = function (req, res, next) {
 		}
 		const splitAuthHeader = authorizationHeader.split(' ');
 		const index = splitAuthHeader.indexOf('tma');
-			if (index < 0) {
+		if (index < 0) {
 			return next(ApiError.TMAuthorizedError('tma: not tma key word'));
 		}
 		const initData = splitAuthHeader[index + 1];
 		if (!initData) {
 			return next(ApiError.TMAuthorizedError('tma: not found initdata'));
 		}
-		const botId = parse(initData).chat_instance;
 		try {
 			validate(initData, tma_token);
 		} catch (err) {

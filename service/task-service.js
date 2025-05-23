@@ -14,7 +14,7 @@ class TaskService {
 					task.description = tasks[i].description;
 					task.reward = tasks[i].reward;
 					task.active = tasks[i].active;
-					task.save();
+					await task.save();
 				} else {
 					let tskc = await Task.create({
 						keyWord: tasks[i].keyWord,
@@ -88,7 +88,7 @@ class TaskService {
 			const userTasksRaw = await UserTask.findAll({
 				include: Task,
 				where: { userId: userId },
-				attributes: ['reward', 'completed', 'task.reward'],
+				attributes: ['reward', 'completed'],
 			});
 			const reward = await UserTask.sum('reward', {
 				where: { userId: userId },
@@ -110,7 +110,7 @@ class TaskService {
 			if (!userTask) return null;
 			userTask.reward = task.reward;
 			userTask.completed = true;
-			userTask.save();
+			await userTask.save();
 			const userTaskRaw = await UserTask.findAll({
 				where: { userId: userId },
 			});

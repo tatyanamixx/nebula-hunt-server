@@ -93,6 +93,7 @@ const AchievementReward = sequelize.define('achievementreward', {
 
 const UserAchievement = sequelize.define('userachievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	level: { type: DataTypes.INTEGER, defaultValue: 0 },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 });

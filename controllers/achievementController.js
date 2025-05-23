@@ -15,42 +15,47 @@ class AchievementController {
 			next(err);
 		}
 	}
-	// async activateusertasks(req, res, next) {
-	//     try {
-	//         //const userId = req.userToken.id;
-	//         const {userId} = req.params;
-	//         const userData = await userTaskService.activateUserTasks(userId);
-	//         return res.json(userData);
-	//     } catch (err) {
-	//         next(err);
-	//     }
-	// }
+	async activateuserachivements(req, res, next) {
+		try {
+			//const userId = req.userToken.id;
+			const { userId } = req.userToken.id;
+			const userData =
+				await userAchievementService.activateUserAchievements(userId);
+			return res.json(userData);
+		} catch (err) {
+			next(err);
+		}
+	}
 
-	// async getusertasks(req, res, next) {
-	//     try {
-	//         //const userId = req.userToken.id;
-	//         const {userId} = req.params;
-	//         const userData = await userTaskService.getUserTasks(userId);
-	//         return res.json(userData);
-	//     } catch (err) {
-	//         next(err);
-	//     }
-	// }
+	async getuserachievements(req, res, next) {
+		try {
+			//const userId = req.userToken.id;
+			const { userId } = req.userToken.id;
+			const userData = await userAchievementService.getUserAchievements(
+				userId
+			);
+			return res.json(userData);
+		} catch (err) {
+			next(err);
+		}
+	}
 
-	// async completedusertask(req, res, next) {
-	//     try {
-	//         //const userId = req.userToken.id;
-	//         //const taskId = req.params;
-	//         const { userId, taskId } = req.params;
-	//         const userData = await userTaskService.completedUserTask(
-	//             userId,
-	//             taskId
-	//         );
-	//         return res.json(userData);
-	//     } catch (err) {
-	//         next(err);
-	//     }
-	// }
+	async updateUserAchievementByValue(req, res, next) {
+		try {
+			const { userId } = req.req.userToken.id;
+			const { keyWord, value } = req.body;
+			const userData =
+				await userAchievementService.updateUserAchievementByValue(
+					userId,
+					keyWord,
+					value
+				);
+			return res.json(userData);
+		} catch (err) {
+			next(err);
+		}
+	}
+
 }
 
 module.exports = new AchievementController();

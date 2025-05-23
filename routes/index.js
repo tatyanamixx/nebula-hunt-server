@@ -3,84 +3,151 @@ const router = new Router();
 
 const authMiddleware = require('../middlewares/auth-middleware.js');
 const tmaMiddleware = require('../middlewares/tma-middleware.js');
+const adminMiddleware = require('../middlewares/admin-middleware.js');
+const {
+	defaultLimiter,
+	authLimiter,
+	adminLimiter,
+	updateLimiter,
+} = require('../middlewares/rate-limit.js');
 const userController = require('../controllers/userController.js');
 const galaxyController = require('../controllers/galaxyController.js');
 const userstateController = require('../controllers/userstateController.js');
 const taskController = require('../controllers/taskController.js');
 const achievementController = require('../controllers/achievementController.js');
 
-router.post('/registration', tmaMiddleware, userController.registration);
-router.post('/login', tmaMiddleware, userController.login);
-router.get('/refresh', tmaMiddleware, userController.refresh);
-
+// Auth routes
+router.post(
+	'/auth/registration',
+	tmaMiddleware,
+	authLimiter,
+	userController.registration
+);
+router.post('/auth/login', tmaMiddleware, authLimiter, userController.login);
+router.get('/auth/refresh', tmaMiddleware, authLimiter, userController.refresh);
 router.get(
-	'/friends',
+	'/auth/friends',
 	tmaMiddleware,
 	authMiddleware,
+	defaultLimiter,
 	userController.getfriends
 );
 
-router.get(
-	'/getgalaxy/:id',
+// Admin routes
+router.post(
+	'/admin/tasks/create',
 	tmaMiddleware,
 	authMiddleware,
+	adminMiddleware,
+	adminLimiter,
+	taskController.createtasks
+);
+router.post(
+	'/admin/achievements/create',
+	tmaMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	adminLimiter,
+	achievementController.createachievements
+);
+
+// Galaxy routes
+router.get(
+	'/galaxies/:id',
+	tmaMiddleware,
+	authMiddleware,
+	defaultLimiter,
 	galaxyController.getgalaxy
 );
 router.get(
-	'/getusergalaxies',
+	'/galaxies/user',
 	tmaMiddleware,
 	authMiddleware,
+	defaultLimiter,
 	galaxyController.getusergalaxies
 );
-
 router.get(
-	'/getshowgalaxies',
+	'/galaxies/showcase',
 	tmaMiddleware,
 	authMiddleware,
+	defaultLimiter,
 	galaxyController.getshowgalaxies
 );
-
 router.post(
-	'/updategalaxystars/:id&:stars',
+	'/galaxies/:id/stars/:stars',
 	tmaMiddleware,
 	authMiddleware,
+	updateLimiter,
 	galaxyController.updategalaxystars
 );
 router.post(
-	'/updategalaxyowner/:id&:userId',
+	'/galaxies/:id/owner/:userId',
 	tmaMiddleware,
 	authMiddleware,
+	updateLimiter,
 	galaxyController.updategalaxyowner
 );
 
+// User state routes
 router.post(
-	'/updateuserstate',
+	'/user/state/update',
 	tmaMiddleware,
 	authMiddleware,
+	updateLimiter,
 	userstateController.updateuserstate
 );
-
 router.get(
 	'/leaderboard',
 	tmaMiddleware,
 	authMiddleware,
+	defaultLimiter,
 	userstateController.leaderboard
 );
 
-// systems request
-router.post('/createtasks', taskController.createtasks);
-router.post('/createachievement', achievementController.createachievements);
-
-// проверено --- userId - забираем из initData после tmaMiddleware --- исправлеям в taskController!
-router.post('/activateusertasks/:userId', taskController.activateusertasks);
-
-router.get('/getusertasks/:userId', taskController.getusertasks);
-
+// Task routes
 router.post(
-	'/completedusertask/:userId&:taskId',
+	'/tasks/activate',
+	tmaMiddleware,
+	authMiddleware,
+	updateLimiter,
+	taskController.activateusertasks
+);
+router.get(
+	'/tasks/user',
+	tmaMiddleware,
+	authMiddleware,
+	defaultLimiter,
+	taskController.getusertasks
+);
+router.post(
+	'/tasks/:taskId/complete',
+	tmaMiddleware,
+	authMiddleware,
+	updateLimiter,
 	taskController.completedusertask
 );
 
-
+// Achievement routes
+router.post(
+	'/achievements/activate',
+	tmaMiddleware,
+	authMiddleware,
+	updateLimiter,
+	achievementController.activateuserachivements
+);
+router.get(
+	'/achievements/user',
+	tmaMiddleware,
+	authMiddleware,
+	defaultLimiter,
+	achievementController.getuserachievements
+);
+router.post(
+	'/achievements/update',
+	tmaMiddleware,
+	authMiddleware,
+	updateLimiter,
+	achievementController.updateUserAchievementByValue
+);
 
 module.exports = router;

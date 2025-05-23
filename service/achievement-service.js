@@ -11,53 +11,45 @@ const { where } = require('sequelize');
 class AchievementService {
 	async createAchievements(achievements) {
 		try {
-			let ind = [];
-
+			let achievement = null;
+			let level = null;
 			for (let i = 0; i < achievements.length; i++) {
-				const achievement = await Achievement.findOne({
-					where: { keyWord: achievements[i].keyWord },
+				const inputAch = achievements[i];
+				achievement = await Achievement.findOne({
+					where: { keyWord: inputAch.keyWord },
 				});
 				if (achievement) {
-					achievement.description = achievements[i].description;
-					achievement.active = achievements[i].active;
-					achievement.save();
+					achievement.description = inputAch.description;
+					achievement.active = inputAch.active;
+					await achievement.save();
 				} else {
-					const achievementNew = await Achievement.create({
-						keyWord: achievements[i].keyWord,
-						description: achievements[i].description,
-						active: achievements[i].active,
+					achievement = await Achievement.create({
+						keyWord: inputAch.keyWord,
+						description: inputAch.description,
+						active: inputAch.active,
 					});
 				}
-			}
-
-			//let levelRaw = null;
-			for (let i = 0; i < achievements.length; i++) {
-				if (achievements[i].levels.length > 0) {
-					const achiv = await Achievement.findOne({
-						where: { keyWord: achievements[i].keyWord },
+				for (const lvl of inputAch.levels) {
+					level = await AchievementReward.findOne({
+						where: {
+							level: lvl.level,
+							achievementId: achievement.id,
+						},
 					});
-					for (let j = 0; j < achievements[i].levels.length; j++) {
-						const levelRaw = await AchievementReward.findOne({
-							where: {
-								level: achievements[i].levels[j].level,
-								achievementId: achiv.Id,
-							},
+					if (level) {
+						level.level = lvl.level;
+						level.from = lvl.from;
+						level.to = lvl.to;
+						level.reward = lvl.reward;
+						await level.save();
+					} else {
+						await AchievementReward.create({
+							level: lvl.level,
+							from: lvl.from,
+							to: lvl.to,
+							reward: lvl.reward,
+							achievementId: achievement.id,
 						});
-						if (levelRaw) {
-							levelRaw.level = achievements[i].levels[j].level;
-							levelRaw.from = achievements[i].levels[j].from;
-							levelRaw.to = achievements[i].levels[j].to;
-							levelRaw.reward = achievements[i].levels[j].reward;
-							levelRaw.save();
-						} else {
-							const levelRawNew = await AchievementReward.create({
-								level: achievements[i].levels[j].level,
-								from: achievements[i].levels[j].from,
-								to: achievements[i].levels[j].to,
-								reward: achievements[i].levels[j].reward,
-								achievementId: achiv.Id,
-							});
-						}
 					}
 				}
 			}
@@ -69,7 +61,155 @@ class AchievementService {
 			const newAchiev = achievementRaw.map((item) => item.toJSON());
 			return { achievements: newAchiev };
 		} catch (err) {
-			ApiError.Internal(err.message);
+			throw ApiError.Internal(err.message);
+		}
+	}
+
+	async activateUserAchievements(userId) {
+		try {
+			const achievementRaw = await Achievement.findAll({
+				where: { active: true },
+			});
+			const userAchievementRaw = await UserAchievement.findAll({
+				where: { userId: userId },
+			});
+
+			const achievements = achievementRaw.map((item) => item.toJSON());
+			if (achievements.length === 0) return null;
+
+			const userAchievements = userAchievementRaw.map((item) =>
+				item.toJSON()
+			);
+
+			const existingAchievementIds = new Set(
+				userAchievements.map((ua) => ua.achievementId)
+			);
+
+			const newAchievements = achievements.filter(
+				(ach) => !existingAchievementIds.has(ach.id)
+			);
+
+			if (achievements.length > 0) {
+				const newUserAchievements = newAchievements.map((ach) => ({
+					userId: userId,
+					achievementId: ach.id,
+				}));
+				await UserAchievement.bulkCreate(newUserAchievements);
+			}
+
+			const userAchievementNew = await UserAchievement.findAll({
+				where: { userId: userId },
+			});
+
+			const achievementNew = userAchievementNew.map((item) =>
+				item.toJSON()
+			);
+
+			const reward = await UserAchievement.sum('reward', {
+				where: { userId: userId },
+			});
+
+			return {
+				reward: { achievement: reward },
+				userAchievements: achievementNew,
+			};
+		} catch (err) {
+			throw ApiError.Internal(err.message);
+		}
+	}
+
+	async getUserAchievements(userId) {
+		try {
+			const userAchievementsRaw = await UserAchievement.findAll({
+				include: Achievement,
+				where: { userId: userId },
+				attributes: ['reward', 'completed'],
+			});
+			const reward = await UserAchievement.sum('reward', {
+				where: { userId: userId },
+			});
+			const userAchievements = userAchievementsRaw.map((item) =>
+				item.toJSON()
+			);
+			return {
+				reward: { achievement: reward },
+				achievement: userAchievements,
+			};
+		} catch (err) {
+			throw ApiError.BadRequest(err.message);
+		}
+	}
+
+	async updateUserAchievementByValue(userId, keyWord, value) {
+		try {
+			// 1. Найти достижение по ключу
+			const achievement = await Achievement.findOne({
+				where: { keyWord },
+			});
+
+			if (!achievement) {
+				throw ApiError.BadRequest(`Achievement "${keyWord}" not found`);
+			}
+
+			// 2. Найти все уровни и отсортировать по возрастанию
+			const rewards = await AchievementReward.findAll({
+				where: { achievementId: achievement.id },
+				order: [['level', 'ASC']],
+			});
+
+			if (!rewards.length) {
+				throw ApiError.BadRequest(
+					`No levels found for achievement "${keyWord}"`
+				);
+			}
+
+			// 3. Найти подходящий уровень по значению value
+			const matchingLevel = rewards.find(
+				(r) => value >= r.from && value <= r.to
+			);
+
+			if (!matchingLevel) {
+				// Не достигнут ни один уровень
+				return {
+					updated: false,
+					reason: 'Value does not match any level range',
+				};
+			}
+
+			// 4. Найти или создать запись в UserAchievement
+			const [userAchievement, created] =
+				await UserAchievement.findOrCreate({
+					where: {
+						userId,
+						achievementId: achievement.id,
+					},
+					defaults: {
+						level: matchingLevel.level,
+						reward: matchingLevel.reward,
+					},
+				});
+
+			// 5. Обновить только если новый уровень выше
+			if (!created && userAchievement.level < matchingLevel.level) {
+				userAchievement.level = matchingLevel.level;
+				userAchievement.reward = matchingLevel.reward;
+				await userAchievement.save();
+				return {
+					updated: true,
+					upgraded: true,
+					level: matchingLevel.level,
+					reward: matchingLevel.reward,
+				};
+			}
+
+			return {
+				updated: created,
+				upgraded: false,
+				level: matchingLevel.level,
+				reward: matchingLevel.reward,
+			};
+		} catch (err) {
+			throw ApiError.Internal(err.message);
 		}
 	}
 }

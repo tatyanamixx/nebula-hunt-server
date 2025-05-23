@@ -13,11 +13,10 @@ class UserStateService {
 		const stateData = await UserState.findOne({
 			where: { userId: userId },
 		});
-		console.log(' craete userStare', userId);
 		if (stateData) {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
-			return stateData.save();
+			return await stateData.save();
 		}
 		const stateNew = await UserState.create({
 			userId: userId,
@@ -34,7 +33,7 @@ class UserStateService {
 		if (stateData) {
 			stateData.stars = userState.stars;
 			stateData.state = userState.state;
-			stateData.save();
+			await stateData.save();
 			const string = JSON.stringify(stateData.state);
 
 			await loggerService.logging(

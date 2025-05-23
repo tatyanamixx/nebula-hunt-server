@@ -27,4 +27,8 @@ module.exports = class ApiError extends Error {
 	static Forbidden(message) {
 		return new ApiError(403, message);
 	}
+
+	static TooManyRequests(message) {
+		return new ApiError(429, message);
+	}
 };

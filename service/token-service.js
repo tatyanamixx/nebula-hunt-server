@@ -18,7 +18,7 @@ class TokenService {
 			const userData = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 			return userData;
 		} catch (err) {
-			return userData;
+			return null;
 		}
 	}
 
@@ -27,7 +27,7 @@ class TokenService {
 			const userData = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 			return userData;
 		} catch (err) {
-			return userData;
+			return null;
 		}
 	}
 
@@ -36,7 +36,7 @@ class TokenService {
 
 		if (tokenData) {
 			tokenData.refreshToken = refreshToken;
-			return tokenData.save();
+			return await tokenData.save();
 		}
 		const token = await Token.create({ userId: userId, refreshToken });
 		return token;

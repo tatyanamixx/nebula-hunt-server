@@ -2,8 +2,7 @@ const { User, Galaxy } = require('../models/models');
 const loggerService = require('./logger-service');
 const { Op } = require('sequelize');
 
-class UserGalaxyService {
-	
+class GalaxyService {
 	async getUserGalaxies(userId) {
 		//const user = await User.findOne({ where: { user: tmaId } });
 		const galaxiesRaw = await Galaxy.findAll({
@@ -121,4 +120,4 @@ class UserGalaxyService {
 	}
 }
 
-module.exports = new UserGalaxyService();
+module.exports = new GalaxyService();

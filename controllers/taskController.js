@@ -13,10 +13,11 @@ class TasksController {
 			next(err);
 		}
 	}
+	
 	async activateusertasks(req, res, next) {
 		try {
 			//const userId = req.userToken.id;
-			const {userId} = req.params;
+			const { userId } = req.userToken.id;
 			const userData = await userTaskService.activateUserTasks(userId);
 			return res.json(userData);
 		} catch (err) {
@@ -27,7 +28,7 @@ class TasksController {
 	async getusertasks(req, res, next) {
 		try {
 			//const userId = req.userToken.id;
-			const {userId} = req.params;
+			const { userId } = req.userToken.id;
 			const userData = await userTaskService.getUserTasks(userId);
 			return res.json(userData);
 		} catch (err) {
@@ -38,8 +39,8 @@ class TasksController {
 	async completedusertask(req, res, next) {
 		try {
 			//const userId = req.userToken.id;
-			//const taskId = req.params;
-			const { userId, taskId } = req.params;
+			const { userId } = req.userToken.id;
+			const { taskId } = req.params;
 			const userData = await userTaskService.completedUserTask(
 				userId,
 				taskId

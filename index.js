@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 
 const sequelize = require('./db');
 const models = require('./models/models');
+const loggerService = require('./service/logger-service');
 
 const router = require('./routes/index');
 const errorMiddleware = require('./middlewares/error-middleware');
@@ -28,9 +29,21 @@ const start = async () => {
 	try {
 		await sequelize.authenticate();
 		await sequelize.sync();
-		app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+		app.listen(PORT, () => {
+			loggerService.logging(
+				'SYSTEM',
+				'START',
+				`Server started on port ${PORT}`,
+				0
+			);
+		});
 	} catch (e) {
-		console.log(e);
+		loggerService.logging(
+			'SYSTEM',
+			'ERROR',
+			`Server error: ${e.message}`,
+			0
+		);
 	}
 };
 
