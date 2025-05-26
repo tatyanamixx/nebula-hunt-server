@@ -42,7 +42,7 @@ class GalaxyService {
 			const count = await Galaxy.count({
 				where: {
 					userId: { [Op.ne]: user.id },
-					active: true, // Add an active flag if needed
+					//active: true, // Add an active flag if needed
 				},
 			});
 
