@@ -23,6 +23,15 @@ const UserState = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		stars: { type: DataTypes.INTEGER, defaultValue: 0 },
 		state: { type: DataTypes.JSONB },
+		taskProgress: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				completedTasks: [],
+				currentWeight: 0,
+				unlockedNodes: [],
+			},
+			comment: 'Tracks user progress in task network',
+		},
 	},
 	{ indexes: [{ fields: ['stars'] }] }
 );
@@ -69,6 +78,16 @@ const Task = sequelize.define('task', {
 	description: { type: DataTypes.STRING },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
+	conditions: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: 'Conditions that must be met to unlock this task',
+	},
+	weight: {
+		type: DataTypes.INTEGER,
+		defaultValue: 1,
+		comment: 'Weight/difficulty of the task',
+	},
 });
 
 const UserTask = sequelize.define('usertask', {
@@ -98,6 +117,83 @@ const UserAchievement = sequelize.define('userachievement', {
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
+const TaskConnection = sequelize.define('taskconnection', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	fromTaskId: {
+		type: DataTypes.BIGINT,
+		allowNull: false,
+		references: {
+			model: 'tasks',
+			key: 'id',
+		},
+	},
+	toTaskId: {
+		type: DataTypes.BIGINT,
+		allowNull: false,
+		references: {
+			model: 'tasks',
+			key: 'id',
+		},
+	},
+	requiredWeight: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
+		comment: 'Minimum weight required to unlock this connection',
+	},
+});
+
+const GameEvent = sequelize.define('gameevent', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	name: { type: DataTypes.STRING, allowNull: false },
+	description: { type: DataTypes.STRING },
+	type: {
+		type: DataTypes.ENUM('RANDOM', 'PERIODIC', 'ONE_TIME'),
+		allowNull: false,
+	},
+	effect: {
+		type: DataTypes.JSONB,
+		allowNull: false,
+		comment: 'Effect configuration (multiplier, duration, etc)',
+	},
+	frequency: {
+		type: DataTypes.JSONB,
+		comment: 'Frequency settings for RANDOM and PERIODIC events',
+	},
+	conditions: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: 'Conditions that must be met for the event to trigger',
+	},
+	active: {
+		type: DataTypes.BOOLEAN,
+		defaultValue: true,
+	},
+});
+
+const UserEventState = sequelize.define('usereventstate', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	activeEvents: {
+		type: DataTypes.JSONB,
+		defaultValue: [],
+		comment: 'Currently active events for the user',
+	},
+	eventHistory: {
+		type: DataTypes.JSONB,
+		defaultValue: [],
+		comment: 'History of triggered events',
+	},
+	lastCheck: {
+		type: DataTypes.DATE,
+		defaultValue: DataTypes.NOW,
+		comment: 'Last time events were checked',
+	},
+	multipliers: {
+		type: DataTypes.JSONB,
+		defaultValue: { cps: 1.0 },
+		comment: 'Current active multipliers from events',
+	},
+});
+
 User.hasOne(UserState);
 UserState.belongsTo(User);
 
@@ -125,6 +221,20 @@ UserAchievement.belongsTo(Achievement);
 Achievement.hasMany(AchievementReward);
 AchievementReward.belongsTo(Achievement);
 
+Task.hasMany(TaskConnection, {
+	as: 'outgoingConnections',
+	foreignKey: 'fromTaskId',
+});
+Task.hasMany(TaskConnection, {
+	as: 'incomingConnections',
+	foreignKey: 'toTaskId',
+});
+TaskConnection.belongsTo(Task, { as: 'fromTask', foreignKey: 'fromTaskId' });
+TaskConnection.belongsTo(Task, { as: 'toTask', foreignKey: 'toTaskId' });
+
+User.hasOne(UserEventState);
+UserEventState.belongsTo(User);
+
 module.exports = {
 	User,
 	UserState,
@@ -132,8 +242,11 @@ module.exports = {
 	Log,
 	Galaxy,
 	Task,
+	TaskConnection,
 	UserTask,
 	Achievement,
 	AchievementReward,
 	UserAchievement,
+	GameEvent,
+	UserEventState,
 };

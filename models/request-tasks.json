@@ -1,28 +1,44 @@
 {
 	"tasks": [
-		{
-			"keyWord": "tmacanal",
-			"description": "Subcribe to canal ",
-			"reward": 10,
-			"active": true
+	  {
+		"keyWord": "start_task",
+		"description": "Begin your journey",
+		"reward": 10,
+		"weight": 1,
+		"conditions": {},
+		"active": true
+	  },
+	  {
+		"keyWord": "intermediate_task",
+		"description": "Next step",
+		"reward": 20,
+		"weight": 2,
+		"conditions": {
+		  "minStars": 10
 		},
-		{
-			"keyWord": "twitter",
-			"description": "Subcribe to twitter",
-			"reward": 10,
-			"active": true
+		"connections": [
+		  {
+			"toTaskKey": "start_task",
+			"requiredWeight": 1
+		  }
+		],
+		"active": true
+	  },
+	  {
+		"keyWord": "advanced_task",
+		"description": "Final challenge",
+		"reward": 30,
+		"weight": 3,
+		"conditions": {
+		  "minStars": 30
 		},
-		{
-			"keyWord": "youtube",
-			"description": "Subcribe to youtube",
-			"reward": 20,
-			"active": true
-		},
-		{
-			"keyWord": "tmacanalnew",
-			"description": "Subcribe to canal ",
-			"reward": 5,
-			"active": false
-		}
+		"connections": [
+		  {
+			"toTaskKey": "intermediate_task",
+			"requiredWeight": 3
+		  }
+		],
+		"active": true
+	  }
 	]
-}
+  }

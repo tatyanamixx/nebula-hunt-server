@@ -1,0 +1,46 @@
+{
+    "events": [
+        {
+            "name": "Lucky Star",
+            "description": "Double your CPS for 30 seconds!",
+            "type": "RANDOM",
+            "effect": {
+                "type": "CPS_MULTIPLIER",
+                "value": 2.0,
+                "duration": 30
+            },
+            "frequency": {
+                "chancePerSecond": 0.01
+            },
+            "active": true
+        },
+        {
+            "name": "Solar Eclipse",
+            "description": "Reduces CPS by 50% for 1 minute",
+            "type": "PERIODIC",
+            "effect": {
+                "type": "CPS_MULTIPLIER",
+                "value": 0.5,
+                "duration": 60
+            },
+            "frequency": {
+                "interval": 3600000
+            },
+            "active": true
+        },
+        {
+            "name": "First Million",
+            "description": "Triple your CPS for 2 minutes!",
+            "type": "ONE_TIME",
+            "effect": {
+                "type": "CPS_MULTIPLIER",
+                "value": 3.0,
+                "duration": 120
+            },
+            "conditions": {
+                "totalStars": 1000000
+            },
+            "active": true
+        }
+    ]
+}
