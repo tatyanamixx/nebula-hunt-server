@@ -63,7 +63,7 @@ class GalaxyService {
 			const galaxiesRaw = await Galaxy.findAll({
 				where: {
 					userId: { [Op.ne]: user.id },
-					active: true,
+					//active: true,
 				},
 				order: sequelize.random(), // Use true random ordering
 				offset: offset,
