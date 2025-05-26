@@ -70,6 +70,7 @@ const Galaxy = sequelize.define('galaxy', {
 	stars: { type: DataTypes.INTEGER, defaultValue: 100 },
 	galaxyData: { type: DataTypes.JSONB },
 	galaxySetting: { type: DataTypes.JSON },
+	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 
 const Task = sequelize.define('task', {
