@@ -55,6 +55,7 @@ class EventService {
 						model: UserEvent,
 						include: [GameEvent],
 						where: {
+							userId,
 							status: 'ACTIVE',
 						},
 						required: false,
@@ -99,6 +100,7 @@ class EventService {
 					const expiresAt = new Date(now.getTime() + duration * 1000);
 
 					const userEvent = await UserEvent.create({
+						userId,
 						userEventStateId: userEventState.id,
 						gameEventId: event.id,
 						triggeredAt: now,
@@ -120,6 +122,7 @@ class EventService {
 			// Fetch updated active events
 			const activeEvents = await UserEvent.findAll({
 				where: {
+					userId,
 					userEventStateId: userEventState.id,
 					status: 'ACTIVE',
 				},
@@ -146,7 +149,7 @@ class EventService {
 		// Get all user events for this game event
 		const userEvents = await UserEvent.findAll({
 			where: {
-				userEventStateId: userEventState.id,
+				userId: userEventState.userId,
 				gameEventId: event.id,
 			},
 		});
@@ -188,6 +191,7 @@ class EventService {
 						model: UserEvent,
 						include: [GameEvent],
 						where: {
+							userId,
 							status: 'ACTIVE',
 						},
 						required: false,
@@ -247,6 +251,7 @@ class EventService {
 					const expiresAt = new Date(now.getTime() + duration * 1000);
 
 					await UserEvent.create({
+						userId,
 						userEventStateId: userEventState.id,
 						gameEventId: event.id,
 						triggeredAt: now,

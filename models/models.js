@@ -276,11 +276,15 @@ Task.hasMany(TaskConnection, {
 TaskConnection.belongsTo(Task, { as: 'fromTask', foreignKey: 'fromTaskId' });
 TaskConnection.belongsTo(Task, { as: 'toTask', foreignKey: 'toTaskId' });
 
-User.hasOne(UserEventState);
+User.hasMany(UserEventState);
 UserEventState.belongsTo(User);
+
+User.hasMany(UserEvent);
+UserEvent.belongsTo(User);
 
 UserEventState.hasMany(UserEvent);
 UserEvent.belongsTo(UserEventState);
+
 GameEvent.hasMany(UserEvent);
 UserEvent.belongsTo(GameEvent);
 
