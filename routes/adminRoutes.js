@@ -7,6 +7,7 @@ const eventController = require('../controllers/eventController.js');
 const authMiddleware = require('../middlewares/auth-middleware.js');
 const adminMiddleware = require('../middlewares/admin-middleware.js');
 const tmaMiddleware = require('../middlewares/tma-middleware.js');
+const adminController = require('../controllers/adminController');
 
 router.post(
 	'/tasks/create',
@@ -33,6 +34,23 @@ router.post(
 	adminMiddleware,
 	adminLimiter,
 	eventController.createEvent
+);
+
+// Admin routes
+router.post(
+	'/init',
+	tmaMiddleware,
+	authMiddleware,
+	adminController.initializeDatabase
+);
+
+router.post(
+	'/galaxies/create',
+	tmaMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	adminLimiter,
+	adminController.createVerseGalaxies
 );
 
 module.exports = router;

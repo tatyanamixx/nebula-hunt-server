@@ -1,25 +1,11 @@
-{
-	"referral": "27306789",
-	"userState": {
-		"stars": 0,
-		"state": {
-			"galaxies": 0,
-			"tmaStars": 0,
-			"totalToke": 0,
-			"totalGalaxy": 0,
-			"rateFerm": 100,
-			"intervalFarm": 1,
-			"autoBoost": false
-		}
-	},
-	"galaxies": [
+{"galaxies": [
 		{
-			"stars": 100,
-			"owner": "USER",
+			"stars": 1000,
+			"owner": "VERSE",
 			"galaxyData": {
-				"starsMin": 100,
-				"starsCurrent": 100,
-				"price": 100,
+				"starsMin": 1000,
+				"starsCurrent": 1000,
+				"price": 1000,
 				"starsMax": 10000
 			},
 			"galaxySetting": {

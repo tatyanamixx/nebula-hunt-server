@@ -22,23 +22,6 @@ class UserService {
 				throw ApiError.BadRequest('Invalid user state data');
 			}
 
-			// Find or create VERSE user
-			let verse = await User.findOne({
-				where: { role: 'VERSE' },
-				transaction: t,
-			});
-
-			if (!verse) {
-				verse = await User.create(
-					{
-						tmaId: -1,
-						tmaUsername: 'universe',
-						role: 'VERSE',
-					},
-					{ transaction: t }
-				);
-			}
-
 			// Create or update user
 			let [user, created] = await User.findOrCreate({
 				where: { tmaId },
@@ -69,20 +52,42 @@ class UserService {
 
 			// Create galaxies
 			const userGalaxies = [];
-			if (Array.isArray(galaxies)) {
+			if (Array.isArray(galaxies) && created) {
+				// Get VERSE user for creating other galaxies
+				const verseUser = await User.findOne({
+					where: { role: 'VERSE' },
+					transaction: t,
+				});
+
+				if (!verseUser) {
+					throw ApiError.Internal(
+						'VERSE user not found. Please initialize the database first.'
+					);
+				}
+
+				let userGalaxyCreated = false;
+
 				for (const galaxy of galaxies) {
 					try {
-						if (galaxy.galaxyData.owner === 'VERSE') {
-							await galaxyService.createGalaxy(verse.id, galaxy);
-						} else if (
+						if (
 							galaxy.galaxyData.owner === 'USER' &&
-							created
+							!userGalaxyCreated
 						) {
+							// Create only one galaxy for user
 							const newGalaxy = await galaxyService.createGalaxy(
 								userDto.id,
-								galaxy
+								galaxy,
+								t
 							);
 							userGalaxies.push(newGalaxy);
+							userGalaxyCreated = true;
+						} else {
+							// All other galaxies go to VERSE
+							await galaxyService.createGalaxy(
+								verseUser.id,
+								galaxy,
+								t
+							);
 						}
 					} catch (err) {
 						console.error(
