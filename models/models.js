@@ -76,7 +76,14 @@ const Galaxy = sequelize.define('galaxy', {
 const Task = sequelize.define('task', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	keyWord: { type: DataTypes.STRING },
-	description: { type: DataTypes.STRING },
+	description: {
+		type: DataTypes.JSONB,
+		defaultValue: {
+			en: '',
+			ru: '',
+		},
+		comment: 'Localized task descriptions',
+	},
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 	conditions: {
@@ -100,7 +107,14 @@ const UserTask = sequelize.define('usertask', {
 const Achievement = sequelize.define('achievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	keyWord: { type: DataTypes.STRING },
-	description: { type: DataTypes.STRING },
+	description: {
+		type: DataTypes.JSONB,
+		defaultValue: {
+			en: '',
+			ru: '',
+		},
+		comment: 'Localized achievement descriptions',
+	},
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 const AchievementReward = sequelize.define('achievementreward', {
@@ -146,7 +160,14 @@ const TaskConnection = sequelize.define('taskconnection', {
 const GameEvent = sequelize.define('gameevent', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	name: { type: DataTypes.STRING, allowNull: false },
-	description: { type: DataTypes.STRING },
+	description: {
+		type: DataTypes.JSONB,
+		defaultValue: {
+			en: '',
+			ru: '',
+		},
+		comment: 'Localized event descriptions',
+	},
 	type: {
 		type: DataTypes.ENUM('RANDOM', 'PERIODIC', 'ONE_TIME'),
 		allowNull: false,
@@ -195,6 +216,28 @@ const UserEventState = sequelize.define('usereventstate', {
 	},
 });
 
+const UserEvent = sequelize.define('userevent', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	status: {
+		type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED'),
+		defaultValue: 'ACTIVE',
+	},
+	triggeredAt: {
+		type: DataTypes.DATE,
+		allowNull: false,
+		defaultValue: DataTypes.NOW,
+	},
+	expiresAt: {
+		type: DataTypes.DATE,
+		allowNull: true,
+	},
+	effectValue: {
+		type: DataTypes.FLOAT,
+		defaultValue: 1.0,
+		comment: 'Current value of the effect (e.g. multiplier value)',
+	},
+});
+
 User.hasOne(UserState);
 UserState.belongsTo(User);
 
@@ -236,6 +279,11 @@ TaskConnection.belongsTo(Task, { as: 'toTask', foreignKey: 'toTaskId' });
 User.hasOne(UserEventState);
 UserEventState.belongsTo(User);
 
+UserEventState.hasMany(UserEvent);
+UserEvent.belongsTo(UserEventState);
+GameEvent.hasMany(UserEvent);
+UserEvent.belongsTo(GameEvent);
+
 module.exports = {
 	User,
 	UserState,
@@ -250,4 +298,5 @@ module.exports = {
 	UserAchievement,
 	GameEvent,
 	UserEventState,
+	UserEvent,
 };

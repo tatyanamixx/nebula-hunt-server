@@ -3,6 +3,7 @@ const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const userStateService = require('./state-service');
 const loggerService = require('./logger-service');
+const eventService = require('./event-service');
 const UserDto = require('../dtos/user-dto');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
@@ -62,6 +63,9 @@ class UserService {
 				reqUserState,
 				t
 			);
+
+			// Initialize user events
+			await eventService.initializeUserEvents(userDto.id);
 
 			// Create galaxies
 			const userGalaxies = [];
@@ -134,10 +138,11 @@ class UserService {
 
 			const userDto = new UserDto(user);
 
-			// Get user state and galaxies
-			const [userState, userGalaxies] = await Promise.all([
+			// Get user state, galaxies and check events
+			const [userState, userGalaxies, eventState] = await Promise.all([
 				userStateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
+				eventService.checkAndTriggerEvents(userDto.id),
 			]);
 
 			// Generate and save new tokens
@@ -158,6 +163,7 @@ class UserService {
 				user: userDto,
 				userState,
 				userGalaxies,
+				eventState,
 			};
 		} catch (err) {
 			await t.rollback();
@@ -195,9 +201,10 @@ class UserService {
 			const userDto = new UserDto(user);
 
 			// Get updated user data
-			const [userState, userGalaxies] = await Promise.all([
+			const [userState, userGalaxies, eventState] = await Promise.all([
 				userStateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
+				eventService.checkAndTriggerEvents(userDto.id),
 			]);
 
 			// Generate new tokens
@@ -216,6 +223,7 @@ class UserService {
 				user: userDto,
 				userState,
 				userGalaxies,
+				eventState,
 			};
 		} catch (err) {
 			throw ApiError.Internal(`Token refresh failed: ${err.message}`);
