@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
  * @param {number} windowMinutes - Time window in minutes
  * @returns {Function} Express middleware
  */
-const rateLimitMiddleware = (max, windowMinutes) => {
+module.exports = function (max, windowMinutes) {
 	return rateLimit({
 		windowMs: windowMinutes * 60 * 1000, // Convert minutes to milliseconds
 		max: max, // Limit each IP to max requests per windowMs
@@ -20,5 +20,3 @@ const rateLimitMiddleware = (max, windowMinutes) => {
 		keyGenerator: (req) => req.tmaId || req.ip,
 	});
 };
-
-module.exports = rateLimitMiddleware;

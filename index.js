@@ -5,7 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { swaggerUi, specs } = require('./swagger');
+//const { swaggerUi, specs } = require('./swagger');
 
 const sequelize = require('./db');
 const models = require('./models/models');
@@ -28,7 +28,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use('/api', router);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+//app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use(errorMiddleware);
 
@@ -37,21 +37,9 @@ const start = async () => {
 		await sequelize.authenticate();
 		await sequelize.sync();
 
-		app.listen(PORT, () => {
-			loggerService.logging(
-				'SYSTEM',
-				'START',
-				`Server started on port ${PORT}`,
-				0
-			);
-		});
+		app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 	} catch (e) {
-		loggerService.logging(
-			'SYSTEM',
-			'ERROR',
-			`Server error: ${e.message}`,
-			0
-		);
+		console.log(e);
 	}
 };
 
