@@ -9,7 +9,6 @@ const userStateRouter = require('./user-state-router');
 const upgradeRouter = require('./upgrade-router');
 const achievementRouter = require('./achievement-router');
 const eventRouter = require('./event-router');
-const userRouter = require('./user-router');
 
 // Use route modules
 router.use('/auth', authRouter);
@@ -19,6 +18,5 @@ router.use('/state', userStateRouter);
 router.use('/upgrades', upgradeRouter);
 router.use('/achievements', achievementRouter);
 router.use('/events', eventRouter);
-router.use('/user', userRouter);
 
 module.exports = router;
