@@ -10,58 +10,44 @@ const { where } = require('sequelize');
 
 class AchievementService {
 	async createAchievements(achievements) {
+		const t = await sequelize.transaction();
+
 		try {
-			let achievement = null;
-			let level = null;
-			for (let i = 0; i < achievements.length; i++) {
-				const inputAch = achievements[i];
-				achievement = await Achievement.findOne({
-					where: { keyWord: inputAch.keyWord },
-				});
-				if (achievement) {
-					achievement.description = inputAch.description;
-					achievement.active = inputAch.active;
-					await achievement.save();
-				} else {
-					achievement = await Achievement.create({
-						keyWord: inputAch.keyWord,
-						description: inputAch.description,
-						active: inputAch.active,
-					});
+			const createdAchievements = [];
+
+			for (const achievement of achievements) {
+				// Validate achievement data
+				if (
+					!achievement.keyWord ||
+					!achievement.description ||
+					!Array.isArray(achievement.levels)
+				) {
+					throw ApiError.BadRequest(
+						'Invalid achievement data structure'
+					);
 				}
-				for (const lvl of inputAch.levels) {
-					level = await AchievementReward.findOne({
-						where: {
-							level: lvl.level,
-							achievementId: achievement.id,
-						},
-					});
-					if (level) {
-						level.level = lvl.level;
-						level.from = lvl.from;
-						level.to = lvl.to;
-						level.reward = lvl.reward;
-						await level.save();
-					} else {
-						await AchievementReward.create({
-							level: lvl.level,
-							from: lvl.from,
-							to: lvl.to,
-							reward: lvl.reward,
-							achievementId: achievement.id,
-						});
-					}
-				}
+
+				// Create achievement with levels included
+				const newAchievement = await Achievement.create(
+					{
+						keyWord: achievement.keyWord,
+						description: achievement.description,
+						levels: achievement.levels,
+						active: achievement.active ?? true,
+					},
+					{ transaction: t }
+				);
+
+				createdAchievements.push(newAchievement);
 			}
 
-			const achievementRaw = await Achievement.findAll({
-				include: AchievementReward,
-			});
-
-			const newAchiev = achievementRaw.map((item) => item.toJSON());
-			return { achievements: newAchiev };
+			await t.commit();
+			return createdAchievements;
 		} catch (err) {
-			throw ApiError.Internal(err.message);
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to create achievements: ${err.message}`
+			);
 		}
 	}
 
@@ -71,7 +57,7 @@ class AchievementService {
 				where: { active: true },
 			});
 			const userAchievementRaw = await UserAchievement.findAll({
-				where: { userId: userId },
+				where: { userId },
 			});
 
 			const achievements = achievementRaw.map((item) => item.toJSON());
@@ -80,7 +66,6 @@ class AchievementService {
 			const userAchievements = userAchievementRaw.map((item) =>
 				item.toJSON()
 			);
-
 			const existingAchievementIds = new Set(
 				userAchievements.map((ua) => ua.achievementId)
 			);
@@ -89,29 +74,37 @@ class AchievementService {
 				(ach) => !existingAchievementIds.has(ach.id)
 			);
 
-			if (achievements.length > 0) {
+			if (newAchievements.length > 0) {
 				const newUserAchievements = newAchievements.map((ach) => ({
-					userId: userId,
+					userId,
 					achievementId: ach.id,
+					currentValue: 0,
+					level: 0,
+					reward: 0,
+					completed: false,
 				}));
 				await UserAchievement.bulkCreate(newUserAchievements);
 			}
 
 			const userAchievementNew = await UserAchievement.findAll({
-				where: { userId: userId },
+				where: { userId },
+				include: [
+					{
+						model: Achievement,
+						attributes: ['keyWord', 'description', 'levels'],
+					},
+				],
 			});
 
-			const achievementNew = userAchievementNew.map((item) =>
-				item.toJSON()
-			);
-
-			const reward = await UserAchievement.sum('reward', {
-				where: { userId: userId },
+			const totalReward = await UserAchievement.sum('reward', {
+				where: { userId },
 			});
 
 			return {
-				reward: { achievement: reward },
-				userAchievements: achievementNew,
+				reward: { achievement: totalReward || 0 },
+				userAchievements: userAchievementNew.map((item) =>
+					item.toJSON()
+				),
 			};
 		} catch (err) {
 			throw ApiError.Internal(err.message);
@@ -141,76 +134,67 @@ class AchievementService {
 	}
 
 	async updateUserAchievementByValue(userId, keyWord, value) {
+		const t = await sequelize.transaction();
+
 		try {
-			// 1. Найти достижение по ключу
 			const achievement = await Achievement.findOne({
-				where: { keyWord },
+				where: { keyWord, active: true },
 			});
 
 			if (!achievement) {
-				throw ApiError.BadRequest(`Achievement "${keyWord}" not found`);
+				throw ApiError.BadRequest('Achievement not found');
 			}
 
-			// 2. Найти все уровни и отсортировать по возрастанию
-			const rewards = await AchievementReward.findAll({
-				where: { achievementId: achievement.id },
-				order: [['level', 'ASC']],
+			let userAchievement = await UserAchievement.findOne({
+				where: { userId, achievementId: achievement.id },
 			});
 
-			if (!rewards.length) {
-				throw ApiError.BadRequest(
-					`No levels found for achievement "${keyWord}"`
-				);
+			if (!userAchievement) {
+				userAchievement = await UserAchievement.create({
+					userId,
+					achievementId: achievement.id,
+					currentValue: 0,
+					level: 0,
+					reward: 0,
+					completed: false,
+				});
 			}
 
-			// 3. Найти подходящий уровень по значению value
-			const matchingLevel = rewards.find(
-				(r) => value >= r.from && value <= r.to
+			// Update current value
+			userAchievement.currentValue = value;
+
+			// Find appropriate level based on current value
+			const newLevel = achievement.levels.reduce(
+				(maxLevel, levelConfig) => {
+					if (value >= levelConfig.from && value <= levelConfig.to) {
+						return Math.max(maxLevel, levelConfig.level);
+					}
+					return maxLevel;
+				},
+				0
 			);
 
-			if (!matchingLevel) {
-				// Не достигнут ни один уровень
-				return {
-					updated: false,
-					reason: 'Value does not match any level range',
-				};
+			// If level changed, update reward
+			if (newLevel !== userAchievement.level) {
+				const levelConfig = achievement.levels.find(
+					(l) => l.level === newLevel
+				);
+				userAchievement.level = newLevel;
+				userAchievement.reward = levelConfig.reward;
+				userAchievement.completed = true; // Mark as completed when level changes
 			}
 
-			// 4. Найти или создать запись в UserAchievement
-			const [userAchievement, created] =
-				await UserAchievement.findOrCreate({
-					where: {
-						userId,
-						achievementId: achievement.id,
-					},
-					defaults: {
-						level: matchingLevel.level,
-						reward: matchingLevel.reward,
-					},
-				});
+			await userAchievement.save({ transaction: t });
+			await t.commit();
 
-			// 5. Обновить только если новый уровень выше
-			if (!created && userAchievement.level < matchingLevel.level) {
-				userAchievement.level = matchingLevel.level;
-				userAchievement.reward = matchingLevel.reward;
-				await userAchievement.save();
-				return {
-					updated: true,
-					upgraded: true,
-					level: matchingLevel.level,
-					reward: matchingLevel.reward,
-				};
-			}
-
-			return {
-				updated: created,
-				upgraded: false,
-				level: matchingLevel.level,
-				reward: matchingLevel.reward,
-			};
+			return userAchievement;
 		} catch (err) {
-			throw ApiError.Internal(err.message);
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to update achievement: ${err.message}`
+			);
 		}
 	}
 }
+
 module.exports = new AchievementService();

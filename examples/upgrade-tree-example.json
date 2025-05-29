@@ -1,0 +1,144 @@
+{
+	"nodes": [
+		{
+			"name": "basic_mining",
+			"type": "passive",
+			"description": {
+				"en": "Basic mining operation that generates stars automatically",
+				"ru": "Базовая добыча, автоматически генерирующая звезды"
+			},
+			"cost": 100,
+			"cpsBonus": 1,
+			"multiplier": 1.0,
+			"instability": 0.0,
+			"modifiers": {
+				"autoClick": true,
+				"baseGeneration": 1
+			},
+			"reward": 50,
+			"active": true,
+			"conditions": {
+				"requiredLevel": 1
+			},
+			"children": ["improved_mining", "energy_efficiency"],
+			"weight": 1
+		},
+		{
+			"name": "improved_mining",
+			"type": "passive",
+			"description": {
+				"en": "Improved mining efficiency increases star generation",
+				"ru": "Улучшенная эффективность добычи увеличивает генерацию звезд"
+			},
+			"cost": 250,
+			"cpsBonus": 2,
+			"multiplier": 1.5,
+			"instability": 0.1,
+			"modifiers": {
+				"autoClick": true,
+				"baseGeneration": 2,
+				"criticalChance": 0.05
+			},
+			"reward": 100,
+			"active": true,
+			"conditions": {
+				"requiredNodes": ["basic_mining"],
+				"requiredLevel": 2
+			},
+			"children": ["advanced_mining", "automation"],
+			"weight": 2
+		},
+		{
+			"name": "energy_efficiency",
+			"type": "passive",
+			"description": {
+				"en": "Improved energy efficiency reduces instability",
+				"ru": "Улучшенная энергоэффективность снижает нестабильность"
+			},
+			"cost": 200,
+			"cpsBonus": 1,
+			"multiplier": 1.2,
+			"instability": -0.1,
+			"modifiers": {
+				"stabilityBonus": 0.1,
+				"energyCost": -0.1
+			},
+			"reward": 75,
+			"active": true,
+			"conditions": {
+				"requiredNodes": ["basic_mining"],
+				"requiredLevel": 2
+			},
+			"children": ["power_optimization"],
+			"weight": 2
+		},
+		{
+			"name": "advanced_mining",
+			"type": "active",
+			"description": {
+				"en": "Advanced mining techniques with special abilities",
+				"ru": "Продвинутые методы добычи со специальными возможностями"
+			},
+			"cost": 500,
+			"cpsBonus": 5,
+			"multiplier": 2.0,
+			"instability": 0.2,
+			"modifiers": {
+				"autoClick": true,
+				"baseGeneration": 5,
+				"criticalChance": 0.1,
+				"specialAbility": "burst_mining"
+			},
+			"reward": 200,
+			"active": true,
+			"conditions": {
+				"requiredNodes": ["improved_mining"],
+				"requiredLevel": 5,
+				"requiredStars": 1000
+			},
+			"children": ["quantum_mining"],
+			"weight": 3
+		}
+	],
+	"initialState": {
+		"activeNodes": ["basic_mining"],
+		"completedNodes": [],
+		"nodeStates": {
+			"basic_mining": {
+				"progress": 0,
+				"targetProgress": 100,
+				"unlocked": true,
+				"purchased": false
+			},
+			"improved_mining": {
+				"progress": 0,
+				"targetProgress": 200,
+				"unlocked": false,
+				"purchased": false
+			},
+			"energy_efficiency": {
+				"progress": 0,
+				"targetProgress": 150,
+				"unlocked": false,
+				"purchased": false
+			},
+			"advanced_mining": {
+				"progress": 0,
+				"targetProgress": 300,
+				"unlocked": false,
+				"purchased": false
+			}
+		},
+		"treeStructure": {
+			"root": "basic_mining",
+			"connections": {
+				"basic_mining": ["improved_mining", "energy_efficiency"],
+				"improved_mining": ["advanced_mining"],
+				"energy_efficiency": ["power_optimization"],
+				"advanced_mining": ["quantum_mining"]
+			}
+		},
+		"totalProgress": 0,
+		"lastNodeUpdate": null
+	}
+}

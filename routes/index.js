@@ -1,22 +1,24 @@
-const Router = require('express');
+const Router = require('express').Router;
 const router = new Router();
 
 // Import route modules
-const authRoutes = require('./authRoutes');
-const adminRoutes = require('./adminRoutes');
-const galaxyRoutes = require('./galaxyRoutes');
-const userStateRoutes = require('./userStateRoutes');
-const taskRoutes = require('./taskRoutes');
-const achievementRoutes = require('./achievementRoutes');
-const eventRoutes = require('./eventRoutes');
+const authRouter = require('./auth-router');
+const adminRouter = require('./admin-router');
+const galaxyRouter = require('./galaxy-router');
+const userStateRouter = require('./user-state-router');
+const upgradeRouter = require('./upgrade-router');
+const achievementRouter = require('./achievement-router');
+const eventRouter = require('./event-router');
+const userRouter = require('./user-router');
 
 // Use route modules
-router.use('/auth', authRoutes);
-router.use('/admin', adminRoutes);
-router.use('/galaxies', galaxyRoutes);
-router.use('/user/state', userStateRoutes);
-router.use('/tasks', taskRoutes);
-router.use('/achievements', achievementRoutes);
-router.use('/events', eventRoutes);
+router.use('/auth', authRouter);
+router.use('/admin', adminRouter);
+router.use('/galaxy', galaxyRouter);
+router.use('/state', userStateRouter);
+router.use('/upgrades', upgradeRouter);
+router.use('/achievements', achievementRouter);
+router.use('/events', eventRouter);
+router.use('/user', userRouter);
 
 module.exports = router;

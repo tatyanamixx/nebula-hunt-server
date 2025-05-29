@@ -32,6 +32,39 @@ const UserState = sequelize.define(
 			},
 			comment: 'Tracks user progress in task network',
 		},
+		upgradeTree: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				activeNodes: [],
+				completedNodes: [],
+				nodeStates: {},
+				treeStructure: {},
+				totalProgress: 0,
+				lastNodeUpdate: null,
+			},
+			comment: 'User-specific upgrade tree structure and progress',
+		},
+		// Streak related fields
+		lastLoginDate: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+			comment: 'Date of the last login (YYYY-MM-DD)',
+		},
+		currentStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Number of consecutive days logged in',
+		},
+		maxStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Maximum streak achieved',
+		},
+		streakUpdatedAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Timestamp of the last streak update',
+		},
 	},
 	{ indexes: [{ fields: ['stars'] }] }
 );
@@ -73,35 +106,75 @@ const Galaxy = sequelize.define('galaxy', {
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 
-const Task = sequelize.define('task', {
+const UpgradeNode = sequelize.define('upgradenode', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	keyWord: { type: DataTypes.STRING },
+	name: { type: DataTypes.STRING },
+	type: { type: DataTypes.STRING },
 	description: {
 		type: DataTypes.JSONB,
 		defaultValue: {
 			en: '',
 			ru: '',
 		},
-		comment: 'Localized task descriptions',
+		comment: 'Localized upgrade node descriptions',
+	},
+	cost: { type: DataTypes.INTEGER, defaultValue: 0 },
+	cpsBonus: { type: DataTypes.INTEGER, defaultValue: 0 },
+	multiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
+	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+	modifiers: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: 'Additional modifiers and effects of the upgrade',
 	},
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 	conditions: {
 		type: DataTypes.JSONB,
 		defaultValue: {},
-		comment: 'Conditions that must be met to unlock this task',
+		comment: 'Conditions required to unlock or purchase the upgrade',
+	},
+	delayedUntil: {
+		type: DataTypes.DATE,
+		allowNull: true,
+		comment: 'Timestamp until which the upgrade is delayed',
+	},
+	children: {
+		type: DataTypes.ARRAY(DataTypes.STRING),
+		defaultValue: [],
+		comment: 'Array of node names that are unlocked by this upgrade',
 	},
 	weight: {
 		type: DataTypes.INTEGER,
 		defaultValue: 1,
-		comment: 'Weight/difficulty of the task',
+		comment: 'Weight/difficulty of the upgrade node',
 	},
 });
 
-const UserTask = sequelize.define('usertask', {
+const UserUpgradeNode = sequelize.define('userupgradenode', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+	progress: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
+		comment: 'Current progress value towards completion',
+	},
+	targetProgress: {
+		type: DataTypes.INTEGER,
+		defaultValue: 100,
+		comment: 'Required progress value for completion',
+	},
+	progressHistory: {
+		type: DataTypes.JSONB,
+		defaultValue: [],
+		comment: 'History of progress updates with timestamps',
+	},
+	lastProgressUpdate: {
+		type: DataTypes.DATE,
+		defaultValue: DataTypes.NOW,
+		comment: 'Timestamp of the last progress update',
+	},
 });
 
 const Achievement = sequelize.define('achievement', {
@@ -115,81 +188,21 @@ const Achievement = sequelize.define('achievement', {
 		},
 		comment: 'Localized achievement descriptions',
 	},
+	levels: {
+		type: DataTypes.JSONB,
+		defaultValue: [{ level: 0, from: 0, to: 0, reward: 0 }],
+		comment:
+			'Array of level configurations with from, to, and reward values',
+	},
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
-});
-const AchievementReward = sequelize.define('achievementreward', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	level: { type: DataTypes.INTEGER, defaultValue: 0 },
-	from: { type: DataTypes.INTEGER, defaultValue: 0 },
-	to: { type: DataTypes.INTEGER, defaultValue: 0 },
-	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 });
 
 const UserAchievement = sequelize.define('userachievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	level: { type: DataTypes.INTEGER, defaultValue: 0 },
+	currentValue: { type: DataTypes.INTEGER, defaultValue: 0 },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-});
-
-const TaskConnection = sequelize.define('taskconnection', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	fromTaskId: {
-		type: DataTypes.BIGINT,
-		allowNull: false,
-		references: {
-			model: 'tasks',
-			key: 'id',
-		},
-	},
-	toTaskId: {
-		type: DataTypes.BIGINT,
-		allowNull: false,
-		references: {
-			model: 'tasks',
-			key: 'id',
-		},
-	},
-	requiredWeight: {
-		type: DataTypes.INTEGER,
-		defaultValue: 0,
-		comment: 'Minimum weight required to unlock this connection',
-	},
-});
-
-const GameEvent = sequelize.define('gameevent', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	name: { type: DataTypes.STRING, allowNull: false },
-	description: {
-		type: DataTypes.JSONB,
-		defaultValue: {
-			en: '',
-			ru: '',
-		},
-		comment: 'Localized event descriptions',
-	},
-	type: {
-		type: DataTypes.ENUM('RANDOM', 'PERIODIC', 'ONE_TIME'),
-		allowNull: false,
-	},
-	effect: {
-		type: DataTypes.JSONB,
-		allowNull: false,
-		comment: 'Effect configuration (multiplier, duration, etc)',
-	},
-	frequency: {
-		type: DataTypes.JSONB,
-		comment: 'Frequency settings for RANDOM and PERIODIC events',
-	},
-	conditions: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Conditions that must be met for the event to trigger',
-	},
-	active: {
-		type: DataTypes.BOOLEAN,
-		defaultValue: true,
-	},
 });
 
 const UserEventState = sequelize.define('usereventstate', {
@@ -238,6 +251,41 @@ const UserEvent = sequelize.define('userevent', {
 	},
 });
 
+const GameEvent = sequelize.define('gameevent', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	name: { type: DataTypes.STRING, allowNull: false },
+	description: {
+		type: DataTypes.JSONB,
+		defaultValue: {
+			en: '',
+			ru: '',
+		},
+		comment: 'Localized event descriptions',
+	},
+	type: {
+		type: DataTypes.ENUM('RANDOM', 'PERIODIC', 'ONE_TIME'),
+		allowNull: false,
+	},
+	effect: {
+		type: DataTypes.JSONB,
+		allowNull: false,
+		comment: 'Effect configuration (multiplier, duration, etc)',
+	},
+	frequency: {
+		type: DataTypes.JSONB,
+		comment: 'Frequency settings for RANDOM and PERIODIC events',
+	},
+	conditions: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: 'Conditions that must be met for the event to trigger',
+	},
+	active: {
+		type: DataTypes.BOOLEAN,
+		defaultValue: true,
+	},
+});
+
 User.hasOne(UserState);
 UserState.belongsTo(User);
 
@@ -250,40 +298,24 @@ Log.belongsTo(User);
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
-User.hasMany(UserTask);
-UserTask.belongsTo(User);
+User.hasMany(UserUpgradeNode);
+UserUpgradeNode.belongsTo(User);
+UpgradeNode.hasMany(UserUpgradeNode);
+UserUpgradeNode.belongsTo(UpgradeNode);
 
 User.hasMany(UserAchievement);
 UserAchievement.belongsTo(User);
-
-Task.hasMany(UserTask);
-UserTask.belongsTo(Task);
-
 Achievement.hasMany(UserAchievement);
 UserAchievement.belongsTo(Achievement);
-
-Achievement.hasMany(AchievementReward);
-AchievementReward.belongsTo(Achievement);
-
-Task.hasMany(TaskConnection, {
-	as: 'outgoingConnections',
-	foreignKey: 'fromTaskId',
-});
-Task.hasMany(TaskConnection, {
-	as: 'incomingConnections',
-	foreignKey: 'toTaskId',
-});
-TaskConnection.belongsTo(Task, { as: 'fromTask', foreignKey: 'fromTaskId' });
-TaskConnection.belongsTo(Task, { as: 'toTask', foreignKey: 'toTaskId' });
 
 User.hasMany(UserEventState);
 UserEventState.belongsTo(User);
 
-User.hasMany(UserEvent);
-UserEvent.belongsTo(User);
-
 UserEventState.hasMany(UserEvent);
 UserEvent.belongsTo(UserEventState);
+
+User.hasMany(UserEvent);
+UserEvent.belongsTo(User);
 
 GameEvent.hasMany(UserEvent);
 UserEvent.belongsTo(GameEvent);
@@ -294,11 +326,9 @@ module.exports = {
 	Token,
 	Log,
 	Galaxy,
-	Task,
-	TaskConnection,
-	UserTask,
+	UpgradeNode,
+	UserUpgradeNode,
 	Achievement,
-	AchievementReward,
 	UserAchievement,
 	GameEvent,
 	UserEventState,

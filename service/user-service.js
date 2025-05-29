@@ -1,4 +1,4 @@
-const { User } = require('../models/models');
+const { User, UserState, UpgradeNode } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const userStateService = require('./state-service');
@@ -7,8 +7,31 @@ const eventService = require('./event-service');
 const UserDto = require('../dtos/user-dto');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
+const { Op } = require('sequelize');
 
 class UserService {
+	async ensureVerseUser(transaction) {
+		// Check if VERSE user exists
+		let verse = await User.findOne({
+			where: { role: 'VERSE' },
+			transaction,
+		});
+
+		// Create if doesn't exist
+		if (!verse) {
+			verse = await User.create(
+				{
+					tmaId: -1,
+					tmaUsername: 'universe',
+					role: 'VERSE',
+				},
+				{ transaction }
+			);
+		}
+
+		return verse;
+	}
+
 	async registration(tmaId, tmaUsername, referral, reqUserState, galaxies) {
 		const t = await sequelize.transaction();
 
@@ -53,17 +76,8 @@ class UserService {
 			// Create galaxies
 			const userGalaxies = [];
 			if (Array.isArray(galaxies) && created) {
-				// Get VERSE user for creating other galaxies
-				const verseUser = await User.findOne({
-					where: { role: 'VERSE' },
-					transaction: t,
-				});
-
-				if (!verseUser) {
-					throw ApiError.Internal(
-						'VERSE user not found. Please initialize the database first.'
-					);
-				}
+				// Ensure VERSE user exists for creating other galaxies
+				const verseUser = await this.ensureVerseUser(t);
 
 				let userGalaxyCreated = false;
 
@@ -205,13 +219,6 @@ class UserService {
 
 			const userDto = new UserDto(user);
 
-			// Get updated user data
-			const [userState, userGalaxies, eventState] = await Promise.all([
-				userStateService.getUserState(userDto.id),
-				galaxyService.getUserGalaxies(userDto.id),
-				eventService.checkAndTriggerEvents(userDto.id),
-			]);
-
 			// Generate new tokens
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken);
@@ -226,9 +233,6 @@ class UserService {
 			return {
 				...tokens,
 				user: userDto,
-				userState,
-				userGalaxies,
-				eventState,
 			};
 		} catch (err) {
 			throw ApiError.Internal(`Token refresh failed: ${err.message}`);
@@ -263,6 +267,34 @@ class UserService {
 		} catch (err) {
 			throw ApiError.Internal(`Failed to get friends: ${err.message}`);
 		}
+	}
+
+	async updateUpgradeTreeOnLogin(userId, transaction) {
+		const userState = await UserState.findOne({
+			where: { userId },
+			transaction,
+		});
+
+		if (!userState || !userState.upgradeTree) {
+			return await this.initializeUserUpgradeTree(userId, transaction);
+		}
+
+		// Получаем актуальные узлы
+		const activeNodes = await UpgradeNode.findAll({
+			where: {
+				active: true,
+				[Op.or]: [
+					{ conditions: {} }, // Корневые узлы
+					{ name: userState.upgradeTree.activeNodes }, // Уже активные узлы
+				],
+			},
+		});
+
+		// Обновляем структуру с новыми узлами
+		// ...обновление структуры...
+
+		await userState.save({ transaction });
+		return userState.upgradeTree;
 	}
 }
 

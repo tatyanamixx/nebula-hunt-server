@@ -1,60 +1,16 @@
 const { User } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const galaxyService = require('./galaxy-service');
+const userService = require('./user-service');
 const sequelize = require('../db');
 
 class AdminService {
-	async initializeDatabase() {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create VERSE user if it doesn't exist
-			let verse = await User.findOne({
-				where: { role: 'VERSE' },
-				transaction: t,
-			});
-
-			if (!verse) {
-				verse = await User.create(
-					{
-						tmaId: -1,
-						tmaUsername: 'universe',
-						role: 'VERSE',
-					},
-					{ transaction: t }
-				);
-			}
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Database initialized successfully',
-				verse,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Database initialization failed: ${err.message}`
-			);
-		}
-	}
-
 	async createVerseGalaxies(galaxies) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Get VERSE user
-			const verse = await User.findOne({
-				where: { role: 'VERSE' },
-				transaction: t,
-			});
-
-			if (!verse) {
-				throw ApiError.Internal(
-					'VERSE user not found. Please initialize the database first.'
-				);
-			}
-
+			// Ensure VERSE user exists
+			const verse = await userService.ensureVerseUser(t);
 			const createdGalaxies = [];
 
 			// Create all galaxies for VERSE user
