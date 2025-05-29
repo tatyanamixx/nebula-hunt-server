@@ -4,48 +4,69 @@ const upgradeController = require('../controllers/upgrade-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const tmaMiddleware = require('../middlewares/tma-middleware');
+const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 // Пользовательские роуты
 router.get(
 	'/tree',
-	[tmaMiddleware, authMiddleware],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	upgradeController.getUserUpgradeTree
 );
 router.get(
 	'/node/:nodeName',
-	[tmaMiddleware, authMiddleware],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	upgradeController.getUpgradeNodeProgress
 );
 router.post(
 	'/node/:nodeName/progress',
-	[tmaMiddleware, authMiddleware],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	upgradeController.updateNodeProgress
 );
 router.get(
 	'/stats',
-	[tmaMiddleware, authMiddleware],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	upgradeController.getUserUpgradeStats
 );
 
 // Административные роуты
 router.post(
 	'/admin/nodes',
-	[tmaMiddleware, authMiddleware, adminMiddleware],
+	[
+		tmaMiddleware,
+		authMiddleware,
+		adminMiddleware,
+		rateLimitMiddleware(20, 60),
+	],
 	upgradeController.createUpgradeNodes
 );
 router.put(
 	'/admin/node/:nodeName',
-	[tmaMiddleware, authMiddleware, adminMiddleware],
+	[
+		tmaMiddleware,
+		authMiddleware,
+		adminMiddleware,
+		rateLimitMiddleware(20, 60),
+	],
 	upgradeController.updateUpgradeNode
 );
 router.delete(
 	'/admin/node/:nodeName',
-	[tmaMiddleware, authMiddleware, adminMiddleware],
+	[
+		tmaMiddleware,
+		authMiddleware,
+		adminMiddleware,
+		rateLimitMiddleware(20, 60),
+	],
 	upgradeController.deleteUpgradeNode
 );
 router.get(
 	'/admin/nodes',
-	[tmaMiddleware, authMiddleware, adminMiddleware],
+	[
+		tmaMiddleware,
+		authMiddleware,
+		adminMiddleware,
+		rateLimitMiddleware(30, 60),
+	],
 	upgradeController.getAllUpgradeNodes
 );
 
