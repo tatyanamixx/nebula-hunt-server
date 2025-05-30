@@ -1,309 +1,365 @@
 {
-  "nodes": [
-    {
-      "keyword": "stardust",
-      "name": "Stellar Collector",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "manual",
-      "group":"production",
-      "cost": 1000,
-      "cpsBonus": 5,
-      "multiplier": 1.5,
-      "instability": 0.1,
-      "tiers":20,
-      "children": ["star_effeciency"]
-    },
-    {
-      "keyword": "star_effeciency",
-      "name": "Star Effeciency",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "manual",
-      "group":"production",
-      "cost": 2000,
-      "cpsBonus": 10,
-      "multiplier": 1.6,
-      "instability": 0.05,
-      "tiers":15,
-      "children": ["cosmos_harmony"]
-    },
-    {
-      "keyword": "cosmos_harmony",
-      "name": "Cosmos Harmony",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "order",
-      "group":"production",
-      "cost": 7500,
-      "cpsBonus": 15,
-      "multiplier": 1.7,
-      "instability": 0,
-      "tiers":10,
-      "children": ["astronomical_coupon"]
-    },
-    {
-      "keyword": "astronomical_coupon",
-      "name": "Astronomical Coupon",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "chaotic",
-      "group":"economy",
-      "cost": 2500,
-      "cpsBonus": -5,
-      "multiplier": 1.75,
-      "instability": 0.25,
-      "tiers":20,
-      "children": ["bulk_creation"]
-    },
-    {
-      "keyword": "bulk_creation",
-      "name": "Bulk Creation",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "chaotic",
-      "resource":"stardust",
-      "group":"economy",
-      "cost": 5000,
-      "cpsBonus": -10,
-      "multiplier": 1.8,
-      "instability": 0.30,
-      "tiers":10,
-      "children": ["stellar_market"]
-    },
-    {
-      "keyword": "stellar_market",
-      "name": "Stellar Market",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "chaotic",
-      "group":"economy",
-      "cost": 10000,
-      "cpsBonus": -10,
-      "multiplier": 1.85,
-      "instability": 0.30,
-      "tiers":5,
-      "children": ["cosmic_storage"]
-    },
-     {
-      "keyword": "cosmic_storage",
-      "name": "Cosmic Storage",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "order",
-      "group":"storage",
-      "cost": 5000,
-      "cpsBonus": 10,
-      "multiplier": 1.9,
-      "instability": 0.00,
-      "tiers":15,
-      "children": ["compression_technology"]
-    },
-     {
-      "keyword": "compression_technology",
-      "name": "Compression Techology",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "order",
-      "group":"storage",
-      "cost": 10000,
-      "cpsBonus": 15,
-      "multiplier": 1.9,
-      "instability": 0.00,
-      "tiers":10,
-      "children": ["overflow_protection"]
-    },
-     {
-      "keyword": "overflow_protection",
-      "name": "Overflow Protection",
-       "description": {
-                "en": "...",
-                "ru": "..."
-            },
-      "type": "order",
-      "group":"storage",
-      "cost": 15000,
-      "cpsBonus": 20,
-      "multiplier": 2.0,
-      "instability": -0.1,
-      "tiers":5,
-      "children": []
-    },
-    {
-      "keyword": "darkmatter",
-      "name": "Stellar Collector",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"chance",
-      "cost": -5,
-      "cpsBonus": 5,
-      "multiplier": 1.5,
-      "instability": 0.2,
-      "tiers":5,
-      "children": ["quantum_instability"]
-    },
-    {
-      "keyword": "quantum_instability",
-      "name": "Quantum Instability",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"chance",
-      "cost": 40,
-      "cpsBonus": -10,
-      "multiplier": 1.5,
-      "instability": 0.25,
-      "tiers":8,
-      "children": ["void_resonance"]
-    },
-     {
-      "keyword": "void_resonance",
-      "name": "Void Resonance",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"chance",
-      "cost": 60,
-      "cpsBonus": -15,
-      "multiplier": 1.5,
-      "instability": 0.30,
-      "tiers":5,
-      "children": ["quantum_accelerator"]
-    },
-      {
-      "keyword": "quantum_accelerator",
-      "name": "Quantum Accelerator",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "order",
-      "group":"multiplier",
-      "cost": 50,
-      "cpsBonus": 5,
-      "multiplier": 1.5,
-      "instability": 0.05,
-      "tiers":10,
-      "children": ["dark_energy_infusion"]
-    },
-      {
-      "keyword": "dark_energy_infusion",
-      "name": "Dark Energy Infusion",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"multiplier",
-      "cost": 75,
-      "cpsBonus": 10,
-      "multiplier": 1.5,
-      "instability": 0.1,
-      "tiers":8,
-      "children": ["cosmic_acceleration"]
-    },
-     {
-      "keyword": "cosmic_acceleration",
-      "name": "Cosmic Acceleration",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"multiplier",
-      "cost": 150,
-      "cpsBonus": 15,
-      "multiplier": 1.5,
-      "instability": 0.3,
-      "tiers":5,
-      "children": ["galactic_explorer"]
-    },
-    {
-      "keyword": "galactic_explorer",
-      "name": "Galactic Explorer",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "chaotic",
-      "group":"special",
-      "cost": 100,
-      "cpsBonus": 20,
-      "multiplier": 1.5,
-      "instability": 0.3,
-      "tiers":5,
-      "children": ["auto_collector"]
-    },
-    {
-      "keyword": "auto_collector",
-      "name": "Auto Collector",
-       "description": {
-                "en": "Increases stardust generation rate",
-                "ru": "Базовая добыча звездной пыли"
-            },
-      "type": "order",
-      "group":"special",
-      "cost": 75,
-      "cpsBonus": 20,
-      "multiplier": 1.5,
-      "instability": -0.1,
-      "tiers":10,
-      "children": ["stellar_forge"]
-    },
-     {
-      "keyword": "stellar_forge",
-      "name": "Stellar Forge",
-       "description": {
-                "en": "",
-                "ru": ""
-            },
-      "type": "order",
-      "group":"special",
-      "cost": 200,
-      "cpsBonus": 20,
-      "multiplier": 1.5,
-      "instability": -0.1,
-      "tiers":5,
-      "children": []
-    },
-    {
-      "keyword": "dark_matter_synthesis",
-      "name": "Dark matter Synthesis",
-       "description": {
-                "en": "",
-                "ru": ""
-            },
-      "type": "chaotic",
-      "group":"special",
-      "cost": 250,
-      "cpsBonus": 20,
-      "multiplier": 1.5,
-      "instability": 0.2,
-      "tiers":5,
-      "children": []
-    }
-  ]
+	"nodes": [
+		{
+			"id": "stardust_production",
+			"name": "Stellar Collector",
+			"description": {
+				"en": "Increases stardust generation rate",
+				"ru": "Базовая добыча звездной пыли"
+			},
+			"type": "manual",
+			"calegory": "production",
+			"basePrice": 1000,
+			"currency": "stardust",
+			"maxLevel": 20,
+			"priceMultiplier": 1.5,
+			"effectPerLevel": 0.1,
+			"reward": 5,
+			"instability": 0.1,
+			"conditions": { "targetProgress": 20 },
+			"children": ["star_effeciency"]
+		},
+		{
+			"id": "star_effeciency",
+			"name": "Star Effeciency",
+			"description": {
+				"en": "Stars generate more stardust based on their luminosity",
+				"ru": "..."
+			},
+			"type": "manual",
+			"calegory": "production",
+			"basePrice": 2000,
+			"currency": "stardust",
+			"maxLevel": 15,
+			"priceMultiplier": 1.6,
+			"effectPerLevel": 0.08,
+			"reward": 10,
+			"instability": 0.05,
+			"conditions": { "targetProgress": 15 },
+			"children": ["cosmos_harmony"]
+		},
+		{
+			"id": "cosmos_harmony",
+			"name": "Cosmos Harmony",
+			"description": {
+				"en": "Stars work in harmony, boosting overall production",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "production",
+			"basePrice": 7500,
+			"currency": "stardust",
+			"maxLevel": 10,
+			"priceMultiplier": 1.7,
+			"effectPerLevel": 0.15,
+			"reward": 15,
+			"instability": 0,
+			"conditions": { "targetProgress": 10 },
+			"children": ["star_discount"]
+		},
+		{
+			"id": "star_discount",
+			"name": "Astronomical Coupon",
+			"description": {
+				"en": "Reduces star creation cost",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "economy",
+			"basePrice": 2500,
+			"currency": "stardust",
+			"maxLevel": 20,
+			"reward": -5,
+			"priceMultiplier": 1.75,
+			"effectPerLevel": 0.05,
+			"instability": 0.25,
+			"conditions": { "targetProgress": 20 },
+			"children": ["bulk_creation"]
+		},
+		{
+			"id": "bulk_creation",
+			"name": "Bulk Creation",
+			"description": {
+				"en": "Creating multiple stars at once gives a discount",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "economy",
+			"basePrice": 5000,
+			"currency": "stardust",
+			"maxLevel": 10,
+			"reward": -10,
+			"priceMultiplier": 1.65,
+			"effectPerLevel": 0.03,
+			"instability": 0.3,
+			"conditions": { "targetProgress": 10 },
+			"children": ["stellar_market"]
+		},
+		{
+			"id": "stellar_market",
+			"name": "Stellar Market",
+			"description": {
+				"en": "Occasional sales on star creation costs",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"currency": "stardust",
+			"calegory": "economy",
+			"basePrice": 10000,
+			"maxLevel": 5,
+			"reward": -10,
+			"priceMultiplier": 2.0,
+			"effectPerLevel": 0.1,
+			"instability": 0.3,
+			"conditions": { "targetProgress": 5 },
+			"children": ["stardust_storage"]
+		},
+		{
+			"id": "stardust_storage",
+			"name": "Cosmic Storage",
+			"description": {
+				"en": "Increases maximum stardust accumulation between collections",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "storage",
+			"basePrice": 5000,
+			"currency": "stardust",
+			"maxLevel": 15,
+			"reward": 10,
+			"priceMultiplier": 1.6,
+			"effectPerLevel": 0.2,
+			"instability": 0.0,
+			"conditions": { "targetProgress": 15 },
+			"children": ["compression_tech"]
+		},
+		{
+			"id": "compression_tech",
+			"name": "Compression Techology",
+			"description": {
+				"en": "Advanced technology to store more stardust in the same space",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "storage",
+			"basePrice": 10000,
+			"currency": "stardust",
+			"maxLevel": 10,
+			"reward": 15,
+			"priceMultiplier": 1.7,
+			"effectPerLevel": 0.15,
+			"instability": 0.0,
+			"conditions": { "targetProgress": 10 },
+			"children": ["overflow_protection"]
+		},
+		{
+			"id": "overflow_protection",
+			"name": "Overflow Protection",
+			"description": {
+				"en": "Prevents stardust from being lost when storage is full",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "storage",
+			"basePrice": 15000,
+			"currency": "stardust",
+			"maxLevel": 5,
+			"reward": 20,
+			"priceMultiplier": 2.0,
+			"effectPerLevel": 0.1,
+			"instability": -0.1,
+			"conditions": { "targetProgress": 5 },
+			"children": []
+		},
+		{
+			"id": "dark_matter_chance",
+			"name": "Dark Matter Extractor",
+			"description": {
+				"en": "Improve dark matter extraction rate",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "chance",
+			"basePrice": 5,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": 5,
+			"priceMultiplier": 0.5,
+			"effectPerLevel": 0.1,
+			"instability": 0.2,
+			"conditions": { "targetProgress": 5 },
+			"children": ["quantum_instability"]
+		},
+		{
+			"id": "quantum_instability",
+			"name": "Quantum Instability",
+			"description": {
+				"en": "Introduces quantum fluctuations that can yield dark matter",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "chance",
+			"basePrice": 40,
+			"currency": "darkmetter",
+			"maxLevel": 8,
+			"reward": -10,
+			"priceMultiplier": 1.6,
+			"effectPerLevel": 0.02,
+			"instability": 0.25,
+			"conditions": { "targetProgress": 8 },
+			"children": ["void_resonance"]
+		},
+		{
+			"id": "void_resonance",
+			"name": "Void Resonance",
+			"description": {
+				"en": "Occasional bursts of dark matter from cosmic anomalies",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "chance",
+			"basePrice": 60,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": -15,
+			"priceMultiplier": 1.8,
+			"effectPerLevel": 0.05,
+			"instability": 0.3,
+			"conditions": { "targetProgress": 5 },
+			"children": ["stardust_multiplier"]
+		},
+		{
+			"id": "stardust_multiplier",
+			"name": "Quantum Accelerator",
+			"description": {
+				"en": "Multiplier for all stardust gains",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "multiplier",
+			"basePrice": 50,
+			"currency": "darkmetter",
+			"maxLevel": 10,
+			"reward": 5,
+			"priceMultiplier": 1.8,
+			"effectPerLevel": 0.2,
+			"instability": 0.05,
+			"conditions": { "targetProgress": 10 },
+			"children": ["dark_energy_infusion"]
+		},
+		{
+			"id": "dark_energy_infusion",
+			"name": "Dark Energy Infusion",
+			"description": {
+				"en": "Infuse stars with dark energy to boost their output",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "multiplier",
+			"basePrice": 75,
+			"currency": "darkmetter",
+			"maxLevel": 8,
+			"reward": 10,
+			"priceMultiplier": 1.7,
+			"effectPerLevel": 0.15,
+			"instability": 0.1,
+			"conditions": { "targetProgress": 8 },
+			"children": ["cosmic_acceleration"]
+		},
+		{
+			"id": "cosmic_acceleration",
+			"name": "Cosmic Acceleration",
+			"description": {
+				"en": "Time flows faster in your galaxy, speeding up all production",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "multiplier",
+			"basePrice": 150,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": 15,
+			"priceMultiplier": 1.9,
+			"effectPerLevel": 0.1,
+			"instability": 0.3,
+			"conditions": { "targetProgress": 5 },
+			"children": ["galaxy_explorer"]
+		},
+		{
+			"id": "galaxy_explorer",
+			"name": "Galactic Explorer",
+			"description": {
+				"en": "Unlocks special events when exploring new galaxies",
+				"ru": "..."
+			},
+			"type": "chaotic",
+			"calegory": "special",
+			"basePrice": 100,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": 20,
+			"priceMultiplier": 2.0,
+			"effectPerLevel": 1,
+			"instability": 0.3,
+			"conditions": { "targetProgress": 5 },
+			"children": ["auto_collector"]
+		},
+		{
+			"id": "auto_collector",
+			"name": "Auto Collector",
+			"description": {
+				"en": "Automatically collects a portion of stardust without your intervention",
+				"ru": "..."
+			},
+			"type": "order",
+			"calegory": "special",
+			"basePrice": 75,
+			"currency": "darkmetter",
+			"maxLevel": 10,
+			"reward": 20,
+			"priceMultiplier": 1.7,
+			"effectPerLevel": 0.1,
+			"instability": -0.1,
+			"conditions": { "targetProgress": 10 },
+			"children": ["stellar_forge"]
+		},
+		{
+			"id": "stellar_forge",
+			"name": "Stellar Forge",
+			"description": {
+				"en": "Automatically creates stars over time using accumulated stardust",
+				"ru": ""
+			},
+			"type": "order",
+			"calegory": "special",
+			"basePrice": 200,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": 20,
+			"priceMultiplier": 2.0,
+			"effectPerLevel": 0.05,
+			"instability": -0.1,
+			"conditions": { "targetProgress": 5 },
+			"children": ["dark_matter_synthesis"]
+		},
+		{
+			"id": "dark_matter_synthesis",
+			"name": "Dark matter Synthesis",
+			"description": {
+				"en": "Chance to create dark matter when creating stars",
+				"ru": ""
+			},
+			"type": "chaotic",
+			"calegory": "special",
+			"basePrice": 250,
+			"currency": "darkmetter",
+			"maxLevel": 5,
+			"reward": 20,
+			"priceMultiplier": 2.2,
+			"effectPerLevel": 0.02,
+			"instability": 0.2,
+			"conditions": { "targetProgress": 5 },
+			"children": []
+		}
+	]
 }

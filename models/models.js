@@ -108,6 +108,7 @@ const Galaxy = sequelize.define('galaxy', {
 
 const UpgradeNode = sequelize.define('upgradenode', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	node: { type: DataTypes.STRING },
 	name: { type: DataTypes.STRING },
 	type: { type: DataTypes.STRING },
 	description: {
@@ -118,9 +119,18 @@ const UpgradeNode = sequelize.define('upgradenode', {
 		},
 		comment: 'Localized upgrade node descriptions',
 	},
-	cost: { type: DataTypes.INTEGER, defaultValue: 0 },
-	cpsBonus: { type: DataTypes.INTEGER, defaultValue: 0 },
-	multiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
+	maxLevel: { type: DataTypes.INTEGER, defaultValue: 0 },
+	basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
+	effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
+	priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
+	currency: {
+		type: DataTypes.ENUM('stardust', 'darkmetter'),
+		defaultValue: 'stardust',
+	},
+	category: {
+		type: DataTypes.ENUM('production', 'research', 'storage'),
+		defaultValue: 'production',
+	},
 	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	modifiers: {
 		type: DataTypes.JSONB,

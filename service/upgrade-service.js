@@ -19,12 +19,16 @@ class UpgradeService {
 
 				const newNode = await UpgradeNode.create(
 					{
+						node: node.id,
 						name: node.name,
 						type: node.type,
 						description: node.description,
-						cost: node.cost || 0,
-						cpsBonus: node.cpsBonus || 0,
-						multiplier: node.multiplier || 1.0,
+						basePrice: node.basePrice || 0,
+						maxLevel: node.maxLevel || 0,
+						effectPerLevel: node.effectPerLevel || 0,
+						priceMultiplier: node.priceMultiplier || 1.0,
+						currency: node.currency || 'stardust',
+						category: node.category || 'production',
 						instability: node.instability || 0.0,
 						modifiers: node.modifiers || {},
 						reward: node.reward || 0,
@@ -58,7 +62,7 @@ class UpgradeService {
 				include: [
 					{
 						model: UpgradeNode,
-						attributes: ['name', 'children'],
+						attributes: ['node', 'name', 'children'],
 					},
 				],
 			});
@@ -78,8 +82,8 @@ class UpgradeService {
 				where: {
 					active: true,
 					[Op.or]: [
-						{ conditions: {} }, // Root nodes with no conditions
-						{ name: Array.from(unlockedNodeNames) }, // Unlocked nodes
+						{ conditions: {} },
+						{ node: Array.from(unlockedNodeNames) },
 					],
 					[Op.and]: [
 						{
@@ -91,12 +95,16 @@ class UpgradeService {
 					],
 				},
 				attributes: [
+					'node',
 					'name',
 					'type',
 					'description',
-					'cost',
-					'cpsBonus',
-					'multiplier',
+					'basePrice',
+					'maxLevel',
+					'effectPerLevel',
+					'priceMultiplier',
+					'currency',
+					'category',
 					'instability',
 					'modifiers',
 					'conditions',
@@ -146,12 +154,16 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
+							'node',
 							'name',
 							'type',
 							'description',
-							'cost',
-							'cpsBonus',
-							'multiplier',
+							'basePrice',
+							'maxLevel',
+							'effectPerLevel',
+							'priceMultiplier',
+							'currency',
+							'category',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -167,8 +179,13 @@ class UpgradeService {
 				where: { userId },
 			});
 
+			const totalInstability = await UserUpgradeNode.sum('instability', {
+				where: { userId },
+			});
+
 			return {
 				reward: { upgrades: totalReward || 0 },
+				instability: { upgrades: totalInstability || 0 },
 				userUpgradeNodes: userNodesNew.map((item) => item.toJSON()),
 			};
 		} catch (err) {
@@ -186,12 +203,16 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
+							'node',
 							'name',
 							'type',
 							'description',
-							'cost',
-							'cpsBonus',
-							'multiplier',
+							'basePrice',
+							'maxLevel',
+							'effectPerLevel',
+							'priceMultiplier',
+							'currency',
+							'category',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -207,8 +228,13 @@ class UpgradeService {
 				where: { userId },
 			});
 
+			const totalInstability = await UserUpgradeNode.sum('instability', {
+				where: { userId },
+			});
+
 			return {
 				reward: { upgrades: totalReward || 0 },
+				instability: { upgrades: totalInstability || 0 },
 				upgradeNodes: userNodes.map((item) => item.toJSON()),
 			};
 		} catch (err) {
@@ -240,6 +266,7 @@ class UpgradeService {
 						userId,
 						upgradeNodeId: nodeId,
 						reward: node.reward,
+						instability: node.instability,
 						completed: true,
 					},
 					{ transaction: t }
@@ -247,6 +274,7 @@ class UpgradeService {
 			} else if (!userNode.completed) {
 				userNode.completed = true;
 				userNode.reward = node.reward;
+				userNode.instability = node.instability;
 				await userNode.save({ transaction: t });
 			}
 
@@ -269,7 +297,13 @@ class UpgradeService {
 				include: [
 					{
 						model: UpgradeNode,
-						attributes: ['name', 'children', 'reward'],
+						attributes: [
+							'node',
+							'name',
+							'children',
+							'reward',
+							'instability',
+						],
 					},
 				],
 				transaction: t,
@@ -324,7 +358,7 @@ class UpgradeService {
 			await t.commit();
 
 			return {
-				nodeId: userNode.upgradeNodeId,
+				nodeId: userNode.upgradenode.node,
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
 				completed: userNode.completed,
@@ -397,11 +431,19 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
+							'node',
 							'name',
 							'type',
 							'description',
+							'basePrice',
+							'maxLevel',
+							'effectPerLevel',
+							'priceMultiplier',
+							'currency',
+							'category',
 							'children',
 							'reward',
+							'instability',
 						],
 					},
 				],
@@ -413,6 +455,7 @@ class UpgradeService {
 
 			return {
 				nodeId: userNode.upgradeNodeId,
+				id: userNode.node,
 				nodeName: userNode.upgradenode.name,
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
@@ -441,6 +484,7 @@ class UpgradeService {
 							'description',
 							'children',
 							'reward',
+							'instability',
 						],
 					},
 				],
