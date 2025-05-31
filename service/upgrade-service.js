@@ -11,24 +11,34 @@ class UpgradeService {
 			const createdNodes = [];
 			for (const node of nodes) {
 				// Validate node data
-				if (!node.name || !node.description || !node.type) {
+				if (!node.id || !node.name || !node.description) {
 					throw ApiError.BadRequest(
 						'Invalid upgrade node data structure'
 					);
 				}
 
+				// Validate description structure
+				if (!node.description.en || !node.description.ru) {
+					throw ApiError.BadRequest(
+						'Description must contain both "en" and "ru" translations'
+					);
+				}
+
 				const newNode = await UpgradeNode.create(
 					{
-						node: node.id,
+						id: node.id,
 						name: node.name,
-						type: node.type,
-						description: node.description,
-						basePrice: node.basePrice || 0,
+						description: {
+							en: node.description.en,
+							ru: node.description.ru,
+						},
 						maxLevel: node.maxLevel || 0,
+						basePrice: node.basePrice || 0,
 						effectPerLevel: node.effectPerLevel || 0,
 						priceMultiplier: node.priceMultiplier || 1.0,
 						currency: node.currency || 'stardust',
 						category: node.category || 'production',
+						icon: node.icon || '',
 						instability: node.instability || 0.0,
 						modifiers: node.modifiers || {},
 						reward: node.reward || 0,
@@ -62,17 +72,17 @@ class UpgradeService {
 				include: [
 					{
 						model: UpgradeNode,
-						attributes: ['node', 'name', 'children'],
+						attributes: ['id', 'name', 'children'],
 					},
 				],
 			});
 
-			// Collect all potentially unlocked node names
-			const unlockedNodeNames = new Set();
+			// Collect all potentially unlocked node IDs
+			const unlockedNodeIds = new Set();
 			completedUpgrades.forEach((upgrade) => {
 				if (upgrade.upgradenode && upgrade.upgradenode.children) {
-					upgrade.upgradenode.children.forEach((child) =>
-						unlockedNodeNames.add(child)
+					upgrade.upgradenode.children.forEach((childId) =>
+						unlockedNodeIds.add(childId)
 					);
 				}
 			});
@@ -83,7 +93,7 @@ class UpgradeService {
 					active: true,
 					[Op.or]: [
 						{ conditions: {} },
-						{ node: Array.from(unlockedNodeNames) },
+						{ id: Array.from(unlockedNodeIds) },
 					],
 					[Op.and]: [
 						{
@@ -95,16 +105,16 @@ class UpgradeService {
 					],
 				},
 				attributes: [
-					'node',
+					'id',
 					'name',
-					'type',
 					'description',
-					'basePrice',
 					'maxLevel',
+					'basePrice',
 					'effectPerLevel',
 					'priceMultiplier',
 					'currency',
 					'category',
+					'icon',
 					'instability',
 					'modifiers',
 					'conditions',
@@ -154,16 +164,16 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
-							'node',
+							'id',
 							'name',
-							'type',
 							'description',
-							'basePrice',
 							'maxLevel',
+							'basePrice',
 							'effectPerLevel',
 							'priceMultiplier',
 							'currency',
 							'category',
+							'icon',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -203,16 +213,16 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
-							'node',
+							'id',
 							'name',
-							'type',
 							'description',
-							'basePrice',
 							'maxLevel',
+							'basePrice',
 							'effectPerLevel',
 							'priceMultiplier',
 							'currency',
 							'category',
+							'icon',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -298,7 +308,7 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
-							'node',
+							'id',
 							'name',
 							'children',
 							'reward',
@@ -358,7 +368,7 @@ class UpgradeService {
 			await t.commit();
 
 			return {
-				nodeId: userNode.upgradenode.node,
+				nodeId: userNode.upgradenode.id,
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
 				completed: userNode.completed,
@@ -373,12 +383,12 @@ class UpgradeService {
 		}
 	}
 
-	async unlockChildNodes(userId, childNodeNames, transaction) {
+	async unlockChildNodes(userId, childNodeIds, transaction) {
 		try {
 			// Find all child nodes
 			const childNodes = await UpgradeNode.findAll({
 				where: {
-					name: childNodeNames,
+					id: childNodeIds,
 					active: true,
 				},
 				transaction,
@@ -407,7 +417,7 @@ class UpgradeService {
 					reward: 0,
 					completed: false,
 					progress: 0,
-					targetProgress: 100, // Default value, can be customized per node
+					targetProgress: node.conditions?.targetProgress || 100,
 					progressHistory: [],
 					lastProgressUpdate: new Date(),
 				}));
@@ -431,16 +441,16 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
-							'node',
+							'id',
 							'name',
-							'type',
 							'description',
-							'basePrice',
 							'maxLevel',
+							'basePrice',
 							'effectPerLevel',
 							'priceMultiplier',
 							'currency',
 							'category',
+							'icon',
 							'children',
 							'reward',
 							'instability',
@@ -455,8 +465,8 @@ class UpgradeService {
 
 			return {
 				nodeId: userNode.upgradeNodeId,
-				id: userNode.node,
 				nodeName: userNode.upgradenode.name,
+				description: userNode.upgradenode.description,
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
 				completed: userNode.completed,
@@ -479,8 +489,8 @@ class UpgradeService {
 					{
 						model: UpgradeNode,
 						attributes: [
+							'id',
 							'name',
-							'type',
 							'description',
 							'children',
 							'reward',
@@ -493,6 +503,7 @@ class UpgradeService {
 			const progress = userNodes.map((node) => ({
 				nodeId: node.upgradeNodeId,
 				nodeName: node.upgradenode.name,
+				description: node.upgradenode.description,
 				progress: node.progress,
 				targetProgress: node.targetProgress,
 				completed: node.completed,

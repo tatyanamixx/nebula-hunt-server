@@ -16,15 +16,15 @@ class UpgradeController {
 	async getUpgradeNodeProgress(req, res, next) {
 		try {
 			const userId = req.user.id;
-			const { nodeName } = req.params;
+			const { nodeId } = req.params;
 
-			if (!nodeName) {
-				throw ApiError.BadRequest('Node name is required');
+			if (!nodeId) {
+				throw ApiError.BadRequest('Node ID is required');
 			}
 
 			const progress = await stateService.getUpgradeProgress(
 				userId,
-				nodeName
+				nodeId
 			);
 			return res.json(progress);
 		} catch (e) {
@@ -35,11 +35,11 @@ class UpgradeController {
 	async updateNodeProgress(req, res, next) {
 		try {
 			const userId = req.user.id;
-			const { nodeName } = req.params;
+			const { nodeId } = req.params;
 			const { progressIncrement } = req.body;
 
-			if (!nodeName) {
-				throw ApiError.BadRequest('Node name is required');
+			if (!nodeId) {
+				throw ApiError.BadRequest('Node ID is required');
 			}
 
 			if (typeof progressIncrement !== 'number') {
@@ -50,7 +50,7 @@ class UpgradeController {
 
 			const result = await stateService.updateUserUpgradeNode(
 				userId,
-				nodeName,
+				nodeId,
 				progressIncrement
 			);
 			return res.json(result);
@@ -87,14 +87,14 @@ class UpgradeController {
 
 	async updateUpgradeNode(req, res, next) {
 		try {
-			const { nodeName } = req.params;
+			const { nodeId } = req.params;
 			const nodeData = req.body;
 
-			if (!nodeName) {
-				throw ApiError.BadRequest('Node name is required');
+			if (!nodeId) {
+				throw ApiError.BadRequest('Node ID is required');
 			}
 
-			const node = await upgradeService.updateNode(nodeName, nodeData);
+			const node = await upgradeService.updateNode(nodeId, nodeData);
 			return res.json(node);
 		} catch (e) {
 			next(e);
@@ -103,13 +103,13 @@ class UpgradeController {
 
 	async deleteUpgradeNode(req, res, next) {
 		try {
-			const { nodeName } = req.params;
+			const { nodeId } = req.params;
 
-			if (!nodeName) {
-				throw ApiError.BadRequest('Node name is required');
+			if (!nodeId) {
+				throw ApiError.BadRequest('Node ID is required');
 			}
 
-			await upgradeService.deleteNode(nodeName);
+			await upgradeService.deleteNode(nodeId);
 			return res.json({ message: 'Node deleted successfully' });
 		} catch (e) {
 			next(e);

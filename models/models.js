@@ -107,10 +107,8 @@ const Galaxy = sequelize.define('galaxy', {
 });
 
 const UpgradeNode = sequelize.define('upgradenode', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	node: { type: DataTypes.STRING },
+	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
 	name: { type: DataTypes.STRING },
-	type: { type: DataTypes.STRING },
 	description: {
 		type: DataTypes.JSONB,
 		defaultValue: {
@@ -128,9 +126,17 @@ const UpgradeNode = sequelize.define('upgradenode', {
 		defaultValue: 'stardust',
 	},
 	category: {
-		type: DataTypes.ENUM('production', 'research', 'storage'),
+		type: DataTypes.ENUM(
+			'production',
+			'economy',
+			'special',
+			'chance',
+			'storage',
+			'multiplier'
+		),
 		defaultValue: 'production',
 	},
+	icon: { type: DataTypes.STRING(3), defaultValue: '' },
 	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	modifiers: {
 		type: DataTypes.JSONB,
@@ -188,8 +194,7 @@ const UserUpgradeNode = sequelize.define('userupgradenode', {
 });
 
 const Achievement = sequelize.define('achievement', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	keyWord: { type: DataTypes.STRING },
+	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
 	description: {
 		type: DataTypes.JSONB,
 		defaultValue: {
@@ -262,7 +267,7 @@ const UserEvent = sequelize.define('userevent', {
 });
 
 const GameEvent = sequelize.define('gameevent', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
 	name: { type: DataTypes.STRING, allowNull: false },
 	description: {
 		type: DataTypes.JSONB,

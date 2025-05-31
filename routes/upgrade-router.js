@@ -13,12 +13,12 @@ router.get(
 	upgradeController.getUserUpgradeTree
 );
 router.get(
-	'/node/:nodeName',
+	'/node/:nodeId',
 	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	upgradeController.getUpgradeNodeProgress
 );
 router.post(
-	'/node/:nodeName/progress',
+	'/node/:nodeId/progress',
 	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	upgradeController.updateNodeProgress
 );
@@ -39,8 +39,9 @@ router.post(
 	],
 	upgradeController.createUpgradeNodes
 );
+
 router.put(
-	'/admin/node/:nodeName',
+	'/admin/node/:nodeId',
 	[
 		tmaMiddleware,
 		authMiddleware,
@@ -50,7 +51,7 @@ router.put(
 	upgradeController.updateUpgradeNode
 );
 router.delete(
-	'/admin/node/:nodeName',
+	'/admin/node/:nodeId',
 	[
 		tmaMiddleware,
 		authMiddleware,
