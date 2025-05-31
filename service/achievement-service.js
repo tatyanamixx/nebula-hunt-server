@@ -1,8 +1,4 @@
-const {
-	UserAchievement,
-	Achievement,
-	AchievementReward,
-} = require('../models/models');
+const { UserAchievement, Achievement } = require('../models/models');
 const sequelize = require('../db');
 
 const ApiError = require('../exceptions/api-error');
@@ -18,9 +14,12 @@ class AchievementService {
 			for (const achievement of achievements) {
 				// Validate achievement data
 				if (
-					!achievement.keyWord ||
+					!achievement.id ||
+					!achievement.title ||
 					!achievement.description ||
-					!Array.isArray(achievement.levels)
+					!achievement.reward ||
+					!achievement.condition ||
+					!achievement.icon
 				) {
 					throw ApiError.BadRequest(
 						'Invalid achievement data structure'
@@ -30,9 +29,12 @@ class AchievementService {
 				// Create achievement with levels included
 				const newAchievement = await Achievement.create(
 					{
-						keyWord: achievement.keyWord,
+						id: achievement.id,
+						title: achievement.title,
 						description: achievement.description,
-						levels: achievement.levels,
+						reward: achievement.reward,
+						condition: achievement.condition,
+						icon: achievement.icon,
 						active: achievement.active ?? true,
 					},
 					{ transaction: t }
@@ -55,6 +57,14 @@ class AchievementService {
 		try {
 			const achievementRaw = await Achievement.findAll({
 				where: { active: true },
+				attributes: [
+					'id',
+					'title',
+					'description',
+					'reward',
+					'condition',
+					'icon',
+				],
 			});
 			const userAchievementRaw = await UserAchievement.findAll({
 				where: { userId },
@@ -78,8 +88,6 @@ class AchievementService {
 				const newUserAchievements = newAchievements.map((ach) => ({
 					userId,
 					achievementId: ach.id,
-					currentValue: 0,
-					level: 0,
 					reward: 0,
 					completed: false,
 				}));
@@ -91,7 +99,14 @@ class AchievementService {
 				include: [
 					{
 						model: Achievement,
-						attributes: ['keyWord', 'description', 'levels'],
+						attributes: [
+							'id',
+							'title',
+							'description',
+							'reward',
+							'condition',
+							'icon',
+						],
 					},
 				],
 			});
@@ -102,9 +117,7 @@ class AchievementService {
 
 			return {
 				reward: { achievement: totalReward || 0 },
-				userAchievements: userAchievementNew.map((item) =>
-					item.toJSON()
-				),
+				achievement: userAchievementNew.map((item) => item.toJSON()),
 			};
 		} catch (err) {
 			throw ApiError.Internal(err.message);
@@ -116,7 +129,17 @@ class AchievementService {
 			const userAchievementsRaw = await UserAchievement.findAll({
 				include: Achievement,
 				where: { userId: userId },
-				attributes: ['reward', 'completed'],
+				attributes: [
+					'reward',
+					'completed',
+					'achievementId',
+					'achievement.id',
+					'achievement.title',
+					'achievement.description',
+					'achievement.reward',
+					'achievement.condition',
+					'achievement.icon',
+				],
 			});
 			const reward = await UserAchievement.sum('reward', {
 				where: { userId: userId },
@@ -133,12 +156,12 @@ class AchievementService {
 		}
 	}
 
-	async updateUserAchievementByValue(userId, keyWord, value) {
+	async updateUserAchievementByValue(userId, achievementId, value) {
 		const t = await sequelize.transaction();
 
 		try {
 			const achievement = await Achievement.findOne({
-				where: { keyWord, active: true },
+				where: { id: achievementId, active: true },
 			});
 
 			if (!achievement) {
@@ -146,25 +169,23 @@ class AchievementService {
 			}
 
 			let userAchievement = await UserAchievement.findOne({
-				where: { userId, achievementId: achievement.id },
+				where: { userId, achievementId },
 			});
 
 			if (!userAchievement) {
 				userAchievement = await UserAchievement.create({
 					userId,
-					achievementId: achievement.id,
-					currentValue: 0,
-					level: 0,
+					achievementId,
 					reward: 0,
 					completed: false,
 				});
 			}
 
 			// Update current value
-			userAchievement.currentValue = value;
+			userAchievement.reward = value;
 
 			// Find appropriate level based on current value
-			const newLevel = achievement.levels.reduce(
+			const newLevel = achievement.reward.reduce(
 				(maxLevel, levelConfig) => {
 					if (value >= levelConfig.from && value <= levelConfig.to) {
 						return Math.max(maxLevel, levelConfig.level);
@@ -173,14 +194,12 @@ class AchievementService {
 				},
 				0
 			);
-
 			// If level changed, update reward
 			if (newLevel !== userAchievement.level) {
-				const levelConfig = achievement.levels.find(
-					(l) => l.level === newLevel
+				const levelConfig = achievement.reward.find(
+					(l) => l.type === newLevel
 				);
-				userAchievement.level = newLevel;
-				userAchievement.reward = levelConfig.reward;
+				userAchievement.reward = levelConfig.amount;
 				userAchievement.completed = true; // Mark as completed when level changes
 			}
 

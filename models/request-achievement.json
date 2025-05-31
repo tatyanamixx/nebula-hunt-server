@@ -1,44 +1,155 @@
-{
-	"achievement": [
-		{
-			"keyWord": "invitefrieds",
-			"description": {
-				"en": "Invite friends",
-				"ru": "Пригласи друзей"
+ { "achievements": [
+			{
+				"id": "create_stars_100",
+				"title": "First Steps",
+				"description": { "en": "Create 100 stars in your galaxy", "ru": "..." },		
+				"reward": { "type": "stardust", "amount": 500 },
+				"condition": "totalStars >= 100",
+				"icon": "⭐"
 			},
-			"levels": [
-				{ "level": 0, "from": 0, "to": 9, "reward": 0 },
-				{ "level": 1, "from": 10, "to": 99, "reward": 1 },
-				{ "level": 2, "from": 100, "to": 999, "reward": 5 },
-				{ "level": 3, "from": 1000, "to": 99999999, "reward": 10 }
-			],
-			"active": true
-		},
-		{
-			"keyWord": "galaxiesowner",
-			"description": {
-				"en": "Own the galaxy",
-				"ru": "Собственная галактика"
+			{
+				"id": "create_stars_1000",
+				"title": "Star Crafter",
+				"description": { "en": "Create 1,000 stars in your galaxy", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 2000 },
+				"condition": "totalStars >= 1000",
+				"icon": "⭐"
 			},
-			"levels": [
-				{ "level": 0, "from": 0, "to": 2, "reward": 0 },
-				{ "level": 1, "from": 3, "to": 14, "reward": 1 },
-				{ "level": 2, "from": 15, "to": 39, "reward": 5 },
-				{ "level": 3, "from": 40, "to": 99999999, "reward": 10 }
-			],
-			"active": true
-		},
-		{
-			"keyWord": "subscribe",
-			"description": {
-				"en": "Subcribe to the official channel",
-				"ru": "Подпишись на официальный канал"
+			{
+				"id": "create_stars_10000",
+				"title": "Stellar Engineer",
+				"description": { "en": "Create 10,000 stars in your galaxy", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 10000 },
+				"condition": "totalStars >= 10000",
+				"icon": "⭐"
 			},
-			"levels": [
-				{ "level": 0, "from": 0, "to": 0, "reward": 0 },
-				{ "level": 1, "from": 1, "to": 1, "reward": 50 }
-			],
-			"active": true
-		}
-	]
-}
+			{
+				"id": "create_stars_50000",
+				"title": "Master of Stars",
+				"description": { "en": "Create 50,000 stars in your galaxy", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 50 },
+				"condition": "totalStars >= 50000",
+				"icon": "⭐"
+			},
+			{
+				"id": "create_stars_100000",
+				"title": "Cosmic Architect",
+				"description": { "en": "Create 100,000 stars in your galaxy", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 100 },
+				"condition": "totalStars >= 100000",
+				"icon": "⭐"
+			},
+			{
+				"id": "collect_stardust_5000",
+				"title": "Dust Collector",
+				"description": { "en": "Collect 5,000 stardust", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 1000 },
+				"condition": "stardustCount >= 5000",
+				"icon": "✨"
+			},
+			{
+				"id": "collect_stardust_25000",
+				"title": "Dust Magnet",
+				"description": { "en": "Collect 25,000 stardust", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 5000 },
+				"condition": "stardustCount >= 25000",
+				"icon": "✨"
+			},
+			{
+				"id": "collect_stardust_100000",
+				"title": "Stardust Master",
+				"description": { "en": "Collect 100,000 stardust", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 25 },
+				"condition": "stardustCount >= 100000",
+				"icon": "✨"
+			},
+			{
+				"id": "collect_dark_matter_10",
+				"title": "Dark Explorer",
+				"description": { "en": "Collect 10 dark matter", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 5 },
+				"condition": "darkMatterCount >= 10",
+				"icon": "🌑"
+			},
+			{
+				"id": "collect_dark_matter_50",
+				"title": "Void Master",
+				"description": { "en": "Collect 50 dark matter", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 20 },
+				"condition": "darkMatterCount >= 50",
+				"icon": "🌑"
+			},
+			{
+				"id": "collect_dark_matter_200",
+				"title": "Dark Matter Sage",
+				"description": { "en": "Collect 200 dark matter", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 50 },
+				"condition": "darkMatterCount >= 200",
+				"icon": "🌑"
+			},
+			{
+				"id": "own_galaxies_3",
+				"title": "Galaxy Explorer",
+				"description": { "en": "Own 3 galaxies", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 15 },
+				"condition": "ownedGalaxiesCount >= 3",
+				"icon": "🌌"
+			},
+			{
+				"id": "own_galaxies_5",
+				"title": "Cosmic Emperor",
+				"description": { "en": "Own 5 galaxies", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 30 },
+				"condition": "ownedGalaxiesCount >= 5",
+				"icon": "🌌"
+			},
+			{
+				"id": "own_galaxies_10",
+				"title": "Universal Sovereign",
+				"description": { "en": "Own 10 galaxies", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 100 },
+				"condition": "ownedGalaxiesCount >= 10",
+				"icon": "🌌"
+			},
+			{
+				"id": "daily_login",
+				"title": "Daily Explorer",
+				"description": { "en": "Log in daily to receive rewards", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 1000 },
+				"condition": "dailyReset: true", 
+				"icon": "📆"
+			},
+			{
+				"id": "weekly_login",
+				"title": "Weekly Pioneer",
+				"description": { "en": "Log in 7 days in a row", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 10 },
+				"condition": "daysinrow > 7", 
+				"icon": "📆"
+			},
+			{
+				"id": "upgrade_galaxy",
+				"title": "Galaxy Enhancement",
+				"description": { "en": "Upgrade your galaxy for the first time", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 20 },
+				"condition": "galaxyupgraded = true", 
+				"icon": "⚙️"
+			},
+			{
+				"id": "scan_galaxy_10",
+				"title": "Cosmic Researcher",
+				"description": { "en": "Scan your galaxy 10 times", "ru": "..." },
+				"reward": { "type": "stardust", "amount": 2000 },
+				"condition": "galaxyscans > 10", 
+				"icon": "🔭"
+			},
+			{
+				"id": "share_galaxy",
+				"title": "Stellar Ambassador",
+				"description": { "en": "Share your galaxy with a friend", "ru": "..." },
+				"reward": { "type": "darkMatter", "amount": 5 },
+				"condition": "galaxyshared = true", 
+				"icon": "🔗"
+			}
+		]}
+		

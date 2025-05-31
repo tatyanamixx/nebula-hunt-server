@@ -41,7 +41,7 @@ class UpgradeService {
 						icon: node.icon || '',
 						instability: node.instability || 0.0,
 						modifiers: node.modifiers || {},
-						reward: node.reward || 0,
+						stability: node.stability || 0,
 						active: node.active ?? true,
 						conditions: node.conditions || {},
 						delayedUntil: node.delayedUntil || null,
@@ -115,6 +115,7 @@ class UpgradeService {
 					'currency',
 					'category',
 					'icon',
+					'stability',
 					'instability',
 					'modifiers',
 					'conditions',
@@ -174,6 +175,7 @@ class UpgradeService {
 							'currency',
 							'category',
 							'icon',
+							'stability',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -185,7 +187,7 @@ class UpgradeService {
 				],
 			});
 
-			const totalReward = await UserUpgradeNode.sum('reward', {
+			const totalStability = await UserUpgradeNode.sum('stability', {
 				where: { userId },
 			});
 
@@ -194,7 +196,7 @@ class UpgradeService {
 			});
 
 			return {
-				reward: { upgrades: totalReward || 0 },
+				stability: { upgrades: totalStability || 0 },
 				instability: { upgrades: totalInstability || 0 },
 				userUpgradeNodes: userNodesNew.map((item) => item.toJSON()),
 			};
@@ -223,6 +225,7 @@ class UpgradeService {
 							'currency',
 							'category',
 							'icon',
+							'stability',
 							'instability',
 							'modifiers',
 							'conditions',
@@ -234,7 +237,7 @@ class UpgradeService {
 				],
 			});
 
-			const totalReward = await UserUpgradeNode.sum('reward', {
+			const totalStability = await UserUpgradeNode.sum('stability', {
 				where: { userId },
 			});
 
@@ -243,7 +246,7 @@ class UpgradeService {
 			});
 
 			return {
-				reward: { upgrades: totalReward || 0 },
+				stability: { upgrades: totalStability || 0 },
 				instability: { upgrades: totalInstability || 0 },
 				upgradeNodes: userNodes.map((item) => item.toJSON()),
 			};
@@ -275,7 +278,7 @@ class UpgradeService {
 					{
 						userId,
 						upgradeNodeId: nodeId,
-						reward: node.reward,
+						stability: node.stability,
 						instability: node.instability,
 						completed: true,
 					},
@@ -283,7 +286,7 @@ class UpgradeService {
 				);
 			} else if (!userNode.completed) {
 				userNode.completed = true;
-				userNode.reward = node.reward;
+				userNode.stability = node.stability;
 				userNode.instability = node.instability;
 				await userNode.save({ transaction: t });
 			}
@@ -311,7 +314,7 @@ class UpgradeService {
 							'id',
 							'name',
 							'children',
-							'reward',
+							'stability',
 							'instability',
 						],
 					},
@@ -349,7 +352,7 @@ class UpgradeService {
 			// Check if node is completed
 			if (newProgress >= userNode.targetProgress && !userNode.completed) {
 				userNode.completed = true;
-				userNode.reward = userNode.upgradenode.reward;
+				userNode.stability = userNode.upgradenode.stability;
 
 				// Unlock child nodes if any
 				if (
@@ -372,7 +375,7 @@ class UpgradeService {
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
 				completed: userNode.completed,
-				reward: userNode.reward,
+				stability: userNode.stability,
 				progressHistory: userNode.progressHistory,
 			};
 		} catch (err) {
@@ -414,7 +417,8 @@ class UpgradeService {
 				const newUserNodes = newNodes.map((node) => ({
 					userId,
 					upgradeNodeId: node.id,
-					reward: 0,
+					stability: 0,
+					instability: 0,
 					completed: false,
 					progress: 0,
 					targetProgress: node.conditions?.targetProgress || 100,
@@ -452,7 +456,7 @@ class UpgradeService {
 							'category',
 							'icon',
 							'children',
-							'reward',
+							'stability',
 							'instability',
 						],
 					},
@@ -470,7 +474,8 @@ class UpgradeService {
 				progress: userNode.progress,
 				targetProgress: userNode.targetProgress,
 				completed: userNode.completed,
-				reward: userNode.reward,
+				stability: userNode.stability,
+				instability: userNode.instability,
 				progressHistory: userNode.progressHistory,
 				lastUpdate: userNode.lastProgressUpdate,
 			};
@@ -493,7 +498,7 @@ class UpgradeService {
 							'name',
 							'description',
 							'children',
-							'reward',
+							'stability',
 							'instability',
 						],
 					},
@@ -507,7 +512,8 @@ class UpgradeService {
 				progress: node.progress,
 				targetProgress: node.targetProgress,
 				completed: node.completed,
-				reward: node.reward,
+				stability: node.stability,
+				instability: node.instability,
 				lastUpdate: node.lastProgressUpdate,
 			}));
 
@@ -515,8 +521,12 @@ class UpgradeService {
 				totalNodes: userNodes.length,
 				completedNodes: userNodes.filter((node) => node.completed)
 					.length,
-				totalReward: userNodes.reduce(
-					(sum, node) => sum + node.reward,
+				totalStability: userNodes.reduce(
+					(sum, node) => sum + node.stability,
+					0
+				),
+				totalInstability: userNodes.reduce(
+					(sum, node) => sum + node.instability,
 					0
 				),
 				averageProgress:

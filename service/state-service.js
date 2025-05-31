@@ -2,6 +2,7 @@ const { UserState, User, UpgradeNode } = require('../models/models');
 const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const UpgradeService = require('./upgrade-service');
+const sequelize = require('../db');
 const { Op } = require('sequelize');
 
 class UserStateService {
@@ -60,6 +61,16 @@ class UserStateService {
 		const userState = await UserState.findOne({
 			where: { userId: userId },
 		});
+
+		if (userState) {
+			// Update streak on login
+			await this.updateStreak(userState);
+			await userState.save();
+
+			// Update upgrade tree on each state request
+			await this.updateUpgradeTreeOnLogin(userId);
+		}
+
 		return userState;
 	}
 
@@ -77,24 +88,32 @@ class UserStateService {
 				stateData.state = userState.state;
 				await this.updateStreak(stateData);
 				await stateData.save({ transaction: t });
-				// Обновляем дерево улучшений при повторном входе
+				// Update upgrade tree on login
 				await this.updateUpgradeTreeOnLogin(userId, t);
 				await t.commit();
 				return stateData;
 			}
 
-			// Создаем новое состояние для нового пользователя
+			// Create new state for new user
 			const stateNew = await UserState.create(
 				{
 					userId: userId,
 					stars: userState.stars,
 					state: userState.state,
+					upgradeTree: {
+						activeNodes: [],
+						completedNodes: [],
+						nodeStates: {},
+						treeStructure: {},
+						totalProgress: 0,
+						lastNodeUpdate: new Date(),
+					},
 				},
 				{ transaction: t }
 			);
 
 			await this.updateStreak(stateNew);
-			// Инициализируем дерево улучшений для нового пользователя
+			// Initialize upgrade tree for new user
 			await this.initializeUserUpgradeTree(userId, t);
 
 			await t.commit();
@@ -108,147 +127,217 @@ class UserStateService {
 	}
 
 	async updateUpgradeTreeOnLogin(userId, transaction) {
-		const userState = await UserState.findOne({
-			where: { userId },
-			transaction,
-		});
+		try {
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction,
+			});
 
-		if (!userState || !userState.upgradeTree) {
-			// Если дерева нет - создаем новое
-			return await this.initializeUserUpgradeTree(userId, transaction);
-		}
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
+			}
 
-		// Получаем все активные узлы из базы
-		const activeNodes = await UpgradeNode.findAll({
-			where: {
-				active: true,
-				[Op.or]: [
-					{ conditions: {} }, // Корневые узлы
-					{ name: userState.upgradeTree.activeNodes }, // Уже активные узлы
-				],
-			},
-			transaction,
-		});
+			// Get available nodes using UpgradeService
+			const availableNodes =
+				await UpgradeService.getAvailableUpgradeNodes(userId);
 
-		// Обновляем структуру дерева
-		const { treeStructure, nodeStates } = userState.upgradeTree;
-		const updatedTreeStructure = { ...treeStructure };
-		const updatedNodeStates = { ...nodeStates };
+			// Get user's upgrade nodes
+			const userUpgradeData = await UpgradeService.getUserUpgradeNodes(
+				userId
+			);
+			const userNodes = userUpgradeData.upgradeNodes;
 
-		// Добавляем новые узлы, если они появились
-		for (const node of activeNodes) {
-			if (!treeStructure[node.name]) {
-				updatedTreeStructure[node.name] = {
-					children: node.children || [],
-					type: node.type,
-					cost: node.cost,
-					requirements: node.conditions,
+			// Update upgrade tree structure
+			const upgradeTree = {
+				activeNodes: availableNodes.map((node) => node.id),
+				completedNodes: userNodes
+					.filter((node) => node.completed)
+					.map((node) => node.upgradeNodeId),
+				nodeStates: {},
+				treeStructure: {},
+				totalProgress: 0,
+				lastNodeUpdate: new Date(),
+			};
+
+			// Build node states and tree structure
+			for (const node of availableNodes) {
+				const userNode = userNodes.find(
+					(un) => un.upgradeNodeId === node.id
+				);
+
+				upgradeTree.nodeStates[node.id] = {
+					progress: userNode?.progress || 0,
+					targetProgress:
+						userNode?.targetProgress ||
+						node.conditions?.targetProgress ||
+						100,
+					unlocked: true,
+					completed: userNode?.completed || false,
+					lastUpdate: userNode?.lastProgressUpdate || new Date(),
+					progressHistory: userNode?.progressHistory || [],
 				};
 
-				updatedNodeStates[node.name] = {
+				upgradeTree.treeStructure[node.id] = {
+					children: node.children || [],
+					category: node.category,
+					basePrice: node.basePrice,
+					currency: node.currency,
+					maxLevel: node.maxLevel,
+					effectPerLevel: node.effectPerLevel,
+					priceMultiplier: node.priceMultiplier,
+					conditions: node.conditions,
+				};
+			}
+
+			// Calculate total progress
+			const totalNodes = Object.keys(upgradeTree.nodeStates).length;
+			if (totalNodes > 0) {
+				const progressSum = Object.values(
+					upgradeTree.nodeStates
+				).reduce(
+					(sum, state) =>
+						sum + (state.progress / state.targetProgress) * 100,
+					0
+				);
+				upgradeTree.totalProgress = progressSum / totalNodes;
+			}
+
+			// Update user state
+			userState.upgradeTree = upgradeTree;
+			await userState.save({ transaction });
+
+			return upgradeTree;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to update upgrade tree: ${err.message}`
+			);
+		}
+	}
+
+	async initializeUserUpgradeTree(userId, transaction) {
+		try {
+			// Get root nodes from UpgradeService
+			const availableNodes =
+				await UpgradeService.getAvailableUpgradeNodes(userId);
+			const rootNodes = availableNodes.filter(
+				(node) =>
+					!node.conditions ||
+					Object.keys(node.conditions).length === 0
+			);
+
+			// Initialize upgrade tree structure
+			const upgradeTree = {
+				activeNodes: rootNodes.map((node) => node.id),
+				completedNodes: [],
+				nodeStates: {},
+				treeStructure: {},
+				totalProgress: 0,
+				lastNodeUpdate: new Date(),
+			};
+
+			// Initialize states for root nodes
+			for (const node of rootNodes) {
+				upgradeTree.nodeStates[node.id] = {
 					progress: 0,
-					targetProgress: 100,
+					targetProgress: node.conditions?.targetProgress || 100,
 					unlocked: true,
 					completed: false,
 					lastUpdate: new Date(),
 					progressHistory: [],
 				};
+
+				upgradeTree.treeStructure[node.id] = {
+					children: node.children || [],
+					category: node.category,
+					basePrice: node.basePrice,
+					currency: node.currency,
+					maxLevel: node.maxLevel,
+					effectPerLevel: node.effectPerLevel,
+					priceMultiplier: node.priceMultiplier,
+					conditions: node.conditions,
+				};
 			}
+
+			// Update user state
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction,
+			});
+
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
+			}
+
+			userState.upgradeTree = upgradeTree;
+			await userState.save({ transaction });
+
+			return upgradeTree;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to initialize upgrade tree: ${err.message}`
+			);
 		}
-
-		// Обновляем состояние дерева
-		userState.upgradeTree = {
-			...userState.upgradeTree,
-			treeStructure: updatedTreeStructure,
-			nodeStates: updatedNodeStates,
-			lastNodeUpdate: new Date(),
-		};
-
-		await userState.save({ transaction });
-		return userState.upgradeTree;
-	}
-
-	async initializeUserUpgradeTree(userId, transaction) {
-		const userState = await UserState.findOne({
-			where: { userId },
-			transaction,
-		});
-
-		if (!userState) {
-			throw ApiError.BadRequest('User state not found');
-		}
-
-		// Получаем все корневые узлы
-		const rootNodes = await UpgradeNode.findAll({
-			where: {
-				active: true,
-				conditions: {},
-			},
-			transaction,
-		});
-
-		// Инициализируем структуру дерева
-		const treeStructure = {};
-		const nodeStates = {};
-
-		// Создаем начальную структуру
-		for (const node of rootNodes) {
-			treeStructure[node.name] = {
-				children: node.children || [],
-				type: node.type,
-				cost: node.cost,
-				requirements: node.conditions,
-			};
-
-			nodeStates[node.name] = {
-				progress: 0,
-				targetProgress: 100,
-				unlocked: true,
-				completed: false,
-				lastUpdate: new Date(),
-				progressHistory: [],
-			};
-		}
-
-		userState.upgradeTree = {
-			activeNodes: rootNodes.map((node) => node.name),
-			completedNodes: [],
-			nodeStates,
-			treeStructure,
-			totalProgress: 0,
-			lastNodeUpdate: new Date(),
-		};
-
-		await userState.save({ transaction });
-		return userState.upgradeTree;
 	}
 
 	async updateUserState(userId, userState) {
-		const stateData = await UserState.findOne({
-			where: { userId: userId },
-		});
-		if (stateData) {
-			stateData.stars = userState.stars;
-			stateData.state = userState.state;
-			await this.updateStreak(stateData);
-			await stateData.save();
-			const string = JSON.stringify(stateData.state);
+		const t = await sequelize.transaction();
 
-			await loggerService.logging(
-				userId,
-				'UPDATE',
-				`The user ${userId} updated a state ${string}`,
-				userState.stars
+		try {
+			const stateData = await UserState.findOne({
+				where: { userId: userId },
+				transaction: t,
+			});
+
+			if (stateData) {
+				stateData.stars = userState.stars;
+				stateData.state = userState.state;
+				await this.updateStreak(stateData);
+				// Update upgrade tree
+				await this.updateUpgradeTreeOnLogin(userId, t);
+				await stateData.save({ transaction: t });
+				const string = JSON.stringify(stateData.state);
+
+				await loggerService.logging(
+					userId,
+					'UPDATE',
+					`The user ${userId} updated a state ${string}`,
+					userState.stars
+				);
+
+				await t.commit();
+				return { userId, userState: stateData };
+			}
+
+			// Create new state for new user
+			const stateNew = await UserState.create(
+				{
+					userId: userId,
+					stars: userState.stars,
+					state: userState.state,
+					upgradeTree: {
+						activeNodes: [],
+						completedNodes: [],
+						nodeStates: {},
+						treeStructure: {},
+						totalProgress: 0,
+						lastNodeUpdate: new Date(),
+					},
+				},
+				{ transaction: t }
 			);
-			return { userId, userState: stateData };
+
+			await this.updateStreak(stateNew);
+			// Initialize upgrade tree for new user
+			await this.initializeUserUpgradeTree(userId, t);
+
+			await t.commit();
+			return { userId, userState: stateNew };
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to update user state: ${err.message}`
+			);
 		}
-		const stateNew = await UserState.create({
-			userId: userId,
-			stars: userState.stars,
-			state: userState.state,
-		});
-		await this.updateStreak(stateNew);
-		return { userId, userState: stateNew };
 	}
 
 	async leaderboard() {

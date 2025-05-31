@@ -1,7 +1,7 @@
 const { User, UserState, UpgradeNode } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
-const userStateService = require('./state-service');
+const stateService = require('./state-service');
 const loggerService = require('./logger-service');
 const eventService = require('./event-service');
 const UserDto = require('../dtos/user-dto');
@@ -64,7 +64,7 @@ class UserService {
 			const userDto = new UserDto(user);
 
 			// Create user state
-			const userState = await userStateService.createUserState(
+			const userState = await stateService.createUserState(
 				userDto.id,
 				reqUserState,
 				t
@@ -159,7 +159,7 @@ class UserService {
 
 			// Get user state, galaxies and check events
 			const [userState, userGalaxies, eventState] = await Promise.all([
-				userStateService.getUserState(userDto.id),
+				stateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
 				eventService.checkAndTriggerEvents(userDto.id),
 			]);
@@ -267,34 +267,6 @@ class UserService {
 		} catch (err) {
 			throw ApiError.Internal(`Failed to get friends: ${err.message}`);
 		}
-	}
-
-	async updateUpgradeTreeOnLogin(userId, transaction) {
-		const userState = await UserState.findOne({
-			where: { userId },
-			transaction,
-		});
-
-		if (!userState || !userState.upgradeTree) {
-			return await this.initializeUserUpgradeTree(userId, transaction);
-		}
-
-		// Получаем актуальные узлы
-		const activeNodes = await UpgradeNode.findAll({
-			where: {
-				active: true,
-				[Op.or]: [
-					{ conditions: {} }, // Корневые узлы
-					{ name: userState.upgradeTree.activeNodes }, // Уже активные узлы
-				],
-			},
-		});
-
-		// Обновляем структуру с новыми узлами
-		// ...обновление структуры...
-
-		await userState.save({ transaction });
-		return userState.upgradeTree;
 	}
 }
 

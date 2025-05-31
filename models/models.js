@@ -137,13 +137,13 @@ const UpgradeNode = sequelize.define('upgradenode', {
 		defaultValue: 'production',
 	},
 	icon: { type: DataTypes.STRING(3), defaultValue: '' },
+	stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	modifiers: {
 		type: DataTypes.JSONB,
 		defaultValue: {},
 		comment: 'Additional modifiers and effects of the upgrade',
 	},
-	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 	conditions: {
 		type: DataTypes.JSONB,
@@ -169,7 +169,8 @@ const UpgradeNode = sequelize.define('upgradenode', {
 
 const UserUpgradeNode = sequelize.define('userupgradenode', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+	stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 	progress: {
 		type: DataTypes.INTEGER,
@@ -194,7 +195,8 @@ const UserUpgradeNode = sequelize.define('userupgradenode', {
 });
 
 const Achievement = sequelize.define('achievement', {
-	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
+	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
+	title: { type: DataTypes.STRING },
 	description: {
 		type: DataTypes.JSONB,
 		defaultValue: {
@@ -203,19 +205,22 @@ const Achievement = sequelize.define('achievement', {
 		},
 		comment: 'Localized achievement descriptions',
 	},
-	levels: {
+	reward: {
 		type: DataTypes.JSONB,
-		defaultValue: [{ level: 0, from: 0, to: 0, reward: 0 }],
-		comment:
-			'Array of level configurations with from, to, and reward values',
+		defaultValue: [{ type: 'stardust', amount: 0 }],
+		comment: 'Array of configurations with type and amount values',
 	},
+	condition: {
+		type: DataTypes.STRING,
+		defaultValue: '',
+		comment: 'Condition for the achievement to be completed',
+	},
+	icon: { type: DataTypes.STRING(3), defaultValue: '' },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 
 const UserAchievement = sequelize.define('userachievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	level: { type: DataTypes.INTEGER, defaultValue: 0 },
-	currentValue: { type: DataTypes.INTEGER, defaultValue: 0 },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
