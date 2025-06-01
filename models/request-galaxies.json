@@ -1,13 +1,8 @@
 {"galaxies": [
 		{
-			"stars": 1000,
-			"owner": "VERSE",
-			"galaxyData": {
-				"starsMin": 1000,
-				"starsCurrent": 1000,
-				"price": 1000,
-				"starsMax": 10000
-			},
+			"starMin": 1000,
+			"starCurrent": 1000,
+			"price": 1000,
 			"galaxySetting": {
 				"seed": "abc123",
 				"type": "spiral",
@@ -31,14 +26,9 @@
 			}
 		},
 		{
-			"stars": 59485,
-			"owner": "VERSE",
-			"galaxyData": {
-				"starsMin": 100,
-				"starsCurrent": 1000,
-				"price": 1000,
-				"starsMax": 10000
-			},
+			"starMin": 100,
+			"starCurrent": 1000,
+			"price": 1000,
 			"galaxySetting": {
 				"seed": "abc123430403493094943",
 				"type": "spiral",

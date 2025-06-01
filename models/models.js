@@ -21,8 +21,16 @@ const UserState = sequelize.define(
 	'userstate',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		stars: { type: DataTypes.INTEGER, defaultValue: 0 },
-		state: { type: DataTypes.JSONB },
+		//stars: { type: DataTypes.INTEGER, defaultValue: 0 },
+		state: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				totalStars: 100,
+				stardustCount: 0,
+				darkMatterCount: 0,
+				ownedGalaxiesCount: 1,
+			},
+		},
 		taskProgress: {
 			type: DataTypes.JSONB,
 			defaultValue: {
@@ -66,7 +74,14 @@ const UserState = sequelize.define(
 			comment: 'Timestamp of the last streak update',
 		},
 	},
-	{ indexes: [{ fields: ['stars'] }] }
+	{
+		indexes: [
+			{
+				fields: [sequelize.literal("((state->'totalStars')::integer)")],
+				name: 'userstate_totalstars_idx',
+			},
+		],
+	}
 );
 
 const Log = sequelize.define('log', {
@@ -96,13 +111,10 @@ const Token = sequelize.define(
 
 const Galaxy = sequelize.define('galaxy', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	owner: {
-		type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
-		defaultValue: 'VERSE',
-	},
-	stars: { type: DataTypes.INTEGER, defaultValue: 100 },
-	galaxyData: { type: DataTypes.JSONB },
-	galaxySetting: { type: DataTypes.JSON },
+	starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
+	starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
+	price: { type: DataTypes.INTEGER, defaultValue: 100 },
+	galaxySetting: { type: DataTypes.JSONB },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 
@@ -223,6 +235,21 @@ const UserAchievement = sequelize.define('userachievement', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
 	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+	progress: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
+		comment: 'Current progress value towards completion',
+	},
+	progressHistory: {
+		type: DataTypes.JSONB,
+		defaultValue: [],
+		comment: 'History of progress updates with timestamps',
+	},
+	lastProgressUpdate: {
+		type: DataTypes.DATE,
+		defaultValue: DataTypes.NOW,
+		comment: 'Timestamp of the last progress update',
+	},
 });
 
 const UserEventState = sequelize.define('usereventstate', {

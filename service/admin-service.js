@@ -28,7 +28,7 @@ class AdminService {
 						);
 						createdGalaxies.push(newGalaxy);
 					} catch (err) {
-						console.error(
+						throw ApiError.Internal(
 							`Failed to create galaxy: ${err.message}`
 						);
 						// Continue with other galaxies even if one fails

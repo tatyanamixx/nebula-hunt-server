@@ -58,20 +58,29 @@ class UserStateService {
 	}
 
 	async getUserState(userId) {
-		const userState = await UserState.findOne({
-			where: { userId: userId },
-		});
+		const t = await sequelize.transaction();
 
-		if (userState) {
-			// Update streak on login
-			await this.updateStreak(userState);
-			await userState.save();
+		try {
+			let userState = await UserState.findOne({
+				where: { userId: userId },
+				transaction: t,
+			});
 
-			// Update upgrade tree on each state request
-			await this.updateUpgradeTreeOnLogin(userId);
+			if (userState) {
+				// Update streak on login
+				await this.updateStreak(userState);
+				await userState.save({ transaction: t });
+
+				// Update upgrade tree on each state request
+				userState = await this.updateUpgradeTreeOnLogin(userId, t);
+			}
+
+			await t.commit();
+			return userState;
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(`Failed to get user state: ${err.message}`);
 		}
-
-		return userState;
 	}
 
 	async createUserState(userId, userState) {
@@ -206,7 +215,7 @@ class UserStateService {
 			userState.upgradeTree = upgradeTree;
 			await userState.save({ transaction });
 
-			return upgradeTree;
+			return userState;
 		} catch (err) {
 			throw ApiError.Internal(
 				`Failed to update upgrade tree: ${err.message}`
@@ -301,7 +310,8 @@ class UserStateService {
 					userId,
 					'UPDATE',
 					`The user ${userId} updated a state ${string}`,
-					userState.stars
+					userState.stars,
+					t
 				);
 
 				await t.commit();
@@ -343,9 +353,11 @@ class UserStateService {
 	async leaderboard() {
 		const userlist = await UserState.findAll({
 			include: User,
-			order: [['stars', 'DESC']],
+			order: [
+				[sequelize.literal("(state->>'totalStars')::integer"), 'DESC'],
+			],
 			limit: 100,
-			attributes: ['stars', 'state', 'currentStreak', 'maxStreak'],
+			attributes: ['state', 'currentStreak', 'maxStreak'],
 		});
 		const users = userlist.map((item) => item.toJSON());
 

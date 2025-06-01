@@ -1,16 +1,31 @@
 const jwt = require('jsonwebtoken');
 const { Token } = require('../models/models');
-const { where } = require('sequelize');
+const ApiError = require('../exceptions/api-error');
+const sequelize = require('../db');
 
 class TokenService {
 	generateTokens(payload) {
-		const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-			expiresIn: '5m',
-		});
-		const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-			expiresIn: '7d',
-		});
-		return { accessToken, refreshToken };
+		try {
+			const accessToken = jwt.sign(
+				payload,
+				process.env.JWT_ACCESS_SECRET,
+				{
+					expiresIn: '5m',
+				}
+			);
+			const refreshToken = jwt.sign(
+				payload,
+				process.env.JWT_REFRESH_SECRET,
+				{
+					expiresIn: '7d',
+				}
+			);
+			return { accessToken, refreshToken };
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to generate tokens: ${err.message}`
+			);
+		}
 	}
 
 	validateAccessToken(token) {
@@ -31,29 +46,88 @@ class TokenService {
 		}
 	}
 
-	async saveToken(userId, refreshToken) {
-		const tokenData = await Token.findOne({ where: { userId: userId } });
+	async saveToken(userId, refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
 
-		if (tokenData) {
-			tokenData.refreshToken = refreshToken;
-			return await tokenData.save();
+		try {
+			const tokenData = await Token.findOne({
+				where: { userId: userId },
+				transaction: t,
+			});
+
+			if (tokenData) {
+				tokenData.refreshToken = refreshToken;
+				await tokenData.save({ transaction: t });
+				if (shouldCommit) {
+					await t.commit();
+				}
+				return tokenData;
+			}
+
+			const token = await Token.create(
+				{
+					userId: userId,
+					refreshToken,
+				},
+				{ transaction: t }
+			);
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return token;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to save token: ${err.message}`);
 		}
-		const token = await Token.create({ userId: userId, refreshToken });
-		return token;
 	}
 
-	async removeToken(refreshToken) {
-		const tokenData = await Token.deleteOne({
-			where: { refreshToken: refreshToken },
-		});
-		return tokenData;
+	async removeToken(refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
+
+		try {
+			const tokenData = await Token.destroy({
+				where: { refreshToken: refreshToken },
+				transaction: t,
+			});
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return tokenData;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to remove token: ${err.message}`);
+		}
 	}
 
-	async findToken(refreshToken) {
-		const tokenData = await Token.findOne({
-			where: { refreshToken: refreshToken },
-		});
-		return tokenData;
+	async findToken(refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
+
+		try {
+			const tokenData = await Token.findOne({
+				where: { refreshToken: refreshToken },
+				transaction: t,
+			});
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return tokenData;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to find token: ${err.message}`);
+		}
 	}
 }
+
 module.exports = new TokenService();

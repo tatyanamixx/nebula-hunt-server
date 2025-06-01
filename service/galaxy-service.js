@@ -6,25 +6,34 @@ const sequelize = require('../db');
 
 class GalaxyService {
 	async getUserGalaxies(userId) {
+		const t = await sequelize.transaction();
+
 		try {
 			const galaxiesRaw = await Galaxy.findAll({
 				where: { userId: userId },
-				order: [['stars', 'DESC']],
+				order: [['starCurrent', 'DESC']],
+				transaction: t,
 			});
 
-			if (!galaxiesRaw) return [];
+			if (!galaxiesRaw) {
+				await t.commit();
+				return [];
+			}
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				userId,
 				'GET',
-				`User id: ${userId} requested their galaxies`,
-				0
+				`User ${userId} requested galaxy list`,
+				0,
+				t
 			);
 
+			await t.commit();
 			return galaxies;
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to get user galaxies: ${err.message}`
 			);
@@ -32,9 +41,15 @@ class GalaxyService {
 	}
 
 	async getShowGalaxies(tmaId) {
+		const t = await sequelize.transaction();
+
 		try {
-			const user = await User.findOne({ where: { tmaId: tmaId } });
+			const user = await User.findOne({
+				where: { tmaId: tmaId },
+				transaction: t,
+			});
 			if (!user) {
+				await t.rollback();
 				throw ApiError.BadRequest('User not found');
 			}
 
@@ -42,11 +57,13 @@ class GalaxyService {
 			const count = await Galaxy.count({
 				where: {
 					userId: { [Op.ne]: user.id },
-					active: true, // Add an active flag if needed
+					active: true,
 				},
+				transaction: t,
 			});
 
 			if (count === 0) {
+				await t.commit();
 				return {
 					info: { count: 0, page: 0 },
 					galaxies: [],
@@ -65,26 +82,29 @@ class GalaxyService {
 					userId: { [Op.ne]: user.id },
 					active: true,
 				},
-				order: sequelize.random(), // Use true random ordering
+				order: sequelize.random(),
 				offset: offset,
 				limit: itemsPerPage,
 				include: [
 					{
 						model: User,
-						attributes: ['tmaUsername'],
+						attributes: ['tmaUsername', 'role', 'tmaId'],
 					},
 				],
+				transaction: t,
 			});
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				user.id,
 				'GET',
-				`User tmaId: ${tmaId} requested galaxies for sale`,
-				0
+				`User ${tmaId} requested show galaxies`,
+				0,
+				t
 			);
 
+			await t.commit();
 			return {
 				info: {
 					count,
@@ -95,6 +115,7 @@ class GalaxyService {
 				galaxies,
 			};
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to get show galaxies: ${err.message}`
 			);
@@ -103,22 +124,36 @@ class GalaxyService {
 
 	// one galaxy
 	async getGalaxy(id) {
+		const t = await sequelize.transaction();
+
 		try {
 			const galaxy = await Galaxy.findByPk(id, {
 				include: [
 					{
 						model: User,
-						attributes: ['tmaUsername'],
+						attributes: ['tmaUsername', 'role', 'tmaId'],
 					},
 				],
+				transaction: t,
 			});
 
 			if (!galaxy) {
+				await t.rollback();
 				throw ApiError.BadRequest('Galaxy not found');
 			}
 
+			await loggerService.logservice(
+				galaxy.userId,
+				'GET',
+				`User ${galaxy.userId} requested galaxy ${id}`,
+				0,
+				t
+			);
+
+			await t.commit();
 			return galaxy;
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(`Failed to get galaxy: ${err.message}`);
 		}
 	}
@@ -136,20 +171,21 @@ class GalaxyService {
 			const galaxy = await Galaxy.create(
 				{
 					userId: userId,
-					stars: galaxyData.stars || 100,
-					galaxyData: galaxyData.galaxyData,
-					owner: galaxyData.galaxyData.owner || 'USER',
+					starMin: galaxyData.starMin || 100,
+					starCurrent: galaxyData.starCurrent || 100,
+					price: galaxyData.price || 100,
 					galaxySetting: galaxyData.galaxySetting,
 					active: true,
 				},
 				{ transaction: t }
 			);
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				userId,
 				'CREATE',
-				`Created new galaxy with id: ${galaxy.id}`,
-				galaxy.stars
+				`Galaxy ${galaxy.id} created for user ${userId}`,
+				galaxy.starCurrent,
+				t
 			);
 
 			await t.commit();
@@ -161,7 +197,7 @@ class GalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyStars(id, stars) {
+	async updateGalaxyStars(id, starCurrent) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -176,18 +212,19 @@ class GalaxyService {
 			});
 
 			// Validate stars value
-			if (stars < 0) {
+			if (starCurrent < 0) {
 				throw ApiError.BadRequest('Stars cannot be negative');
 			}
 
-			galaxy.stars = stars;
+			galaxy.starCurrent = starCurrent;
 			await galaxy.save({ transaction: t });
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				galaxy.userId,
 				'UPDATE',
-				`User tmaId:${user.tmaId} updated galaxy stars`,
-				stars
+				`Galaxy ${id} updated for user ${galaxy.userId}`,
+				starCurrent,
+				t
 			);
 
 			await t.commit();
@@ -219,15 +256,15 @@ class GalaxyService {
 			}
 
 			const oldUserId = galaxy.userId;
-			galaxy.owner = 'USER';
 			galaxy.userId = newUserId;
 			await galaxy.save({ transaction: t });
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				oldUserId,
 				'UPDATE',
-				`Galaxy id:${galaxy.id} ownership transferred to tmaId:${newUser.tmaId}`,
-				galaxy.stars
+				`Galaxy ${id} ownership transferred to tmaId:${newUser.tmaId}`,
+				galaxy.starCurrent,
+				t
 			);
 
 			await t.commit();
@@ -249,9 +286,9 @@ class GalaxyService {
 					Galaxy.create(
 						{
 							userId: userId,
-							stars: galaxyData.stars || 100,
-							galaxyData: galaxyData.galaxyData,
-							owner: galaxyData.galaxyData.owner || 'USER',
+							starMin: galaxyData.starMin || 100,
+							starCurrent: galaxyData.starCurrent || 100,
+							price: galaxyData.price || 100,
 							galaxySetting: galaxyData.galaxySetting,
 							active: true,
 						},
@@ -260,11 +297,12 @@ class GalaxyService {
 				)
 			);
 
-			await loggerService.logging(
+			await loggerService.logservice(
 				userId,
 				'CREATE',
 				`Batch created ${createdGalaxies.length} galaxies`,
-				0
+				0,
+				t
 			);
 
 			await t.commit();

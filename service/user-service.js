@@ -38,10 +38,12 @@ class UserService {
 		try {
 			// Validate input data
 			if (!tmaId || !tmaUsername) {
+				await t.rollback();
 				throw ApiError.BadRequest('Missing required user data');
 			}
 
 			if (!reqUserState || typeof reqUserState.stars !== 'number') {
+				await t.rollback();
 				throw ApiError.BadRequest('Invalid user state data');
 			}
 
@@ -71,7 +73,7 @@ class UserService {
 			);
 
 			// Initialize user events
-			await eventService.initializeUserEvents(userDto.id);
+			await eventService.initializeUserEvents(userDto.id, t);
 
 			// Create galaxies
 			const userGalaxies = [];
@@ -104,8 +106,8 @@ class UserService {
 							);
 						}
 					} catch (err) {
-						console.error(
-							`Failed to create galaxy: ${err.message}`
+						throw ApiError.Internal(
+							`Registration failed: ${err.message}`
 						);
 						// Continue with other galaxies even if one fails
 					}
@@ -121,7 +123,8 @@ class UserService {
 				userDto.id,
 				'REGISTRATION',
 				`User ${userDto.tmaId}:${tmaUsername} registered`,
-				0
+				0,
+				t
 			);
 
 			await t.commit();
@@ -148,10 +151,12 @@ class UserService {
 			});
 
 			if (!user) {
+				await t.rollback();
 				throw ApiError.BadRequest('User not found');
 			}
 
 			if (user.blocked) {
+				await t.rollback();
 				throw ApiError.BadRequest('User is blocked');
 			}
 
@@ -161,7 +166,7 @@ class UserService {
 			const [userState, userGalaxies, eventState] = await Promise.all([
 				stateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
-				eventService.checkAndTriggerEvents(userDto.id),
+				eventService.checkAndTriggerEvents(userDto.id, t),
 			]);
 
 			// Generate and save new tokens
@@ -172,7 +177,8 @@ class UserService {
 				userDto.id,
 				'LOGIN',
 				`User ${userDto.tmaId} logged in`,
-				0
+				0,
+				t
 			);
 
 			await t.commit();
@@ -191,29 +197,38 @@ class UserService {
 	}
 
 	async logout(refreshToken) {
+		const t = await sequelize.transaction();
+
 		try {
-			const token = await tokenService.removeToken(refreshToken);
+			const token = await tokenService.removeToken(refreshToken, t);
+			await t.commit();
 			return token;
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(`Logout failed: ${err.message}`);
 		}
 	}
 
 	async refresh(refreshToken) {
+		const t = await sequelize.transaction();
+
 		try {
 			if (!refreshToken) {
+				await t.rollback();
 				throw ApiError.UnauthorizedError();
 			}
 
 			const userData = tokenService.validateRefreshToken(refreshToken);
-			const tokenFromDb = await tokenService.findToken(refreshToken);
+			const tokenFromDb = await tokenService.findToken(refreshToken, t);
 
 			if (!userData || !tokenFromDb) {
+				await t.rollback();
 				throw ApiError.UnauthorizedError();
 			}
 
-			const user = await User.findByPk(userData.id);
+			const user = await User.findByPk(userData.id, { transaction: t });
 			if (!user) {
+				await t.rollback();
 				throw ApiError.BadRequest('User not found');
 			}
 
@@ -221,27 +236,33 @@ class UserService {
 
 			// Generate new tokens
 			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(userDto.id, tokens.refreshToken);
+			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
 			await loggerService.logging(
 				userDto.id,
 				'REFRESH',
 				`User ${userDto.tmaId} refreshed token`,
-				0
+				0,
+				t
 			);
 
+			await t.commit();
 			return {
 				...tokens,
 				user: userDto,
 			};
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(`Token refresh failed: ${err.message}`);
 		}
 	}
 
 	async getFriends(userId, tmaId) {
+		const t = await sequelize.transaction();
+
 		try {
 			if (!tmaId) {
+				await t.rollback();
 				throw ApiError.BadRequest('TMA ID is required');
 			}
 
@@ -254,17 +275,21 @@ class UserService {
 						attributes: ['stars'],
 					},
 				],
+				transaction: t,
 			});
 
 			await loggerService.logging(
 				userId,
 				'GET',
 				`User ${tmaId} requested friends list`,
-				0
+				0,
+				t
 			);
 
+			await t.commit();
 			return friends;
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(`Failed to get friends: ${err.message}`);
 		}
 	}
