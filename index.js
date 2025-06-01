@@ -5,6 +5,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const pino = require('pino');
+const pinoHttp = require('pino-http');
+const config = require('./config/logger.config');
 //const { swaggerUi, specs } = require('./swagger');
 
 const sequelize = require('./db');
@@ -17,6 +20,12 @@ const errorMiddleware = require('./middlewares/error-middleware');
 const PORT = process.env.PORT || 5000;
 
 const app = express();
+
+// Initialize request logger with base Pino instance
+const httpLogger = pinoHttp({
+	logger: pino(config),
+});
+app.use(httpLogger);
 
 app.use(
 	cors({
@@ -37,9 +46,12 @@ const start = async () => {
 		await sequelize.authenticate();
 		await sequelize.sync();
 
-		app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+		loggerService.info(`Server started on port ${PORT}`);
+		app.listen(PORT, () =>
+			loggerService.info(`Server started on port ${PORT}`)
+		);
 	} catch (e) {
-		console.log(e);
+		loggerService.error('Failed to start server:', { error: e.message });
 	}
 };
 

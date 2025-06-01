@@ -118,14 +118,14 @@ class UserService {
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
-			// Log registration
-			await loggerService.logging(
-				userDto.id,
-				'REGISTRATION',
-				`User ${userDto.tmaId}:${tmaUsername} registered`,
-				0,
-				t
-			);
+			// // Log registration
+			// await loggerService.logging(
+			// 	userDto.id,
+			// 	'REGISTRATION',
+			// 	`User ${userDto.tmaId}:${tmaUsername} registered`,
+			// 	0,
+			// 	t
+			// );
 
 			await t.commit();
 
@@ -173,13 +173,13 @@ class UserService {
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
-			await loggerService.logging(
-				userDto.id,
-				'LOGIN',
-				`User ${userDto.tmaId} logged in`,
-				0,
-				t
-			);
+			// await loggerService.logging(
+			// 	userDto.id,
+			// 	'LOGIN',
+			// 	`User ${userDto.tmaId} logged in`,
+			// 	0,
+			// 	t
+			// );
 
 			await t.commit();
 
@@ -238,13 +238,13 @@ class UserService {
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
-			await loggerService.logging(
-				userDto.id,
-				'REFRESH',
-				`User ${userDto.tmaId} refreshed token`,
-				0,
-				t
-			);
+			// await loggerService.logging(
+			// 	userDto.id,
+			// 	'REFRESH',
+			// 	`User ${userDto.tmaId} refreshed token`,
+			// 	0,
+			// 	t
+			// );
 
 			await t.commit();
 			return {
@@ -278,13 +278,13 @@ class UserService {
 				transaction: t,
 			});
 
-			await loggerService.logging(
-				userId,
-				'GET',
-				`User ${tmaId} requested friends list`,
-				0,
-				t
-			);
+			// await loggerService.logging(
+			// 	userId,
+			// 	'GET',
+			// 	`User ${tmaId} requested friends list`,
+			// 	0,
+			// 	t
+			// );
 
 			await t.commit();
 			return friends;

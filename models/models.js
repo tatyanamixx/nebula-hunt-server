@@ -84,21 +84,6 @@ const UserState = sequelize.define(
 	}
 );
 
-const Log = sequelize.define('log', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	operation: {
-		type: DataTypes.ENUM(
-			'REGISTRATION',
-			'LOGIN',
-			'REFRESH',
-			'UPDATE',
-			'GET'
-		),
-		allowNull: false,
-	},
-	description: { type: DataTypes.STRING },
-	amount: { type: DataTypes.INTEGER, defaultValue: 0 },
-});
 
 const Token = sequelize.define(
 	'token',
@@ -339,9 +324,6 @@ UserState.belongsTo(User);
 User.hasOne(Token);
 Token.belongsTo(User);
 
-User.hasMany(Log);
-Log.belongsTo(User);
-
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
@@ -371,7 +353,6 @@ module.exports = {
 	User,
 	UserState,
 	Token,
-	Log,
 	Galaxy,
 	UpgradeNode,
 	UserUpgradeNode,

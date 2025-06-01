@@ -1,34 +1,26 @@
-const { Log } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
+const pino = require('pino');
+const config = require('../config/logger.config');
+
+// Configure pino logger
+const logger = pino(config);
 
 class LoggerService {
-	async logservice(userId, opCode, opDesc, opAmount, transaction = null) {
-		const shouldCommit = !transaction;
-		const t = transaction || (await sequelize.transaction());
+	// Convenience methods for different log levels
+	info(message, context = {}) {
+		logger.info(context, message);
+	}
 
-		try {
-			const logging = await Log.create(
-				{
-					userId: userId,
-					operation: opCode,
-					description: opDesc,
-					amount: opAmount,
-				},
-				{ transaction: t }
-			);
+	error(message, context = {}) {
+		logger.error(context, message);
+	}
 
-			if (shouldCommit) {
-				await t.commit();
-			}
+	warn(message, context = {}) {
+		logger.warn(context, message);
+	}
 
-			return logging;
-		} catch (err) {
-			if (shouldCommit) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(`Failed to create log: ${err.message}`);
-		}
+	debug(message, context = {}) {
+		logger.debug(context, message);
 	}
 }
 
