@@ -5,7 +5,9 @@ const ApiError = require('../exceptions/api-error');
 class UpgradeController {
 	async getUserUpgradeTree(req, res, next) {
 		try {
-			const userId = req.user.id;
+			console.log('getUserUpgradeTree:', req.userToken.id);
+			const userId = req.userToken.id;
+			console.log('userId:', userId);
 			const tree = await stateService.getUserUpgradeTree(userId);
 			return res.json(tree);
 		} catch (e) {

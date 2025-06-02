@@ -5,14 +5,9 @@ const ApiError = require('../exceptions/api-error');
 class UserController {
 	async registration(req, res, next) {
 		try {
-			const errors = validationResult(req);
-			if (!errors.isEmpty()) {
-				return next(
-					ApiError.BadRequest('Validation error', errors.array())
-				);
-			}
-			const { tmaId, tmaUsername, referral, userState, galaxies } =
-				req.body;
+			const tmaId = req.tmaInitdata.id;
+			const tmaUsername = req.tmaInitdata.username;
+			const { referral, userState, galaxies } = req.body;
 			const userData = await userService.registration(
 				tmaId,
 				tmaUsername,
@@ -32,7 +27,7 @@ class UserController {
 
 	async login(req, res, next) {
 		try {
-			const { tmaId } = req.body;
+			const tmaId = req.tmaInitdata.id;
 			const userData = await userService.login(tmaId);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -71,9 +66,9 @@ class UserController {
 
 	async getFriends(req, res, next) {
 		try {
-			const userId = req.user.id;
-			const { tmaId } = req.params;
-			const friends = await userService.getFriends(userId, tmaId);
+			const userId = req.tmaInitdata.id;
+			
+			const friends = await userService.getFriends(userId);
 			return res.json(friends);
 		} catch (e) {
 			next(e);

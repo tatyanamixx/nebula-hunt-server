@@ -9,6 +9,7 @@ module.exports = function (req, res, next) {
 				ApiError.UnauthorizedError('JWT: not found headers auth ')
 			);
 		}
+		
 		const splitAuthHeader = authorizationHeader.split(' ');
 		const index = splitAuthHeader.indexOf('Bearer');
 		if (index < 0) {
@@ -16,6 +17,7 @@ module.exports = function (req, res, next) {
 				ApiError.UnauthorizedError('JWT: not found key word Bearer')
 			);
 		}
+		
 		const accessToken = splitAuthHeader[index + 1];
 		if (!accessToken) {
 			return next(
@@ -28,6 +30,7 @@ module.exports = function (req, res, next) {
 			return next(ApiError.UnauthorizedError('JWT: validator error'));
 		}
 		req.userToken = userData;
+		console.log('userToken', userData);
 		next();
 	} catch (err) {
 		return next(ApiError.UnauthorizedError('JWT: unauthorization'));

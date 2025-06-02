@@ -22,13 +22,7 @@ class GalaxyService {
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-			await loggerService.logservice(
-				userId,
-				'GET',
-				`User ${userId} requested galaxy list`,
-				0,
-				t
-			);
+			
 
 			await t.commit();
 			return galaxies;
@@ -96,13 +90,6 @@ class GalaxyService {
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-			await loggerService.logservice(
-				user.id,
-				'GET',
-				`User ${tmaId} requested show galaxies`,
-				0,
-				t
-			);
 
 			await t.commit();
 			return {
@@ -142,14 +129,6 @@ class GalaxyService {
 				throw ApiError.BadRequest('Galaxy not found');
 			}
 
-			await loggerService.logservice(
-				galaxy.userId,
-				'GET',
-				`User ${galaxy.userId} requested galaxy ${id}`,
-				0,
-				t
-			);
-
 			await t.commit();
 			return galaxy;
 		} catch (err) {
@@ -180,14 +159,7 @@ class GalaxyService {
 				{ transaction: t }
 			);
 
-			await loggerService.logservice(
-				userId,
-				'CREATE',
-				`Galaxy ${galaxy.id} created for user ${userId}`,
-				galaxy.starCurrent,
-				t
-			);
-
+			
 			await t.commit();
 			return galaxy;
 		} catch (err) {
@@ -219,13 +191,6 @@ class GalaxyService {
 			galaxy.starCurrent = starCurrent;
 			await galaxy.save({ transaction: t });
 
-			await loggerService.logservice(
-				galaxy.userId,
-				'UPDATE',
-				`Galaxy ${id} updated for user ${galaxy.userId}`,
-				starCurrent,
-				t
-			);
 
 			await t.commit();
 			return galaxy;
@@ -259,13 +224,7 @@ class GalaxyService {
 			galaxy.userId = newUserId;
 			await galaxy.save({ transaction: t });
 
-			await loggerService.logservice(
-				oldUserId,
-				'UPDATE',
-				`Galaxy ${id} ownership transferred to tmaId:${newUser.tmaId}`,
-				galaxy.starCurrent,
-				t
-			);
+		
 
 			await t.commit();
 			return galaxy;
@@ -297,13 +256,7 @@ class GalaxyService {
 				)
 			);
 
-			await loggerService.logservice(
-				userId,
-				'CREATE',
-				`Batch created ${createdGalaxies.length} galaxies`,
-				0,
-				t
-			);
+		
 
 			await t.commit();
 			return createdGalaxies;

@@ -7,21 +7,31 @@ const User = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		tmaId: { type: DataTypes.BIGINT, allowNull: false, unique: true },
 		tmaUsername: { type: DataTypes.STRING },
-		referral: { type: DataTypes.BIGINT },
+		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
 		role: {
 			type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
 			defaultValue: 'USER',
 		},
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
 	},
-	{ indexes: [{ unique: true, fields: ['tmaId'] }, { fields: ['referral'] }] }
+	{
+		indexes: [
+			{
+				fields: ['tmaId'],
+				name: 'user_tmaId_idx',
+			},
+			{
+				fields: ['referral'],
+				name: 'user_referral_idx',
+			},
+		],
+	}
 );
 
 const UserState = sequelize.define(
 	'userstate',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		//stars: { type: DataTypes.INTEGER, defaultValue: 0 },
 		state: {
 			type: DataTypes.JSONB,
 			defaultValue: {
@@ -29,6 +39,7 @@ const UserState = sequelize.define(
 				stardustCount: 0,
 				darkMatterCount: 0,
 				ownedGalaxiesCount: 1,
+				ownedNodesCount: 0,
 			},
 		},
 		taskProgress: {
@@ -48,7 +59,7 @@ const UserState = sequelize.define(
 				nodeStates: {},
 				treeStructure: {},
 				totalProgress: 0,
-				lastNodeUpdate: null,
+				lastNodeUpdate: DataTypes.DATE,
 			},
 			comment: 'User-specific upgrade tree structure and progress',
 		},
@@ -83,22 +94,6 @@ const UserState = sequelize.define(
 		],
 	}
 );
-
-const Log = sequelize.define('log', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	operation: {
-		type: DataTypes.ENUM(
-			'REGISTRATION',
-			'LOGIN',
-			'REFRESH',
-			'UPDATE',
-			'GET'
-		),
-		allowNull: false,
-	},
-	description: { type: DataTypes.STRING },
-	amount: { type: DataTypes.INTEGER, defaultValue: 0 },
-});
 
 const Token = sequelize.define(
 	'token',
@@ -339,9 +334,6 @@ UserState.belongsTo(User);
 User.hasOne(Token);
 Token.belongsTo(User);
 
-User.hasMany(Log);
-Log.belongsTo(User);
-
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
@@ -371,7 +363,6 @@ module.exports = {
 	User,
 	UserState,
 	Token,
-	Log,
 	Galaxy,
 	UpgradeNode,
 	UserUpgradeNode,

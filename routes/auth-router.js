@@ -28,7 +28,7 @@ router.get(
 	userController.refresh
 );
 router.get(
-	'/friends/:tmaId',
+	'/friends',
 	[tmaMiddleware, rateLimitMiddleware(60, 60)],
 	userController.getFriends
 );

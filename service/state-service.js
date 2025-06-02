@@ -83,52 +83,31 @@ class UserStateService {
 		}
 	}
 
-	async createUserState(userId, userState) {
-		const t = await sequelize.transaction();
+	async createUserState(userId, userState, transaction) {
+		// Create new state for new user
 
 		try {
-			const stateData = await UserState.findOne({
+			await this.updateStreak(userState);
+			// Create new state for new user
+			const stateNew = await UserState.findOrCreate({
 				where: { userId: userId },
-				transaction: t,
+				defaults: {
+					userId: userId,
+					state: userState.state,
+					lastLoginDate: userState.lastLoginDate,
+					currentStreak: userState.currentStreak,
+					maxStreak: userState.maxStreak,
+					streakUpdatedAt: userState.streakUpdatedAt,
+				},
+				transaction: transaction,
 			});
 
-			if (stateData) {
-				stateData.stars = userState.stars;
-				stateData.state = userState.state;
-				await this.updateStreak(stateData);
-				await stateData.save({ transaction: t });
-				// Update upgrade tree on login
-				await this.updateUpgradeTreeOnLogin(userId, t);
-				await t.commit();
-				return stateData;
-			}
-
-			// Create new state for new user
-			const stateNew = await UserState.create(
-				{
-					userId: userId,
-					stars: userState.stars,
-					state: userState.state,
-					upgradeTree: {
-						activeNodes: [],
-						completedNodes: [],
-						nodeStates: {},
-						treeStructure: {},
-						totalProgress: 0,
-						lastNodeUpdate: new Date(),
-					},
-				},
-				{ transaction: t }
-			);
-
-			await this.updateStreak(stateNew);
+			
 			// Initialize upgrade tree for new user
-			await this.initializeUserUpgradeTree(userId, t);
+			await this.initializeUserUpgradeTree(userId, transaction);
 
-			await t.commit();
 			return stateNew;
 		} catch (err) {
-			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to create/update user state: ${err.message}`
 			);

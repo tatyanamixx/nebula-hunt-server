@@ -10,6 +10,7 @@ class UpgradeService {
 		try {
 			const createdNodes = [];
 			for (const node of nodes) {
+				console.log('node', node);
 				// Validate node data
 				if (!node.id || !node.name || !node.description) {
 					throw ApiError.BadRequest(
@@ -24,9 +25,9 @@ class UpgradeService {
 					);
 				}
 
-				const newNode = await UpgradeNode.create(
-					{
-						id: node.id,
+				const newNode = await UpgradeNode.findOrCreate({
+					where: { id: node.id },
+					defaults: {
 						name: node.name,
 						description: {
 							en: node.description.en,
@@ -48,8 +49,8 @@ class UpgradeService {
 						children: node.children || [],
 						weight: node.weight || 1,
 					},
-					{ transaction: t }
-				);
+					transaction: t,
+				});
 
 				createdNodes.push(newNode);
 			}
@@ -65,6 +66,7 @@ class UpgradeService {
 	}
 
 	async getAvailableUpgradeNodes(userId) {
+		const t = await sequelize.transaction();
 		try {
 			// Get all user's completed upgrades
 			const completedUpgrades = await UserUpgradeNode.findAll({
@@ -75,6 +77,7 @@ class UpgradeService {
 						attributes: ['id', 'name', 'children'],
 					},
 				],
+				transaction: t,
 			});
 
 			// Collect all potentially unlocked node IDs
@@ -123,28 +126,82 @@ class UpgradeService {
 					'children',
 					'weight',
 				],
+				transaction: t,
 			});
 
+			await t.commit();
 			return availableNodes;
 		} catch (err) {
+			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to get available upgrade nodes: ${err.message}`
 			);
 		}
 	}
 
-	async activateUserUpgradeNodes(userId) {
+	async activateUserUpgradeNodes(userId, transaction) {
 		try {
-			const availableNodes = await this.getAvailableUpgradeNodes(userId);
+			// Get all available nodes from UpgradeNode
+			const availableNodes = await UpgradeNode.findAll({
+				where: {
+					active: true,
+					[Op.or]: [
+						{ conditions: {} }, // root nodes
+						{
+							id: {
+								[Op.in]: sequelize.literal(`(
+									SELECT UNNEST(children) 
+									FROM "upgradenodes" un 
+									JOIN "userupgradenodes" uun ON un.id = uun."upgradenodeId" 
+									WHERE uun."userId" = ${userId} 
+									AND uun.completed = true
+								)`),
+							},
+						},
+					],
+					[Op.and]: [
+						{
+							[Op.or]: [
+								{ delayedUntil: null },
+								{ delayedUntil: { [Op.lte]: new Date() } },
+							],
+						},
+					],
+				},
+				attributes: [
+					'id',
+					'name',
+					'description',
+					'maxLevel',
+					'basePrice',
+					'effectPerLevel',
+					'priceMultiplier',
+					'currency',
+					'category',
+					'icon',
+					'stability',
+					'instability',
+					'modifiers',
+					'conditions',
+					'delayedUntil',
+					'children',
+					'weight',
+				],
+				transaction,
+			});
+
+			// Get user's existing nodes
 			const userNodesRaw = await UserUpgradeNode.findAll({
 				where: { userId },
+				transaction,
 			});
 
 			const userNodes = userNodesRaw.map((item) => item.toJSON());
 			const existingNodeIds = new Set(
-				userNodes.map((un) => un.upgradeNodeId)
+				userNodes.map((un) => un.upgradenodeId)
 			);
 
+			// Filter out nodes that user already has
 			const newNodes = availableNodes.filter(
 				(node) => !existingNodeIds.has(node.id)
 			);
@@ -152,13 +209,20 @@ class UpgradeService {
 			if (newNodes.length > 0) {
 				const newUserNodes = newNodes.map((node) => ({
 					userId,
-					upgradeNodeId: node.id,
-					reward: 0,
+					upgradenodeId: node.id,
+					stability: 0,
+					instability: 0,
 					completed: false,
+					progress: 0,
+					targetProgress: node.conditions?.targetProgress || 100,
+					progressHistory: [],
+					lastProgressUpdate: new Date(),
 				}));
-				await UserUpgradeNode.bulkCreate(newUserNodes);
+
+				await UserUpgradeNode.bulkCreate(newUserNodes, { transaction });
 			}
 
+			// Get updated user nodes with all information
 			const userNodesNew = await UserUpgradeNode.findAll({
 				where: { userId },
 				include: [
@@ -185,14 +249,18 @@ class UpgradeService {
 						],
 					},
 				],
+				transaction,
 			});
 
+			// Calculate totals
 			const totalStability = await UserUpgradeNode.sum('stability', {
 				where: { userId },
+				transaction,
 			});
 
 			const totalInstability = await UserUpgradeNode.sum('instability', {
 				where: { userId },
+				transaction,
 			});
 
 			return {
@@ -209,6 +277,7 @@ class UpgradeService {
 
 	async getUserUpgradeNodes(userId) {
 		try {
+			const active = await this.activateUserUpgradeNodes(userId);
 			const userNodes = await UserUpgradeNode.findAll({
 				where: { userId },
 				include: [
@@ -270,14 +339,14 @@ class UpgradeService {
 			}
 
 			let userNode = await UserUpgradeNode.findOne({
-				where: { userId, upgradeNodeId: nodeId },
+				where: { userId, upgradenodeId: nodeId },
 			});
 
 			if (!userNode) {
 				userNode = await UserUpgradeNode.create(
 					{
 						userId,
-						upgradeNodeId: nodeId,
+						upgradenodeId: nodeId,
 						stability: node.stability,
 						instability: node.instability,
 						completed: true,
@@ -306,7 +375,7 @@ class UpgradeService {
 
 		try {
 			const userNode = await UserUpgradeNode.findOne({
-				where: { userId, upgradeNodeId: nodeId },
+				where: { userId, upgradenodeId: nodeId },
 				include: [
 					{
 						model: UpgradeNode,
@@ -401,13 +470,13 @@ class UpgradeService {
 			const existingUserNodes = await UserUpgradeNode.findAll({
 				where: {
 					userId,
-					upgradeNodeId: childNodes.map((node) => node.id),
+					upgradenodeId: childNodes.map((node) => node.id),
 				},
 				transaction,
 			});
 
 			const existingNodeIds = new Set(
-				existingUserNodes.map((un) => un.upgradeNodeId)
+				existingUserNodes.map((un) => un.upgradenodeId)
 			);
 			const newNodes = childNodes.filter(
 				(node) => !existingNodeIds.has(node.id)
@@ -416,7 +485,7 @@ class UpgradeService {
 			if (newNodes.length > 0) {
 				const newUserNodes = newNodes.map((node) => ({
 					userId,
-					upgradeNodeId: node.id,
+					upgradenodeId: node.id,
 					stability: 0,
 					instability: 0,
 					completed: false,
@@ -440,7 +509,7 @@ class UpgradeService {
 	async getUpgradeProgress(userId, nodeId) {
 		try {
 			const userNode = await UserUpgradeNode.findOne({
-				where: { userId, upgradeNodeId: nodeId },
+				where: { userId, upgradenodeId: nodeId },
 				include: [
 					{
 						model: UpgradeNode,
@@ -468,7 +537,7 @@ class UpgradeService {
 			}
 
 			return {
-				nodeId: userNode.upgradeNodeId,
+				nodeId: userNode.upgradenode.id,
 				nodeName: userNode.upgradenode.name,
 				description: userNode.upgradenode.description,
 				progress: userNode.progress,
@@ -506,7 +575,7 @@ class UpgradeService {
 			});
 
 			const progress = userNodes.map((node) => ({
-				nodeId: node.upgradeNodeId,
+				nodeId: node.upgradenode.id,
 				nodeName: node.upgradenode.name,
 				description: node.upgradenode.description,
 				progress: node.progress,
@@ -544,6 +613,94 @@ class UpgradeService {
 		} catch (err) {
 			throw ApiError.Internal(
 				`Failed to get user upgrade progress: ${err.message}`
+			);
+		}
+	}
+
+	async getRootUpgradeNodes(transaction) {
+		try {
+			// Get only root nodes from UpgradeNode table
+			const rootNodes = await UpgradeNode.findAll({
+				where: {
+					active: true,
+					conditions: {}, // Only nodes without conditions
+					[Op.or]: [
+						{ delayedUntil: null },
+						{ delayedUntil: { [Op.lte]: new Date() } },
+					],
+				},
+				attributes: [
+					'id',
+					'name',
+					'description',
+					'maxLevel',
+					'basePrice',
+					'effectPerLevel',
+					'priceMultiplier',
+					'currency',
+					'category',
+					'icon',
+					'stability',
+					'instability',
+					'modifiers',
+					'conditions',
+					'delayedUntil',
+					'children',
+					'weight',
+				],
+				transaction,
+			});
+
+			return rootNodes;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to get root upgrade nodes: ${err.message}`
+			);
+		}
+	}
+
+	async initializeUserUpgradeTree(userId, transaction) {
+		try {
+			// Get root nodes directly from UpgradeNode table
+			const rootNodes = await this.getRootUpgradeNodes(transaction);
+
+			// Create user nodes for root nodes
+			const userNodes = rootNodes.map((node) => ({
+				userId,
+				upgradenodeId: node.id,
+				stability: 0,
+				instability: 0,
+				completed: false,
+				progress: 0,
+				targetProgress: node.conditions?.targetProgress || 100,
+				progressHistory: [],
+				lastProgressUpdate: new Date(),
+			}));
+
+			// Bulk create user nodes
+			await UserUpgradeNode.bulkCreate(userNodes, { transaction });
+
+			return {
+				initializedNodes: rootNodes.map((node) => ({
+					nodeId: node.id,
+					name: node.name,
+					description: node.description,
+					category: node.category,
+					basePrice: node.basePrice,
+					currency: node.currency,
+					maxLevel: node.maxLevel,
+					effectPerLevel: node.effectPerLevel,
+					priceMultiplier: node.priceMultiplier,
+					stability: 0,
+					instability: 0,
+					progress: 0,
+					targetProgress: node.conditions?.targetProgress || 100,
+					completed: false,
+				})),
+			};
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to initialize user upgrade tree: ${err.message}`
 			);
 		}
 	}
