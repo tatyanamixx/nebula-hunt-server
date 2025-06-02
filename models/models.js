@@ -95,6 +95,22 @@ const UserState = sequelize.define(
 	}
 );
 
+const Log = sequelize.define('log', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	operation: {
+		type: DataTypes.ENUM(
+			'REGISTRATION',
+			'LOGIN',
+			'REFRESH',
+			'UPDATE',
+			'GET'
+		),
+		allowNull: false,
+	},
+	description: { type: DataTypes.STRING },
+	amount: { type: DataTypes.INTEGER, defaultValue: 0 },
+});
+
 const Token = sequelize.define(
 	'token',
 	{
