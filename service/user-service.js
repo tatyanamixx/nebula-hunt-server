@@ -137,20 +137,7 @@ class UserService {
 
 			// Generate tokens
 			const tokens = tokenService.generateTokens({ ...userDto });
-<<<<<<< HEAD
 			await tokenService.saveToken(userDto.id, tokens.refreshToken);
-=======
-			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
-
-			// // Log registration
-			// await loggerService.logging(
-			// 	userDto.id,
-			// 	'REGISTRATION',
-			// 	`User ${userDto.tmaId}:${tmaUsername} registered`,
-			// 	0,
-			// 	t
-			// );
->>>>>>> 69e4cec75d22cc3eb163a3a96ba87a1e47825382
 
 			await t.commit();
 
@@ -220,17 +207,6 @@ class UserService {
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
-<<<<<<< HEAD
-=======
-			// await loggerService.logging(
-			// 	userDto.id,
-			// 	'LOGIN',
-			// 	`User ${userDto.tmaId} logged in`,
-			// 	0,
-			// 	t
-			// );
-
->>>>>>> 69e4cec75d22cc3eb163a3a96ba87a1e47825382
 			await t.commit();
 
 			return {
@@ -289,17 +265,6 @@ class UserService {
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
-<<<<<<< HEAD
-=======
-			// await loggerService.logging(
-			// 	userDto.id,
-			// 	'REFRESH',
-			// 	`User ${userDto.tmaId} refreshed token`,
-			// 	0,
-			// 	t
-			// );
-
->>>>>>> 69e4cec75d22cc3eb163a3a96ba87a1e47825382
 			await t.commit();
 			return {
 				...tokens,
@@ -332,17 +297,6 @@ class UserService {
 				transaction: t,
 			});
 
-<<<<<<< HEAD
-=======
-			// await loggerService.logging(
-			// 	userId,
-			// 	'GET',
-			// 	`User ${tmaId} requested friends list`,
-			// 	0,
-			// 	t
-			// );
-
->>>>>>> 69e4cec75d22cc3eb163a3a96ba87a1e47825382
 			await t.commit();
 			return friends;
 		} catch (err) {
