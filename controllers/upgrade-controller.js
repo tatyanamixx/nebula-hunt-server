@@ -5,10 +5,8 @@ const ApiError = require('../exceptions/api-error');
 class UpgradeController {
 	async getUserUpgradeTree(req, res, next) {
 		try {
-			console.log('getUserUpgradeTree:', req.userToken.id);
-			const userId = req.userToken.id;
-			console.log('userId:', userId);
-			const tree = await stateService.getUserUpgradeTree(userId);
+			const id = req.tmaInitdata.id;
+			const tree = await stateService.getUserUpgradeTree(id);
 			return res.json(tree);
 		} catch (e) {
 			next(e);
@@ -17,17 +15,14 @@ class UpgradeController {
 
 	async getUpgradeNodeProgress(req, res, next) {
 		try {
-			const userId = req.user.id;
+			const id = req.tmaInitdata.id;
 			const { nodeId } = req.params;
 
 			if (!nodeId) {
 				throw ApiError.BadRequest('Node ID is required');
 			}
 
-			const progress = await stateService.getUpgradeProgress(
-				userId,
-				nodeId
-			);
+			const progress = await stateService.getUpgradeProgress(id, nodeId);
 			return res.json(progress);
 		} catch (e) {
 			next(e);
@@ -36,7 +31,7 @@ class UpgradeController {
 
 	async updateNodeProgress(req, res, next) {
 		try {
-			const userId = req.user.id;
+			const id = req.tmaInitdata.id;
 			const { nodeId } = req.params;
 			const { progressIncrement } = req.body;
 
@@ -51,7 +46,7 @@ class UpgradeController {
 			}
 
 			const result = await stateService.updateUserUpgradeNode(
-				userId,
+				id,
 				nodeId,
 				progressIncrement
 			);
@@ -63,8 +58,8 @@ class UpgradeController {
 
 	async getUserUpgradeStats(req, res, next) {
 		try {
-			const userId = req.user.id;
-			const stats = await stateService.getUserUpgradeProgress(userId);
+			const id = req.tmaInitdata.id;
+			const stats = await stateService.getUserUpgradeProgress(id);
 			return res.json(stats);
 		} catch (e) {
 			next(e);

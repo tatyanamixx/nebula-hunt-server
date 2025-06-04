@@ -8,8 +8,6 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.post(
 	'/registration',
 	[tmaMiddleware, rateLimitMiddleware(10, 60)],
-	body('tmaId').isNumeric(),
-	body('tmaUsername').isString(),
 	userController.registration
 );
 router.post(

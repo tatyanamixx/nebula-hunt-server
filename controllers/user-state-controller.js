@@ -4,8 +4,8 @@ const ApiError = require('../exceptions/api-error');
 class UserStateController {
 	async getUserState(req, res, next) {
 		try {
-			const userId = req.user.id;
-			const userState = await userStateService.getUserState(userId);
+			const id = req.tmaInitdata.id;
+			const userState = await userStateService.getUserState(id);
 			return res.json(userState);
 		} catch (e) {
 			next(e);
@@ -14,10 +14,10 @@ class UserStateController {
 
 	async updateUserState(req, res, next) {
 		try {
-			const userId = req.user.id;
+			const id = req.tmaInitdata.id;
 			const userState = req.body;
 			const updatedState = await userStateService.updateUserState(
-				userId,
+				id,
 				userState
 			);
 			return res.json(updatedState);

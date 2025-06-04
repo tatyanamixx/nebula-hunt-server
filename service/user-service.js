@@ -22,8 +22,7 @@ class UserService {
 		if (!verse) {
 			verse = await User.create(
 				{
-					tmaId: -1,
-					tmaUsername: 'universe',
+					username: 'universe',
 					role: 'VERSE',
 				},
 				{ transaction }
@@ -33,13 +32,11 @@ class UserService {
 		return verse;
 	}
 
-	async registration(tmaId, tmaUsername, referral, reqUserState, galaxies) {
-		console.log(tmaId, tmaUsername, referral);
-
+	async registration(id, username, referral, reqUserState, galaxies) {
 		const tc = await sequelize.transaction();
 		try {
 			// Validate input data
-			if (!tmaId || !tmaUsername) {
+			if (!id || !username) {
 				await tc.rollback();
 				throw ApiError.BadRequest('Missing required TMA user data');
 			}
@@ -56,10 +53,10 @@ class UserService {
 
 			// Create or update user
 			const [userCreated, created] = await User.findOrCreate({
-				where: { tmaId: tmaId },
+				where: { id: id },
 				defaults: {
-					tmaId: tmaId,
-					tmaUsername: tmaUsername,
+					id: id,
+					username: username,
 					referral: referral,
 				},
 				transaction: tc,
@@ -74,7 +71,7 @@ class UserService {
 		const t = await sequelize.transaction();
 		try {
 			const user = await User.findOne({
-				where: { tmaId: tmaId },
+				where: { id: id },
 				transaction: t,
 			});
 
@@ -155,12 +152,12 @@ class UserService {
 		}
 	}
 
-	async login(tmaId) {
+	async login(id) {
 		const t = await sequelize.transaction();
 
 		try {
 			const user = await User.findOne({
-				where: { tmaId },
+				where: { id },
 				transaction: t,
 			});
 
@@ -184,7 +181,7 @@ class UserService {
 			]);
 
 			// Check if user has upgrade tree initialized
-			const userNodes = await UserUpgradeNode.findOne({
+			const userNodes = await UpgradeNode.findOne({
 				where: { userId: userDto.id },
 				transaction: t,
 			});
@@ -276,18 +273,18 @@ class UserService {
 		}
 	}
 
-	async getFriends(tmaId) {
+	async getFriends(id) {
 		const t = await sequelize.transaction();
 
 		try {
-			if (!tmaId) {
+			if (!id) {
 				await t.rollback();
 				throw ApiError.BadRequest('TMA ID is required');
 			}
 
 			const friends = await User.findAll({
-				where: { referral: tmaId },
-				attributes: ['id', 'tmaId', 'tmaUsername', 'referral'],
+				where: { referral: id },
+				attributes: ['id', 'username', 'referral'],
 				include: [
 					{
 						model: UserState,

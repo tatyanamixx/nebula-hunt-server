@@ -4,8 +4,8 @@ const ApiError = require('../exceptions/api-error');
 class EventController {
 	async getUserEvents(req, res, next) {
 		try {
-			const userId = req.user.id;
-			const events = await eventService.getUserEvents(userId);
+			const id = req.tmaInitdata.id;
+			const events = await eventService.getUserEvents(id);
 			return res.json(events);
 		} catch (e) {
 			next(e);
@@ -14,8 +14,8 @@ class EventController {
 
 	async checkEvents(req, res, next) {
 		try {
-			const userId = req.user.id;
-			const events = await eventService.checkAndTriggerEvents(userId);
+			const id = req.tmaInitdata.id;
+			const events = await eventService.checkAndTriggerEvents(id);
 			return res.json(events);
 		} catch (e) {
 			next(e);

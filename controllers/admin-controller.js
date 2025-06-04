@@ -13,8 +13,8 @@ class AdminController {
 
 	async blockUser(req, res, next) {
 		try {
-			const { userId } = req.params;
-			const user = await adminService.blockUser(userId);
+			const { id } = req.params;
+			const user = await adminService.blockUser(id);
 			return res.json(user);
 		} catch (e) {
 			next(e);
@@ -23,8 +23,8 @@ class AdminController {
 
 	async unblockUser(req, res, next) {
 		try {
-			const { userId } = req.params;
-			const user = await adminService.unblockUser(userId);
+			const { id } = req.params;
+			const user = await adminService.unblockUser(id);
 			return res.json(user);
 		} catch (e) {
 			next(e);

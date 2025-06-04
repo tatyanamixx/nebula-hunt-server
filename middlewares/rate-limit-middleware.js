@@ -16,7 +16,7 @@ module.exports = function (max, windowMinutes) {
 		},
 		standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 		legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-		// The tmaId from the request will be used as the key
-		keyGenerator: (req) => req.tmaId || req.ip,
+		// The id from the request will be used as the key
+		keyGenerator: (req) => req.tmaInitdata.id || req.ip,
 	});
 };

@@ -4,9 +4,8 @@ const { DataTypes } = require('sequelize');
 const User = sequelize.define(
 	'user',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		tmaId: { type: DataTypes.BIGINT, allowNull: false, unique: true },
-		tmaUsername: { type: DataTypes.STRING },
+		id: { type: DataTypes.BIGINT, primaryKey: true, defaultValue: 0 },
+		username: { type: DataTypes.STRING },
 		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
 		role: {
 			type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
@@ -16,10 +15,6 @@ const User = sequelize.define(
 	},
 	{
 		indexes: [
-			{
-				fields: ['tmaId'],
-				name: 'user_tmaId_idx',
-			},
 			{
 				fields: ['referral'],
 				name: 'user_referral_idx',

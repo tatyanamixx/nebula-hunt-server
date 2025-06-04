@@ -22,8 +22,6 @@ class GalaxyService {
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
 
-			
-
 			await t.commit();
 			return galaxies;
 		} catch (err) {
@@ -34,12 +32,12 @@ class GalaxyService {
 		}
 	}
 
-	async getShowGalaxies(tmaId) {
+	async getShowGalaxies(id) {
 		const t = await sequelize.transaction();
 
 		try {
 			const user = await User.findOne({
-				where: { tmaId: tmaId },
+				where: { id: id },
 				transaction: t,
 			});
 			if (!user) {
@@ -82,14 +80,13 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['tmaUsername', 'role', 'tmaId'],
+						attributes: ['username', 'role', 'id'],
 					},
 				],
 				transaction: t,
 			});
 
 			const galaxies = galaxiesRaw.map((item) => item.toJSON());
-
 
 			await t.commit();
 			return {
@@ -118,7 +115,7 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['tmaUsername', 'role', 'tmaId'],
+						attributes: ['username', 'role', 'id'],
 					},
 				],
 				transaction: t,
@@ -159,7 +156,6 @@ class GalaxyService {
 				{ transaction: t }
 			);
 
-			
 			await t.commit();
 			return galaxy;
 		} catch (err) {
@@ -190,7 +186,6 @@ class GalaxyService {
 
 			galaxy.starCurrent = starCurrent;
 			await galaxy.save({ transaction: t });
-
 
 			await t.commit();
 			return galaxy;
@@ -224,8 +219,6 @@ class GalaxyService {
 			galaxy.userId = newUserId;
 			await galaxy.save({ transaction: t });
 
-		
-
 			await t.commit();
 			return galaxy;
 		} catch (err) {
@@ -255,8 +248,6 @@ class GalaxyService {
 					)
 				)
 			);
-
-		
 
 			await t.commit();
 			return createdGalaxies;
