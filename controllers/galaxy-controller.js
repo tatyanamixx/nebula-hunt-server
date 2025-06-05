@@ -16,7 +16,7 @@ class GalaxyController {
 	async getGalaxies(req, res, next) {
 		try {
 			const id = req.initdata.id;
-			const galaxies = await galaxyService.getUserGalaxies(userId);
+			const galaxies = await galaxyService.getUserGalaxies(id);
 			return res.json(galaxies);
 		} catch (e) {
 			next(e);
@@ -26,11 +26,9 @@ class GalaxyController {
 	async updateGalaxy(req, res, next) {
 		try {
 			const id = req.initdata.id;
-			const { galaxyId } = req.params;
 			const galaxyData = req.body;
 			const galaxy = await galaxyService.updateGalaxy(
-				userId,
-				galaxyId,
+				id,
 				galaxyData
 			);
 			return res.json(galaxy);

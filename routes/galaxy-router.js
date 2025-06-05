@@ -16,7 +16,7 @@ router.get(
 	galaxyController.getGalaxies
 );
 router.put(
-	'/:galaxyId',
+	'/',
 	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	galaxyController.updateGalaxy
 );

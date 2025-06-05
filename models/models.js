@@ -104,7 +104,10 @@ const Galaxy = sequelize.define('galaxy', {
 	starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
 	starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
 	price: { type: DataTypes.INTEGER, defaultValue: 100 },
-	galaxySetting: { type: DataTypes.JSONB },
+	seed: { type: DataTypes.STRING, allowNull: false },
+	particleCount: { type: DataTypes.INTEGER, defaultValue: 100 },
+	onParticleCountChange: { type: DataTypes.BOOLEAN, defaultValue: true },
+	galaxyProperties: { type: DataTypes.JSONB },
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 

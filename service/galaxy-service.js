@@ -36,7 +36,7 @@ class GalaxyService {
 		const t = await sequelize.transaction();
 
 		try {
-			const user = await User.findOne({
+			const user = await User.findByPk({
 				where: { id: id },
 				transaction: t,
 			});
@@ -150,7 +150,11 @@ class GalaxyService {
 					starMin: galaxyData.starMin || 100,
 					starCurrent: galaxyData.starCurrent || 100,
 					price: galaxyData.price || 100,
-					galaxySetting: galaxyData.galaxySetting,
+					seed: galaxyData.seed || '',
+					particleCount: galaxyData.particleCount || 100,
+					onParticleCountChange:
+						galaxyData.onParticleCountChange || true,
+					galaxyProperties: galaxyData.galaxyProperties || {},
 					active: true,
 				},
 				{ transaction: t }
@@ -165,11 +169,13 @@ class GalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyStars(id, starCurrent) {
+	async updateGalaxyStars(galaxyData) {
 		const t = await sequelize.transaction();
 
 		try {
-			const galaxy = await Galaxy.findByPk(id, { transaction: t });
+			const galaxy = await Galaxy.findOne(galaxyData.seed, {
+				transaction: t,
+			});
 			if (!galaxy) {
 				throw ApiError.BadRequest('Galaxy not found');
 			}
@@ -183,8 +189,13 @@ class GalaxyService {
 			if (starCurrent < 0) {
 				throw ApiError.BadRequest('Stars cannot be negative');
 			}
+			galaxy.starCurrent = galaxyData.starCurrent;
+			galaxy.price = galaxyData.price;
 
-			galaxy.starCurrent = starCurrent;
+			galaxy.starCurrent = galaxyData.starCurrent;
+			galaxy.particleCount = galaxyData.particleCount;
+			galaxy.onParticleCountChange = galaxyData.onParticleCountChange;
+			galaxy.galaxyProperties = galaxyData.galaxyProperties;
 			await galaxy.save({ transaction: t });
 
 			await t.commit();
@@ -198,17 +209,19 @@ class GalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyOwner(id, newUserId) {
+	async updateGalaxyOwner(galaxyData, id) {
 		const t = await sequelize.transaction();
 
 		try {
-			const galaxy = await Galaxy.findByPk(id, { transaction: t });
+			const galaxy = await Galaxy.findOne(galaxyData.seed, {
+				transaction: t,
+			});
 			if (!galaxy) {
 				throw ApiError.BadRequest('Galaxy not found');
 			}
 
-			const newUser = await User.findOne({
-				where: { id: newUserId },
+			const newUser = await User.findByPk({
+				where: { id: id },
 				transaction: t,
 			});
 			if (!newUser) {
@@ -216,7 +229,7 @@ class GalaxyService {
 			}
 
 			const oldUserId = galaxy.userId;
-			galaxy.userId = newUserId;
+			galaxy.userId = newUser.id;
 			await galaxy.save({ transaction: t });
 
 			await t.commit();
@@ -241,7 +254,11 @@ class GalaxyService {
 							starMin: galaxyData.starMin || 100,
 							starCurrent: galaxyData.starCurrent || 100,
 							price: galaxyData.price || 100,
-							galaxySetting: galaxyData.galaxySetting,
+							seed: galaxyData.seed || '',
+							particleCount: galaxyData.particleCount || 100,
+							onParticleCountChange:
+								galaxyData.onParticleCountChange || true,
+							galaxyProperties: galaxyData.galaxyProperties || {},
 							active: true,
 						},
 						{ transaction: t }
