@@ -5,8 +5,10 @@ const ApiError = require('../exceptions/api-error');
 class UserController {
 	async registration(req, res, next) {
 		try {
+			
 			const id = req.initdata.id;
 			const username = req.initdata.username;
+			
 			const { referral, userState, galaxies } = req.body;
 			const userData = await userService.registration(
 				id,

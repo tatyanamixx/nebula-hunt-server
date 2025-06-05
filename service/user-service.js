@@ -1,4 +1,4 @@
-const { User, UserState, UpgradeNode } = require('../models/models');
+const { User, UserState, UserUpgradeNode } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const stateService = require('./state-service');
@@ -61,7 +61,9 @@ class UserService {
 				},
 				transaction: tc,
 			});
+
 			const verseUser = await this.ensureVerseUser(tc);
+
 			await tc.commit();
 		} catch (err) {
 			await tc.rollback();
@@ -105,8 +107,8 @@ class UserService {
 				for (const galaxy of galaxies) {
 					try {
 						if (
-							galaxy.galaxyData.starsMin === 100 &&
-							!userGalaxyCreated
+							(console.log('galaxy:', galaxy),
+							galaxy.starMin === 100 && !userGalaxyCreated)
 						) {
 							// Create only one galaxy for user
 							const newGalaxy = await galaxyService.createGalaxy(
@@ -147,7 +149,7 @@ class UserService {
 				upgradeNodes,
 			};
 		} catch (err) {
-			//await t.rollback();
+			await t.rollback();
 			throw ApiError.Internal(`Registration failed: ${err.message}`);
 		}
 	}
@@ -156,10 +158,7 @@ class UserService {
 		const t = await sequelize.transaction();
 
 		try {
-			const user = await User.findOne({
-				where: { id },
-				transaction: t,
-			});
+			const user = await User.findByPk(id, { transaction: t });
 
 			if (!user) {
 				await t.rollback();
@@ -181,10 +180,10 @@ class UserService {
 			]);
 
 			// Check if user has upgrade tree initialized
-			const userNodes = await UpgradeNode.findOne({
-				where: { userId: userDto.id },
+			const userNodes = await UserUpgradeNode.findByPk(userDto.id, {
 				transaction: t,
 			});
+
 			let upgradeNodes = [];
 			if (!userNodes) {
 				// If no upgrade nodes found, initialize the tree

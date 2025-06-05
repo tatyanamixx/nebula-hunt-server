@@ -5,12 +5,12 @@ const { Op } = require('sequelize');
 const sequelize = require('../db');
 
 class GalaxyService {
-	async getUserGalaxies(userId) {
+	async getUserGalaxies(id) {
 		const t = await sequelize.transaction();
 
 		try {
 			const galaxiesRaw = await Galaxy.findAll({
-				where: { userId: userId },
+				where: { userId: id },
 				order: [['starCurrent', 'DESC']],
 				transaction: t,
 			});
@@ -36,19 +36,10 @@ class GalaxyService {
 		const t = await sequelize.transaction();
 
 		try {
-			const user = await User.findByPk({
-				where: { id: id },
-				transaction: t,
-			});
-			if (!user) {
-				await t.rollback();
-				throw ApiError.BadRequest('User not found');
-			}
-
 			// Get total count of available galaxies
 			const count = await Galaxy.count({
 				where: {
-					userId: { [Op.ne]: user.id },
+					userId: { [Op.ne]: id },
 					active: true,
 				},
 				transaction: t,
@@ -71,7 +62,7 @@ class GalaxyService {
 			// Get random selection of galaxies
 			const galaxiesRaw = await Galaxy.findAll({
 				where: {
-					userId: { [Op.ne]: user.id },
+					userId: { [Op.ne]: id },
 					active: true,
 				},
 				order: sequelize.random(),
@@ -140,12 +131,15 @@ class GalaxyService {
 
 		try {
 			// Validate galaxy data
-			if (!galaxyData.galaxyData || !galaxyData.galaxySetting) {
+			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
 				throw ApiError.BadRequest('Invalid galaxy data structure');
 			}
 
-			const galaxy = await Galaxy.create(
-				{
+			const [galaxy, created] = await Galaxy.findOrCreate({
+				where: {
+					seed: galaxyData.seed,
+				},
+				defaults: {
 					userId: userId,
 					starMin: galaxyData.starMin || 100,
 					starCurrent: galaxyData.starCurrent || 100,
@@ -157,8 +151,13 @@ class GalaxyService {
 					galaxyProperties: galaxyData.galaxyProperties || {},
 					active: true,
 				},
-				{ transaction: t }
-			);
+				transaction: t,
+			});
+
+			if (!created) {
+				await t.rollback();
+				throw ApiError.BadRequest('Galaxy already exists');
+			}
 
 			await t.commit();
 			return galaxy;
@@ -248,8 +247,11 @@ class GalaxyService {
 		try {
 			const createdGalaxies = await Promise.all(
 				galaxies.map((galaxyData) =>
-					Galaxy.create(
-						{
+					Galaxy.findOrCreate({
+						where: {
+							seed: galaxyData.seed,
+						},
+						defaults: {
 							userId: userId,
 							starMin: galaxyData.starMin || 100,
 							starCurrent: galaxyData.starCurrent || 100,
@@ -261,8 +263,8 @@ class GalaxyService {
 							galaxyProperties: galaxyData.galaxyProperties || {},
 							active: true,
 						},
-						{ transaction: t }
-					)
+						transaction: t,
+					})
 				)
 			);
 

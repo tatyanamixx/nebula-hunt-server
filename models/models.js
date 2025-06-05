@@ -86,6 +86,10 @@ const UserState = sequelize.define(
 				fields: [sequelize.literal("((state->'totalStars')::integer)")],
 				name: 'userstate_totalstars_idx',
 			},
+			{
+				fields: ['userId'],
+				name: 'userstate_user_id_idx',
+			},
 		],
 	}
 );
@@ -96,20 +100,43 @@ const Token = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		refreshToken: { type: DataTypes.STRING, allowNull: false },
 	},
-	{ indexes: [{ fields: ['refreshToken'] }] }
+	{
+		indexes: [
+			{ fields: ['refreshToken'] },
+			{
+				fields: ['userId'],
+				name: 'token_user_id_idx',
+			},
+		],
+	}
 );
 
-const Galaxy = sequelize.define('galaxy', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
-	starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
-	price: { type: DataTypes.INTEGER, defaultValue: 100 },
-	seed: { type: DataTypes.STRING, allowNull: false },
-	particleCount: { type: DataTypes.INTEGER, defaultValue: 100 },
-	onParticleCountChange: { type: DataTypes.BOOLEAN, defaultValue: true },
-	galaxyProperties: { type: DataTypes.JSONB },
-	active: { type: DataTypes.BOOLEAN, defaultValue: true },
-});
+const Galaxy = sequelize.define(
+	'galaxy',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
+		starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
+		price: { type: DataTypes.INTEGER, defaultValue: 100 },
+		seed: { type: DataTypes.STRING, unique: true },
+		particleCount: { type: DataTypes.INTEGER, defaultValue: 100 },
+		onParticleCountChange: { type: DataTypes.BOOLEAN, defaultValue: true },
+		galaxyProperties: { type: DataTypes.JSONB },
+		active: { type: DataTypes.BOOLEAN, defaultValue: true },
+	},
+	{
+		indexes: [
+			{
+				fields: ['seed'],
+				name: 'galaxy_seed_idx',
+			},
+			{
+				fields: ['userId'],
+				name: 'galaxy_user_id_idx',
+			},
+		],
+	}
+);
 
 const UpgradeNode = sequelize.define('upgradenode', {
 	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
@@ -172,32 +199,43 @@ const UpgradeNode = sequelize.define('upgradenode', {
 	},
 });
 
-const UserUpgradeNode = sequelize.define('userupgradenode', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-	progress: {
-		type: DataTypes.INTEGER,
-		defaultValue: 0,
-		comment: 'Current progress value towards completion',
+const UserUpgradeNode = sequelize.define(
+	'userupgradenode',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		progress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Current progress value towards completion',
+		},
+		targetProgress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 100,
+			comment: 'Required progress value for completion',
+		},
+		progressHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of progress updates with timestamps',
+		},
+		lastProgressUpdate: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Timestamp of the last progress update',
+		},
 	},
-	targetProgress: {
-		type: DataTypes.INTEGER,
-		defaultValue: 100,
-		comment: 'Required progress value for completion',
-	},
-	progressHistory: {
-		type: DataTypes.JSONB,
-		defaultValue: [],
-		comment: 'History of progress updates with timestamps',
-	},
-	lastProgressUpdate: {
-		type: DataTypes.DATE,
-		defaultValue: DataTypes.NOW,
-		comment: 'Timestamp of the last progress update',
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userupgradenode_user_id_idx',
+			},
+		],
+	}
+);
 
 const Achievement = sequelize.define('achievement', {
 	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
@@ -224,72 +262,105 @@ const Achievement = sequelize.define('achievement', {
 	active: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
 
-const UserAchievement = sequelize.define('userachievement', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	reward: { type: DataTypes.INTEGER, defaultValue: 0 },
-	completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-	progress: {
-		type: DataTypes.INTEGER,
-		defaultValue: 0,
-		comment: 'Current progress value towards completion',
+const UserAchievement = sequelize.define(
+	'userachievement',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		progress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Current progress value towards completion',
+		},
+		progressHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of progress updates with timestamps',
+		},
+		lastProgressUpdate: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Timestamp of the last progress update',
+		},
 	},
-	progressHistory: {
-		type: DataTypes.JSONB,
-		defaultValue: [],
-		comment: 'History of progress updates with timestamps',
-	},
-	lastProgressUpdate: {
-		type: DataTypes.DATE,
-		defaultValue: DataTypes.NOW,
-		comment: 'Timestamp of the last progress update',
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userachievement_user_id_idx',
+			},
+		],
+	}
+);
 
-const UserEventState = sequelize.define('usereventstate', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	activeEvents: {
-		type: DataTypes.JSONB,
-		defaultValue: [],
-		comment: 'Currently active events for the user',
+const UserEventState = sequelize.define(
+	'usereventstate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		activeEvents: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'Currently active events for the user',
+		},
+		eventHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of triggered events',
+		},
+		lastCheck: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Last time events were checked',
+		},
+		multipliers: {
+			type: DataTypes.JSONB,
+			defaultValue: { cps: 1.0 },
+			comment: 'Current active multipliers from events',
+		},
 	},
-	eventHistory: {
-		type: DataTypes.JSONB,
-		defaultValue: [],
-		comment: 'History of triggered events',
-	},
-	lastCheck: {
-		type: DataTypes.DATE,
-		defaultValue: DataTypes.NOW,
-		comment: 'Last time events were checked',
-	},
-	multipliers: {
-		type: DataTypes.JSONB,
-		defaultValue: { cps: 1.0 },
-		comment: 'Current active multipliers from events',
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userevent_user_id_idx',
+			},
+		],
+	}
+);
 
-const UserEvent = sequelize.define('userevent', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	status: {
-		type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED'),
-		defaultValue: 'ACTIVE',
+const UserEvent = sequelize.define(
+	'userevent',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		status: {
+			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED'),
+			defaultValue: 'ACTIVE',
+		},
+		triggeredAt: {
+			type: DataTypes.DATE,
+			allowNull: false,
+			defaultValue: DataTypes.NOW,
+		},
+		expiresAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+		},
+		effectValue: {
+			type: DataTypes.FLOAT,
+			defaultValue: 1.0,
+			comment: 'Current value of the effect (e.g. multiplier value)',
+		},
 	},
-	triggeredAt: {
-		type: DataTypes.DATE,
-		allowNull: false,
-		defaultValue: DataTypes.NOW,
-	},
-	expiresAt: {
-		type: DataTypes.DATE,
-		allowNull: true,
-	},
-	effectValue: {
-		type: DataTypes.FLOAT,
-		defaultValue: 1.0,
-		comment: 'Current value of the effect (e.g. multiplier value)',
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'gameevent_user_id_idx',
+			},
+		],
+	}
+);
 
 const GameEvent = sequelize.define('gameevent', {
 	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },

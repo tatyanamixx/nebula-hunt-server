@@ -14,6 +14,7 @@ module.exports = function (req, res, next) {
 			return next(ApiError.TMAuthorizedError('tma: not tma key word'));
 		}
 		const initData = splitAuthHeader[index + 1];
+
 		if (!initData) {
 			return next(ApiError.TMAuthorizedError('tma: not found initdata'));
 		}
@@ -22,9 +23,11 @@ module.exports = function (req, res, next) {
 		} catch (err) {
 			next(ApiError.TMAuthorizedError('tma: unauthorization'));
 		}
+
 		req.initdata = parse(initData).user;
+
 		next();
 	} catch (err) {
-		return next(ApiError.TMAuthorizedError('TMA:', err.message));
+		return next(ApiError.TMAuthorizedError('tma:', err.message));
 	}
 };
