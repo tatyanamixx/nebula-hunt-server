@@ -4,7 +4,7 @@ const ApiError = require('../exceptions/api-error');
 class AchievementController {
 	async getUserAchievements(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const achievements = await achievementService.getUserAchievements(
 				id
 			);
@@ -16,7 +16,7 @@ class AchievementController {
 
 	async updateAchievementProgress(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const { achievementId } = req.params;
 			const { progress } = req.body;
 

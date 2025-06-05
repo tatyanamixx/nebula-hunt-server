@@ -5,7 +5,7 @@ const ApiError = require('../exceptions/api-error');
 class UpgradeController {
 	async getUserUpgradeTree(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const tree = await stateService.getUserUpgradeTree(id);
 			return res.json(tree);
 		} catch (e) {
@@ -15,7 +15,7 @@ class UpgradeController {
 
 	async getUpgradeNodeProgress(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const { nodeId } = req.params;
 
 			if (!nodeId) {
@@ -31,7 +31,7 @@ class UpgradeController {
 
 	async updateNodeProgress(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const { nodeId } = req.params;
 			const { progressIncrement } = req.body;
 
@@ -58,7 +58,7 @@ class UpgradeController {
 
 	async getUserUpgradeStats(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const stats = await stateService.getUserUpgradeProgress(id);
 			return res.json(stats);
 		} catch (e) {

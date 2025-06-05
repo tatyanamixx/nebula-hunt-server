@@ -22,7 +22,7 @@ module.exports = function (req, res, next) {
 		} catch (err) {
 			next(ApiError.TMAuthorizedError('tma: unauthorization'));
 		}
-		req.tmaInitdata = parse(initData).user;
+		req.initdata = parse(initData).user;
 		next();
 	} catch (err) {
 		return next(ApiError.TMAuthorizedError('TMA:', err.message));

@@ -5,8 +5,8 @@ const ApiError = require('../exceptions/api-error');
 class UserController {
 	async registration(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
-			const username = req.tmaInitdata.username;
+			const id = req.initdata.id;
+			const username = req.initdata.username;
 			const { referral, userState, galaxies } = req.body;
 			const userData = await userService.registration(
 				id,
@@ -27,7 +27,7 @@ class UserController {
 
 	async login(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const userData = await userService.login(id);
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -66,7 +66,7 @@ class UserController {
 
 	async getFriends(req, res, next) {
 		try {
-			const id = req.tmaInitdata.id;
+			const id = req.initdata.id;
 			const friends = await userService.getFriends(id);
 			return res.json(friends);
 		} catch (e) {
