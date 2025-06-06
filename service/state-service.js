@@ -8,11 +8,16 @@ const { Op } = require('sequelize');
 class UserStateService {
 	async updateStreak(userState) {
 		const now = new Date();
-		const today = new Date(
-			now.getFullYear(),
-			now.getMonth(),
-			now.getDate()
-		);
+		// const today = new Date(
+		// 	now.getFullYear(),
+		// 	now.getMonth(),
+		// 	now.getDate()
+		// );
+
+		const today = new Date(now);
+		// loggerService.info(userState.userId, `today: ${today}`);
+		// loggerService.info(userState.userId, `now: ${now}`);
+
 		const lastLogin = userState.lastLoginDate
 			? new Date(userState.lastLoginDate)
 			: null;
@@ -35,10 +40,12 @@ class UserStateService {
 			return;
 		}
 
-		// Calculate the difference in days
+		// Calculate the difference in hours
 		const diffDays = Math.floor(
 			(today - lastLogin) / (1000 * 60 * 60 * 24)
 		);
+
+		// loggerService.info(userState.userId, `diffDays: ${diffDays}`);
 
 		if (diffDays === 1) {
 			// Consecutive day
@@ -51,7 +58,6 @@ class UserStateService {
 			// Streak broken
 			userState.currentStreak = 1;
 		}
-		// If diffDays === 0, it's the same day, don't update streak
 
 		userState.lastLoginDate = today;
 		userState.streakUpdatedAt = now;
@@ -67,9 +73,17 @@ class UserStateService {
 			});
 
 			if (userState) {
+				// loggerService.info(
+				// 	userId,
+				// 	`User state: ${userState.lastLoginDate}`
+				// );
 				// Update streak on login
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
+				// loggerService.info(
+				// 	userId,
+				// 	`User state: ${userState.lastLoginDate}`
+				// );
 
 				// Update upgrade tree on each state request
 				userState = await this.updateUpgradeTreeOnLogin(userId, t);
@@ -102,7 +116,6 @@ class UserStateService {
 				transaction: transaction,
 			});
 
-			
 			// Initialize upgrade tree for new user
 			await this.initializeUserUpgradeTree(userId, transaction);
 

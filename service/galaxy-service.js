@@ -134,7 +134,7 @@ class GalaxyService {
 			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
 				throw ApiError.BadRequest('Invalid galaxy data structure');
 			}
-
+			loggerService.info(userId, galaxyData);
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
 					seed: galaxyData.seed,
@@ -155,8 +155,9 @@ class GalaxyService {
 			});
 
 			if (!created) {
-				await t.rollback();
-				throw ApiError.BadRequest('Galaxy already exists');
+				loggerService.info(userId, 'galaxy already exists');
+				// await t.rollback();
+				// throw ApiError.BadRequest('Galaxy already exists');
 			}
 
 			await t.commit();

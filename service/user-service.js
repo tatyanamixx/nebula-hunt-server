@@ -72,20 +72,12 @@ class UserService {
 
 		const t = await sequelize.transaction();
 		try {
-			const user = await User.findOne({
-				where: { id: id },
+			const user = await User.findByPk(id, {
 				transaction: t,
 			});
 
 			const userData = user.toJSON();
 			const userDto = new UserDto(userData);
-
-			//	Create user state
-			const userState = await stateService.createUserState(
-				userDto.id,
-				reqUserState,
-				t
-			);
 
 			// Initialize user upgrade tree
 			const upgradeNodes = await upgradeService.initializeUserUpgradeTree(
@@ -106,10 +98,7 @@ class UserService {
 
 				for (const galaxy of galaxies) {
 					try {
-						if (
-							(console.log('galaxy:', galaxy),
-							galaxy.starMin === 100 && !userGalaxyCreated)
-						) {
+						if (galaxy.starMin < 1000 && !userGalaxyCreated) {
 							// Create only one galaxy for user
 							const newGalaxy = await galaxyService.createGalaxy(
 								userDto.id,
@@ -134,13 +123,22 @@ class UserService {
 				}
 			}
 
+			reqUserState.state.ownerGalaxiesCount = userGalaxies.length;
+			// loggerService.info(id, reqUserState.state);
+			//	Create user state
+			const userState = await stateService.createUserState(
+				userDto.id,
+				reqUserState,
+				t
+			);
+
 			// Generate tokens
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken);
 
 			await t.commit();
 
-			console.log('userState', userState, userDto, userGalaxies);
+			// console.log('userState', userState, userDto, userGalaxies);
 			return {
 				...tokens,
 				user: userDto,

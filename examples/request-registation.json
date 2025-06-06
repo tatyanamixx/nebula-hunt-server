@@ -40,7 +40,7 @@
 			}
 		},
 		{
-			"starMin": 100,
+			"starMin": 1000,
 			"starCurrent": 100,
 			"price": 100,
 			"seed": "abc123430403493094943",
