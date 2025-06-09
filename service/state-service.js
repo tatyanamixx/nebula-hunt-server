@@ -342,18 +342,94 @@ class UserStateService {
 		}
 	}
 
-	async leaderboard() {
-		const userlist = await UserState.findAll({
-			include: User,
-			order: [
-				[sequelize.literal("(state->>'totalStars')::integer"), 'DESC'],
-			],
-			limit: 100,
-			attributes: ['state', 'currentStreak', 'maxStreak'],
-		});
-		const users = userlist.map((item) => item.toJSON());
+	async leaderboard(userId) {
+		const t = await sequelize.transaction();
 
-		return { leaderboard: users };
+		try {
+			// Get count of users with more stars than the requested user
+			let userRating = null;
+			if (userId) {
+				const userState = await UserState.findOne({
+					where: { userId },
+					attributes: ['state', 'updatedAt'],
+					transaction: t,
+				});
+
+				if (userState) {
+					const userStars = userState.state?.totalStars || 0;
+					const userUpdatedAt = userState.updatedAt;
+
+					// Count users with more stars or same stars but more recent update
+					const higherUsers = await UserState.count({
+						where: {
+							[Op.or]: [
+								sequelize.literal(
+									`(state->>'totalStars')::integer > ${userStars}`
+								),
+								{
+									[Op.and]: [
+										sequelize.literal(
+											`(state->>'totalStars')::integer = ${userStars}`
+										),
+										{
+											updatedAt: {
+												[Op.gt]: userUpdatedAt,
+											},
+										},
+									],
+								},
+							],
+						},
+						transaction: t,
+					});
+
+					userRating = higherUsers + 1;
+				}
+			}
+
+			// Get top 100 users with full data
+			const top100Users = await UserState.findAll(
+				{
+					include: User,
+					order: [
+						[
+							sequelize.literal(
+								"(state->>'totalStars')::integer"
+							),
+							'DESC',
+						],
+						['updatedAt', 'DESC'],
+					],
+					limit: 100,
+					attributes: [
+						'state',
+						'currentStreak',
+						'maxStreak',
+						'updatedAt',
+						'userId',
+					],
+				},
+				{ transaction: t }
+			);
+
+			// Calculate ratings for top 100
+			const users = top100Users.map((item, index) => {
+				const user = item.toJSON();
+				user.rating = index + 1;
+				return user;
+			});
+
+			await t.commit();
+			return {
+				leaderboard: users,
+				userRating: userRating,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to update user state: ${err.message}`
+			);
+		}
 	}
 
 	async updateUpgradeProgress(userId, nodeId, progressIncrement) {

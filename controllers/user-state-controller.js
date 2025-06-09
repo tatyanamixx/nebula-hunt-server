@@ -28,7 +28,8 @@ class UserStateController {
 
 	async getLeaderboard(req, res, next) {
 		try {
-			const leaderboard = await userStateService.leaderboard();
+			const id = req.initdata.id;
+			const leaderboard = await userStateService.leaderboard(id);
 			return res.json(leaderboard);
 		} catch (e) {
 			next(e);

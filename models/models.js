@@ -237,58 +237,86 @@ const UserUpgradeNode = sequelize.define(
 	}
 );
 
-const Achievement = sequelize.define('achievement', {
-	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
-	title: { type: DataTypes.STRING },
+const Task = sequelize.define('task', {
+	id: {
+		type: DataTypes.STRING,
+		primaryKey: true,
+	},
+	title: {
+		type: DataTypes.JSONB,
+		allowNull: false,
+		comment: 'Localized task descriptions',
+	},
 	description: {
 		type: DataTypes.JSONB,
-		defaultValue: {
-			en: '',
-			ru: '',
-		},
-		comment: 'Localized achievement descriptions',
+		allowNull: false,
 	},
 	reward: {
-		type: DataTypes.JSONB,
-		defaultValue: [{ type: 'stardust', amount: 0 }],
-		comment: 'Array of configurations with type and amount values',
+		type: DataTypes.INTEGER,
+		allowNull: false,
 	},
 	condition: {
-		type: DataTypes.STRING,
-		defaultValue: '',
-		comment: 'Condition for the achievement to be completed',
+		type: DataTypes.JSONB,
+		allowNull: false,
+		comment: 'Condition for the task to be completed',
 	},
-	icon: { type: DataTypes.STRING(3), defaultValue: '' },
-	active: { type: DataTypes.BOOLEAN, defaultValue: true },
+	icon: {
+		type: DataTypes.STRING,
+		allowNull: false,
+	},
+	active: {
+		type: DataTypes.BOOLEAN,
+		defaultValue: true,
+	},
 });
 
-const UserAchievement = sequelize.define(
-	'userachievement',
+const UserTask = sequelize.define(
+	'usertask',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		reward: { type: DataTypes.INTEGER, defaultValue: 0 },
-		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		id: {
+			type: DataTypes.INTEGER,
+			primaryKey: true,
+			autoIncrement: true,
+		},
+		userId: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+		},
+		taskId: {
+			type: DataTypes.STRING,
+			allowNull: false,
+		},
 		progress: {
 			type: DataTypes.INTEGER,
 			defaultValue: 0,
-			comment: 'Current progress value towards completion',
+		},
+		targetProgress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 100,
+		},
+		completed: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+		},
+		reward: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
 		},
 		progressHistory: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
-			comment: 'History of progress updates with timestamps',
 		},
 		lastProgressUpdate: {
 			type: DataTypes.DATE,
 			defaultValue: DataTypes.NOW,
-			comment: 'Timestamp of the last progress update',
 		},
 	},
 	{
 		indexes: [
 			{
+				unique: false,
+				name: 'usertask_user_id_idx',
 				fields: ['userId'],
-				name: 'userachievement_user_id_idx',
 			},
 		],
 	}
@@ -411,10 +439,10 @@ UserUpgradeNode.belongsTo(User);
 UpgradeNode.hasMany(UserUpgradeNode);
 UserUpgradeNode.belongsTo(UpgradeNode);
 
-User.hasMany(UserAchievement);
-UserAchievement.belongsTo(User);
-Achievement.hasMany(UserAchievement);
-UserAchievement.belongsTo(Achievement);
+User.hasMany(UserTask);
+UserTask.belongsTo(User);
+Task.hasMany(UserTask);
+UserTask.belongsTo(Task);
 
 User.hasMany(UserEventState);
 UserEventState.belongsTo(User);
@@ -435,8 +463,8 @@ module.exports = {
 	Galaxy,
 	UpgradeNode,
 	UserUpgradeNode,
-	Achievement,
-	UserAchievement,
+	Task,
+	UserTask,
 	GameEvent,
 	UserEventState,
 	UserEvent,
