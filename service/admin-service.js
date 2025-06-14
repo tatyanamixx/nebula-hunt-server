@@ -5,49 +5,60 @@ const userService = require('./user-service');
 const sequelize = require('../db');
 
 class AdminService {
-	async createVerseGalaxies(galaxies) {
+	async getAllUsers() {
 		const t = await sequelize.transaction();
 
 		try {
-			// Ensure VERSE user exists
-			const verse = await userService.ensureVerseUser(t);
-			const createdGalaxies = [];
-
-			// Create all galaxies for VERSE user
-			if (Array.isArray(galaxies)) {
-				for (const galaxy of galaxies) {
-					try {
-						// Force owner to be VERSE
-						galaxy.galaxyData = galaxy.galaxyData || {};
-						galaxy.galaxyData.owner = 'VERSE';
-
-						const newGalaxy = await galaxyService.createGalaxy(
-							verse.id,
-							galaxy,
-							t
-						);
-						createdGalaxies.push(newGalaxy);
-					} catch (err) {
-						throw ApiError.Internal(
-							`Failed to create galaxy: ${err.message}`
-						);
-						// Continue with other galaxies even if one fails
-					}
-				}
-			}
+			const users = await User.findAll({
+				attributes: ['id', 'username', 'role', 'blocked', 'referral'],
+				transaction: t,
+			});
 
 			await t.commit();
-
-			return {
-				success: true,
-				message: `Created ${createdGalaxies.length} VERSE galaxies`,
-				galaxies: createdGalaxies,
-			};
+			return users;
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to create VERSE galaxies: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get users: ${err.message}`);
+		}
+	}
+
+	async blockUser(userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const user = await User.findByPk(userId, { transaction: t });
+			if (!user) {
+				throw ApiError.BadRequest('User not found');
+			}
+
+			user.blocked = true;
+			await user.save({ transaction: t });
+
+			await t.commit();
+			return user;
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(`Failed to block user: ${err.message}`);
+		}
+	}
+
+	async unblockUser(userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const user = await User.findByPk(userId, { transaction: t });
+			if (!user) {
+				throw ApiError.BadRequest('User not found');
+			}
+
+			user.blocked = false;
+			await user.save({ transaction: t });
+
+			await t.commit();
+			return user;
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(`Failed to unblock user: ${err.message}`);
 		}
 	}
 }

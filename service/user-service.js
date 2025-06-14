@@ -11,27 +11,6 @@ const sequelize = require('../db');
 const { Op, where } = require('sequelize');
 
 class UserService {
-	async ensureVerseUser(transaction) {
-		// Check if VERSE user exists
-		let verse = await User.findOne({
-			where: { role: 'VERSE' },
-			transaction,
-		});
-
-		// Create if doesn't exist
-		if (!verse) {
-			verse = await User.create(
-				{
-					username: 'universe',
-					role: 'VERSE',
-				},
-				{ transaction }
-			);
-		}
-
-		return verse;
-	}
-
 	async registration(id, username, referral, reqUserState, galaxies) {
 		const tc = await sequelize.transaction();
 		try {
@@ -62,8 +41,6 @@ class UserService {
 				transaction: tc,
 			});
 
-			const verseUser = await this.ensureVerseUser(tc);
-
 			await tc.commit();
 		} catch (err) {
 			await tc.rollback();
@@ -91,30 +68,15 @@ class UserService {
 			//Create galaxies
 			const userGalaxies = [];
 			if (Array.isArray(galaxies) && galaxies.length > 0) {
-				// Ensure VERSE user exists for creating other galaxies
-				const verseUser = await this.ensureVerseUser(t);
-
-				let userGalaxyCreated = false;
-
 				for (const galaxy of galaxies) {
 					try {
-						if (galaxy.starMin < 1000 && !userGalaxyCreated) {
-							// Create only one galaxy for user
-							const newGalaxy = await galaxyService.createGalaxy(
-								userDto.id,
-								galaxy,
-								t
-							);
-							userGalaxies.push(newGalaxy);
-							userGalaxyCreated = true;
-						} else {
-							// All other galaxies go to VERSE
-							await galaxyService.createGalaxy(
-								verseUser.id,
-								galaxy,
-								t
-							);
-						}
+						// Create galaxy for the user
+						const newGalaxy = await galaxyService.createGalaxy(
+							userDto.id,
+							galaxy,
+							t
+						);
+						userGalaxies.push(newGalaxy);
 					} catch (err) {
 						throw ApiError.Internal(
 							`Registration failed: ${err.message}`

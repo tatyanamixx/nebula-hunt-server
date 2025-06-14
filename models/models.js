@@ -8,7 +8,7 @@ const User = sequelize.define(
 		username: { type: DataTypes.STRING },
 		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
 		role: {
-			type: DataTypes.ENUM('USER', 'ADMIN', 'VERSE'),
+			type: DataTypes.ENUM('USER', 'ADMIN'),
 			defaultValue: 'USER',
 		},
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },

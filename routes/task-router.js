@@ -1,6 +1,8 @@
 const Router = require('express');
 const taskController = require('../controllers/task-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
+const adminMiddleware = require('../middlewares/admin-middleware');
+
 const router = new Router();
 
 // Get user tasks
