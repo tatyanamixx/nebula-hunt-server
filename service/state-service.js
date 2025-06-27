@@ -112,6 +112,12 @@ class UserStateService {
 					currentStreak: userState.currentStreak,
 					maxStreak: userState.maxStreak,
 					streakUpdatedAt: userState.streakUpdatedAt,
+					stateHistory: [
+						{
+							timestamp: new Date(),
+							state: { ...userState.state },
+						},
+					],
 				},
 				transaction: transaction,
 			});
@@ -290,6 +296,25 @@ class UserStateService {
 			});
 
 			if (stateData) {
+				// Добавляем запись в историю перед обновлением состояния
+				if (!Array.isArray(stateData.stateHistory))
+					stateData.stateHistory = [];
+				const now = new Date();
+				// Удаляем записи старше 30 дней
+				stateData.stateHistory = stateData.stateHistory.filter(
+					(entry) =>
+						now - new Date(entry.timestamp) <=
+						30 * 24 * 60 * 60 * 1000
+				);
+				// Добавляем новую запись
+				stateData.stateHistory.push({
+					timestamp: now,
+					state: { ...stateData.state },
+				});
+				// Оставляем только последние 100 записей
+				if (stateData.stateHistory.length > 100) {
+					stateData.stateHistory = stateData.stateHistory.slice(-100);
+				}
 				stateData.stars = userState.stars;
 				stateData.state = userState.state;
 				await this.updateStreak(stateData);
@@ -324,6 +349,12 @@ class UserStateService {
 						totalProgress: 0,
 						lastNodeUpdate: new Date(),
 					},
+					stateHistory: [
+						{
+							timestamp: new Date(),
+							state: { ...userState.state },
+						},
+					],
 				},
 				{ transaction: t }
 			);

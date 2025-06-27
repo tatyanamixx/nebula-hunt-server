@@ -37,6 +37,9 @@ const UserState = sequelize.define(
 				ownedNodesCount: 0,
 			},
 		},
+		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 		taskProgress: {
 			type: DataTypes.JSONB,
 			defaultValue: {
@@ -78,6 +81,11 @@ const UserState = sequelize.define(
 			type: DataTypes.DATE,
 			allowNull: true,
 			comment: 'Timestamp of the last streak update',
+		},
+		stateHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of user state with timestamps',
 		},
 	},
 	{
@@ -322,49 +330,17 @@ const UserTask = sequelize.define(
 	}
 );
 
-const UserEventState = sequelize.define(
-	'usereventstate',
-	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		activeEvents: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'Currently active events for the user',
-		},
-		eventHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'History of triggered events',
-		},
-		lastCheck: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-			comment: 'Last time events were checked',
-		},
-		multipliers: {
-			type: DataTypes.JSONB,
-			defaultValue: { cps: 1.0 },
-			comment: 'Current active multipliers from events',
-		},
-	},
-	{
-		indexes: [
-			{
-				fields: ['userId'],
-				name: 'userevent_user_id_idx',
-			},
-		],
-	}
-);
-
 const UserEvent = sequelize.define(
 	'userevent',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
 		status: {
 			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED'),
 			defaultValue: 'ACTIVE',
 		},
+		progress: { type: DataTypes.JSONB, defaultValue: {} },
+		priority: { type: DataTypes.INTEGER, defaultValue: 1 },
 		triggeredAt: {
 			type: DataTypes.DATE,
 			allowNull: false,
@@ -374,10 +350,16 @@ const UserEvent = sequelize.define(
 			type: DataTypes.DATE,
 			allowNull: true,
 		},
-		effectValue: {
-			type: DataTypes.FLOAT,
-			defaultValue: 1.0,
-			comment: 'Current value of the effect (e.g. multiplier value)',
+
+		lastCheck: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Last time events were checked',
+		},
+		multipliers: {
+			type: DataTypes.JSONB,
+			defaultValue: { cps: 1.0 },
+			comment: 'Current active multipliers from events',
 		},
 	},
 	{
@@ -444,12 +426,6 @@ UserTask.belongsTo(User);
 Task.hasMany(UserTask);
 UserTask.belongsTo(Task);
 
-User.hasMany(UserEventState);
-UserEventState.belongsTo(User);
-
-UserEventState.hasMany(UserEvent);
-UserEvent.belongsTo(UserEventState);
-
 User.hasMany(UserEvent);
 UserEvent.belongsTo(User);
 
@@ -466,6 +442,5 @@ module.exports = {
 	Task,
 	UserTask,
 	GameEvent,
-	UserEventState,
 	UserEvent,
 };

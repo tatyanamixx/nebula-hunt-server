@@ -62,9 +62,6 @@ class UserService {
 				t
 			);
 
-			// Initialize user events
-			await eventService.initializeUserEvents(userDto.id, t);
-
 			//Create galaxies
 			const userGalaxies = [];
 			if (Array.isArray(galaxies) && galaxies.length > 0) {
@@ -93,6 +90,9 @@ class UserService {
 				reqUserState,
 				t
 			);
+
+			// Initialize user events
+			await eventService.initializeUserEvents(userDto.id);
 
 			// Generate tokens
 			const tokens = tokenService.generateTokens({ ...userDto });
@@ -132,12 +132,16 @@ class UserService {
 
 			const userDto = new UserDto(user);
 
-			// Get user state, galaxies and check events
-			const [userState, userGalaxies, eventState] = await Promise.all([
+			// Get user state, galaxies
+			const [userState, userGalaxies] = await Promise.all([
 				stateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
-				//eventService.checkAndTriggerEvents(userDto.id, t),
 			]);
+
+			// Обновляем и инициализируем события пользователя
+			const eventState = await eventService.checkAndTriggerEvents(
+				userDto.id
+			);
 
 			// Check if user has upgrade tree initialized
 			const userNodes = await UserUpgradeNode.findByPk(userDto.id, {
