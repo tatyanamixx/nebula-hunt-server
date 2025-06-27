@@ -123,18 +123,18 @@ class EventService {
 		const userEvents = await UserEvent.findAll({
 			where: { userId, gameEventId: event.id },
 		});
-		// lastCheck можно брать из последнего события или now
 		const lastCheck =
 			userEvents.length > 0
 				? userEvents[userEvents.length - 1].lastCheck
 				: now;
 		const timeDiff = now - lastCheck;
 		switch (event.type) {
-			case 'RANDOM':
+			case 'RANDOM': {
 				const chance =
 					(timeDiff / 1000) * (event.frequency.chancePerSecond || 0);
 				return Math.random() < chance;
-			case 'PERIODIC':
+			}
+			case 'PERIODIC': {
 				const lastOccurrence = userEvents.sort(
 					(a, b) => b.triggeredAt - a.triggeredAt
 				)[0];
@@ -142,8 +142,71 @@ class EventService {
 				const timeSinceLastOccurrence =
 					now - lastOccurrence.triggeredAt;
 				return timeSinceLastOccurrence >= event.frequency.interval;
+			}
 			case 'ONE_TIME':
 				return userEvents.length === 0;
+			case 'CONDITIONAL': {
+				// triggerConfig.condition: { metric, op, value }
+				const cond = event.triggerConfig?.condition;
+				if (!cond) return false;
+				// Пример: metric = 'totalStars', op = '>', value = 1000
+				const userState = await UserState.findOne({
+					where: { userId },
+				});
+				const metricValue = userState?.state?.[cond.metric];
+				if (metricValue === undefined) return false;
+				const ops = {
+					'>': (a, b) => a > b,
+					'>=': (a, b) => a >= b,
+					'<': (a, b) => a < b,
+					'<=': (a, b) => a <= b,
+					'==': (a, b) => a == b,
+					'===': (a, b) => a === b,
+					'!=': (a, b) => a != b,
+					'!==': (a, b) => a !== b,
+				};
+				return ops[cond.op]?.(metricValue, cond.value) ?? false;
+			}
+			case 'CHAINED': {
+				// triggerConfig.after: eventId
+				const afterId = event.triggerConfig?.after;
+				if (!afterId) return false;
+				const afterEvent = await UserEvent.findOne({
+					where: {
+						userId,
+						gameEventId: afterId,
+						status: 'COMPLETED',
+					},
+				});
+				return !!afterEvent;
+			}
+			case 'TRIGGERED_BY_ACTION':
+				// Только вручную, не триггерим автоматически
+				return false;
+			case 'GLOBAL_TIMED': {
+				// triggerConfig.at: дата/время
+				const at = event.triggerConfig?.at;
+				if (!at) return false;
+				return now >= new Date(at);
+			}
+			case 'LIMITED_REPEATABLE': {
+				// triggerConfig.limit: число
+				const limit = event.triggerConfig?.limit;
+				if (!limit) return false;
+				return userEvents.length < limit;
+			}
+			case 'SEASONAL': {
+				// triggerConfig.start, triggerConfig.end: даты
+				const start = event.triggerConfig?.start;
+				const end = event.triggerConfig?.end;
+				if (!start || !end) return false;
+				const startDate = new Date(start);
+				const endDate = new Date(end);
+				return now >= startDate && now <= endDate;
+			}
+			case 'PASSIVE':
+				// Не триггерим автоматически
+				return false;
 			default:
 				return false;
 		}

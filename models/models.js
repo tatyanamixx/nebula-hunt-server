@@ -384,8 +384,31 @@ const GameEvent = sequelize.define('gameevent', {
 		comment: 'Localized event descriptions',
 	},
 	type: {
-		type: DataTypes.ENUM('RANDOM', 'PERIODIC', 'ONE_TIME'),
+		type: DataTypes.ENUM(
+			'RANDOM',
+			'PERIODIC',
+			'ONE_TIME',
+			'CONDITIONAL',
+			'CHAINED',
+			'TRIGGERED_BY_ACTION',
+			'GLOBAL_TIMED',
+			'LIMITED_REPEATABLE',
+			'SEASONAL',
+			'PASSIVE'
+		),
 		allowNull: false,
+	},
+	triggerConfig: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: `Dynamic trigger logic depending on type:
+- PERIODIC: { interval: '1h' }
+- RANDOM: { chancePerHour: 0.1 }
+- CONDITIONAL: { condition: { metric: 'chaosLevel', op: '>', value: 50 } }
+- CHAINED: { after: 'eventId' }
+- TRIGGERED_BY_ACTION: { action: 'burn-core' }
+- SEASONAL: { start: '2025-06-01', end: '2025-06-30' }
+- GLOBAL_TIMED: { at: '2025-07-01T00:00:00Z' }`,
 	},
 	effect: {
 		type: DataTypes.JSONB,
@@ -394,6 +417,7 @@ const GameEvent = sequelize.define('gameevent', {
 	},
 	frequency: {
 		type: DataTypes.JSONB,
+		defaultValue: {},
 		comment: 'Frequency settings for RANDOM and PERIODIC events',
 	},
 	conditions: {

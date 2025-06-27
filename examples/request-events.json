@@ -1,55 +1,110 @@
 {
-    "events": [
+    "events":
+    [
         {
-            "name": "Lucky Star",
-            "description": {
-				"en": "Double your CPS for 30 seconds!",
-				"ru": "Удвоить ваш CPS на 30 секунд!"
-			},
-            "type": "RANDOM",
-            "effect": {
-                "type": "CPS_MULTIPLIER",
-                "value": 2.0,
-                "duration": 30
+          "id": "supernova_bonus",
+          "name": "Supernova Bonus",
+          "description": {
+            "en": "A massive energy burst doubles your production!",
+            "ru": "Вспышка сверхновой удваивает производство!"
+          },
+          "type": "ONE_TIME",
+          "triggerConfig": {
+            "at": "2025-07-01T12:00:00Z"
+          },
+          "effect": {
+            "multipliers": {
+              "cps": 2.0
             },
-            "frequency": {
-                "chancePerSecond": 0.01
-            },
-            "active": true
+            "duration": 600
+          },
+          "conditions": {
+            "minLevel": 10
+          },
+          "active": true
         },
         {
-            "name": "Solar Eclipse",
-            "description": {
-				"en": "Reduces CPS by 50% for 1 minute",
-				"ru": "Уменьшить ваш CPS на 50% на 1 минуту"
-			},
-            "type": "PERIODIC",
-            "effect": {
-                "type": "CPS_MULTIPLIER",
-                "value": 0.5,
-                "duration": 60
+          "id": "chaos_spike",
+          "name": "Chaos Spike",
+          "description": {
+            "en": "Triggered when chaos level exceeds threshold.",
+            "ru": "Срабатывает при достижении высокого уровня хаоса."
+          },
+          "type": "CONDITIONAL",
+          "triggerConfig": {
+            "condition": {
+              "chaosLevel": {
+                "$gt": 70
+              }
+            }
+          },
+          "effect": {
+            "multipliers": {
+              "entropy": 1.5
             },
-            "frequency": {
-                "interval": 3600000
-            },
-            "active": true
+            "duration": 300
+          },
+          "conditions": {},
+          "active": true
         },
         {
-            "name": "First Million",
-            "description": {
-				"en": "Triple your CPS for 2 minutes!",
-				"ru": "Утроить ваш CPS на 2 минуты!"
-			},
-            "type": "ONE_TIME",
-            "effect": {
-                "type": "CPS_MULTIPLIER",
-                "value": 3.0,
-                "duration": 120
+          "id": "daily_reward",
+          "name": "Daily Reward",
+          "description": {
+            "en": "Daily check-in bonus!",
+            "ru": "Ежедневная награда за вход!"
+          },
+          "type": "PERIODIC",
+          "triggerConfig": {
+            "interval": "24h"
+          },
+          "effect": {
+            "reward": {
+              "stardust": 50
+            }
+          },
+          "frequencyLimit": {
+            "maxPerDay": 1
+          },
+          "active": true
+        },
+        {
+          "id": "solar_flare",
+          "name": "Solar Flare",
+          "description": {
+            "en": "A solar flare temporarily boosts resource production.",
+            "ru": "Вспышка на Солнце временно увеличивает производство."
+          },
+          "type": "RANDOM",
+          "triggerConfig": {
+            "chancePerMinute": 0.05
+          },
+          "effect": {
+            "multipliers": {
+              "cps": 1.25
             },
-            "conditions": {
-                "totalStars": 1000000
-            },
-            "active": true
+            "duration": 180
+          },
+          "active": true
+        },
+        {
+          "id": "blackhole_followup",
+          "name": "Black Hole Awakens",
+          "description": {
+            "en": "This event triggers after the black hole introduction.",
+            "ru": "Событие активируется после вступления в черную дыру."
+          },
+          "type": "CHAINED",
+          "triggerConfig": {
+            "after": "blackhole_intro"
+          },
+          "effect": {
+            "multipliers": {
+              "chaos": 2.0
+            }
+          },
+          "active": true
         }
-    ]
-}
+      ]
+    }
+      
