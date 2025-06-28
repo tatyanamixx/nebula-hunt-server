@@ -45,7 +45,7 @@ class UpgradeController {
 				);
 			}
 
-			const result = await stateService.updateUserUpgradeNode(
+			const result = await upgradeService.updateUpgradeProgress(
 				id,
 				nodeId,
 				progressIncrement

@@ -84,8 +84,151 @@ const UserState = sequelize.define(
 		},
 		stateHistory: {
 			type: DataTypes.JSONB,
+			defaultValue: {
+				entries: [],
+				lastUpdate: null,
+				version: '1.0',
+			},
+			comment: `Detailed history of user state changes with structure:
+{
+  "entries": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "type": "state_change|task_completed|upgrade_purchased|event_triggered|login|milestone",
+      "category": "production|economy|progress|achievement|system",
+      "description": "Human readable description",
+      "changes": {
+        "field": "value",
+        "oldValue": "previous_value",
+        "newValue": "current_value"
+      },
+      "metadata": {
+        "source": "manual|automatic|event|task|upgrade",
+        "trigger": "user_action|system|event|condition",
+        "relatedId": "task_id|upgrade_id|event_id"
+      }
+    }
+  ],
+  "lastUpdate": "2024-01-01T00:00:00Z",
+  "version": "1.0"
+}`,
+		},
+		// Event state fields
+		activeEvents: {
+			type: DataTypes.JSONB,
 			defaultValue: [],
-			comment: 'History of user state with timestamps',
+			comment:
+				'Currently active events for the user with their progress and effects',
+		},
+		eventHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of completed and expired events with timestamps',
+		},
+		eventMultipliers: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				production: 1.0,
+				chaos: 1.0,
+				stability: 1.0,
+				entropy: 1.0,
+				rewards: 1.0,
+			},
+			comment: 'Current active multipliers from events',
+		},
+		lastEventCheck: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Last time events were checked and processed',
+		},
+		eventCooldowns: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Cooldown timestamps for different event types',
+		},
+		eventPreferences: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+				disabledEvents: [],
+				priorityEvents: [],
+			},
+			comment: 'User preferences for event types and specific events',
+		},
+		// Task state fields
+		userTasks: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment:
+				'User progress for each task: { taskId: { progress, targetProgress, completed, reward, progressHistory, lastProgressUpdate } }',
+		},
+		completedTasks: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'Array of completed task IDs with completion timestamps',
+		},
+		activeTasks: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'Array of active task IDs that user can work on',
+		},
+		taskMultipliers: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				progress: 1.0,
+				rewards: 1.0,
+				unlock: 1.0,
+			},
+			comment: 'Current active multipliers from tasks',
+		},
+		lastTaskCheck: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Last time tasks were checked and updated',
+		},
+		// Upgrade state fields
+		userUpgrades: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment:
+				'User progress for each upgrade node: { nodeId: { level, progress, targetProgress, completed, stability, instability, progressHistory, lastProgressUpdate } }',
+		},
+		completedUpgrades: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'Array of completed upgrade node IDs',
+		},
+		activeUpgrades: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'Array of active upgrade node IDs that user can purchase',
+		},
+		upgradeTree: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				activeNodes: [],
+				completedNodes: [],
+				nodeStates: {},
+				treeStructure: {},
+				totalProgress: 0,
+				lastNodeUpdate: DataTypes.DATE,
+			},
+			comment: 'User-specific upgrade tree structure and progress',
+		},
+		upgradeMultipliers: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				production: 1.0,
+				efficiency: 1.0,
+				cost: 1.0,
+				unlock: 1.0,
+			},
+			comment: 'Current active multipliers from upgrades',
+		},
+		lastUpgradeCheck: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			comment: 'Last time upgrades were checked and updated',
 		},
 	},
 	{
@@ -97,6 +240,18 @@ const UserState = sequelize.define(
 			{
 				fields: ['userId'],
 				name: 'userstate_user_id_idx',
+			},
+			{
+				fields: ['lastEventCheck'],
+				name: 'userstate_last_event_check_idx',
+			},
+			{
+				fields: ['lastTaskCheck'],
+				name: 'userstate_last_task_check_idx',
+			},
+			{
+				fields: ['lastUpgradeCheck'],
+				name: 'userstate_last_upgrade_check_idx',
 			},
 		],
 	}
@@ -207,44 +362,6 @@ const UpgradeNode = sequelize.define('upgradenode', {
 	},
 });
 
-const UserUpgradeNode = sequelize.define(
-	'userupgradenode',
-	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-		progress: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-			comment: 'Current progress value towards completion',
-		},
-		targetProgress: {
-			type: DataTypes.INTEGER,
-			defaultValue: 100,
-			comment: 'Required progress value for completion',
-		},
-		progressHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'History of progress updates with timestamps',
-		},
-		lastProgressUpdate: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-			comment: 'Timestamp of the last progress update',
-		},
-	},
-	{
-		indexes: [
-			{
-				fields: ['userId'],
-				name: 'userupgradenode_user_id_idx',
-			},
-		],
-	}
-);
-
 const Task = sequelize.define('task', {
 	id: {
 		type: DataTypes.STRING,
@@ -277,100 +394,6 @@ const Task = sequelize.define('task', {
 		defaultValue: true,
 	},
 });
-
-const UserTask = sequelize.define(
-	'usertask',
-	{
-		id: {
-			type: DataTypes.INTEGER,
-			primaryKey: true,
-			autoIncrement: true,
-		},
-		userId: {
-			type: DataTypes.INTEGER,
-			allowNull: false,
-		},
-		taskId: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		progress: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-		},
-		targetProgress: {
-			type: DataTypes.INTEGER,
-			defaultValue: 100,
-		},
-		completed: {
-			type: DataTypes.BOOLEAN,
-			defaultValue: false,
-		},
-		reward: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-		},
-		progressHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-		},
-		lastProgressUpdate: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-		},
-	},
-	{
-		indexes: [
-			{
-				unique: false,
-				name: 'usertask_user_id_idx',
-				fields: ['userId'],
-			},
-		],
-	}
-);
-
-const UserEvent = sequelize.define(
-	'userevent',
-	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		userId: { type: DataTypes.BIGINT, allowNull: false },
-		status: {
-			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED'),
-			defaultValue: 'ACTIVE',
-		},
-		progress: { type: DataTypes.JSONB, defaultValue: {} },
-		priority: { type: DataTypes.INTEGER, defaultValue: 1 },
-		triggeredAt: {
-			type: DataTypes.DATE,
-			allowNull: false,
-			defaultValue: DataTypes.NOW,
-		},
-		expiresAt: {
-			type: DataTypes.DATE,
-			allowNull: true,
-		},
-
-		lastCheck: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-			comment: 'Last time events were checked',
-		},
-		multipliers: {
-			type: DataTypes.JSONB,
-			defaultValue: { cps: 1.0 },
-			comment: 'Current active multipliers from events',
-		},
-	},
-	{
-		indexes: [
-			{
-				fields: ['userId'],
-				name: 'gameevent_user_id_idx',
-			},
-		],
-	}
-);
 
 const GameEvent = sequelize.define('gameevent', {
 	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
@@ -440,31 +463,12 @@ Token.belongsTo(User);
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
-User.hasMany(UserUpgradeNode);
-UserUpgradeNode.belongsTo(User);
-UpgradeNode.hasMany(UserUpgradeNode);
-UserUpgradeNode.belongsTo(UpgradeNode);
-
-User.hasMany(UserTask);
-UserTask.belongsTo(User);
-Task.hasMany(UserTask);
-UserTask.belongsTo(Task);
-
-User.hasMany(UserEvent);
-UserEvent.belongsTo(User);
-
-GameEvent.hasMany(UserEvent);
-UserEvent.belongsTo(GameEvent);
-
 module.exports = {
 	User,
 	UserState,
 	Token,
 	Galaxy,
 	UpgradeNode,
-	UserUpgradeNode,
 	Task,
-	UserTask,
 	GameEvent,
-	UserEvent,
 };

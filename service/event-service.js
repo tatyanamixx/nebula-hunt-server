@@ -1,4 +1,4 @@
-const { GameEvent, UserState, UserEvent } = require('../models/models');
+const { GameEvent, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const { Op } = require('sequelize');
 
@@ -44,27 +44,55 @@ class EventService {
 	async checkAndTriggerEvents(userId) {
 		try {
 			const now = new Date();
-			let multipliers = { cps: 1.0 };
 
-			// Получаем все активные события пользователя
-			const activeEvents = await UserEvent.findAll({
-				where: { userId, status: 'ACTIVE' },
-				include: [GameEvent],
+			// Получаем состояние пользователя
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
 
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
+			}
+
+			// Инициализируем поля событий, если их нет
+			if (!userState.activeEvents) userState.activeEvents = [];
+			if (!userState.eventHistory) userState.eventHistory = [];
+			if (!userState.eventMultipliers) {
+				userState.eventMultipliers = {
+					production: 1.0,
+					chaos: 1.0,
+					stability: 1.0,
+					entropy: 1.0,
+					rewards: 1.0,
+				};
+			}
+			if (!userState.eventCooldowns) userState.eventCooldowns = {};
+
 			// Обновляем истёкшие события
-			for (const userEvent of activeEvents) {
-				if (
-					userEvent.expiresAt &&
-					new Date(userEvent.expiresAt) <= now
-				) {
-					await userEvent.update({ status: 'EXPIRED' });
-				} else {
-					if (userEvent.GameEvent.effect.type === 'CPS_MULTIPLIER') {
-						multipliers.cps *= userEvent.effectValue;
+			const updatedActiveEvents = [];
+			for (const event of userState.activeEvents) {
+				if (event.expiresAt && new Date(event.expiresAt) <= now) {
+					// Перемещаем в историю
+					userState.eventHistory.push({
+						...event,
+						completedAt: now,
+						status: 'EXPIRED',
+					});
+
+					// Убираем эффекты события
+					if (event.effects) {
+						Object.keys(event.effects).forEach((key) => {
+							if (userState.eventMultipliers[key]) {
+								userState.eventMultipliers[key] /=
+									event.effects[key];
+							}
+						});
 					}
+				} else {
+					updatedActiveEvents.push(event);
 				}
 			}
+			userState.activeEvents = updatedActiveEvents;
 
 			// Получаем все доступные события
 			const availableEvents = await GameEvent.findAll({
@@ -76,85 +104,145 @@ class EventService {
 				const shouldTrigger = await this.shouldEventTrigger(
 					event,
 					userId,
-					now
+					now,
+					userState
 				);
+
 				if (shouldTrigger) {
 					const duration = event.effect.duration || 0;
-					const expiresAt = new Date(now.getTime() + duration * 1000);
-					const userEvent = await UserEvent.create({
-						userId,
-						gameEventId: event.id,
+					const expiresAt =
+						duration > 0
+							? new Date(now.getTime() + duration * 1000)
+							: null;
+
+					const newEvent = {
+						id: event.id,
+						name: event.name,
+						description: event.description,
+						type: event.type,
 						triggeredAt: now,
-						expiresAt: duration > 0 ? expiresAt : null,
-						effectValue: event.effect.value || 1.0,
+						expiresAt: expiresAt,
+						effects: event.effect.multipliers || {},
+						progress: {},
 						status: 'ACTIVE',
-						lastCheck: now,
-						multipliers,
-					});
-					if (event.effect.type === 'CPS_MULTIPLIER') {
-						multipliers.cps *= userEvent.effectValue;
+					};
+
+					// Применяем эффекты события
+					if (newEvent.effects) {
+						Object.keys(newEvent.effects).forEach((key) => {
+							if (userState.eventMultipliers[key]) {
+								userState.eventMultipliers[key] *=
+									newEvent.effects[key];
+							}
+						});
 					}
+
+					userState.activeEvents.push(newEvent);
 				}
 			}
 
-			// Возвращаем актуальные события и мультипликаторы
-			const updatedActiveEvents = await UserEvent.findAll({
-				where: { userId, status: 'ACTIVE' },
-				include: [GameEvent],
-			});
+			// Обновляем кулдауны для сработавших событий
+			for (const event of availableEvents) {
+				if (
+					userState.activeEvents.some(
+						(ae) => ae.id === event.id && ae.triggeredAt === now
+					)
+				) {
+					const cooldownKey = `${event.id}_${event.type}`;
+					userState.eventCooldowns[cooldownKey] = now;
+				}
+			}
+
+			// Обновляем время последней проверки
+			userState.lastEventCheck = now;
+			await userState.save();
 
 			return {
-				activeEvents: updatedActiveEvents.map((ue) => ({
-					id: ue.GameEvent.id,
-					name: ue.GameEvent.name,
-					description: ue.GameEvent.description,
-					effect: ue.GameEvent.effect,
-					triggeredAt: ue.triggeredAt,
-					expiresAt: ue.expiresAt,
-				})),
-				multipliers,
+				activeEvents: userState.activeEvents,
+				eventMultipliers: userState.eventMultipliers,
+				eventHistory: userState.eventHistory.slice(-10), // Последние 10 событий
 			};
 		} catch (err) {
 			throw ApiError.Internal('Failed to check events: ' + err.message);
 		}
 	}
 
-	async shouldEventTrigger(event, userId, now) {
-		const userEvents = await UserEvent.findAll({
-			where: { userId, gameEventId: event.id },
-		});
-		const lastCheck =
-			userEvents.length > 0
-				? userEvents[userEvents.length - 1].lastCheck
-				: now;
-		const timeDiff = now - lastCheck;
+	async shouldEventTrigger(event, userId, now, userState) {
+		// Проверяем кулдауны
+		const cooldownKey = `${event.id}_${event.type}`;
+		const lastTriggerTime = userState.eventCooldowns[cooldownKey];
+		if (
+			lastTriggerTime &&
+			now - new Date(lastTriggerTime) < (event.frequency?.cooldown || 0)
+		) {
+			return false;
+		}
+
+		// Проверяем предпочтения пользователя
+		if (userState.eventPreferences?.disabledEvents?.includes(event.id)) {
+			return false;
+		}
+
+		// Проверяем, включен ли тип события
+		if (
+			userState.eventPreferences?.enabledTypes &&
+			!userState.eventPreferences.enabledTypes.includes(event.type)
+		) {
+			return false;
+		}
+
+		// Проверяем историю событий для этого конкретного события
+		const eventHistory = userState.eventHistory.filter(
+			(e) => e.id === event.id
+		);
+		const lastEvent =
+			eventHistory.length > 0
+				? eventHistory[eventHistory.length - 1]
+				: null;
+
 		switch (event.type) {
 			case 'RANDOM': {
+				const timeSinceLastCheck = now - userState.lastEventCheck;
 				const chance =
-					(timeDiff / 1000) * (event.frequency.chancePerSecond || 0);
+					(timeSinceLastCheck / 1000) *
+					(event.frequency?.chancePerSecond || 0);
 				return Math.random() < chance;
 			}
 			case 'PERIODIC': {
-				const lastOccurrence = userEvents.sort(
-					(a, b) => b.triggeredAt - a.triggeredAt
-				)[0];
-				if (!lastOccurrence) return true;
+				if (!lastEvent) return true;
 				const timeSinceLastOccurrence =
-					now - lastOccurrence.triggeredAt;
-				return timeSinceLastOccurrence >= event.frequency.interval;
+					now - new Date(lastEvent.triggeredAt);
+				return (
+					timeSinceLastOccurrence >= (event.frequency?.interval || 0)
+				);
 			}
 			case 'ONE_TIME':
-				return userEvents.length === 0;
+				return eventHistory.length === 0;
 			case 'CONDITIONAL': {
-				// triggerConfig.condition: { metric, op, value }
 				const cond = event.triggerConfig?.condition;
 				if (!cond) return false;
-				// Пример: metric = 'totalStars', op = '>', value = 1000
-				const userState = await UserState.findOne({
-					where: { userId },
-				});
-				const metricValue = userState?.state?.[cond.metric];
+
+				// Поддерживаем различные метрики
+				let metricValue;
+				switch (cond.metric) {
+					case 'totalStars':
+						metricValue = userState.state?.totalStars;
+						break;
+					case 'chaosLevel':
+						metricValue = userState.chaosLevel;
+						break;
+					case 'stabilityLevel':
+						metricValue = userState.stabilityLevel;
+						break;
+					case 'entropyVelocity':
+						metricValue = userState.entropyVelocity;
+						break;
+					default:
+						metricValue = userState.state?.[cond.metric];
+				}
+
 				if (metricValue === undefined) return false;
+
 				const ops = {
 					'>': (a, b) => a > b,
 					'>=': (a, b) => a >= b,
@@ -168,35 +256,27 @@ class EventService {
 				return ops[cond.op]?.(metricValue, cond.value) ?? false;
 			}
 			case 'CHAINED': {
-				// triggerConfig.after: eventId
 				const afterId = event.triggerConfig?.after;
 				if (!afterId) return false;
-				const afterEvent = await UserEvent.findOne({
-					where: {
-						userId,
-						gameEventId: afterId,
-						status: 'COMPLETED',
-					},
-				});
+				const afterEvent = userState.eventHistory.find(
+					(e) => e.id === afterId && e.status === 'COMPLETED'
+				);
 				return !!afterEvent;
 			}
 			case 'TRIGGERED_BY_ACTION':
 				// Только вручную, не триггерим автоматически
 				return false;
 			case 'GLOBAL_TIMED': {
-				// triggerConfig.at: дата/время
 				const at = event.triggerConfig?.at;
 				if (!at) return false;
 				return now >= new Date(at);
 			}
 			case 'LIMITED_REPEATABLE': {
-				// triggerConfig.limit: число
 				const limit = event.triggerConfig?.limit;
 				if (!limit) return false;
-				return userEvents.length < limit;
+				return eventHistory.length < limit;
 			}
 			case 'SEASONAL': {
-				// triggerConfig.start, triggerConfig.end: даты
 				const start = event.triggerConfig?.start;
 				const end = event.triggerConfig?.end;
 				if (!start || !end) return false;
@@ -214,29 +294,24 @@ class EventService {
 
 	async getActiveEvents(userId) {
 		try {
-			const activeEvents = await UserEvent.findAll({
-				where: { userId, status: 'ACTIVE' },
-				include: [GameEvent],
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
-			const multipliers = activeEvents.reduce(
-				(acc, ue) => {
-					if (ue.GameEvent.effect.type === 'CPS_MULTIPLIER') {
-						acc.cps *= ue.effectValue;
-					}
-					return acc;
-				},
-				{ cps: 1.0 }
-			);
+
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
+			}
+
 			return {
-				activeEvents: activeEvents.map((ue) => ({
-					id: ue.GameEvent.id,
-					name: ue.GameEvent.name,
-					description: ue.GameEvent.description,
-					effect: ue.GameEvent.effect,
-					triggeredAt: ue.triggeredAt,
-					expiresAt: ue.expiresAt,
-				})),
-				multipliers,
+				activeEvents: userState.activeEvents || [],
+				eventMultipliers: userState.eventMultipliers || {
+					production: 1.0,
+					chaos: 1.0,
+					stability: 1.0,
+					entropy: 1.0,
+					rewards: 1.0,
+				},
+				eventHistory: userState.eventHistory || [],
 			};
 		} catch (err) {
 			throw ApiError.BadRequest(
@@ -247,39 +322,58 @@ class EventService {
 
 	async initializeUserEvents(userId) {
 		try {
-			const now = new Date();
-			const initialEvents = await GameEvent.findAll({
-				where: { type: 'ONE_TIME', active: true },
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
-			let multipliers = { cps: 1.0 };
-			for (const event of initialEvents) {
-				const shouldTrigger = await this.shouldEventTrigger(
-					event,
-					userId,
-					now
-				);
-				if (shouldTrigger) {
-					const duration = event.effect.duration || 0;
-					const expiresAt = new Date(now.getTime() + duration * 1000);
-					await UserEvent.create({
-						userId,
-						gameEventId: event.id,
-						triggeredAt: now,
-						expiresAt: duration > 0 ? expiresAt : null,
-						effectValue: event.effect.value || 1.0,
-						status: 'ACTIVE',
-						lastCheck: now,
-						multipliers,
-					});
-					if (event.effect.type === 'CPS_MULTIPLIER') {
-						multipliers.cps *= event.effect.value;
-					}
-				}
+
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
 			}
+
+			// Инициализируем поля событий
+			userState.activeEvents = [];
+			userState.eventHistory = [];
+			userState.eventMultipliers = {
+				production: 1.0,
+				chaos: 1.0,
+				stability: 1.0,
+				entropy: 1.0,
+				rewards: 1.0,
+			};
+			userState.lastEventCheck = new Date();
+			userState.eventCooldowns = {};
+			userState.eventPreferences = {
+				enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+				disabledEvents: [],
+				priorityEvents: [],
+			};
+
+			await userState.save();
+
+			// Запускаем первую проверку событий
+			await this.checkAndTriggerEvents(userId);
+
 			return true;
 		} catch (err) {
 			throw ApiError.BadRequest(
 				'Failed to initialize user events: ' + err.message
+			);
+		}
+	}
+
+	async getUserEvents(userId) {
+		try {
+			// Сначала проверяем и обновляем события
+			const eventState = await this.checkAndTriggerEvents(userId);
+
+			return {
+				activeEvents: eventState.activeEvents,
+				eventMultipliers: eventState.eventMultipliers,
+				eventHistory: eventState.eventHistory,
+			};
+		} catch (err) {
+			throw ApiError.BadRequest(
+				'Failed to get user events: ' + err.message
 			);
 		}
 	}

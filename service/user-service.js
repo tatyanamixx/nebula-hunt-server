@@ -1,4 +1,4 @@
-const { User, UserState, UserUpgradeNode } = require('../models/models');
+const { User, UserState } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const stateService = require('./state-service');
@@ -144,12 +144,11 @@ class UserService {
 			);
 
 			// Check if user has upgrade tree initialized
-			const userNodes = await UserUpgradeNode.findByPk(userDto.id, {
-				transaction: t,
-			});
-
 			let upgradeNodes = [];
-			if (!userNodes) {
+			if (
+				!userState.userUpgrades ||
+				Object.keys(userState.userUpgrades).length === 0
+			) {
 				// If no upgrade nodes found, initialize the tree
 				upgradeNodes = await upgradeService.initializeUserUpgradeTree(
 					userDto.id,

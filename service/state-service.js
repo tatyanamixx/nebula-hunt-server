@@ -2,6 +2,7 @@ const { UserState, User, UpgradeNode } = require('../models/models');
 const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const UpgradeService = require('./upgrade-service');
+const stateHistoryService = require('./state-history-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 
@@ -112,18 +113,35 @@ class UserStateService {
 					currentStreak: userState.currentStreak,
 					maxStreak: userState.maxStreak,
 					streakUpdatedAt: userState.streakUpdatedAt,
-					stateHistory: [
-						{
-							timestamp: new Date(),
-							state: { ...userState.state },
-						},
-					],
+					stateHistory: {
+						entries: [],
+						lastUpdate: null,
+						version: '1.0',
+					},
 				},
 				transaction: transaction,
 			});
 
 			// Initialize upgrade tree for new user
 			await this.initializeUserUpgradeTree(userId, transaction);
+
+			// Log the creation of new user state
+			await stateHistoryService.addHistoryEntry(
+				userId,
+				'state_change',
+				'system',
+				'Создание нового состояния пользователя',
+				{
+					initialState: userState.state,
+					initialStreak: userState.currentStreak,
+				},
+				{
+					source: 'system',
+					trigger: 'registration',
+					relatedId: 'user_creation',
+				},
+				transaction
+			);
 
 			return stateNew;
 		} catch (err) {
@@ -144,33 +162,28 @@ class UserStateService {
 				throw ApiError.BadRequest('User state not found');
 			}
 
-			// Get available nodes using UpgradeService
+			// Инициализируем поля апгрейтов, если их нет
+			if (!userState.userUpgrades) userState.userUpgrades = {};
+			if (!userState.completedUpgrades) userState.completedUpgrades = [];
+			if (!userState.activeUpgrades) userState.activeUpgrades = [];
+
+			// Получаем доступные узлы
 			const availableNodes =
 				await UpgradeService.getAvailableUpgradeNodes(userId);
 
-			// Get user's upgrade nodes
-			const userUpgradeData = await UpgradeService.getUserUpgradeNodes(
-				userId
-			);
-			const userNodes = userUpgradeData.upgradeNodes;
-
-			// Update upgrade tree structure
+			// Обновляем структуру дерева апгрейдов
 			const upgradeTree = {
 				activeNodes: availableNodes.map((node) => node.id),
-				completedNodes: userNodes
-					.filter((node) => node.completed)
-					.map((node) => node.upgradeNodeId),
+				completedNodes: userState.completedUpgrades,
 				nodeStates: {},
 				treeStructure: {},
 				totalProgress: 0,
 				lastNodeUpdate: new Date(),
 			};
 
-			// Build node states and tree structure
+			// Строим состояния узлов и структуру дерева
 			for (const node of availableNodes) {
-				const userNode = userNodes.find(
-					(un) => un.upgradeNodeId === node.id
-				);
+				const userNode = userState.userUpgrades[node.id];
 
 				upgradeTree.nodeStates[node.id] = {
 					progress: userNode?.progress || 0,
@@ -196,7 +209,7 @@ class UserStateService {
 				};
 			}
 
-			// Calculate total progress
+			// Вычисляем общий прогресс
 			const totalNodes = Object.keys(upgradeTree.nodeStates).length;
 			if (totalNodes > 0) {
 				const progressSum = Object.values(
@@ -209,7 +222,7 @@ class UserStateService {
 				upgradeTree.totalProgress = progressSum / totalNodes;
 			}
 
-			// Update user state
+			// Обновляем состояние пользователя
 			userState.upgradeTree = upgradeTree;
 			await userState.save({ transaction });
 
@@ -310,6 +323,10 @@ class UserStateService {
 				stateData.stateHistory.push({
 					timestamp: now,
 					state: { ...stateData.state },
+					stars: userState.stars,
+					chaosLevel: userState.chaosLevel,
+					stabilityLevel: userState.stabilityLevel,
+					entropyVelocity: userState.entropyVelocity,
 				});
 				// Оставляем только последние 100 записей
 				if (stateData.stateHistory.length > 100) {
@@ -322,14 +339,6 @@ class UserStateService {
 				await this.updateUpgradeTreeOnLogin(userId, t);
 				await stateData.save({ transaction: t });
 				const string = JSON.stringify(stateData.state);
-
-				await loggerService.logging(
-					userId,
-					'UPDATE',
-					`The user ${userId} updated a state ${string}`,
-					userState.stars,
-					t
-				);
 
 				await t.commit();
 				return { userId, userState: stateData };

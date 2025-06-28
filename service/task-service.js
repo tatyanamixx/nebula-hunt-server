@@ -1,5 +1,6 @@
-const { UserTask, Task } = require('../models/models');
+const { Task, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
+const sequelize = require('../db');
 
 class TaskService {
 	async createTasks(tasks) {
@@ -42,19 +43,26 @@ class TaskService {
 
 	async activateUserTasks(userId) {
 		try {
-			// Get all active tasks
+			// Получаем все активные задачи
 			const taskRaw = await Task.findAll({
 				where: {
 					active: true,
 				},
 			});
 
-			// Get user's existing tasks
-			const userTaskRaw = await UserTask.findAll({
-				where: {
-					userId: userId,
-				},
+			// Получаем состояние пользователя
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
+
+			if (!userState) {
+				throw ApiError.BadRequest('User state not found');
+			}
+
+			// Инициализируем поля задач, если их нет
+			if (!userState.userTasks) userState.userTasks = {};
+			if (!userState.activeTasks) userState.activeTasks = [];
+			if (!userState.completedTasks) userState.completedTasks = [];
 
 			const tasks = taskRaw.map((item) => item.toJSON());
 			if (tasks.length === 0) {
@@ -64,44 +72,63 @@ class TaskService {
 				};
 			}
 
-			const userTasks = userTaskRaw.map((item) => item.toJSON());
-			const existingTaskIds = new Set(userTasks.map((ut) => ut.taskId));
+			// Получаем существующие задачи пользователя
+			const existingTaskIds = new Set(Object.keys(userState.userTasks));
 
+			// Фильтруем новые задачи
 			const newTasks = tasks.filter(
 				(task) => !existingTaskIds.has(task.id)
 			);
 
-			if (newTasks.length > 0) {
-				const newUserTasks = newTasks.map((task) => ({
-					userId: userId,
-					taskId: task.id,
+			// Создаем записи для новых задач
+			for (const task of newTasks) {
+				userState.userTasks[task.id] = {
 					progress: 0,
+					targetProgress: task.condition?.targetProgress || 100,
 					completed: false,
-				}));
+					reward: 0,
+					progressHistory: [],
+					lastProgressUpdate: new Date(),
+				};
 
-				await UserTask.bulkCreate(newUserTasks, {
-					returning: true,
-				});
+				// Добавляем в активные задачи
+				if (!userState.activeTasks.includes(task.id)) {
+					userState.activeTasks.push(task.id);
+				}
 			}
 
-			const userTaskNew = await UserTask.findAll({
-				where: {
-					userId: userId,
-				},
-				include: Task,
-			});
+			await userState.save();
 
-			// Calculate total reward
-			const totalReward = await UserTask.sum('reward', {
-				where: {
-					userId: userId,
-					completed: true,
-				},
-			});
+			// Вычисляем общую награду
+			const totalReward = Object.values(userState.userTasks)
+				.filter((task) => task.completed)
+				.reduce((sum, task) => sum + (task.reward || 0), 0);
+
+			// Формируем результат с информацией о задачах
+			const userTasksWithDetails = [];
+			for (const [taskId, taskData] of Object.entries(
+				userState.userTasks
+			)) {
+				const taskInfo = tasks.find((t) => t.id === taskId);
+				if (taskInfo) {
+					userTasksWithDetails.push({
+						id: taskId,
+						userId: userId,
+						taskId: taskId,
+						progress: taskData.progress,
+						targetProgress: taskData.targetProgress,
+						completed: taskData.completed,
+						reward: taskData.reward,
+						progressHistory: taskData.progressHistory,
+						lastProgressUpdate: taskData.lastProgressUpdate,
+						task: taskInfo,
+					});
+				}
+			}
 
 			return {
-				reward: { task: totalReward || 0 },
-				task: userTaskNew.map((item) => item.toJSON()),
+				reward: { task: totalReward },
+				task: userTasksWithDetails,
 			};
 		} catch (err) {
 			throw ApiError.Internal(
@@ -112,33 +139,46 @@ class TaskService {
 
 	async getUserTasks(userId) {
 		try {
-			// Get user's tasks with task details
-			const userTasksRaw = await UserTask.findAll({
-				include: Task,
-				where: {
-					userId: userId,
-				},
-				attributes: [
-					'id',
-					'userId',
-					'taskId',
-					'progress',
-					'targetProgress',
-					'completed',
-					'reward',
-					'progressHistory',
-					'lastProgressUpdate',
-					'task.id',
-					'task.title',
-					'task.description',
-					'task.reward',
-					'task.condition',
-					'task.icon',
-					'task.active',
-				],
+			// Получаем состояние пользователя
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
 
-			return userTasksRaw.map((item) => item.toJSON());
+			if (!userState || !userState.userTasks) {
+				return [];
+			}
+
+			const userTasks = [];
+			const userTasksData = userState.userTasks;
+
+			// Получаем информацию о каждой задаче
+			for (const [taskId, taskData] of Object.entries(userTasksData)) {
+				const task = await Task.findByPk(taskId);
+				if (task) {
+					userTasks.push({
+						id: taskId,
+						userId: userId,
+						taskId: taskId,
+						progress: taskData.progress,
+						targetProgress: taskData.targetProgress,
+						completed: taskData.completed,
+						reward: taskData.reward,
+						progressHistory: taskData.progressHistory,
+						lastProgressUpdate: taskData.lastProgressUpdate,
+						task: {
+							id: task.id,
+							title: task.title,
+							description: task.description,
+							reward: task.reward,
+							condition: task.condition,
+							icon: task.icon,
+							active: task.active,
+						},
+					});
+				}
+			}
+
+			return userTasks;
 		} catch (err) {
 			throw ApiError.Internal(`Failed to get user tasks: ${err.message}`);
 		}
@@ -146,31 +186,48 @@ class TaskService {
 
 	async updateTaskProgress(userId, taskId, progress) {
 		try {
-			const userTask = await UserTask.findOne({
-				where: {
-					userId: userId,
-					taskId: taskId,
-				},
-				include: Task,
+			const userState = await UserState.findOne({
+				where: { userId },
 			});
 
-			if (!userTask) {
+			if (
+				!userState ||
+				!userState.userTasks ||
+				!userState.userTasks[taskId]
+			) {
 				throw ApiError.BadRequest('Task not found');
 			}
 
-			// Update progress
+			const task = await Task.findByPk(taskId);
+			if (!task) {
+				throw ApiError.BadRequest('Task not found');
+			}
+
+			const userTask = userState.userTasks[taskId];
+
+			// Обновляем прогресс
 			userTask.progress = Math.min(progress, userTask.targetProgress);
 
-			// Check if task is completed
+			// Проверяем, завершена ли задача
 			if (
 				userTask.progress >= userTask.targetProgress &&
 				!userTask.completed
 			) {
 				userTask.completed = true;
-				userTask.reward = userTask.task.reward;
+				userTask.reward = task.reward;
+
+				// Добавляем в завершенные задачи
+				if (!userState.completedTasks.includes(taskId)) {
+					userState.completedTasks.push(taskId);
+				}
+
+				// Удаляем из активных задач
+				userState.activeTasks = userState.activeTasks.filter(
+					(id) => id !== taskId
+				);
 			}
 
-			// Update progress history
+			// Обновляем историю прогресса
 			userTask.progressHistory.push({
 				timestamp: new Date(),
 				progress: userTask.progress,
@@ -178,9 +235,28 @@ class TaskService {
 
 			userTask.lastProgressUpdate = new Date();
 
-			await userTask.save();
+			await userState.save();
 
-			return userTask.toJSON();
+			return {
+				id: taskId,
+				userId: userId,
+				taskId: taskId,
+				progress: userTask.progress,
+				targetProgress: userTask.targetProgress,
+				completed: userTask.completed,
+				reward: userTask.reward,
+				progressHistory: userTask.progressHistory,
+				lastProgressUpdate: userTask.lastProgressUpdate,
+				task: {
+					id: task.id,
+					title: task.title,
+					description: task.description,
+					reward: task.reward,
+					condition: task.condition,
+					icon: task.icon,
+					active: task.active,
+				},
+			};
 		} catch (err) {
 			throw ApiError.Internal(
 				`Failed to update task progress: ${err.message}`
