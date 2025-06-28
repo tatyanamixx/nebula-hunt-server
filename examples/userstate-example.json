@@ -1,0 +1,336 @@
+{
+	"id": 1,
+	"userId": 123,
+	"state": {
+		"totalStars": 15420,
+		"stardustCount": 8500,
+		"darkMatterCount": 1250,
+		"ownedGalaxiesCount": 3,
+		"ownedNodesCount": 12
+	},
+	"chaosLevel": 0.15,
+	"stabilityLevel": 0.85,
+	"entropyVelocity": 0.02,
+	"taskProgress": {
+		"completedTasks": ["TASK_001", "TASK_003", "TASK_007"],
+		"currentWeight": 45,
+		"unlockedNodes": ["NODE_A", "NODE_B", "NODE_C"]
+	},
+	"upgradeTree": {
+		"activeNodes": ["UPGRADE_001", "UPGRADE_003"],
+		"completedNodes": ["UPGRADE_002", "UPGRADE_004"],
+		"nodeStates": {
+			"UPGRADE_001": {
+				"level": 2,
+				"progress": 75,
+				"stability": 0.8,
+				"instability": 0.1
+			},
+			"UPGRADE_003": {
+				"level": 1,
+				"progress": 30,
+				"stability": 0.9,
+				"instability": 0.05
+			}
+		},
+		"treeStructure": {
+			"UPGRADE_001": ["UPGRADE_002", "UPGRADE_003"],
+			"UPGRADE_002": ["UPGRADE_005"],
+			"UPGRADE_003": ["UPGRADE_006"]
+		},
+		"totalProgress": 65,
+		"lastNodeUpdate": "2024-01-15T10:30:00Z"
+	},
+	"lastLoginDate": "2024-01-15",
+	"currentStreak": 7,
+	"maxStreak": 15,
+	"streakUpdatedAt": "2024-01-15T08:00:00Z",
+	"stateHistory": {
+		"entries": [
+			{
+				"timestamp": "2024-01-15T10:30:00Z",
+				"type": "upgrade_purchased",
+				"category": "progress",
+				"description": "Purchased Production Boost upgrade",
+				"changes": {
+					"field": "totalStars",
+					"oldValue": 15000,
+					"newValue": 15420
+				},
+				"metadata": {
+					"source": "user_action",
+					"trigger": "upgrade_purchase",
+					"relatedId": "UPGRADE_001"
+				}
+			},
+			{
+				"timestamp": "2024-01-15T09:15:00Z",
+				"type": "task_completed",
+				"category": "achievement",
+				"description": "Completed 'Collect 1000 Stars' task",
+				"changes": {
+					"field": "stardustCount",
+					"oldValue": 7500,
+					"newValue": 8500
+				},
+				"metadata": {
+					"source": "task",
+					"trigger": "condition_met",
+					"relatedId": "TASK_007"
+				}
+			},
+			{
+				"timestamp": "2024-01-15T08:00:00Z",
+				"type": "login",
+				"category": "system",
+				"description": "Daily login streak continued",
+				"changes": {
+					"field": "currentStreak",
+					"oldValue": 6,
+					"newValue": 7
+				},
+				"metadata": {
+					"source": "automatic",
+					"trigger": "daily_login",
+					"relatedId": null
+				}
+			}
+		],
+		"lastUpdate": "2024-01-15T10:30:00Z",
+		"version": "1.0"
+	},
+	"activeEvents": [
+		{
+			"eventId": "EVENT_001",
+			"type": "RANDOM",
+			"name": "Stellar Storm",
+			"description": "Increased star production for 2 hours",
+			"startTime": "2024-01-15T09:00:00Z",
+			"endTime": "2024-01-15T11:00:00Z",
+			"progress": 0.75,
+			"effects": {
+				"production": 2.5,
+				"chaos": 1.2
+			},
+			"rewards": {
+				"stardust": 500,
+				"darkMatter": 50
+			}
+		},
+		{
+			"eventId": "EVENT_002",
+			"type": "PERIODIC",
+			"name": "Weekly Challenge",
+			"description": "Complete 5 tasks this week",
+			"startTime": "2024-01-15T00:00:00Z",
+			"endTime": "2024-01-21T23:59:59Z",
+			"progress": 0.6,
+			"target": 5,
+			"current": 3,
+			"effects": {
+				"rewards": 1.5
+			},
+			"rewards": {
+				"stardust": 1000,
+				"darkMatter": 100
+			}
+		}
+	],
+	"eventHistory": [
+		{
+			"eventId": "EVENT_003",
+			"type": "CONDITIONAL",
+			"name": "First Galaxy",
+			"description": "Own your first galaxy",
+			"startTime": "2024-01-10T14:30:00Z",
+			"endTime": "2024-01-10T14:35:00Z",
+			"completed": true,
+			"completionTime": "2024-01-10T14:32:00Z",
+			"rewards": {
+				"stardust": 200,
+				"darkMatter": 25
+			}
+		},
+		{
+			"eventId": "EVENT_004",
+			"type": "RANDOM",
+			"name": "Meteor Shower",
+			"description": "Bonus stardust collection",
+			"startTime": "2024-01-12T16:00:00Z",
+			"endTime": "2024-01-12T18:00:00Z",
+			"completed": true,
+			"completionTime": "2024-01-12T17:45:00Z",
+			"rewards": {
+				"stardust": 300
+			}
+		}
+	],
+	"eventMultipliers": {
+		"production": 2.5,
+		"chaos": 1.2,
+		"stability": 1.0,
+		"entropy": 1.0,
+		"rewards": 1.5
+	},
+	"lastEventCheck": "2024-01-15T10:30:00Z",
+	"eventCooldowns": {
+		"RANDOM": "2024-01-15T12:00:00Z",
+		"PERIODIC": "2024-01-16T00:00:00Z",
+		"CONDITIONAL": "2024-01-15T15:00:00Z"
+	},
+	"eventPreferences": {
+		"enabledTypes": ["RANDOM", "PERIODIC", "CONDITIONAL"],
+		"disabledEvents": ["EVENT_005"],
+		"priorityEvents": ["EVENT_002"]
+	},
+	"userTasks": {
+		"TASK_001": {
+			"progress": 100,
+			"targetProgress": 100,
+			"completed": true,
+			"reward": 200,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-10T10:00:00Z",
+					"progress": 50
+				},
+				{
+					"timestamp": "2024-01-10T15:00:00Z",
+					"progress": 100
+				}
+			],
+			"lastProgressUpdate": "2024-01-10T15:00:00Z"
+		},
+		"TASK_002": {
+			"progress": 75,
+			"targetProgress": 100,
+			"completed": false,
+			"reward": 300,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-12T09:00:00Z",
+					"progress": 25
+				},
+				{
+					"timestamp": "2024-01-14T16:00:00Z",
+					"progress": 75
+				}
+			],
+			"lastProgressUpdate": "2024-01-14T16:00:00Z"
+		},
+		"TASK_003": {
+			"progress": 100,
+			"targetProgress": 100,
+			"completed": true,
+			"reward": 150,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-13T11:00:00Z",
+					"progress": 100
+				}
+			],
+			"lastProgressUpdate": "2024-01-13T11:00:00Z"
+		}
+	},
+	"completedTasks": [
+		{
+			"taskId": "TASK_001",
+			"completedAt": "2024-01-10T15:00:00Z",
+			"reward": 200
+		},
+		{
+			"taskId": "TASK_003",
+			"completedAt": "2024-01-13T11:00:00Z",
+			"reward": 150
+		},
+		{
+			"taskId": "TASK_007",
+			"completedAt": "2024-01-15T09:15:00Z",
+			"reward": 500
+		}
+	],
+	"activeTasks": ["TASK_002", "TASK_004", "TASK_005"],
+	"taskMultipliers": {
+		"progress": 1.2,
+		"rewards": 1.0,
+		"unlock": 1.0
+	},
+	"lastTaskCheck": "2024-01-15T10:30:00Z",
+	"userUpgrades": {
+		"UPGRADE_001": {
+			"level": 2,
+			"progress": 75,
+			"targetProgress": 100,
+			"completed": false,
+			"stability": 0.8,
+			"instability": 0.1,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-14T10:00:00Z",
+					"level": 1,
+					"progress": 100
+				},
+				{
+					"timestamp": "2024-01-15T10:30:00Z",
+					"level": 2,
+					"progress": 75
+				}
+			],
+			"lastProgressUpdate": "2024-01-15T10:30:00Z"
+		},
+		"UPGRADE_002": {
+			"level": 1,
+			"progress": 100,
+			"targetProgress": 100,
+			"completed": true,
+			"stability": 0.9,
+			"instability": 0.05,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-13T14:00:00Z",
+					"level": 1,
+					"progress": 100
+				}
+			],
+			"lastProgressUpdate": "2024-01-13T14:00:00Z"
+		},
+		"UPGRADE_003": {
+			"level": 1,
+			"progress": 30,
+			"targetProgress": 100,
+			"completed": false,
+			"stability": 0.9,
+			"instability": 0.05,
+			"progressHistory": [
+				{
+					"timestamp": "2024-01-15T09:00:00Z",
+					"level": 1,
+					"progress": 30
+				}
+			],
+			"lastProgressUpdate": "2024-01-15T09:00:00Z"
+		}
+	},
+	"completedUpgrades": [
+		{
+			"nodeId": "UPGRADE_002",
+			"completedAt": "2024-01-13T14:00:00Z",
+			"finalLevel": 1
+		},
+		{
+			"nodeId": "UPGRADE_004",
+			"completedAt": "2024-01-12T16:30:00Z",
+			"finalLevel": 1
+		}
+	],
+	"activeUpgrades": ["UPGRADE_001", "UPGRADE_003", "UPGRADE_005"],
+	"upgradeMultipliers": {
+		"production": 1.5,
+		"efficiency": 1.2,
+		"cost": 0.9,
+		"unlock": 1.0
+	},
+	"lastUpgradeCheck": "2024-01-15T10:30:00Z",
+	"createdAt": "2024-01-10T08:00:00Z",
+	"updatedAt": "2024-01-15T10:30:00Z"
+}
