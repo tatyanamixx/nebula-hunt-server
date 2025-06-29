@@ -4,6 +4,7 @@ const userController = require('../controllers/user-controller');
 const { body } = require('express-validator');
 const tmaMiddleware = require('../middlewares/tma-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const adminMiddleware = require('../middlewares/admin-middleware');
 
 router.post(
 	'/registration',

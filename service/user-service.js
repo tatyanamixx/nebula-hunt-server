@@ -11,6 +11,53 @@ const sequelize = require('../db');
 const { Op, where } = require('sequelize');
 
 class UserService {
+	async createSystemUser() {
+		const t = await sequelize.transaction();
+		try {
+			// Check if system user already exists
+			const existingSystemUser = await User.findByPk(-1, {
+				transaction: t,
+			});
+			if (existingSystemUser) {
+				await t.commit();
+				return existingSystemUser;
+			}
+
+			// Create system user
+			const systemUser = await User.create(
+				{
+					id: -1,
+					username: 'SYSTEM',
+					referral: 0,
+					role: 'SYSTEM',
+					blocked: false,
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return systemUser;
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to create system user: ${err.message}`
+			);
+		}
+	}
+
+	async ensureSystemUserExists() {
+		try {
+			const systemUser = await User.findByPk(-1);
+			if (!systemUser) {
+				await this.createSystemUser();
+			}
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to ensure system user exists: ${err.message}`
+			);
+		}
+	}
+
 	async registration(id, username, referral, reqUserState, galaxies) {
 		const tc = await sequelize.transaction();
 		try {
@@ -28,6 +75,12 @@ class UserService {
 				throw ApiError.BadRequest(
 					'Invalid referral data, must be a number'
 				);
+			}
+
+			// Check if this is the first user registration and create system user if needed
+			const userCount = await User.count({ transaction: tc });
+			if (userCount === 0) {
+				await this.ensureSystemUserExists();
 			}
 
 			// Create or update user
@@ -261,6 +314,25 @@ class UserService {
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(`Failed to get friends: ${err.message}`);
+		}
+	}
+
+	async getSystemUser() {
+		try {
+			const systemUser = await User.findByPk(-1);
+
+			if (!systemUser) {
+				throw ApiError.BadRequest('System user not found');
+			}
+
+			return systemUser;
+		} catch (err) {
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(
+				`Failed to get system user: ${err.message}`
+			);
 		}
 	}
 }
