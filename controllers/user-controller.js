@@ -1,6 +1,7 @@
 const userService = require('../service/user-service');
 const { validationResult } = require('express-validator');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class UserController {
 	async registration(req, res, next) {
@@ -16,6 +17,7 @@ class UserController {
 				userState,
 				galaxies
 			);
+			logger.info('User registered', { userId: id, username, referral });
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -30,6 +32,7 @@ class UserController {
 		try {
 			const id = req.initdata.id;
 			const userData = await userService.login(id);
+			logger.info('User login', { userId: id });
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,

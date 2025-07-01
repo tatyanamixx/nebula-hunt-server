@@ -1,5 +1,6 @@
 const userStateService = require('../service/state-service');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class UserStateController {
 	async getUserState(req, res, next) {
@@ -20,6 +21,10 @@ class UserStateController {
 				id,
 				userState
 			);
+			logger.info('User state updated', {
+				userId: id,
+				newState: userState,
+			});
 			return res.json(updatedState);
 		} catch (e) {
 			next(e);

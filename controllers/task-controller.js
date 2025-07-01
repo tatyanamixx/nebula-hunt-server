@@ -1,5 +1,6 @@
 const taskService = require('../service/task-service');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class TaskController {
 	async getUserTasks(req, res, next) {
@@ -27,6 +28,7 @@ class TaskController {
 				taskId,
 				progress
 			);
+			logger.info('Task completed', { userId, taskId, progress });
 			return res.json(updatedTask);
 		} catch (e) {
 			next(e);

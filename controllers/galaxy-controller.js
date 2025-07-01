@@ -1,5 +1,6 @@
 const galaxyService = require('../service/galaxy-service');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class GalaxyController {
 	async createGalaxy(req, res, next) {
@@ -7,6 +8,7 @@ class GalaxyController {
 			const id = req.initdata.id;
 			const galaxyData = req.body;
 			const galaxy = await galaxyService.createGalaxy(id, galaxyData);
+			logger.info('Galaxy created', { userId: id, galaxy: galaxyData });
 			return res.json(galaxy);
 		} catch (e) {
 			next(e);
@@ -27,10 +29,7 @@ class GalaxyController {
 		try {
 			const id = req.initdata.id;
 			const galaxyData = req.body;
-			const galaxy = await galaxyService.updateGalaxy(
-				id,
-				galaxyData
-			);
+			const galaxy = await galaxyService.updateGalaxy(id, galaxyData);
 			return res.json(galaxy);
 		} catch (e) {
 			next(e);

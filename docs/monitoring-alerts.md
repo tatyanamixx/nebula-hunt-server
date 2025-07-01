@@ -12,6 +12,7 @@
 -   [Логирование](#логирование)
 -   [Трейсинг](#трейсинг)
 -   [SLA и SLO](#sla-и-slo)
+-   [Мониторинг через Zabbix](#мониторинг-через-zabbix)
 
 ## Обзор
 
@@ -1248,6 +1249,173 @@ spec:
 	}
 }
 ```
+
+## Мониторинг через Zabbix
+
+### Установка и базовая настройка Zabbix
+
+1. **Установка Zabbix Server и Agent (Ubuntu/Debian):**
+    ```sh
+    wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu20.04_all.deb
+    sudo dpkg -i zabbix-release_6.0-4+ubuntu20.04_all.deb
+    sudo apt update
+    sudo apt install zabbix-server-pgsql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent postgresql
+    ```
+2. **Создание базы данных PostgreSQL:**
+    ```sh
+    sudo -u postgres createuser --pwprompt zabbix
+    sudo -u postgres createdb -O zabbix zabbix
+    zcat /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz | psql -U zabbix -d zabbix
+    ```
+3. **Настройка подключения к БД:**
+   В файле `/etc/zabbix/zabbix_server.conf`:
+    ```
+    DBHost=localhost
+    DBName=zabbix
+    DBUser=zabbix
+    DBPassword=ВАШ_ПАРОЛЬ
+    ```
+4. **Запуск сервисов:**
+    ```sh
+    sudo systemctl restart zabbix-server zabbix-agent apache2
+    sudo systemctl enable zabbix-server zabbix-agent apache2
+    ```
+5. **Веб-интерфейс:**
+    - Откройте `http://<IP_СЕРВЕРА>/zabbix` и завершите настройку через мастер.
+
+### Установка и настройка Zabbix Agent на целевых серверах
+
+```sh
+sudo apt install zabbix-agent
+```
+
+В `/etc/zabbix/zabbix_agentd.conf`:
+
+```
+Server=<IP_СЕРВЕРА_ZABBIX>
+ServerActive=<IP_СЕРВЕРА_ZABBIX>
+Hostname=<ИМЯ_ХОСТА>
+```
+
+Перезапуск:
+
+```sh
+sudo systemctl restart zabbix-agent
+sudo systemctl enable zabbix-agent
+```
+
+### Рекомендации по метрикам для Zabbix
+
+#### 1. **Системные метрики**
+
+-   CPU, память, диск, сеть (стандартные шаблоны Zabbix Agent)
+-   Доступность сервисов (ICMP ping, TCP checks)
+
+#### 2. **Мониторинг PostgreSQL**
+
+-   Используйте шаблон **"PostgreSQL by Zabbix agent2"** или **Zabbix Database Monitoring**
+-   Ключевые метрики:
+    -   Доступность БД
+    -   Количество активных соединений
+    -   Время выполнения запросов
+    -   Использование памяти и диска
+    -   Количество блокировок
+    -   Репликация (если используется)
+-   Создайте отдельного пользователя с правами только на чтение для мониторинга.
+
+#### 3. **Мониторинг Node.js приложения**
+
+-   Используйте **Custom UserParameters** или интеграцию с внешними метриками:
+    -   Время отклика HTTP (через web-сценарии Zabbix)
+    -   Доступность API (HTTP/HTTPS checks)
+    -   Использование памяти процесса (`proc.mem`), CPU (`proc.cpu`)
+    -   Количество открытых файловых дескрипторов (`proc.num[fd]`)
+    -   Логирование ошибок (через log-мониторинг)
+-   Для расширенного мониторинга используйте [zabbix-nodejs](https://github.com/zarplata/zabbix-nodejs) или отправку кастомных метрик через zabbix_sender.
+
+#### 4. **Алерты и триггеры**
+
+-   Доступность сервисов (Server/Agent/DB)
+-   Высокая загрузка CPU/памяти/диска
+-   Ошибки в логах приложения
+-   Высокое время ответа API
+-   Переполнение очередей/блокировок в PostgreSQL
+
+#### 5. **Рекомендации**
+
+-   Используйте шаблоны Zabbix для быстрой интеграции
+-   Настройте алерты по SLA/SLO (например, доступность >99.9%, время ответа <500мс)
+-   Включите мониторинг логов для быстрого реагирования на ошибки
+-   Регулярно обновляйте Zabbix и шаблоны
+-   Документируйте все кастомные элементы и триггеры
+
+### Полезные ссылки
+
+-   [Официальная документация Zabbix (RU)](https://www.zabbix.com/documentation/current/ru/manual/installation)
+-   [Мониторинг PostgreSQL](https://www.zabbix.com/documentation/current/ru/manual/config/items/itemtypes/zabbix_agent/pgsql_checks)
+-   [Шаблоны Zabbix](https://www.zabbix.com/integrations)
+-   [Мониторинг Node.js](https://github.com/zarplata/zabbix-nodejs)
+
+### Примеры алертов и триггеров для Zabbix
+
+#### **1. Системные алерты (CPU, память, диск)**
+
+-   **Высокая загрузка CPU:**
+
+    -   Выражение: `{Template OS Linux:system.cpu.util[,idle].last(5m)}<10`
+    -   Описание: CPU простаивает менее 10% в течение 5 минут (нагрузка >90%)
+
+-   **Мало свободной памяти:**
+
+    -   Выражение: `{Template OS Linux:vm.memory.size[available].last()}<500M`
+    -   Описание: Свободной памяти меньше 500 МБ
+
+-   **Диск почти заполнен:**
+    -   Выражение: `{Template OS Linux:vfs.fs.size[/,pfree].last()}<10`
+    -   Описание: Свободно менее 10% места на корневом разделе
+
+#### **2. PostgreSQL**
+
+-   **База данных недоступна:**
+
+    -   Выражение: `{PostgreSQL by Zabbix agent2:pgsql.ping.last()}=0`
+    -   Описание: Нет ответа от PostgreSQL
+
+-   **Слишком много соединений:**
+
+    -   Выражение: `{PostgreSQL by Zabbix agent2:pgsql.connections.used.last()}/{PostgreSQL by Zabbix agent2:pgsql.connections.max.last()}>0.8`
+    -   Описание: Используется более 80% соединений
+
+-   **Долгие запросы:**
+    -   Выражение: `{PostgreSQL by Zabbix agent2:pgsql.query.longest_time.max(5m)}>2`
+    -   Описание: Есть запросы дольше 2 секунд
+
+#### **3. Node.js-приложение**
+
+-   **Высокое использование памяти процессом:**
+
+    -   UserParameter (пример): `UserParameter=nodejs.mem,ps -o rss= -p $(pgrep -f 'node')`
+    -   Триггер: `{Custom Node.js:nodejs.mem.last()}>500000` (RSS > 500 МБ)
+
+-   **Недоступность API:**
+
+    -   Web-сценарий: HTTP GET `/health` или `/metrics`
+    -   Триггер: `last(/Custom Node.js:web.test.fail[api-health])=1`
+
+-   **Ошибки в логах:**
+    -   Используйте log-мониторинг:
+        -   `log[/var/log/app.log, ERROR, 100, utf8, skip]`
+    -   Триггер: `{Custom Node.js:log[/var/log/app.log,ERROR,100,utf8,skip].nodata(5m)}=0`
+
+#### **4. Общие советы по алертам в Zabbix**
+
+-   Не используйте слишком "шумные" алерты — настраивайте пороги, чтобы реагировать только на реальные инциденты.
+-   Для критичных сервисов используйте эскалацию: сначала уведомление в чат, затем — SMS/звонок.
+-   Группируйте алерты по приоритету (P0 — сервис недоступен, P1 — деградация, P2 — информационные).
+-   Используйте maintenance windows для плановых работ, чтобы не получать ложные алерты.
+-   Документируйте все кастомные триггеры и действия.
+-   Регулярно пересматривайте алерты: убирайте устаревшие, добавляйте новые по мере развития системы.
+-   Для бизнес-метрик (например, регистраций, активности пользователей) используйте отдельные алерты с более мягкими порогами.
 
 ## Заключение
 

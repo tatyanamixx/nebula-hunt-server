@@ -9,6 +9,7 @@
 -   [UptimeRobot / StatusCake (healthcheck)](#uptimerobot--statuscake)
 -   [AWS S3 (бэкапы)](#aws-s3)
 -   [Jaeger (трейсинг)](#jaeger)
+-   [Zabbix (мониторинг и алерты)](#zabbix)
 
 ---
 
@@ -171,6 +172,66 @@ const tracer = initTracer({ serviceName: 'nebulahant-server' });
 **Документация:**
 
 -   https://www.jaegertracing.io/docs/1.53/client-libraries/
+
+---
+
+## Zabbix (мониторинг и алерты)
+
+**Назначение:** Централизованный мониторинг состояния серверов, сервисов, баз данных и приложений. Позволяет собирать метрики, настраивать алерты и интегрироваться с внешними системами оповещений.
+
+### Установка и базовая настройка
+
+1. **Установка Zabbix Server и Agent (Ubuntu/Debian):**
+    ```sh
+    wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu20.04_all.deb
+    sudo dpkg -i zabbix-release_6.0-4+ubuntu20.04_all.deb
+    sudo apt update
+    sudo apt install zabbix-server-pgsql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent postgresql
+    ```
+2. **Создание базы данных PostgreSQL:**
+    ```sh
+    sudo -u postgres createuser --pwprompt zabbix
+    sudo -u postgres createdb -O zabbix zabbix
+    zcat /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz | psql -U zabbix -d zabbix
+    ```
+3. **Настройка подключения к БД:**
+   В файле `/etc/zabbix/zabbix_server.conf`:
+    ```
+    DBHost=localhost
+    DBName=zabbix
+    DBUser=zabbix
+    DBPassword=ВАШ_ПАРОЛЬ
+    ```
+4. **Запуск сервисов:**
+    ```sh
+    sudo systemctl restart zabbix-server zabbix-agent apache2
+    sudo systemctl enable zabbix-server zabbix-agent apache2
+    ```
+5. **Веб-интерфейс:**
+
+    - Откройте `http://<IP_СЕРВЕРА>/zabbix` и завершите настройку через мастер.
+
+6. **Установка и настройка Zabbix Agent на целевых серверах:**
+    ```sh
+    sudo apt install zabbix-agent
+    ```
+    В `/etc/zabbix/zabbix_agentd.conf`:
+    ```
+    Server=<IP_СЕРВЕРА_ZABBIX>
+    ServerActive=<IP_СЕРВЕРА_ZABBIX>
+    Hostname=<ИМЯ_ХОСТА>
+    ```
+    Перезапуск:
+    ```sh
+    sudo systemctl restart zabbix-agent
+    sudo systemctl enable zabbix-agent
+    ```
+
+**Документация:**
+
+-   [Официальная документация Zabbix (RU)](https://www.zabbix.com/documentation/current/ru/manual/installation)
+-   [Мониторинг PostgreSQL](https://www.zabbix.com/documentation/current/ru/manual/config/items/itemtypes/zabbix_agent/pgsql_checks)
+-   [Шаблоны Zabbix](https://www.zabbix.com/integrations)
 
 ---
 

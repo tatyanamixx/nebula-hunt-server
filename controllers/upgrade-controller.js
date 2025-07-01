@@ -1,6 +1,7 @@
 const stateService = require('../service/state-service');
 const upgradeService = require('../service/upgrade-service');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class UpgradeController {
 	async getUserUpgradeTree(req, res, next) {
@@ -50,6 +51,11 @@ class UpgradeController {
 				nodeId,
 				progressIncrement
 			);
+			logger.info('Upgrade progressed', {
+				userId: id,
+				nodeId,
+				progressIncrement,
+			});
 			return res.json(result);
 		} catch (e) {
 			next(e);

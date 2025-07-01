@@ -1,5 +1,6 @@
 const eventService = require('../service/event-service');
 const ApiError = require('../exceptions/api-error');
+const logger = require('../service/logger-service');
 
 class EventController {
 	async getUserEvents(req, res, next) {
@@ -16,6 +17,7 @@ class EventController {
 		try {
 			const id = req.initdata.id;
 			const events = await eventService.checkAndTriggerEvents(id);
+			logger.info('Event check', { userId: id, events });
 			return res.json(events);
 		} catch (e) {
 			next(e);
