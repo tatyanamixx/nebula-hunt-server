@@ -7,6 +7,8 @@ const {
 	sequelize,
 	UserState,
 	MarketCommission,
+	Galaxy,
+	PackageStore,
 } = require('../models/models');
 const { commission: commissionConfig } = require('../config/market.config');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
@@ -72,8 +74,8 @@ class MarketService {
 		// Создаем платеж: покупатель -> контракт/система
 		const payment = await PaymentTransaction.create({
 			marketTransactionId: transaction.id,
-			fromAccount: String(buyerId),
-			toAccount: 'system_wallet',
+			fromAccount: buyerId,
+			toAccount: -1,
 			amount: offer.price,
 			currency: offer.currency,
 			txType: 'USER_TO_CONTRACT',
@@ -172,6 +174,16 @@ class MarketService {
 				await artifact.save({ transaction: t });
 			}
 
+			// Внутри processDeal, после блока с артефактом:
+			if (offer.itemType === 'galaxy') {
+				const galaxy = await Galaxy.findByPk(offer.itemId, {
+					transaction: t,
+				});
+				if (!galaxy) throw new Error('Galaxy not found');
+				galaxy.userId = transaction.buyerId;
+				await galaxy.save({ transaction: t });
+			}
+
 			// Завершаем сделку и оферту
 			transaction.status = 'COMPLETED';
 			transaction.completedAt = new Date();
@@ -198,8 +210,8 @@ class MarketService {
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: transaction.id,
-					fromAccount: 'system_wallet',
-					toAccount: String(transaction.sellerId),
+					fromAccount: -1,
+					toAccount: transaction.sellerId,
 					amount: sellerAmount,
 					currency: offer.currency,
 					txType: 'CONTRACT_TO_SELLER',
@@ -212,8 +224,8 @@ class MarketService {
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: transaction.id,
-					fromAccount: 'system_wallet',
-					toAccount: 'system_fee',
+					fromAccount: -1,
+					toAccount: -1,
 					amount: commission,
 					currency: offer.currency,
 					txType: 'FEE',
@@ -251,6 +263,93 @@ class MarketService {
 			},
 			order: [['createdAt', 'DESC']],
 		});
+	}
+
+	async getGalaxyOffers() {
+		return await MarketOffer.findAll({
+			where: { itemType: 'galaxy', status: 'ACTIVE' },
+		});
+	}
+
+	async getPackageOffers() {
+		return await MarketOffer.findAll({
+			where: {
+				itemType: 'package',
+				status: 'ACTIVE',
+				offerType: 'SYSTEM',
+			},
+		});
+	}
+
+	async getArtifactOffers() {
+		return await MarketOffer.findAll({
+			where: { itemType: 'artifact', status: 'ACTIVE' },
+		});
+	}
+
+	async buyPackage(userId, offerId) {
+		const offer = await MarketOffer.findByPk(offerId);
+		if (
+			!offer ||
+			offer.itemType !== 'package' ||
+			offer.offerType !== 'SYSTEM' ||
+			offer.status !== 'ACTIVE'
+		) {
+			throw new Error('Invalid or inactive package offer');
+		}
+		// Получаем параметры пакета
+		const pkg = await PackageStore.findByPk(offer.itemId);
+		if (!pkg) throw new Error('Package not found');
+
+		// Списываем деньги с пользователя
+		const currencyMap = {
+			stardust: 'stardustCount',
+			darkMatter: 'darkMatterCount',
+			tgStars: 'tgStarsCount',
+			tonToken: 'tokenTonsCount',
+		};
+		const priceField = currencyMap[offer.currency];
+		if (!priceField) throw new Error('Unknown payment currency');
+
+		const userState = await UserState.findOne({ where: { userId } });
+		if (!userState) throw new Error('User state not found');
+		if (typeof userState.state[priceField] !== 'number')
+			userState.state[priceField] = 0;
+		if (userState.state[priceField] < Number(offer.price))
+			throw new Error('Insufficient balance');
+		userState.state[priceField] -= Number(offer.price);
+
+		// Начисляем amount по currencyGame
+		const gameField = currencyMap[pkg.currencyGame];
+		if (!gameField) throw new Error('Unknown game currency');
+		if (typeof userState.state[gameField] !== 'number')
+			userState.state[gameField] = 0;
+		userState.state[gameField] += Number(pkg.amount);
+
+		await userState.save();
+
+		// Записываем транзакции
+		const SYSTEM_USER_ID = -1;
+		await PaymentTransaction.create({
+			marketTransactionId: null,
+			fromAccount: userId,
+			toAccount: SYSTEM_USER_ID,
+			amount: offer.price,
+			currency: offer.currency,
+			txType: 'USER_TO_CONTRACT',
+			status: 'CONFIRMED',
+		});
+		await PaymentTransaction.create({
+			marketTransactionId: null,
+			fromAccount: SYSTEM_USER_ID,
+			toAccount: userId,
+			amount: pkg.amount,
+			currency: pkg.currencyGame,
+			txType: 'CONTRACT_TO_SELLER',
+			status: 'CONFIRMED',
+		});
+
+		return { success: true, offer, package: pkg };
 	}
 }
 

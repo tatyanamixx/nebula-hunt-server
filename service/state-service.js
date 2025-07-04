@@ -2,7 +2,6 @@ const { UserState, User, UpgradeNode } = require('../models/models');
 const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const UpgradeService = require('./upgrade-service');
-const stateHistoryService = require('./state-history-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 
@@ -74,23 +73,19 @@ class UserStateService {
 			});
 
 			if (userState) {
-				// loggerService.info(
-				// 	userId,
-				// 	`User state: ${userState.lastLoginDate}`
-				// );
-				// Update streak on login
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
-				// loggerService.info(
-				// 	userId,
-				// 	`User state: ${userState.lastLoginDate}`
-				// );
-
-				// Update upgrade tree on each state request
 				userState = await this.updateUpgradeTreeOnLogin(userId, t);
 			}
 
 			await t.commit();
+
+			if (userState) {
+				const userStateObj = userState.toJSON
+					? userState.toJSON()
+					: { ...userState };
+				return userStateObj;
+			}
 			return userState;
 		} catch (err) {
 			await t.rollback();
@@ -113,35 +108,12 @@ class UserStateService {
 					currentStreak: userState.currentStreak,
 					maxStreak: userState.maxStreak,
 					streakUpdatedAt: userState.streakUpdatedAt,
-					stateHistory: {
-						entries: [],
-						lastUpdate: null,
-						version: '1.0',
-					},
 				},
 				transaction: transaction,
 			});
 
 			// Initialize upgrade tree for new user
 			await this.initializeUserUpgradeTree(userId, transaction);
-
-			// Log the creation of new user state
-			await stateHistoryService.addHistoryEntry(
-				userId,
-				'state_change',
-				'system',
-				'Создание нового состояния пользователя',
-				{
-					initialState: userState.state,
-					initialStreak: userState.currentStreak,
-				},
-				{
-					source: 'system',
-					trigger: 'registration',
-					relatedId: 'user_creation',
-				},
-				transaction
-			);
 
 			return stateNew;
 		} catch (err) {
@@ -309,29 +281,6 @@ class UserStateService {
 			});
 
 			if (stateData) {
-				// Добавляем запись в историю перед обновлением состояния
-				if (!Array.isArray(stateData.stateHistory))
-					stateData.stateHistory = [];
-				const now = new Date();
-				// Удаляем записи старше 30 дней
-				stateData.stateHistory = stateData.stateHistory.filter(
-					(entry) =>
-						now - new Date(entry.timestamp) <=
-						30 * 24 * 60 * 60 * 1000
-				);
-				// Добавляем новую запись
-				stateData.stateHistory.push({
-					timestamp: now,
-					state: { ...stateData.state },
-					stars: userState.stars,
-					chaosLevel: userState.chaosLevel,
-					stabilityLevel: userState.stabilityLevel,
-					entropyVelocity: userState.entropyVelocity,
-				});
-				// Оставляем только последние 100 записей
-				if (stateData.stateHistory.length > 100) {
-					stateData.stateHistory = stateData.stateHistory.slice(-100);
-				}
 				stateData.stars = userState.stars;
 				stateData.state = userState.state;
 				await this.updateStreak(stateData);
@@ -358,12 +307,6 @@ class UserStateService {
 						totalProgress: 0,
 						lastNodeUpdate: new Date(),
 					},
-					stateHistory: [
-						{
-							timestamp: new Date(),
-							state: { ...userState.state },
-						},
-					],
 				},
 				{ transaction: t }
 			);

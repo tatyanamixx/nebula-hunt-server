@@ -45,60 +45,6 @@
 	"currentStreak": 7,
 	"maxStreak": 15,
 	"streakUpdatedAt": "2024-01-15T08:00:00Z",
-	"stateHistory": {
-		"entries": [
-			{
-				"timestamp": "2024-01-15T10:30:00Z",
-				"type": "upgrade_purchased",
-				"category": "progress",
-				"description": "Purchased Production Boost upgrade",
-				"changes": {
-					"field": "totalStars",
-					"oldValue": 15000,
-					"newValue": 15420
-				},
-				"metadata": {
-					"source": "user_action",
-					"trigger": "upgrade_purchase",
-					"relatedId": "UPGRADE_001"
-				}
-			},
-			{
-				"timestamp": "2024-01-15T09:15:00Z",
-				"type": "task_completed",
-				"category": "achievement",
-				"description": "Completed 'Collect 1000 Stars' task",
-				"changes": {
-					"field": "stardustCount",
-					"oldValue": 7500,
-					"newValue": 8500
-				},
-				"metadata": {
-					"source": "task",
-					"trigger": "condition_met",
-					"relatedId": "TASK_007"
-				}
-			},
-			{
-				"timestamp": "2024-01-15T08:00:00Z",
-				"type": "login",
-				"category": "system",
-				"description": "Daily login streak continued",
-				"changes": {
-					"field": "currentStreak",
-					"oldValue": 6,
-					"newValue": 7
-				},
-				"metadata": {
-					"source": "automatic",
-					"trigger": "daily_login",
-					"relatedId": null
-				}
-			}
-		],
-		"lastUpdate": "2024-01-15T10:30:00Z",
-		"version": "1.0"
-	},
 	"activeEvents": [
 		{
 			"eventId": "EVENT_001",
@@ -133,35 +79,6 @@
 			"rewards": {
 				"stardust": 1000,
 				"darkMatter": 100
-			}
-		}
-	],
-	"eventHistory": [
-		{
-			"eventId": "EVENT_003",
-			"type": "CONDITIONAL",
-			"name": "First Galaxy",
-			"description": "Own your first galaxy",
-			"startTime": "2024-01-10T14:30:00Z",
-			"endTime": "2024-01-10T14:35:00Z",
-			"completed": true,
-			"completionTime": "2024-01-10T14:32:00Z",
-			"rewards": {
-				"stardust": 200,
-				"darkMatter": 25
-			}
-		},
-		{
-			"eventId": "EVENT_004",
-			"type": "RANDOM",
-			"name": "Meteor Shower",
-			"description": "Bonus stardust collection",
-			"startTime": "2024-01-12T16:00:00Z",
-			"endTime": "2024-01-12T18:00:00Z",
-			"completed": true,
-			"completionTime": "2024-01-12T17:45:00Z",
-			"rewards": {
-				"stardust": 300
 			}
 		}
 	],

@@ -87,48 +87,12 @@ const UserState = sequelize.define(
 			allowNull: true,
 			comment: 'Timestamp of the last streak update',
 		},
-		stateHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				entries: [],
-				lastUpdate: null,
-				version: '1.0',
-			},
-			comment: `Detailed history of user state changes with structure:
-{
-  "entries": [
-    {
-      "timestamp": "2024-01-01T00:00:00Z",
-      "type": "state_change|task_completed|upgrade_purchased|event_triggered|login|milestone",
-      "category": "production|economy|progress|achievement|system",
-      "description": "Human readable description",
-      "changes": {
-        "field": "value",
-        "oldValue": "previous_value",
-        "newValue": "current_value"
-      },
-      "metadata": {
-        "source": "manual|automatic|event|task|upgrade",
-        "trigger": "user_action|system|event|condition",
-        "relatedId": "task_id|upgrade_id|event_id"
-      }
-    }
-  ],
-  "lastUpdate": "2024-01-01T00:00:00Z",
-  "version": "1.0"
-}`,
-		},
 		// Event state fields
 		activeEvents: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
 			comment:
 				'Currently active events for the user with their progress and effects',
-		},
-		eventHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'History of completed and expired events with timestamps',
 		},
 		eventMultipliers: {
 			type: DataTypes.JSONB,
@@ -477,25 +441,13 @@ const GameEvent = sequelize.define('gameevent', {
 	},
 });
 
-User.hasOne(UserState);
-UserState.belongsTo(User);
-
-User.hasOne(Token);
-Token.belongsTo(User);
-
-User.hasMany(Galaxy);
-Galaxy.belongsTo(User);
-
-Artifact.belongsTo(User);
-User.hasMany(Artifact);
-
 // --- MARKET MODELS ---
 
 const MarketOffer = sequelize.define('marketoffer', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	sellerId: { type: DataTypes.BIGINT, allowNull: false },
 	itemType: {
-		type: DataTypes.ENUM('artifact', 'galaxy', 'resource'),
+		type: DataTypes.ENUM('artifact', 'galaxy', 'resource', 'package'),
 		allowNull: false,
 	},
 	itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
@@ -507,6 +459,11 @@ const MarketOffer = sequelize.define('marketoffer', {
 	status: {
 		type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED'),
 		defaultValue: 'ACTIVE',
+	},
+	offerType: {
+		type: DataTypes.ENUM('SYSTEM', 'P2P'),
+		allowNull: false,
+		defaultValue: 'SYSTEM',
 	},
 	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 	expiresAt: { type: DataTypes.DATE, allowNull: true },
@@ -528,8 +485,8 @@ const MarketTransaction = sequelize.define('markettransaction', {
 const PaymentTransaction = sequelize.define('paymenttransaction', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 	marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
-	fromAccount: { type: DataTypes.STRING, allowNull: false }, // userId или 'system_wallet'
-	toAccount: { type: DataTypes.STRING, allowNull: false }, // userId или 'system_wallet'
+	fromAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
+	toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
 	amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 	currency: {
 		type: DataTypes.ENUM('tgStars', 'stardust', 'darkMatter', 'tonToken'),
@@ -563,6 +520,37 @@ const MarketCommission = sequelize.define('marketcommission', {
 	description: { type: DataTypes.STRING, allowNull: true },
 });
 
+const PackageStore = sequelize.define('packagestore', {
+	id: { type: DataTypes.STRING, primaryKey: true },
+	amount: { type: DataTypes.INTEGER, allowNull: false },
+	currencyGame: {
+		type: DataTypes.ENUM('stardust', 'darkMatter'),
+		allowNull: false,
+	},
+	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+	currency: {
+		type: DataTypes.ENUM('tgStars', 'tonToken'),
+		allowNull: false,
+	},
+	status: {
+		type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+		defaultValue: 'ACTIVE',
+		allowNull: false,
+	},
+});
+
+User.hasOne(UserState);
+UserState.belongsTo(User);
+
+User.hasOne(Token);
+Token.belongsTo(User);
+
+User.hasMany(Galaxy);
+Galaxy.belongsTo(User);
+
+Artifact.belongsTo(User);
+User.hasMany(Artifact);
+
 // --- MARKET RELATIONS ---
 User.hasMany(MarketOffer);
 MarketOffer.belongsTo(User);
@@ -578,6 +566,18 @@ PaymentTransaction.belongsTo(MarketTransaction, {
 	foreignKey: 'marketTransactionId',
 });
 
+PaymentTransaction.belongsTo(User, { foreignKey: 'fromAccount', as: 'payer' });
+PaymentTransaction.belongsTo(User, { foreignKey: 'toAccount', as: 'payee' });
+
+User.hasMany(PaymentTransaction, {
+	foreignKey: 'fromAccount',
+	as: 'sentPayments',
+});
+User.hasMany(PaymentTransaction, {
+	foreignKey: 'toAccount',
+	as: 'receivedPayments',
+});
+
 module.exports = {
 	User,
 	UserState,
@@ -591,4 +591,5 @@ module.exports = {
 	MarketTransaction,
 	PaymentTransaction,
 	MarketCommission,
+	PackageStore,
 };

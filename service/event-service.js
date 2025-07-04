@@ -56,7 +56,6 @@ class EventService {
 
 			// Инициализируем поля событий, если их нет
 			if (!userState.activeEvents) userState.activeEvents = [];
-			if (!userState.eventHistory) userState.eventHistory = [];
 			if (!userState.eventMultipliers) {
 				userState.eventMultipliers = {
 					production: 1.0,
@@ -67,32 +66,6 @@ class EventService {
 				};
 			}
 			if (!userState.eventCooldowns) userState.eventCooldowns = {};
-
-			// Обновляем истёкшие события
-			const updatedActiveEvents = [];
-			for (const event of userState.activeEvents) {
-				if (event.expiresAt && new Date(event.expiresAt) <= now) {
-					// Перемещаем в историю
-					userState.eventHistory.push({
-						...event,
-						completedAt: now,
-						status: 'EXPIRED',
-					});
-
-					// Убираем эффекты события
-					if (event.effects) {
-						Object.keys(event.effects).forEach((key) => {
-							if (userState.eventMultipliers[key]) {
-								userState.eventMultipliers[key] /=
-									event.effects[key];
-							}
-						});
-					}
-				} else {
-					updatedActiveEvents.push(event);
-				}
-			}
-			userState.activeEvents = updatedActiveEvents;
 
 			// Получаем все доступные события
 			const availableEvents = await GameEvent.findAll({
@@ -160,7 +133,6 @@ class EventService {
 			return {
 				activeEvents: userState.activeEvents,
 				eventMultipliers: userState.eventMultipliers,
-				eventHistory: userState.eventHistory.slice(-10), // Последние 10 событий
 			};
 		} catch (err) {
 			throw ApiError.Internal('Failed to check events: ' + err.message);
@@ -311,7 +283,6 @@ class EventService {
 					entropy: 1.0,
 					rewards: 1.0,
 				},
-				eventHistory: userState.eventHistory || [],
 			};
 		} catch (err) {
 			throw ApiError.BadRequest(
@@ -332,7 +303,6 @@ class EventService {
 
 			// Инициализируем поля событий
 			userState.activeEvents = [];
-			userState.eventHistory = [];
 			userState.eventMultipliers = {
 				production: 1.0,
 				chaos: 1.0,
@@ -369,7 +339,6 @@ class EventService {
 			return {
 				activeEvents: eventState.activeEvents,
 				eventMultipliers: eventState.eventMultipliers,
-				eventHistory: eventState.eventHistory,
 			};
 		} catch (err) {
 			throw ApiError.BadRequest(

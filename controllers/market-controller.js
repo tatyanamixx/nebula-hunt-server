@@ -69,6 +69,43 @@ class MarketController {
 			res.status(500).json({ error: e.message });
 		}
 	}
+
+	async getGalaxyOffers(req, res, next) {
+		try {
+			const offers = await marketService.getGalaxyOffers();
+			res.json(offers);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getPackageOffers(req, res, next) {
+		try {
+			const offers = await marketService.getPackageOffers();
+			res.json(offers);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getArtifactOffers(req, res, next) {
+		try {
+			const offers = await marketService.getArtifactOffers();
+			res.json(offers);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async buyPackage(req, res, next) {
+		try {
+			const { userId, offerId } = req.body;
+			const result = await marketService.buyPackage(userId, offerId);
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
 }
 
 module.exports = new MarketController();

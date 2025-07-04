@@ -57,7 +57,7 @@ class MetricsService {
 		const userIds = users.map((u) => u.id);
 		const payments = await PaymentTransaction.findAll({
 			where: {
-				fromAccount: userIds.map(String),
+				fromAccount: userIds,
 				currency,
 				status: 'CONFIRMED',
 				createdAt: { [Op.between]: [from, to] },
@@ -87,7 +87,7 @@ class MetricsService {
 		const userIds = users.map((u) => u.id);
 		const payments = await PaymentTransaction.findAll({
 			where: {
-				fromAccount: userIds.map(String),
+				fromAccount: userIds,
 				currency,
 				status: 'CONFIRMED',
 			},
@@ -133,7 +133,7 @@ class MetricsService {
 		const userIds = users.map((u) => u.id);
 		const payments = await PaymentTransaction.findAll({
 			where: {
-				fromAccount: userIds.map(String),
+				fromAccount: userIds,
 				currency,
 				status: 'CONFIRMED',
 			},
