@@ -115,184 +115,30 @@
 
 ### UserState
 
-Состояние пользователя в игре. Содержит все игровые параметры и прогресс.
+Состояние пользователя в игре. Все игровые параметры, прогресс, события, задачи и апгрейды теперь централизованно хранятся в JSONB-полях этой модели.
 
-```javascript
-{
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  userId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  state: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      totalStars: 100,
-      stardustCount: 0,
-      darkMatterCount: 0,
-      ownedGalaxiesCount: 1,
-      ownedNodesCount: 0
-    }
-  },
-  chaosLevel: {
-    type: DataTypes.FLOAT,
-    defaultValue: 0.0
-  },
-  stabilityLevel: {
-    type: DataTypes.FLOAT,
-    defaultValue: 0.0
-  },
-  entropyVelocity: {
-    type: DataTypes.FLOAT,
-    defaultValue: 0.0
-  },
-  taskProgress: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      completedTasks: [],
-      currentWeight: 0,
-      unlockedNodes: []
-    }
-  },
-  upgradeTree: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      activeNodes: [],
-      completedNodes: [],
-      nodeStates: {},
-      treeStructure: {},
-      totalProgress: 0,
-      lastNodeUpdate: null
-    }
-  },
-  lastLoginDate: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
-  },
-  currentStreak: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
-  maxStreak: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
-  streakUpdatedAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  stateHistory: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      entries: [],
-      lastUpdate: null,
-      version: '1.0'
-    }
-  },
-  activeEvents: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  eventHistory: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  eventMultipliers: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      production: 1.0,
-      chaos: 1.0,
-      stability: 1.0,
-      entropy: 1.0,
-      rewards: 1.0
-    }
-  },
-  lastEventCheck: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  eventCooldowns: {
-    type: DataTypes.JSONB,
-    defaultValue: {}
-  },
-  eventPreferences: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-      disabledEvents: [],
-      priorityEvents: []
-    }
-  },
-  userTasks: {
-    type: DataTypes.JSONB,
-    defaultValue: {}
-  },
-  completedTasks: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  activeTasks: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  taskMultipliers: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      progress: 1.0,
-      rewards: 1.0,
-      unlock: 1.0
-    }
-  },
-  lastTaskCheck: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  userUpgrades: {
-    type: DataTypes.JSONB,
-    defaultValue: {}
-  },
-  completedUpgrades: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  activeUpgrades: {
-    type: DataTypes.JSONB,
-    defaultValue: []
-  },
-  upgradeMultipliers: {
-    type: DataTypes.JSONB,
-    defaultValue: {
-      production: 1.0,
-      efficiency: 1.0,
-      cost: 1.0,
-      unlock: 1.0
-    }
-  },
-  lastUpgradeCheck: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  }
-}
-```
+**Основные поля:**
+
+-   `state` — основные игровые параметры (totalStars, stardustCount и др.)
+-   `chaosLevel`, `stabilityLevel`, `entropyVelocity` — глобальные показатели
+-   `taskProgress`, `upgradeTree`, `stateHistory` — прогресс и история
+-   `activeEvents`, `eventHistory`, `eventMultipliers`, `eventCooldowns`, `eventPreferences` — состояние событий
+-   `userTasks`, `completedTasks`, `activeTasks`, `taskMultipliers` — состояние задач
+-   `userUpgrades`, `completedUpgrades`, `activeUpgrades`, `upgradeMultipliers` — состояние апгрейдов
+
+**Все игровые состояния пользователя (события, задачи, апгрейды) теперь хранятся только в UserState.**
 
 **Индексы:**
 
--   `userstate_totalstars_idx` - индекс по totalStars в JSONB
--   `userstate_user_id_idx` - индекс по userId
--   `userstate_last_event_check_idx` - индекс по lastEventCheck
--   `userstate_last_task_check_idx` - индекс по lastTaskCheck
--   `userstate_last_upgrade_check_idx` - индекс по lastUpgradeCheck
+-   `userstate_totalstars_idx` — индекс по totalStars в JSONB
+-   `userstate_user_id_idx` — индекс по userId
+-   `userstate_last_event_check_idx` — индекс по lastEventCheck
+-   `userstate_last_task_check_idx` — индекс по lastTaskCheck
+-   `userstate_last_upgrade_check_idx` — индекс по lastUpgradeCheck
 
 **Связи:**
 
--   `belongsTo(User)` - состояние принадлежит пользователю
+-   `belongsTo(User)` — состояние принадлежит пользователю
 
 ### Token
 
@@ -391,7 +237,7 @@
 
 ### UpgradeNode
 
-Модель доступных апгрейдов в игре.
+Глобальный шаблон апгрейда. Не связан с User напрямую. Все пользовательские апгрейды хранятся в UserState.
 
 ```javascript
 {
@@ -475,7 +321,7 @@
 
 ### Task
 
-Модель игровых задач.
+Глобальный шаблон задачи. Не связан с User напрямую. Все пользовательские задачи и их прогресс хранятся в UserState.
 
 ```javascript
 {

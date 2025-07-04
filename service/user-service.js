@@ -9,6 +9,8 @@ const UserDto = require('../dtos/user-dto');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op, where } = require('sequelize');
+const artifactService = require('./artifact-service');
+const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 
 class UserService {
 	async createSystemUser() {
@@ -31,6 +33,29 @@ class UserService {
 					referral: 0,
 					role: 'SYSTEM',
 					blocked: false,
+				},
+				{ transaction: t }
+			);
+
+			// Create UserState for SYSTEM user (for contract balance)
+			await UserState.create(
+				{
+					userId: -1,
+					state: {
+						totalStars: 0,
+						stardustCount: 0,
+						darkMatterCount: 0,
+						tgStarsCount: 0,
+						tokenTonsCount: 0,
+						ownedGalaxiesCount: 0,
+						ownedNodesCount: 0,
+						ownedTasksCount: 0,
+						ownedUpgradesCount: 0,
+						ownedEventsCount: 0,
+					},
+					chaosLevel: 0,
+					stabilityLevel: 0,
+					entropyVelocity: 0,
 				},
 				{ transaction: t }
 			);
@@ -93,6 +118,10 @@ class UserService {
 				},
 				transaction: tc,
 			});
+
+			if (created) {
+				prometheusMetrics.userRegistrationCounter.inc();
+			}
 
 			await tc.commit();
 		} catch (err) {
@@ -185,10 +214,11 @@ class UserService {
 
 			const userDto = new UserDto(user);
 
-			// Get user state, galaxies
-			const [userState, userGalaxies] = await Promise.all([
+			// Get user state, galaxies, artifacts
+			const [userState, userGalaxies, userArtifacts] = await Promise.all([
 				stateService.getUserState(userDto.id),
 				galaxyService.getUserGalaxies(userDto.id),
+				artifactService.getUserArtifacts(userDto.id),
 			]);
 
 			// Обновляем и инициализируем события пользователя
@@ -226,7 +256,7 @@ class UserService {
 				user: userDto,
 				userState,
 				userGalaxies,
-				eventState,
+				userArtifacts,
 				upgradeNodes,
 			};
 		} catch (err) {

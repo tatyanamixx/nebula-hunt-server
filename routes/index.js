@@ -10,6 +10,10 @@ const stateHistoryRouter = require('./state-history-router');
 const upgradeRouter = require('./upgrade-router');
 const eventRouter = require('./event-router');
 const taskRouter = require('./task-router');
+const marketRouter = require('./market-router');
+const artifactRouter = require('./artifact-router');
+const metricsRouter = require('./metrics-router');
+const prometheusMiddleware = require('../middlewares/prometheus-middleware');
 
 // Use route modules
 router.use('/auth', authRouter);
@@ -20,5 +24,9 @@ router.use('/history', stateHistoryRouter);
 router.use('/upgrades', upgradeRouter);
 router.use('/events', eventRouter);
 router.use('/tasks', taskRouter);
+router.use('/market', marketRouter);
+router.use('/artifact', artifactRouter);
+router.use('/game-metrics', metricsRouter);
+router.use('/', prometheusMiddleware);
 
 module.exports = router;

@@ -30,11 +30,16 @@ const UserState = sequelize.define(
 		state: {
 			type: DataTypes.JSONB,
 			defaultValue: {
-				totalStars: 100,
+				totalStars: 0,
 				stardustCount: 0,
 				darkMatterCount: 0,
-				ownedGalaxiesCount: 1,
+				tgStarsCount: 0,
+				tokenTonsCount: 0,
+				ownedGalaxiesCount: 0,
 				ownedNodesCount: 0,
+				ownedTasksCount: 0,
+				ownedUpgradesCount: 0,
+				ownedEventsCount: 0,
 			},
 		},
 		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
@@ -301,6 +306,24 @@ const Galaxy = sequelize.define(
 	}
 );
 
+const Artifact = sequelize.define('artifact', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	seed: { type: DataTypes.STRING, unique: true },
+	name: { type: DataTypes.STRING, allowNull: false },
+	description: { type: DataTypes.TEXT },
+	rarity: {
+		type: DataTypes.ENUM('COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'),
+		defaultValue: 'COMMON',
+	},
+	image: { type: DataTypes.STRING },
+	effects: {
+		type: DataTypes.JSONB,
+		defaultValue: {},
+		comment: 'Например: { chaos: 0.1, stability: -0.2 }',
+	},
+	tradable: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
 const UpgradeNode = sequelize.define('upgradenode', {
 	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
 	name: { type: DataTypes.STRING },
@@ -463,12 +486,109 @@ Token.belongsTo(User);
 User.hasMany(Galaxy);
 Galaxy.belongsTo(User);
 
+Artifact.belongsTo(User);
+User.hasMany(Artifact);
+
+// --- MARKET MODELS ---
+
+const MarketOffer = sequelize.define('marketoffer', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	sellerId: { type: DataTypes.BIGINT, allowNull: false },
+	itemType: {
+		type: DataTypes.ENUM('artifact', 'galaxy', 'resource'),
+		allowNull: false,
+	},
+	itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
+	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+	currency: {
+		type: DataTypes.ENUM('tgStars', 'stardust', 'darkMatter', 'tonToken'),
+		allowNull: false,
+	},
+	status: {
+		type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED'),
+		defaultValue: 'ACTIVE',
+	},
+	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+	expiresAt: { type: DataTypes.DATE, allowNull: true },
+});
+
+const MarketTransaction = sequelize.define('markettransaction', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	offerId: { type: DataTypes.BIGINT, allowNull: false },
+	buyerId: { type: DataTypes.BIGINT, allowNull: false },
+	sellerId: { type: DataTypes.BIGINT, allowNull: false },
+	status: {
+		type: DataTypes.ENUM('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'),
+		defaultValue: 'PENDING',
+	},
+	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+	completedAt: { type: DataTypes.DATE, allowNull: true },
+});
+
+const PaymentTransaction = sequelize.define('paymenttransaction', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
+	fromAccount: { type: DataTypes.STRING, allowNull: false }, // userId или 'system_wallet'
+	toAccount: { type: DataTypes.STRING, allowNull: false }, // userId или 'system_wallet'
+	amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+	currency: {
+		type: DataTypes.ENUM('tgStars', 'stardust', 'darkMatter', 'tonToken'),
+		allowNull: false,
+	},
+	txType: {
+		type: DataTypes.ENUM('USER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'FEE'),
+		allowNull: false,
+	},
+	blockchainTxId: {
+		type: DataTypes.STRING,
+		allowNull: true,
+		comment: 'ID транзакции в блокчейне',
+	},
+	status: {
+		type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
+		defaultValue: 'PENDING',
+	},
+	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+	confirmedAt: { type: DataTypes.DATE, allowNull: true },
+});
+
+const MarketCommission = sequelize.define('marketcommission', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	currency: {
+		type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+		unique: true,
+		allowNull: false,
+	},
+	rate: { type: DataTypes.FLOAT, allowNull: false },
+	description: { type: DataTypes.STRING, allowNull: true },
+});
+
+// --- MARKET RELATIONS ---
+User.hasMany(MarketOffer);
+MarketOffer.belongsTo(User);
+
+User.hasMany(MarketTransaction, { as: 'buyer', foreignKey: 'buyerId' });
+User.hasMany(MarketTransaction, { as: 'seller', foreignKey: 'sellerId' });
+MarketTransaction.belongsTo(User, { as: 'buyer', foreignKey: 'buyerId' });
+MarketTransaction.belongsTo(User, { as: 'seller', foreignKey: 'sellerId' });
+
+MarketTransaction.belongsTo(MarketOffer, { foreignKey: 'offerId' });
+
+PaymentTransaction.belongsTo(MarketTransaction, {
+	foreignKey: 'marketTransactionId',
+});
+
 module.exports = {
 	User,
 	UserState,
 	Token,
 	Galaxy,
+	Artifact,
 	UpgradeNode,
 	Task,
 	GameEvent,
+	MarketOffer,
+	MarketTransaction,
+	PaymentTransaction,
+	MarketCommission,
 };

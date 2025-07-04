@@ -40,6 +40,8 @@ module.exports = new ServiceName();
 
 ### UserService
 
+Сервис управления пользователями. При регистрации и логине создает и обновляет UserState. Все игровые состояния пользователя теперь только в UserState.
+
 **Назначение**: Управление пользователями, регистрация, аутентификация.
 
 **Основные методы:**
@@ -136,6 +138,8 @@ async getSystemUser() {
 ```
 
 ### StateService
+
+Сервис для работы с состоянием пользователя. Все игровые состояния (события, задачи, апгрейды) централизованы в UserState.
 
 **Назначение**: Управление состоянием пользователя в игре.
 
@@ -252,6 +256,8 @@ async deleteGalaxy(galaxyId, userId) {
 
 ### UpgradeService
 
+Сервис для работы с апгрейдами. Все пользовательские апгрейды и прогресс хранятся в UserState (userUpgrades, completedUpgrades, activeUpgrades, upgradeTree, upgradeMultipliers). UpgradeNode — глобальный шаблон.
+
 **Назначение**: Система апгрейдов и дерева прогрессии.
 
 **Основные методы:**
@@ -327,6 +333,8 @@ async getUpgradeTree(userId) {
 
 ### EventService
 
+Сервис для работы с игровыми событиями пользователя. Теперь все методы работают только с UserState (activeEvents, eventHistory, eventMultipliers и др.).
+
 **Назначение**: Управление игровыми событиями.
 
 **Основные методы:**
@@ -385,6 +393,8 @@ async getActiveEvents(userId) {
 ```
 
 ### TaskService
+
+Сервис для работы с задачами. Все пользовательские задачи и прогресс хранятся в UserState (userTasks, completedTasks, activeTasks, taskMultipliers). Task — глобальный шаблон.
 
 **Назначение**: Система задач и достижений.
 

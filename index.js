@@ -13,9 +13,11 @@ const config = require('./config/logger.config');
 const sequelize = require('./db');
 const models = require('./models/models');
 const loggerService = require('./service/logger-service');
+const { updateActiveUsers } = require('./service/metrics-service');
 
 const router = require('./routes/index');
 const errorMiddleware = require('./middlewares/error-middleware');
+const { prometheusMetrics } = require('./middlewares/prometheus-middleware');
 
 const PORT = process.env.PORT || 5000;
 
@@ -39,6 +41,11 @@ app.use(cookieParser());
 app.use('/api', router);
 //app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
+app.use(prometheusMetrics.prometheusHttpMiddleware);
+
+// Healthcheck endpoint
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 app.use(errorMiddleware);
 
 const start = async () => {
@@ -50,6 +57,14 @@ const start = async () => {
 		app.listen(PORT, () =>
 			loggerService.info(`Server started on port ${PORT}`)
 		);
+
+		setInterval(() => {
+			updateActiveUsers().catch(console.error);
+		}, 10 * 60 * 1000);
+
+		setInterval(() => {
+			prometheusMetrics.updateDbConnections(sequelize);
+		}, 10000);
 	} catch (e) {
 		loggerService.error('Failed to start server:', { error: e.message });
 	}
