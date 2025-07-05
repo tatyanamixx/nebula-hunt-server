@@ -33,7 +33,6 @@ module.exports = function (req, res, next) {
 			return next(ApiError.UnauthorizedError('JWT: validator error'));
 		}
 		req.userToken = userData;
-		console.log('userToken', userData);
 		next();
 	} catch (err) {
 		return next(ApiError.UnauthorizedError('JWT: unauthorization'));

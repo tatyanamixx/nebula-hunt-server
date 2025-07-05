@@ -102,11 +102,18 @@ class MarketService {
 	 * Выставление инвойса (создание сделки и платежа)
 	 * @param {Object} params { offerId, buyerId }
 	 */
-	async createInvoice({ offerId, buyerId }) {
+	async createInvoice({ offerId, buyerId, validatePackage = false }) {
 		// Получаем оферту
 		const offer = await MarketOffer.findByPk(offerId);
 		if (!offer || offer.status !== 'ACTIVE')
 			throw new Error('Offer not found or not active');
+
+		// Дополнительная валидация для пакетов
+		if (validatePackage) {
+			if (offer.itemType !== 'package' || offer.offerType !== 'SYSTEM') {
+				throw new Error('Invalid package offer');
+			}
+		}
 
 		// Создаем сделку
 		const transaction = await MarketTransaction.create({
@@ -132,9 +139,9 @@ class MarketService {
 
 	/**
 	 * Проведение сделки: проверка оплаты, смена владельца артефакта, завершение сделки, обновление балансов
-	 * @param {Object} params { transactionId, blockchainTxId }
+	 * @param {Object} params { transactionId, blockchainTxId, isPackage = false }
 	 */
-	async processDeal({ transactionId, blockchainTxId }) {
+	async processDeal({ transactionId, blockchainTxId, isPackage = false }) {
 		// Транзакция БД для атомарности
 		return await sequelize.transaction(async (t) => {
 			const transaction = await MarketTransaction.findByPk(
@@ -151,6 +158,16 @@ class MarketService {
 			});
 			if (!offer || offer.status !== 'ACTIVE')
 				throw new Error('Offer not found or not active');
+
+			// Дополнительная валидация для пакетов
+			if (isPackage) {
+				if (
+					offer.itemType !== 'package' ||
+					offer.offerType !== 'SYSTEM'
+				) {
+					throw new Error('Invalid package offer');
+				}
+			}
 
 			// Находим платеж и подтверждаем его
 			const payment = await PaymentTransaction.findOne({
@@ -170,8 +187,7 @@ class MarketService {
 			payment.confirmedAt = new Date();
 			await payment.save({ transaction: t });
 
-			// --- МУЛЬТИВАЛЮТНОЕ ОБНОВЛЕНИЕ БАЛАНСОВ С КОМИССИЕЙ ---
-			const commissionRate = await getCommissionRate(offer.currency);
+			// --- МУЛЬТИВАЛЮТНОЕ ОБНОВЛЕНИЕ БАЛАНСОВ ---
 			const currencyMap = {
 				stardust: 'stardustCount',
 				darkMatter: 'darkMatterCount',
@@ -182,21 +198,8 @@ class MarketService {
 			if (!balanceField) throw new Error('Unknown currency');
 
 			const price = Number(offer.price);
-			const commission = Math.floor(price * commissionRate * 100) / 100; // округление до 2 знаков
-			const sellerAmount = price - commission;
 
-			// 1. Получаем состояние покупателя и увеличиваем его баланс
-			const buyerState = await UserState.findOne({
-				where: { userId: transaction.buyerId },
-				transaction: t,
-			});
-			if (!buyerState) throw new Error('Buyer state not found');
-			if (typeof buyerState.state[balanceField] !== 'number')
-				buyerState.state[balanceField] = 0;
-			buyerState.state[balanceField] += price; // Увеличиваем баланс покупателя
-			await buyerState.save({ transaction: t });
-
-			// 2. Зачисляем на контракт (SYSTEM userId = -1)
+			// Получаем состояние SYSTEM (контракт) - зачисляются средства на контракт
 			const systemState = await UserState.findOne({
 				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
@@ -204,89 +207,146 @@ class MarketService {
 			if (!systemState) throw new Error('System user state not found');
 			if (typeof systemState.state[balanceField] !== 'number')
 				systemState.state[balanceField] = 0;
+
+			// Зачисляем средства на контракт
 			systemState.state[balanceField] += price;
 			await systemState.save({ transaction: t });
 
-			// Переводим артефакт новому владельцу
-			if (offer.itemType === 'artifact') {
-				const artifact = await Artifact.findByPk(offer.itemId, {
-					transaction: t,
-				});
-				if (!artifact) throw new Error('Artifact not found');
-				artifact.userId = transaction.buyerId;
-				await artifact.save({ transaction: t });
-			}
-
-			// Внутри processDeal, после блока с артефактом:
-			if (offer.itemType === 'galaxy') {
-				const galaxy = await Galaxy.findByPk(offer.itemId, {
-					transaction: t,
-				});
-				if (!galaxy) throw new Error('Galaxy not found');
-				galaxy.userId = transaction.buyerId;
-				await galaxy.save({ transaction: t });
-			}
-
-			// Завершаем сделку и оферту
-			transaction.status = 'COMPLETED';
-			transaction.completedAt = new Date();
-			await transaction.save({ transaction: t });
-			offer.status = 'COMPLETED';
-			await offer.save({ transaction: t });
-
-			// 3. Переводим с контракта продавцу (с учетом комиссии)
-			const sellerState = await UserState.findOne({
-				where: { userId: transaction.sellerId },
+			// Получаем состояние покупателя
+			const buyerState = await UserState.findOne({
+				where: { userId: transaction.buyerId },
 				transaction: t,
 			});
-			if (!sellerState) throw new Error('Seller state not found');
-			if (typeof sellerState.state[balanceField] !== 'number')
-				sellerState.state[balanceField] = 0;
-			buyerState.state[balanceField] -= price; // списываем с покупателя
-			systemState.state[balanceField] -= sellerAmount; // списываем с контракта только сумму продавцу
-			sellerState.state[balanceField] += sellerAmount; // зачисляем продавцу
-			await buyerState.save({ transaction: t });
-			await systemState.save({ transaction: t });
-			await sellerState.save({ transaction: t });
+			if (!buyerState) throw new Error('Buyer state not found');
 
-			// 4. Комиссия остается на контракте (systemState)
+			if (isPackage) {
+				// Логика для пакетов
+				const pkg = await PackageStore.findByPk(offer.itemId, {
+					transaction: t,
+				});
+				if (!pkg) throw new Error('Package not found');
 
-			// (Опционально) создаем платеж контракт -> продавец
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: transaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: transaction.sellerId,
-					amount: sellerAmount,
+				// Начисляем игровую валюту покупателю
+				const gameField = currencyMap[pkg.currencyGame];
+				if (!gameField) throw new Error('Unknown game currency');
+				if (typeof buyerState.state[gameField] !== 'number')
+					buyerState.state[gameField] = 0;
+				buyerState.state[gameField] += Number(pkg.amount);
+
+				await buyerState.save({ transaction: t });
+
+				// Создаем транзакцию контракт -> покупатель (игровая валюта)
+				await PaymentTransaction.create(
+					{
+						marketTransactionId: transaction.id,
+						fromAccount: SYSTEM_USER_ID,
+						toAccount: transaction.buyerId,
+						amount: pkg.amount,
+						currency: pkg.currencyGame,
+						txType: 'CONTRACT_TO_BUYER',
+						status: 'CONFIRMED',
+					},
+					{ transaction: t }
+				);
+
+				// Завершаем сделку (оферта остается активной для SYSTEM пакетов)
+				transaction.status = 'COMPLETED';
+				transaction.completedAt = new Date();
+				await transaction.save({ transaction: t });
+
+				return { transaction, offer, package: pkg };
+			} else {
+				// Логика для обычных сделок (артефакты, галактики)
+				const commissionRate = await getCommissionRate(offer.currency);
+				const commission =
+					Math.floor(price * commissionRate * 100) / 100;
+				const sellerAmount = price - commission;
+
+				// Переводим артефакт новому владельцу
+				if (offer.itemType === 'artifact') {
+					const artifact = await Artifact.findByPk(offer.itemId, {
+						transaction: t,
+					});
+					if (!artifact) throw new Error('Artifact not found');
+					artifact.userId = transaction.buyerId;
+					await artifact.save({ transaction: t });
+				}
+
+				// Переводим галактику новому владельцу
+				if (offer.itemType === 'galaxy') {
+					const galaxy = await Galaxy.findByPk(offer.itemId, {
+						transaction: t,
+					});
+					if (!galaxy) throw new Error('Galaxy not found');
+					galaxy.userId = transaction.buyerId;
+					await galaxy.save({ transaction: t });
+				}
+
+				// Завершаем сделку и оферту
+				transaction.status = 'COMPLETED';
+				transaction.completedAt = new Date();
+				await transaction.save({ transaction: t });
+				offer.status = 'COMPLETED';
+				await offer.save({ transaction: t });
+
+				// Переводим с контракта продавцу (с учетом комиссии)
+				const sellerState = await UserState.findOne({
+					where: { userId: transaction.sellerId },
+					transaction: t,
+				});
+				if (!sellerState) throw new Error('Seller state not found');
+				if (typeof sellerState.state[balanceField] !== 'number')
+					sellerState.state[balanceField] = 0;
+
+				// Списываем с контракта сумму продавцу
+				systemState.state[balanceField] -= sellerAmount;
+				// Зачисляем продавцу
+				sellerState.state[balanceField] += sellerAmount;
+
+				await systemState.save({ transaction: t });
+				await sellerState.save({ transaction: t });
+
+				// Комиссия остается на контракте (systemState)
+
+				// Создаем платеж контракт -> продавец
+				await PaymentTransaction.create(
+					{
+						marketTransactionId: transaction.id,
+						fromAccount: SYSTEM_USER_ID,
+						toAccount: transaction.sellerId,
+						amount: sellerAmount,
+						currency: offer.currency,
+						txType: 'CONTRACT_TO_SELLER',
+						status: 'CONFIRMED',
+					},
+					{ transaction: t }
+				);
+
+				// Создаем платеж комиссии
+				await PaymentTransaction.create(
+					{
+						marketTransactionId: transaction.id,
+						fromAccount: SYSTEM_USER_ID,
+						toAccount: SYSTEM_USER_ID,
+						amount: commission,
+						currency: offer.currency,
+						txType: 'FEE',
+						status: 'CONFIRMED',
+					},
+					{ transaction: t }
+				);
+
+				prometheusMetrics.dealCounter.inc();
+				prometheusMetrics.purchaseCounter.inc({
 					currency: offer.currency,
-					txType: 'CONTRACT_TO_SELLER',
-					status: 'CONFIRMED',
-				},
-				{ transaction: t }
-			);
+				});
+				prometheusMetrics.revenueCounter.inc(
+					{ currency: offer.currency },
+					price
+				);
 
-			// (Опционально) создаем платеж комиссии
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: transaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: SYSTEM_USER_ID,
-					amount: commission,
-					currency: offer.currency,
-					txType: 'FEE',
-					status: 'CONFIRMED',
-				},
-				{ transaction: t }
-			);
-
-			prometheusMetrics.dealCounter.inc();
-			prometheusMetrics.purchaseCounter.inc({ currency: offer.currency });
-			prometheusMetrics.revenueCounter.inc(
-				{ currency: offer.currency },
-				price
-			);
-
-			return { transaction, offer, sellerAmount, commission };
+				return { transaction, offer, sellerAmount, commission };
+			}
 		});
 	}
 
@@ -378,152 +438,6 @@ class MarketService {
 		});
 	}
 
-	async createPackageInvoice({ offerId, buyerId }) {
-		// Получаем оферту пакета
-		const offer = await MarketOffer.findByPk(offerId);
-		if (
-			!offer ||
-			offer.itemType !== 'package' ||
-			offer.offerType !== 'SYSTEM' ||
-			offer.status !== 'ACTIVE'
-		) {
-			throw new Error('Invalid or inactive package offer');
-		}
-
-		// Создаем сделку
-		const transaction = await MarketTransaction.create({
-			offerId: offer.id,
-			buyerId,
-			sellerId: SYSTEM_USER_ID, // SYSTEM пользователь как продавец
-			status: 'PENDING',
-		});
-
-		// Создаем платеж: покупатель -> контракт/система
-		const payment = await PaymentTransaction.create({
-			marketTransactionId: transaction.id,
-			fromAccount: buyerId,
-			toAccount: SYSTEM_USER_ID,
-			amount: offer.price,
-			currency: offer.currency,
-			txType: 'BUYER_TO_CONTRACT',
-			status: 'PENDING',
-		});
-
-		return { transaction, payment };
-	}
-
-	async processPackageDeal({ transactionId, blockchainTxId }) {
-		return await sequelize.transaction(async (t) => {
-			const transaction = await MarketTransaction.findByPk(
-				transactionId,
-				{
-					transaction: t,
-				}
-			);
-			if (!transaction || transaction.status !== 'PENDING')
-				throw new Error('Transaction not found or not pending');
-
-			const offer = await MarketOffer.findByPk(transaction.offerId, {
-				transaction: t,
-			});
-			if (
-				!offer ||
-				offer.itemType !== 'package' ||
-				offer.offerType !== 'SYSTEM' ||
-				offer.status !== 'ACTIVE'
-			) {
-				throw new Error('Invalid or inactive package offer');
-			}
-
-			// Получаем параметры пакета
-			const pkg = await PackageStore.findByPk(offer.itemId, {
-				transaction: t,
-			});
-			if (!pkg) throw new Error('Package not found');
-
-			// Находим платеж и подтверждаем его
-			const payment = await PaymentTransaction.findOne({
-				where: {
-					marketTransactionId: transaction.id,
-					txType: 'BUYER_TO_CONTRACT',
-				},
-				transaction: t,
-			});
-			if (!payment) throw new Error('Payment not found');
-			if (payment.status !== 'PENDING')
-				throw new Error('Payment already processed');
-
-			// Подтверждаем платеж
-			payment.status = 'CONFIRMED';
-			payment.blockchainTxId = blockchainTxId;
-			payment.confirmedAt = new Date();
-			await payment.save({ transaction: t });
-
-			// Обрабатываем балансы
-			const currencyMap = {
-				stardust: 'stardustCount',
-				darkMatter: 'darkMatterCount',
-				tgStars: 'tgStarsCount',
-				tonToken: 'tokenTonsCount',
-			};
-			const priceField = currencyMap[offer.currency];
-			if (!priceField) throw new Error('Unknown payment currency');
-
-			const price = Number(offer.price);
-
-			// 1. Увеличиваем баланс покупателя (как в processDeal)
-			const buyerState = await UserState.findOne({
-				where: { userId: transaction.buyerId },
-				transaction: t,
-			});
-			if (!buyerState) throw new Error('Buyer state not found');
-			if (typeof buyerState.state[priceField] !== 'number')
-				buyerState.state[priceField] = 0;
-			buyerState.state[priceField] += price; // Увеличиваем баланс покупателя
-			await buyerState.save({ transaction: t });
-
-			// 2. Зачисляем на контракт (SYSTEM userId = -1)
-			systemState.state[priceField] += price;
-			await systemState.save({ transaction: t });
-
-			// 3. Списываем деньги с покупателя (за покупку пакета)
-			if (buyerState.state[priceField] < price)
-				throw new Error('Insufficient balance');
-			buyerState.state[priceField] -= price;
-			await buyerState.save({ transaction: t });
-
-			// Начисляем amount по currencyGame
-			const gameField = currencyMap[pkg.currencyGame];
-			if (!gameField) throw new Error('Unknown game currency');
-			if (typeof buyerState.state[gameField] !== 'number')
-				buyerState.state[gameField] = 0;
-			buyerState.state[gameField] += Number(pkg.amount);
-
-			await buyerState.save({ transaction: t });
-
-			// Создаем транзакцию контракт -> покупатель (игровая валюта)
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: transaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: transaction.buyerId,
-					amount: pkg.amount,
-					currency: pkg.currencyGame,
-					txType: 'CONTRACT_TO_BUYER',
-					status: 'CONFIRMED',
-				},
-				{ transaction: t }
-			);
-
-			// Завершаем сделку (оферта остается активной для SYSTEM пакетов)
-			transaction.status = 'COMPLETED';
-			transaction.completedAt = new Date();
-			await transaction.save({ transaction: t });
-
-			return { transaction, offer, package: pkg };
-		});
-	}
-
 	/**
 	 * Отмена сделки: возврат средств покупателю, отмена платежа
 	 * @param {Object} params { transactionId, reason }
@@ -569,27 +483,8 @@ class MarketService {
 
 			const price = Number(offer.price);
 
-			// Возвращаем средства покупателю
-			const buyerState = await UserState.findOne({
-				where: { userId: transaction.buyerId },
-				transaction: t,
-			});
-			if (!buyerState) throw new Error('Buyer state not found');
-			if (typeof buyerState.state[balanceField] !== 'number')
-				buyerState.state[balanceField] = 0;
-			buyerState.state[balanceField] += price; // Возвращаем средства
-			await buyerState.save({ transaction: t });
-
-			// Списываем с контракта
-			const systemState = await UserState.findOne({
-				where: { userId: SYSTEM_USER_ID },
-				transaction: t,
-			});
-			if (!systemState) throw new Error('System user state not found');
-			if (typeof systemState.state[balanceField] !== 'number')
-				systemState.state[balanceField] = 0;
-			systemState.state[balanceField] -= price; // Списываем с контракта
-			await systemState.save({ transaction: t });
+			// При отмене сделки просто меняем статус платежа на FAILED
+			// Средства не были зачислены на контракт, поэтому их не нужно возвращать
 
 			// Отменяем платеж
 			payment.status = 'FAILED';
@@ -599,19 +494,7 @@ class MarketService {
 			transaction.status = 'CANCELLED';
 			await transaction.save({ transaction: t });
 
-			// Создаем запись о возврате средств
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: transaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: transaction.buyerId,
-					amount: price,
-					currency: offer.currency,
-					txType: 'CONTRACT_TO_BUYER',
-					status: 'CONFIRMED',
-				},
-				{ transaction: t }
-			);
+			// Запись о возврате средств не создается, так как средства не были зачислены на контракт
 
 			return { transaction, payment, reason };
 		});

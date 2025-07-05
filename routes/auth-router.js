@@ -8,6 +8,7 @@ const { body } = require('express-validator');
 const tmaMiddleware = require('../middlewares/tma-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const adminMiddleware = require('../middlewares/admin-middleware');
+const authMiddleware = require('../middlewares/auth-middleware');
 
 router.post(
 	'/registration',
@@ -16,22 +17,22 @@ router.post(
 );
 router.post(
 	'/login',
-	[tmaMiddleware, rateLimitMiddleware(30, 60)],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	userController.login
 );
 router.post(
 	'/logout',
-	[tmaMiddleware, rateLimitMiddleware(20, 60)],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(20, 60)],
 	userController.logout
 );
 router.get(
 	'/refresh',
-	[tmaMiddleware, rateLimitMiddleware(30, 60)],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	userController.refresh
 );
 router.get(
 	'/friends',
-	[tmaMiddleware, rateLimitMiddleware(60, 60)],
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	userController.getFriends
 );
 

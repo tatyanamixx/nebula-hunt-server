@@ -105,9 +105,10 @@ class MarketController {
 		try {
 			const { offerId } = req.body;
 			const buyerId = req.initdata.id;
-			const result = await marketService.createPackageInvoice({
+			const result = await marketService.createInvoice({
 				offerId,
 				buyerId,
+				validatePackage: true,
 			});
 			res.json(result);
 		} catch (e) {
@@ -118,9 +119,10 @@ class MarketController {
 	async processPackageDeal(req, res, next) {
 		try {
 			const { transactionId, blockchainTxId } = req.body;
-			const result = await marketService.processPackageDeal({
+			const result = await marketService.processDeal({
 				transactionId,
 				blockchainTxId,
+				isPackage: true,
 			});
 			res.json(result);
 		} catch (e) {
