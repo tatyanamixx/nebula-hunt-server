@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const ApiError = require('../exceptions/api-error');
 const { parse, validate } = require('@telegram-apps/init-data-node');
 const tma_token = process.env.TG_BOT_API_KEY;

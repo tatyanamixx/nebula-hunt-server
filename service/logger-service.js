@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const ApiError = require('../exceptions/api-error');
 const pino = require('pino');
 const config = require('../config/logger.config');

@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 module.exports = {
 	commission: {
 		stardust: 0.05, // 5%

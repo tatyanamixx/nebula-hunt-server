@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const adminService = require('../service/admin-service');
 const ApiError = require('../exceptions/api-error');
 

@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const { Sequelize } = require('sequelize');
 
 module.exports = new Sequelize(

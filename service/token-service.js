@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const jwt = require('jsonwebtoken');
 const { Token } = require('../models/models');
 const ApiError = require('../exceptions/api-error');

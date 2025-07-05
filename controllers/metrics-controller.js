@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const metricsService = require('../service/metrics-service');
 
 class MetricsController {

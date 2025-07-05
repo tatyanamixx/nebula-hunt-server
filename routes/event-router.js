@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const Router = require('express').Router;
 const router = new Router();
 const eventController = require('../controllers/event-controller');

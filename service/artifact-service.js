@@ -1,4 +1,7 @@
-const { Artifact } = require('../models/models');
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
+const { Artifact, User } = require('../models/models');
 
 class ArtifactService {
 	/**

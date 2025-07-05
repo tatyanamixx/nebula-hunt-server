@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const ApiError = require('../exceptions/api-error');
 const tokenService = require('../service/token-service');
 
@@ -9,7 +12,7 @@ module.exports = function (req, res, next) {
 				ApiError.UnauthorizedError('JWT: not found headers auth ')
 			);
 		}
-		
+
 		const splitAuthHeader = authorizationHeader.split(' ');
 		const index = splitAuthHeader.indexOf('Bearer');
 		if (index < 0) {
@@ -17,7 +20,7 @@ module.exports = function (req, res, next) {
 				ApiError.UnauthorizedError('JWT: not found key word Bearer')
 			);
 		}
-		
+
 		const accessToken = splitAuthHeader[index + 1];
 		if (!accessToken) {
 			return next(

@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const sequelize = require('../db');
 const { DataTypes } = require('sequelize');
 

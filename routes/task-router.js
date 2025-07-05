@@ -1,4 +1,7 @@
-const Router = require('express');
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
+const Router = require('express').Router;
 const taskController = require('../controllers/task-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
 const adminMiddleware = require('../middlewares/admin-middleware');

@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const { User, UserState, PaymentTransaction } = require('../models/models');
 const { Op } = require('sequelize');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');

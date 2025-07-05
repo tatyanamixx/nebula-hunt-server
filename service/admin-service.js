@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const { User } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const galaxyService = require('./galaxy-service');

@@ -1,3 +1,6 @@
+/**
+ * created by Tatyana Mikhniukevich on 04.05.2025
+ */
 const userStateService = require('../service/state-service');
 const ApiError = require('../exceptions/api-error');
 const logger = require('../service/logger-service');
