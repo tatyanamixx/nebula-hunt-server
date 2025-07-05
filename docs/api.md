@@ -906,6 +906,564 @@ https://your-server.com/api
 }
 ```
 
+## Артефакты
+
+### Получение артефактов пользователя
+
+**GET** `/artifact/artifact`
+
+Получает список артефактов текущего пользователя.
+
+**Ответ:**
+
+```json
+[
+	{
+		"id": 1,
+		"userId": 123456,
+		"seed": "artifact_seed_1",
+		"name": "Legendary Sword",
+		"description": "A powerful legendary sword",
+		"rarity": "legendary",
+		"image": "sword.png",
+		"effects": {
+			"damage": 100,
+			"durability": 1000
+		},
+		"tradable": true,
+		"createdAt": "2024-01-01T12:00:00.000Z"
+	}
+]
+```
+
+### Добавление артефакта пользователю
+
+**POST** `/artifact/artifact`
+
+Добавляет новый артефакт текущему пользователю.
+
+**Тело запроса:**
+
+```json
+{
+	"seed": "artifact_seed_1",
+	"name": "Legendary Sword",
+	"description": "A powerful legendary sword",
+	"rarity": "legendary",
+	"image": "sword.png",
+	"effects": {
+		"damage": 100,
+		"durability": 1000
+	},
+	"tradable": true
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": 1,
+	"userId": 123456,
+	"seed": "artifact_seed_1",
+	"name": "Legendary Sword",
+	"description": "A powerful legendary sword",
+	"rarity": "legendary",
+	"image": "sword.png",
+	"effects": {
+		"damage": 100,
+		"durability": 1000
+	},
+	"tradable": true,
+	"createdAt": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### Создание артефакта от SYSTEM с офертой
+
+**POST** `/artifact/system-offer`
+
+Создает артефакт от имени SYSTEM пользователя с автоматическим созданием оферты и инвойса.
+
+**Тело запроса:**
+
+```json
+{
+	"artifactData": {
+		"seed": "unique_artifact_seed",
+		"name": "Legendary Sword",
+		"description": "A powerful legendary sword",
+		"rarity": "legendary",
+		"image": "sword.png",
+		"effects": {
+			"damage": 100,
+			"durability": 1000
+		},
+		"tradable": true
+	},
+	"offerData": {
+		"price": 1000,
+		"currency": "stardust",
+		"expiresAt": "2024-12-31T23:59:59.000Z"
+	}
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"artifact": {
+		"id": 1,
+		"userId": -1,
+		"seed": "unique_artifact_seed",
+		"name": "Legendary Sword",
+		"rarity": "legendary",
+		"tradable": true
+	},
+	"offer": {
+		"id": 1,
+		"sellerId": -1,
+		"itemType": "artifact",
+		"itemId": 1,
+		"price": 1000,
+		"currency": "stardust",
+		"offerType": "SYSTEM",
+		"status": "ACTIVE"
+	},
+	"transaction": {
+		"id": 1,
+		"offerId": 1,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "PENDING"
+	},
+	"payment": {
+		"id": 1,
+		"marketTransactionId": 1,
+		"fromAccount": 123456,
+		"toAccount": -1,
+		"amount": 1000,
+		"currency": "stardust",
+		"txType": "BUYER_TO_CONTRACT",
+		"status": "PENDING"
+	}
+}
+```
+
+## Маркет
+
+### Получение всех оферт
+
+**GET** `/market/offers`
+
+Получает все активные оферты на маркете.
+
+**Ответ:**
+
+```json
+[
+	{
+		"id": 1,
+		"sellerId": 123456,
+		"itemType": "artifact",
+		"itemId": 1,
+		"price": 1000,
+		"currency": "stardust",
+		"offerType": "P2P",
+		"status": "ACTIVE",
+		"expiresAt": "2024-12-31T23:59:59.000Z"
+	}
+]
+```
+
+### Получение оферт по типу
+
+**GET** `/market/offers/galaxy`
+
+Получает все активные оферты галактик.
+
+**GET** `/market/offers/artifact`
+
+Получает все активные оферты артефактов.
+
+**GET** `/market/offers/package`
+
+Получает все активные оферты пакетов (только SYSTEM).
+
+### Создание оферты
+
+**POST** `/market/offer`
+
+Создает новую оферту на продажу предмета.
+
+**Тело запроса:**
+
+```json
+{
+	"artifactId": 1,
+	"price": 1000,
+	"currency": "stardust",
+	"expiresAt": "2024-12-31T23:59:59.000Z"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": 1,
+	"sellerId": 123456,
+	"itemType": "artifact",
+	"itemId": 1,
+	"price": 1000,
+	"currency": "stardust",
+	"offerType": "P2P",
+	"status": "ACTIVE",
+	"expiresAt": "2024-12-31T23:59:59.000Z"
+}
+```
+
+### Создание инвойса
+
+**POST** `/market/invoice`
+
+Создает инвойс для покупки предмета.
+
+**Тело запроса:**
+
+```json
+{
+	"offerId": 1
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"offerId": 1,
+		"buyerId": 123456,
+		"sellerId": 789012,
+		"status": "PENDING"
+	},
+	"payment": {
+		"id": 1,
+		"marketTransactionId": 1,
+		"fromAccount": 123456,
+		"toAccount": -1,
+		"amount": 1000,
+		"currency": "stardust",
+		"txType": "BUYER_TO_CONTRACT",
+		"status": "PENDING"
+	}
+}
+```
+
+### Подтверждение сделки
+
+**POST** `/market/deal`
+
+Подтверждает сделку и передает предмет покупателю.
+
+**Тело запроса:**
+
+```json
+{
+	"transactionId": 1,
+	"blockchainTxId": "0x1234567890abcdef"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"status": "COMPLETED",
+		"completedAt": "2024-01-01T12:00:00.000Z"
+	},
+	"offer": {
+		"id": 1,
+		"status": "COMPLETED"
+	},
+	"sellerAmount": 950,
+	"commission": 50
+}
+```
+
+### Покупка пакета
+
+**POST** `/market/package-invoice`
+
+Создает инвойс для покупки пакета от SYSTEM.
+
+**Тело запроса:**
+
+```json
+{
+	"offerId": 1
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"offerId": 1,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "PENDING"
+	},
+	"payment": {
+		"id": 1,
+		"marketTransactionId": 1,
+		"fromAccount": 123456,
+		"toAccount": -1,
+		"amount": 1000,
+		"currency": "stardust",
+		"txType": "BUYER_TO_CONTRACT",
+		"status": "PENDING"
+	}
+}
+```
+
+### Подтверждение покупки пакета
+
+**POST** `/market/package-deal`
+
+Подтверждает покупку пакета и начисляет игровую валюту.
+
+**Тело запроса:**
+
+```json
+{
+	"transactionId": 1,
+	"blockchainTxId": "0x1234567890abcdef"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"status": "COMPLETED",
+		"completedAt": "2024-01-01T12:00:00.000Z"
+	},
+	"offer": {
+		"id": 1,
+		"status": "ACTIVE"
+	},
+	"package": {
+		"id": 1,
+		"amount": 500,
+		"currencyGame": "stardust"
+	}
+}
+```
+
+### Отмена оферты
+
+**POST** `/market/cancel-offer`
+
+Отменяет оферту (только продавец или система).
+
+**Тело запроса:**
+
+```json
+{
+	"offerId": 1,
+	"reason": "Item no longer available"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"offer": {
+		"id": 1,
+		"status": "CANCELLED",
+		"cancelledAt": "2024-01-01T12:00:00.000Z",
+		"cancelReason": "Item no longer available"
+	},
+	"closedTransactions": []
+}
+```
+
+### Отмена сделки
+
+**POST** `/market/cancel-deal`
+
+Отменяет сделку и возвращает средства покупателю.
+
+**Тело запроса:**
+
+```json
+{
+	"transactionId": 1,
+	"reason": "Cancelled by user"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"status": "CANCELLED"
+	},
+	"payment": {
+		"id": 1,
+		"status": "FAILED"
+	},
+	"reason": "Cancelled by user"
+}
+```
+
+### Отмена SYSTEM сделки
+
+**POST** `/market/cancel-system-deal`
+
+Отменяет SYSTEM сделку и удаляет все связанные объекты.
+
+**Тело запроса:**
+
+```json
+{
+	"transactionId": 1,
+	"reason": "Cancelled by system"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"status": "CANCELLED"
+	},
+	"offer": {
+		"id": 1,
+		"status": "CANCELLED"
+	},
+	"payments": [
+		{
+			"id": 1,
+			"status": "FAILED"
+		}
+	],
+	"reason": "Cancelled by system",
+	"deletedObjects": "galaxy"
+}
+```
+
+### Получение транзакций пользователя
+
+**GET** `/market/transactions`
+
+Получает все транзакции текущего пользователя (как покупатель или продавец).
+
+**Ответ:**
+
+```json
+[
+	{
+		"id": 1,
+		"offerId": 1,
+		"buyerId": 123456,
+		"sellerId": 789012,
+		"status": "COMPLETED",
+		"createdAt": "2024-01-01T12:00:00.000Z",
+		"completedAt": "2024-01-01T12:05:00.000Z"
+	}
+]
+```
+
+## Галактики
+
+### Создание галактики от SYSTEM с офертой
+
+**POST** `/galaxy/system-offer`
+
+Создает галактику от имени SYSTEM пользователя с автоматическим созданием оферты и инвойса.
+
+**Тело запроса:**
+
+```json
+{
+	"galaxyData": {
+		"seed": "unique_galaxy_seed",
+		"starMin": 100,
+		"starCurrent": 100,
+		"price": 100,
+		"particleCount": 100,
+		"onParticleCountChange": true,
+		"galaxyProperties": {
+			"name": "Galaxy Name",
+			"description": "Galaxy Description"
+		}
+	},
+	"offerData": {
+		"price": 500,
+		"currency": "stardust",
+		"expiresAt": "2024-12-31T23:59:59.000Z"
+	}
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"galaxy": {
+		"id": 1,
+		"userId": -1,
+		"seed": "unique_galaxy_seed",
+		"starMin": 100,
+		"starCurrent": 100,
+		"price": 100,
+		"particleCount": 100
+	},
+	"offer": {
+		"id": 1,
+		"sellerId": -1,
+		"itemType": "galaxy",
+		"itemId": 1,
+		"price": 500,
+		"currency": "stardust",
+		"offerType": "SYSTEM",
+		"status": "ACTIVE"
+	},
+	"transaction": {
+		"id": 1,
+		"offerId": 1,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "PENDING"
+	},
+	"payment": {
+		"id": 1,
+		"marketTransactionId": 1,
+		"fromAccount": 123456,
+		"toAccount": -1,
+		"amount": 500,
+		"currency": "stardust",
+		"txType": "BUYER_TO_CONTRACT",
+		"status": "PENDING"
+	}
+}
+```
+
 ## Rate Limiting
 
 API использует rate limiting для защиты от злоупотреблений:
@@ -917,6 +1475,9 @@ API использует rate limiting для защиты от злоупотр
 -   **Друзья**: 60 запросов в минуту
 -   **Системный пользователь**: 10 запросов в минуту
 -   **Административные функции**: 100 запросов в минуту
+-   **Маркет**: 100 запросов в минуту
+-   **Артефакты**: 50 запросов в минуту
+-   **Галактики**: 30 запросов в минуту
 -   **Остальные эндпоинты**: 1000 запросов в минуту
 
 При превышении лимита возвращается ошибка 429 с заголовком `Retry-After`.

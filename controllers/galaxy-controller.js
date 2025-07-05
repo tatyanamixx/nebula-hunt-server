@@ -35,6 +35,48 @@ class GalaxyController {
 			next(e);
 		}
 	}
+
+	async createSystemGalaxyWithOffer(req, res, next) {
+		try {
+			const buyerId = req.initdata.id;
+			const { galaxyData, offerData } = req.body;
+
+			// Валидация данных
+			if (!galaxyData || !offerData) {
+				return res.status(400).json({
+					error: 'Missing required data: galaxyData and offerData',
+				});
+			}
+
+			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
+				return res.status(400).json({
+					error: 'Invalid galaxy data: seed and galaxyProperties are required',
+				});
+			}
+
+			if (!offerData.price || !offerData.currency) {
+				return res.status(400).json({
+					error: 'Invalid offer data: price and currency are required',
+				});
+			}
+
+			const result = await galaxyService.createSystemGalaxyWithOffer(
+				galaxyData,
+				buyerId,
+				offerData
+			);
+
+			logger.info('System galaxy with offer created', {
+				buyerId,
+				galaxyId: result.galaxy.id,
+				offerId: result.offer.id,
+			});
+
+			return res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
 }
 
 module.exports = new GalaxyController();

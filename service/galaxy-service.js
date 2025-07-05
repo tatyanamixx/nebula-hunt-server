@@ -278,6 +278,96 @@ class GalaxyService {
 			);
 		}
 	}
+
+	/**
+	 * Создать галактику от имени SYSTEM и создать оферту с инвойсом
+	 * @param {Object} galaxyData - данные галактики
+	 * @param {number} buyerId - ID покупателя
+	 * @param {Object} offerData - данные оферты (price, currency, expiresAt)
+	 */
+	async createSystemGalaxyWithOffer(galaxyData, buyerId, offerData) {
+		const t = await sequelize.transaction();
+
+		try {
+			const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+
+			// 1. Создаем галактику от имени SYSTEM
+			const [galaxy, created] = await Galaxy.findOrCreate({
+				where: {
+					seed: galaxyData.seed,
+				},
+				defaults: {
+					userId: SYSTEM_USER_ID,
+					starMin: galaxyData.starMin || 100,
+					starCurrent: galaxyData.starCurrent || 100,
+					price: galaxyData.price || 100,
+					seed: galaxyData.seed || '',
+					particleCount: galaxyData.particleCount || 100,
+					onParticleCountChange:
+						galaxyData.onParticleCountChange || true,
+					galaxyProperties: galaxyData.galaxyProperties || {},
+					active: true,
+				},
+				transaction: t,
+			});
+
+			if (!created) {
+				throw ApiError.BadRequest('Galaxy already exists');
+			}
+
+			// 2. Создаем оферту на продажу галактики
+			const { MarketOffer } = require('../models/models');
+			const offer = await MarketOffer.create(
+				{
+					sellerId: SYSTEM_USER_ID,
+					itemType: 'galaxy',
+					itemId: galaxy.id,
+					price: offerData.price,
+					currency: offerData.currency,
+					offerType: 'SYSTEM',
+					expiresAt: offerData.expiresAt,
+					status: 'ACTIVE',
+				},
+				{ transaction: t }
+			);
+
+			// 3. Создаем инвойс для покупателя
+			const {
+				MarketTransaction,
+				PaymentTransaction,
+			} = require('../models/models');
+			const transaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: buyerId,
+					sellerId: SYSTEM_USER_ID,
+					status: 'PENDING',
+				},
+				{ transaction: t }
+			);
+
+			const payment = await PaymentTransaction.create(
+				{
+					marketTransactionId: transaction.id,
+					fromAccount: buyerId,
+					toAccount: SYSTEM_USER_ID,
+					amount: offerData.price,
+					currency: offerData.currency,
+					txType: 'BUYER_TO_CONTRACT',
+					status: 'PENDING',
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return { galaxy, offer, transaction, payment };
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to create system galaxy with offer: ${err.message}`
+			);
+		}
+	}
 }
 
 module.exports = new GalaxyService();

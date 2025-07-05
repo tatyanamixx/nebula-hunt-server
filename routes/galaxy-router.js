@@ -21,4 +21,11 @@ router.put(
 	galaxyController.updateGalaxy
 );
 
+// Создать галактику от SYSTEM с офертой и инвойсом
+router.post(
+	'/system-offer',
+	[tmaMiddleware, authMiddleware, rateLimitMiddleware(5, 60)],
+	galaxyController.createSystemGalaxyWithOffer
+);
+
 module.exports = router;

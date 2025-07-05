@@ -201,6 +201,277 @@ async addStateHistoryEntry(userId, entry) {
 
 **Основные методы:**
 
+#### `getUserGalaxies(userId)`
+
+Получение галактик пользователя.
+
+```javascript
+async getUserGalaxies(userId) {
+  // Поиск галактик по userId
+  // Проверка существования пользователя
+  // Возврат списка галактик
+}
+```
+
+#### `createGalaxy(userId, galaxyData)`
+
+Создание новой галактики.
+
+```javascript
+async createGalaxy(userId, galaxyData) {
+  // Валидация данных галактики
+  // Проверка уникальности seed
+  // Создание записи в БД
+  // Возврат созданной галактики
+}
+```
+
+#### `updateGalaxy(galaxyId, updates)`
+
+Обновление галактики.
+
+```javascript
+async updateGalaxy(galaxyId, updates) {
+  // Поиск галактики
+  // Валидация обновлений
+  // Применение изменений
+  // Возврат обновленной галактики
+}
+```
+
+#### `deleteGalaxy(galaxyId)`
+
+Удаление галактики.
+
+```javascript
+async deleteGalaxy(galaxyId) {
+  // Поиск галактики
+  // Проверка прав доступа
+  // Удаление записи
+  // Возврат подтверждения
+}
+```
+
+#### `createSystemGalaxyWithOffer(galaxyData, offerData)`
+
+Создание галактики от SYSTEM с автоматическим созданием оферты и инвойса.
+
+```javascript
+async createSystemGalaxyWithOffer(galaxyData, offerData) {
+  // Создание галактики от SYSTEM
+  // Создание оферты
+  // Создание транзакции
+  // Создание платежа
+  // Транзакционное выполнение
+}
+```
+
+### ArtifactService
+
+**Назначение**: Управление артефактами пользователя.
+
+**Основные методы:**
+
+#### `getUserArtifacts(userId)`
+
+Получение артефактов пользователя.
+
+```javascript
+async getUserArtifacts(userId) {
+  // Поиск артефактов по userId
+  // Проверка существования пользователя
+  // Возврат списка артефактов
+}
+```
+
+#### `createArtifact(userId, artifactData)`
+
+Создание нового артефакта.
+
+```javascript
+async createArtifact(userId, artifactData) {
+  // Валидация данных артефакта
+  // Проверка уникальности seed
+  // Создание записи в БД
+  // Возврат созданного артефакта
+}
+```
+
+#### `createSystemArtifactWithOffer(artifactData, offerData)`
+
+Создание артефакта от SYSTEM с автоматическим созданием оферты и инвойса.
+
+```javascript
+async createSystemArtifactWithOffer(artifactData, offerData) {
+  // Создание артефакта от SYSTEM
+  // Создание оферты
+  // Создание транзакции
+  // Создание платежа
+  // Транзакционное выполнение
+}
+```
+
+### MarketService
+
+**Назначение**: Управление маркетом, офертами, транзакциями и платежами.
+
+**Основные методы:**
+
+#### `getAllOffers()`
+
+Получение всех активных оферт.
+
+```javascript
+async getAllOffers() {
+  // Поиск активных оферт
+  // Включение связанных данных
+  // Возврат списка оферт
+}
+```
+
+#### `getOffersByType(itemType)`
+
+Получение оферт по типу предмета.
+
+```javascript
+async getOffersByType(itemType) {
+  // Валидация типа предмета
+  // Поиск оферт по типу
+  // Специальная логика для пакетов
+  // Возврат отфильтрованных оферт
+}
+```
+
+#### `createOffer(sellerId, itemType, itemId, price, currency, expiresAt)`
+
+Создание новой оферты.
+
+```javascript
+async createOffer(sellerId, itemType, itemId, price, currency, expiresAt) {
+  // Валидация данных оферты
+  // Проверка существования предмета
+  // Проверка прав продавца
+  // Создание записи в БД
+  // Возврат созданной оферты
+}
+```
+
+#### `createInvoice(buyerId, offerId)`
+
+Создание инвойса для покупки.
+
+```javascript
+async createInvoice(buyerId, offerId) {
+  // Проверка существования оферты
+  // Проверка баланса покупателя
+  // Создание транзакции
+  // Создание платежа
+  // Транзакционное выполнение
+}
+```
+
+#### `processDeal(transactionId, blockchainTxId)`
+
+Подтверждение сделки.
+
+```javascript
+async processDeal(transactionId, blockchainTxId) {
+  // Поиск транзакции
+  // Подтверждение платежа
+  // Передача предмета покупателю
+  // Начисление средств продавцу
+  // Обновление статусов
+  // Транзакционное выполнение
+}
+```
+
+#### `buyPackage(buyerId, offerId)`
+
+Покупка пакета от SYSTEM.
+
+```javascript
+async buyPackage(buyerId, offerId) {
+  // Проверка типа оферты
+  // Проверка баланса
+  // Создание транзакции
+  // Создание платежа
+  // Транзакционное выполнение
+}
+```
+
+#### `processPackageDeal(transactionId, blockchainTxId)`
+
+Подтверждение покупки пакета.
+
+```javascript
+async processPackageDeal(transactionId, blockchainTxId) {
+  // Поиск транзакции
+  // Подтверждение платежа
+  // Начисление игровой валюты
+  // Обновление статусов
+  // Транзакционное выполнение
+}
+```
+
+#### `cancelOffer(offerId, reason)`
+
+Отмена оферты.
+
+```javascript
+async cancelOffer(offerId, reason) {
+  // Поиск оферты
+  // Проверка прав
+  // Отмена связанных транзакций
+  // Обновление статуса
+  // Транзакционное выполнение
+}
+```
+
+#### `cancelDeal(transactionId, reason)`
+
+Отмена сделки.
+
+```javascript
+async cancelDeal(transactionId, reason) {
+  // Поиск транзакции
+  // Возврат средств покупателю
+  // Отмена платежа
+  // Обновление статусов
+  // Транзакционное выполнение
+}
+```
+
+#### `cancelSystemDeal(transactionId, reason)`
+
+Отмена SYSTEM сделки с удалением объектов.
+
+```javascript
+async cancelSystemDeal(transactionId, reason) {
+  // Поиск транзакции
+  // Определение типа объекта
+  // Удаление объекта
+  // Возврат средств
+  // Отмена платежей
+  // Транзакционное выполнение
+}
+```
+
+#### `getUserTransactions(userId)`
+
+Получение транзакций пользователя.
+
+```javascript
+async getUserTransactions(userId) {
+  // Поиск транзакций как покупатель
+  // Поиск транзакций как продавец
+  // Объединение результатов
+  // Сортировка по дате
+  // Возврат списка транзакций
+}
+```
+
+**Основные методы:**
+
 #### `createGalaxy(userId, galaxyData, transaction)`
 
 Создание новой галактики.

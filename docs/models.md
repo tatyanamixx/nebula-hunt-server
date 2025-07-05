@@ -35,6 +35,49 @@
 │ active      │
 └─────────────┘
 
+┌─────────────┐
+│  Artifact   │
+│             │
+│ id (PK)     │
+│ userId (FK) │
+│ seed (UK)   │
+│ name        │
+│ description │
+│ rarity      │
+│ image       │
+│ effects (JSONB)│
+│ tradable    │
+└─────────────┘
+
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│MarketOffer  │────▶│MarketTransaction│  │PaymentTransaction│
+│             │     │             │     │             │
+│ id (PK)     │     │ id (PK)     │     │ id (PK)     │
+│ sellerId (FK)│    │ offerId (FK)│    │ marketTransactionId (FK)│
+│ itemType     │    │ buyerId (FK)│    │ fromAccount (FK)│
+│ itemId       │    │ sellerId (FK)│   │ toAccount (FK)│
+│ price        │    │ status       │    │ amount       │
+│ currency     │    │ createdAt    │    │ currency     │
+│ offerType    │    │ completedAt  │    │ txType       │
+│ status       │    │             │    │ status       │
+│ expiresAt    │    │             │    │ blockchainTxId│
+│ cancelledAt  │    │             │    │ confirmedAt  │
+│ cancelReason │    │             │    │             │
+└─────────────┘     └─────────────┘     └─────────────┘
+
+┌─────────────┐
+│PackageStore │
+│             │
+│ id (PK)     │
+│ name        │
+│ description │
+│ amount      │
+│ currencyGame│
+│ price       │
+│ currency    │
+│ active      │
+└─────────────┘
+
 ┌─────────────┐     ┌─────────────┐
 │UpgradeNode  │     │    Task     │
 │             │     │             │
@@ -112,6 +155,12 @@
 -   `hasOne(UserState)` - один пользователь имеет одно состояние
 -   `hasOne(Token)` - один пользователь имеет один токен
 -   `hasMany(Galaxy)` - один пользователь может иметь много галактик
+-   `hasMany(Artifact)` - один пользователь может иметь много артефактов
+-   `hasMany(MarketOffer)` - один пользователь может создавать много оферт
+-   `hasMany(MarketTransaction, { as: 'buyerTransactions', foreignKey: 'buyerId' })` - транзакции как покупатель
+-   `hasMany(MarketTransaction, { as: 'sellerTransactions', foreignKey: 'sellerId' })` - транзакции как продавец
+-   `hasMany(PaymentTransaction, { as: 'sentPayments', foreignKey: 'fromAccount' })` - отправленные платежи
+-   `hasMany(PaymentTransaction, { as: 'receivedPayments', foreignKey: 'toAccount' })` - полученные платежи
 
 ### UserState
 
@@ -704,6 +753,312 @@ pg_dump -h localhost -U postgres -d nebulahant --schema-only > schema.sql
 # Бэкап только данных
 pg_dump -h localhost -U postgres -d nebulahant --data-only > data.sql
 ```
+
+### Artifact
+
+Модель артефактов пользователя.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  seed: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT
+  },
+  rarity: {
+    type: DataTypes.ENUM('common', 'rare', 'epic', 'legendary'),
+    allowNull: false
+  },
+  image: {
+    type: DataTypes.STRING
+  },
+  effects: {
+    type: DataTypes.JSONB,
+    defaultValue: {}
+  },
+  tradable: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}
+```
+
+**Индексы:**
+
+-   `artifact_seed_idx` - уникальный индекс по seed
+-   `artifact_user_id_idx` - индекс по userId
+-   `artifact_rarity_idx` - индекс по rarity
+-   `artifact_tradable_idx` - индекс по tradable
+
+**Связи:**
+
+-   `belongsTo(User)` - артефакт принадлежит пользователю
+
+### MarketOffer
+
+Модель оферт на маркете.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  sellerId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  itemType: {
+    type: DataTypes.ENUM('artifact', 'galaxy', 'package'),
+    allowNull: false
+  },
+  itemId: {
+    type: DataTypes.BIGINT,
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.DECIMAL(20, 2),
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    allowNull: false
+  },
+  offerType: {
+    type: DataTypes.ENUM('P2P', 'SYSTEM'),
+    defaultValue: 'P2P'
+  },
+  status: {
+    type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED'),
+    defaultValue: 'ACTIVE'
+  },
+  expiresAt: {
+    type: DataTypes.DATE
+  },
+  cancelledAt: {
+    type: DataTypes.DATE
+  },
+  cancelReason: {
+    type: DataTypes.STRING
+  }
+}
+```
+
+**Индексы:**
+
+-   `marketoffer_seller_id_idx` - индекс по sellerId
+-   `marketoffer_item_type_idx` - индекс по itemType
+-   `marketoffer_status_idx` - индекс по status
+-   `marketoffer_offer_type_idx` - индекс по offerType
+
+**Связи:**
+
+-   `belongsTo(User, { as: 'seller' })` - оферта принадлежит продавцу
+-   `hasMany(MarketTransaction)` - оферта может иметь много транзакций
+
+### MarketTransaction
+
+Модель транзакций на маркете.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  offerId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'marketoffers',
+      key: 'id'
+    }
+  },
+  buyerId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  sellerId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  status: {
+    type: DataTypes.ENUM('PENDING', 'COMPLETED', 'CANCELLED'),
+    defaultValue: 'PENDING'
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  completedAt: {
+    type: DataTypes.DATE
+  }
+}
+```
+
+**Индексы:**
+
+-   `markettransaction_offer_id_idx` - индекс по offerId
+-   `markettransaction_buyer_id_idx` - индекс по buyerId
+-   `markettransaction_seller_id_idx` - индекс по sellerId
+-   `markettransaction_status_idx` - индекс по status
+
+**Связи:**
+
+-   `belongsTo(MarketOffer)` - транзакция принадлежит оферте
+-   `belongsTo(User, { as: 'buyer' })` - транзакция принадлежит покупателю
+-   `belongsTo(User, { as: 'seller' })` - транзакция принадлежит продавцу
+-   `hasMany(PaymentTransaction)` - транзакция может иметь много платежей
+
+### PaymentTransaction
+
+Модель платежных транзакций.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  marketTransactionId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'markettransactions',
+      key: 'id'
+    }
+  },
+  fromAccount: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  toAccount: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  amount: {
+    type: DataTypes.DECIMAL(20, 2),
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    allowNull: false
+  },
+  txType: {
+    type: DataTypes.ENUM('BUYER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'CONTRACT_TO_BUYER', 'FEE'),
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
+    defaultValue: 'PENDING'
+  },
+  blockchainTxId: {
+    type: DataTypes.STRING
+  },
+  confirmedAt: {
+    type: DataTypes.DATE
+  }
+}
+```
+
+**Индексы:**
+
+-   `paymenttransaction_market_transaction_id_idx` - индекс по marketTransactionId
+-   `paymenttransaction_from_account_idx` - индекс по fromAccount
+-   `paymenttransaction_to_account_idx` - индекс по toAccount
+-   `paymenttransaction_status_idx` - индекс по status
+-   `paymenttransaction_tx_type_idx` - индекс по txType
+
+**Связи:**
+
+-   `belongsTo(MarketTransaction)` - платеж принадлежит транзакции
+-   `belongsTo(User, { as: 'fromUser' })` - платеж отправлен от пользователя
+-   `belongsTo(User, { as: 'toUser' })` - платеж получен пользователем
+
+### PackageStore
+
+Модель пакетов для продажи.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT
+  },
+  amount: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  currencyGame: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.DECIMAL(20, 2),
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    allowNull: false
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}
+```
+
+**Индексы:**
+
+-   `packagestore_active_idx` - индекс по active
+-   `packagestore_currency_game_idx` - индекс по currencyGame
+
+**Связи:**
+
+-   Нет прямых связей с другими моделями
 
 ---
 

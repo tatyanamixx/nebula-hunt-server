@@ -15,10 +15,18 @@ router.post(
 
 // Получить список артефактов пользователя
 router.get(
-	'/artifact/:userId',
+	'/artifact',
 	authMiddleware,
 	tmaMiddleware,
 	artifactController.getUserArtifacts
+);
+
+// Создать артефакт от SYSTEM с офертой и инвойсом
+router.post(
+	'/system-offer',
+	authMiddleware,
+	tmaMiddleware,
+	artifactController.createSystemArtifactWithOffer
 );
 
 module.exports = router;

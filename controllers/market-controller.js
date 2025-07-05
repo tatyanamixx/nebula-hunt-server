@@ -13,8 +13,8 @@ class MarketController {
 
 	async createOffer(req, res) {
 		try {
-			const { sellerId, artifactId, price, currency, expiresAt } =
-				req.body;
+			const { artifactId, price, currency, expiresAt } = req.body;
+			const sellerId = req.initdata.id;
 			const offer = await marketService.createOffer({
 				sellerId,
 				artifactId,
@@ -31,7 +31,8 @@ class MarketController {
 
 	async createInvoice(req, res) {
 		try {
-			const { offerId, buyerId } = req.body;
+			const { offerId } = req.body;
+			const buyerId = req.initdata.id;
 			const result = await marketService.createInvoice({
 				offerId,
 				buyerId,
@@ -59,7 +60,7 @@ class MarketController {
 
 	async getUserTransactions(req, res) {
 		try {
-			const { userId } = req.params;
+			const userId = req.initdata.id;
 			const transactions = await marketService.getUserTransactions(
 				userId
 			);
@@ -97,10 +98,68 @@ class MarketController {
 		}
 	}
 
-	async buyPackage(req, res, next) {
+	async createPackageInvoice(req, res, next) {
 		try {
-			const { userId, offerId } = req.body;
-			const result = await marketService.buyPackage(userId, offerId);
+			const { offerId } = req.body;
+			const buyerId = req.initdata.id;
+			const result = await marketService.createPackageInvoice({
+				offerId,
+				buyerId,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async processPackageDeal(req, res, next) {
+		try {
+			const { transactionId, blockchainTxId } = req.body;
+			const result = await marketService.processPackageDeal({
+				transactionId,
+				blockchainTxId,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async cancelOffer(req, res, next) {
+		try {
+			const { offerId, reason } = req.body;
+			const sellerId = req.initdata.id;
+			const result = await marketService.cancelOffer({
+				offerId,
+				sellerId,
+				reason,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async cancelSystemDeal(req, res, next) {
+		try {
+			const { transactionId, reason } = req.body;
+			const result = await marketService.cancelSystemDeal({
+				transactionId,
+				reason,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async cancelDeal(req, res, next) {
+		try {
+			const { transactionId, reason } = req.body;
+			const result = await marketService.cancelDeal({
+				transactionId,
+				reason,
+			});
 			res.json(result);
 		} catch (e) {
 			next(e);

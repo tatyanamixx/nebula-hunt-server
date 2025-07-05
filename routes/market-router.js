@@ -16,6 +16,14 @@ router.post(
 	marketController.createOffer
 );
 
+// Отменить оферту (требует авторизации и tma)
+router.post(
+	'/cancel-offer',
+	authMiddleware,
+	tmaMiddleware,
+	marketController.cancelOffer
+);
+
 // Создать инвойс (запрос на покупку) (требует авторизации и tma)
 router.post(
 	'/invoice',
@@ -32,9 +40,41 @@ router.post(
 	marketController.processDeal
 );
 
+// Создать инвойс для покупки пакета (требует авторизации и tma)
+router.post(
+	'/package-invoice',
+	authMiddleware,
+	tmaMiddleware,
+	marketController.createPackageInvoice
+);
+
+// Подтвердить покупку пакета (требует авторизации и tma)
+router.post(
+	'/package-deal',
+	authMiddleware,
+	tmaMiddleware,
+	marketController.processPackageDeal
+);
+
+// Отменить сделку SYSTEM (требует авторизации и tma)
+router.post(
+	'/cancel-system-deal',
+	authMiddleware,
+	tmaMiddleware,
+	marketController.cancelSystemDeal
+);
+
+// Отменить сделку (требует авторизации и tma)
+router.post(
+	'/cancel-deal',
+	authMiddleware,
+	tmaMiddleware,
+	marketController.cancelDeal
+);
+
 // Получить все сделки пользователя (требует авторизации и tma)
 router.get(
-	'/transactions/:userId',
+	'/transactions',
 	authMiddleware,
 	tmaMiddleware,
 	marketController.getUserTransactions

@@ -493,7 +493,7 @@ const PaymentTransaction = sequelize.define('paymenttransaction', {
 		allowNull: false,
 	},
 	txType: {
-		type: DataTypes.ENUM('USER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'FEE'),
+		type: DataTypes.ENUM('BUYER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'FEE'),
 		allowNull: false,
 	},
 	blockchainTxId: {

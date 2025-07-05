@@ -69,6 +69,8 @@ Nebulahant Server построен на основе многослойной а
 │  ├─ /auth/*                                                 │
 │  ├─ /admin/*                                                │
 │  ├─ /galaxy/*                                               │
+│  ├─ /artifact/*                                             │
+│  ├─ /market/*                                               │
 │  ├─ /state/*                                                │
 │  ├─ /upgrades/*                                             │
 │  ├─ /events/*                                               │
@@ -78,6 +80,8 @@ Nebulahant Server построен на основе многослойной а
 │  ├─ UserController                                          │
 │  ├─ AdminController                                         │
 │  ├─ GalaxyController                                        │
+│  ├─ ArtifactController                                      │
+│  ├─ MarketController                                        │
 │  ├─ StateController                                         │
 │  ├─ UpgradeController                                       │
 │  ├─ EventController                                         │
@@ -87,6 +91,8 @@ Nebulahant Server построен на основе многослойной а
 │  ├─ UserService                                             │
 │  ├─ StateService                                            │
 │  ├─ GalaxyService                                           │
+│  ├─ ArtifactService                                         │
+│  ├─ MarketService                                           │
 │  ├─ UpgradeService                                          │
 │  ├─ EventService                                            │
 │  ├─ TaskService                                             │
@@ -97,6 +103,11 @@ Nebulahant Server построен на основе многослойной а
 │  ├─ User                                                    │
 │  ├─ UserState                                               │
 │  ├─ Galaxy                                                  │
+│  ├─ Artifact                                                │
+│  ├─ MarketOffer                                             │
+│  ├─ MarketTransaction                                       │
+│  ├─ PaymentTransaction                                      │
+│  ├─ PackageStore                                            │
 │  ├─ UpgradeNode                                             │
 │  ├─ Task                                                    │
 │  ├─ GameEvent                                               │
@@ -108,6 +119,11 @@ Nebulahant Server построен на основе многослойной а
 │  ├─ users                                                   │
 │  ├─ userstates                                             │
 │  ├─ galaxies                                               │
+│  ├─ artifacts                                              │
+│  ├─ marketoffers                                           │
+│  ├─ markettransactions                                     │
+│  ├─ paymenttransactions                                    │
+│  ├─ packagestore                                           │
 │  ├─ upgradenodes                                           │
 │  ├─ tasks                                                  │
 │  ├─ gameevents                                             │

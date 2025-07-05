@@ -12,12 +12,15 @@ const { Op, where } = require('sequelize');
 const artifactService = require('./artifact-service');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 
+// Системный пользователь ID
+const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+
 class UserService {
 	async createSystemUser() {
 		const t = await sequelize.transaction();
 		try {
 			// Check if system user already exists
-			const existingSystemUser = await User.findByPk(-1, {
+			const existingSystemUser = await User.findByPk(SYSTEM_USER_ID, {
 				transaction: t,
 			});
 			if (existingSystemUser) {
@@ -28,7 +31,7 @@ class UserService {
 			// Create system user
 			const systemUser = await User.create(
 				{
-					id: -1,
+					id: SYSTEM_USER_ID,
 					username: 'SYSTEM',
 					referral: 0,
 					role: 'SYSTEM',
@@ -40,7 +43,7 @@ class UserService {
 			// Create UserState for SYSTEM user (for contract balance)
 			await UserState.create(
 				{
-					userId: -1,
+					userId: SYSTEM_USER_ID,
 					state: {
 						totalStars: 0,
 						stardustCount: 0,
@@ -72,7 +75,7 @@ class UserService {
 
 	async ensureSystemUserExists() {
 		try {
-			const systemUser = await User.findByPk(-1);
+			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 			if (!systemUser) {
 				await this.createSystemUser();
 			}
@@ -349,7 +352,7 @@ class UserService {
 
 	async getSystemUser() {
 		try {
-			const systemUser = await User.findByPk(-1);
+			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 
 			if (!systemUser) {
 				throw ApiError.BadRequest('System user not found');
