@@ -108,7 +108,6 @@ class MarketController {
 			const result = await marketService.createInvoice({
 				offerId,
 				buyerId,
-				validatePackage: true,
 			});
 			res.json(result);
 		} catch (e) {
@@ -122,7 +121,6 @@ class MarketController {
 			const result = await marketService.processDeal({
 				transactionId,
 				blockchainTxId,
-				isPackage: true,
 			});
 			res.json(result);
 		} catch (e) {
@@ -165,6 +163,16 @@ class MarketController {
 				transactionId,
 				reason,
 			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async initializePackages(req, res, next) {
+		try {
+			const { packages } = req.body;
+			const result = await marketService.initializePackages(packages);
 			res.json(result);
 		} catch (e) {
 			next(e);

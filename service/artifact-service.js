@@ -48,7 +48,7 @@ class ArtifactService {
 		const t = await require('../db').transaction();
 
 		try {
-			const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+			const { SYSTEM_USER_ID } = require('../config/constants');
 
 			// 1. Создаем артефакт от имени SYSTEM
 			const artifact = await Artifact.create(

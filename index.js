@@ -53,6 +53,33 @@ const start = async () => {
 		await sequelize.authenticate();
 		await sequelize.sync();
 
+		// Инициализация комиссий маркета
+		const { MarketCommission } = require('./models/models');
+		const marketConfig = require('./config/market.config');
+
+		const commissionData = Object.entries(marketConfig.commission).map(
+			([currency, rate]) => ({
+				currency,
+				rate,
+				description: `Комиссия ${(rate * 100).toFixed(
+					0
+				)}% для ${currency}`,
+			})
+		);
+
+		for (const entry of commissionData) {
+			await MarketCommission.findOrCreate({
+				where: { currency: entry.currency },
+				defaults: entry,
+			});
+		}
+		loggerService.info('MarketCommission table initialized');
+
+		// Инициализация системного пользователя
+		const userService = require('./service/user-service');
+		await userService.ensureSystemUserExists();
+		loggerService.info('System user initialized');
+
 		loggerService.info(`Server started on port ${PORT}`);
 		app.listen(PORT, () =>
 			loggerService.info(`Server started on port ${PORT}`)

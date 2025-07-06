@@ -15,8 +15,7 @@ const { Op, where } = require('sequelize');
 const artifactService = require('./artifact-service');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 
-// Системный пользователь ID
-const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+const { SYSTEM_USER_ID } = require('../config/constants');
 
 class UserService {
 	async createSystemUser() {
@@ -106,12 +105,6 @@ class UserService {
 				throw ApiError.BadRequest(
 					'Invalid referral data, must be a number'
 				);
-			}
-
-			// Check if this is the first user registration and create system user if needed
-			const userCount = await User.count({ transaction: tc });
-			if (userCount === 0) {
-				await this.ensureSystemUserExists();
 			}
 
 			// Create or update user

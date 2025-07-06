@@ -113,6 +113,16 @@
 │ conditions (JSONB)│
 │ active      │
 └─────────────┘
+
+┌─────────────┐
+│MarketCommission│
+│             │
+│ id (PK)     │
+│ currency    │
+│ rate        │
+│ description │
+│ active      │
+└─────────────┘
 ```
 
 ## Детальное описание моделей
@@ -1055,6 +1065,62 @@ pg_dump -h localhost -U postgres -d nebulahant --data-only > data.sql
 
 -   `packagestore_active_idx` - индекс по active
 -   `packagestore_currency_game_idx` - индекс по currencyGame
+
+**Связи:**
+
+-   Нет прямых связей с другими моделями
+
+### MarketCommission
+
+Модель комиссий маркета. Автоматически инициализируется при запуске сервера из конфигурации.
+
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  currency: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    allowNull: false,
+    unique: true
+  },
+  rate: {
+    type: DataTypes.DECIMAL(5, 4),
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}
+```
+
+**Индексы:**
+
+-   `marketcommission_currency_idx` - уникальный индекс по currency
+-   `marketcommission_active_idx` - индекс по active
+
+**Автоматическая инициализация:**
+
+Комиссии загружаются из `config/market.config.js` при запуске сервера:
+
+```javascript
+// config/market.config.js
+module.exports = {
+	commission: {
+		stardust: 0.05, // 5%
+		darkMatter: 0.07, // 7%
+		tgStars: 0.03, // 3%
+		tonToken: 0.1, // 10%
+	},
+};
+```
 
 **Связи:**
 

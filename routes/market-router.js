@@ -12,7 +12,7 @@ const router = Router();
 // Получить все оферты (публично)
 router.get('/offers', marketController.getAllOffers);
 
-// Создать оферту на продажу артефакта (требует tma, авторизации и rate limiting)
+// Создать оферту на продажу (требует tma, авторизации и rate limiting)
 router.post(
 	'/offer',
 	tmaMiddleware,
@@ -73,6 +73,15 @@ router.get(
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
 	marketController.getUserTransactions
+);
+
+// Инициализация пакетов (требует tma, авторизации и rate limiting)
+router.post(
+	'/initialize-packages',
+	tmaMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(5, 60),
+	marketController.initializePackages
 );
 
 module.exports = router;

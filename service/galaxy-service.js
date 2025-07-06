@@ -292,7 +292,7 @@ class GalaxyService {
 		const t = await sequelize.transaction();
 
 		try {
-			const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+			const { SYSTEM_USER_ID } = require('../config/constants');
 
 			// 1. Создаем галактику от имени SYSTEM
 			const [galaxy, created] = await Galaxy.findOrCreate({

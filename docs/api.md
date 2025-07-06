@@ -8,6 +8,58 @@
 https://your-server.com/api
 ```
 
+### Автоматическая инициализация
+
+При запуске сервера автоматически выполняются следующие операции:
+
+1. **Инициализация комиссий маркета**
+
+    - Комиссии загружаются из `config/market.config.js`
+    - Создаются записи в таблице `marketcommission`
+    - Текущие комиссии:
+        - stardust: 5%
+        - darkMatter: 7%
+        - tgStars: 3%
+        - tonToken: 10%
+
+2. **Создание системного пользователя**
+
+    - ID: -1 (или из переменной окружения SYSTEM_USER_ID)
+    - Username: 'SYSTEM'
+    - Role: 'SYSTEM'
+    - Создается UserState с нулевыми балансами для всех валют
+
+3. **Синхронизация базы данных**
+    - Создание всех необходимых таблиц
+    - Применение миграций
+
+**Примечание:** Все операции выполняются автоматически при каждом запуске сервера. Ручная инициализация не требуется.
+
+### Конфигурация
+
+#### Комиссии маркета (`config/market.config.js`)
+
+```javascript
+module.exports = {
+	commission: {
+		stardust: 0.05, // 5%
+		darkMatter: 0.07, // 7%
+		tgStars: 0.03, // 3%
+		tonToken: 0.1, // 10%
+	},
+};
+```
+
+#### Системный пользователь (`config/constants.js`)
+
+```javascript
+const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+```
+
+**Переменные окружения:**
+
+-   `SYSTEM_USER_ID` - ID системного пользователя (по умолчанию: -1)
+
 ### Аутентификация
 
 Все запросы (кроме регистрации) требуют аутентификации через Telegram Mini Apps и JWT токен. Токен передается в заголовке `Authorization: Bearer <token>`.
@@ -318,6 +370,45 @@ https://your-server.com/api
 		"username": "player1",
 		"blocked": false
 	}
+}
+```
+
+### Инициализация оферт пакетов
+
+**POST** `/admin/initialize-package-offers`
+
+Создает оферты для всех активных пакетов в PackageStore (только для администраторов). Требует TMA, JWT авторизации, админ прав и rate limiting (10 запросов в минуту).
+
+**Тело запроса:**
+
+```json
+{}
+```
+
+**Ответ:**
+
+```json
+{
+	"message": "Successfully initialized 5 package offers",
+	"createdOffers": [
+		{
+			"packageId": "starter_pack",
+			"offerId": 1,
+			"price": 10.0,
+			"currency": "tgStars",
+			"amount": 1000,
+			"currencyGame": "stardust"
+		},
+		{
+			"packageId": "premium_pack",
+			"offerId": 2,
+			"price": 45.0,
+			"currency": "tgStars",
+			"amount": 5000,
+			"currencyGame": "stardust"
+		}
+	],
+	"totalPackages": 5
 }
 ```
 
@@ -1120,6 +1211,122 @@ https://your-server.com/api
 
 Получает все сделки текущего пользователя. Требует TMA, JWT авторизации и rate limiting (60 запросов в минуту).
 
+### Инициализация пакетов
+
+**POST** `/market/initialize-packages`
+
+Инициализирует пакеты в системе. Создает пакеты в PackageStore и оферты для них из переданных данных. Требует TMA, JWT авторизации и rate limiting (5 запросов в минуту).
+
+**Тело запроса:**
+
+```json
+{
+	"packages": [
+		{
+			"id": "starter_pack",
+			"amount": 1000,
+			"currencyGame": "stardust",
+			"price": 10.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		},
+		{
+			"id": "premium_pack",
+			"amount": 5000,
+			"currencyGame": "stardust",
+			"price": 45.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		},
+		{
+			"id": "dark_matter_pack",
+			"amount": 100,
+			"currencyGame": "darkMatter",
+			"price": 25.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		}
+	]
+}
+```
+
+**Обязательные поля для каждого пакета:**
+
+-   `id` - уникальный идентификатор пакета
+-   `amount` - количество игровой валюты
+-   `currencyGame` - тип игровой валюты (stardust, darkMatter)
+-   `price` - цена пакета
+-   `currency` - валюта оплаты (tgStars, tonToken)
+-   `status` - статус пакета (опционально, по умолчанию ACTIVE)
+
+**Ответ:**
+
+```json
+{
+	"message": "Successfully initialized 3 packages and 3 offers",
+	"createdPackages": [
+		{
+			"id": "starter_pack",
+			"amount": 1000,
+			"currencyGame": "stardust",
+			"price": 10.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		},
+		{
+			"id": "premium_pack",
+			"amount": 5000,
+			"currencyGame": "stardust",
+			"price": 45.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		},
+		{
+			"id": "dark_matter_pack",
+			"amount": 100,
+			"currencyGame": "darkMatter",
+			"price": 25.0,
+			"currency": "tgStars",
+			"status": "ACTIVE"
+		}
+	],
+	"createdOffers": [
+		{
+			"packageId": "starter_pack",
+			"offerId": 1,
+			"price": 10.0,
+			"currency": "tgStars",
+			"amount": 1000,
+			"currencyGame": "stardust"
+		},
+		{
+			"packageId": "premium_pack",
+			"offerId": 2,
+			"price": 45.0,
+			"currency": "tgStars",
+			"amount": 5000,
+			"currencyGame": "stardust"
+		},
+		{
+			"packageId": "dark_matter_pack",
+			"offerId": 3,
+			"price": 25.0,
+			"currency": "tgStars",
+			"amount": 100,
+			"currencyGame": "darkMatter"
+		}
+	],
+	"totalPackages": 3
+}
+```
+
+**Что происходит:**
+
+1. **Создание пакетов**: Для каждого пакета из JSON создается запись в таблице `packagestore`
+2. **Создание оферт**: Для каждого пакета создается оферта в таблице `marketoffer` от имени SYSTEM пользователя
+3. **Проверка дубликатов**: Если пакет или оферта уже существуют, они не создаются повторно
+4. **Транзакционность**: Все операции выполняются в рамках одной транзакции для обеспечения целостности данных
+
 ---
 
 **Примечание:**
@@ -1228,6 +1435,7 @@ API использует rate limiting для защиты от злоупотр
 -   **Отмена системной сделки**: 10 запросов в минуту (TMA + JWT + rate limiting)
 -   **Отмена сделки**: 20 запросов в минуту (TMA + JWT + rate limiting)
 -   **Получение транзакций**: 60 запросов в минуту (TMA + JWT + rate limiting)
+-   **Инициализация пакетов**: 5 запросов в минуту (TMA + JWT + rate limiting)
 
 ### Артефакты
 

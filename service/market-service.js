@@ -17,7 +17,7 @@ const {
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 
 // Системный пользователь ID
-const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+const { SYSTEM_USER_ID } = require('../config/constants');
 
 // Кэш для комиссий (в памяти)
 const commissionCache = {};
@@ -102,18 +102,11 @@ class MarketService {
 	 * Выставление инвойса (создание сделки и платежа)
 	 * @param {Object} params { offerId, buyerId }
 	 */
-	async createInvoice({ offerId, buyerId, validatePackage = false }) {
+	async createInvoice({ offerId, buyerId }) {
 		// Получаем оферту
 		const offer = await MarketOffer.findByPk(offerId);
 		if (!offer || offer.status !== 'ACTIVE')
 			throw new Error('Offer not found or not active');
-
-		// Дополнительная валидация для пакетов
-		if (validatePackage) {
-			if (offer.itemType !== 'package' || offer.offerType !== 'SYSTEM') {
-				throw new Error('Invalid package offer');
-			}
-		}
 
 		// Создаем сделку
 		const transaction = await MarketTransaction.create({
@@ -139,9 +132,9 @@ class MarketService {
 
 	/**
 	 * Проведение сделки: проверка оплаты, смена владельца артефакта, завершение сделки, обновление балансов
-	 * @param {Object} params { transactionId, blockchainTxId, isPackage = false }
+	 * @param {Object} params { transactionId, blockchainTxId }
 	 */
-	async processDeal({ transactionId, blockchainTxId, isPackage = false }) {
+	async processDeal({ transactionId, blockchainTxId }) {
 		// Транзакция БД для атомарности
 		return await sequelize.transaction(async (t) => {
 			const transaction = await MarketTransaction.findByPk(
@@ -158,16 +151,6 @@ class MarketService {
 			});
 			if (!offer || offer.status !== 'ACTIVE')
 				throw new Error('Offer not found or not active');
-
-			// Дополнительная валидация для пакетов
-			if (isPackage) {
-				if (
-					offer.itemType !== 'package' ||
-					offer.offerType !== 'SYSTEM'
-				) {
-					throw new Error('Invalid package offer');
-				}
-			}
 
 			// Находим платеж и подтверждаем его
 			const payment = await PaymentTransaction.findOne({
@@ -219,7 +202,7 @@ class MarketService {
 			});
 			if (!buyerState) throw new Error('Buyer state not found');
 
-			if (isPackage) {
+			if (offer.itemType === 'package') {
 				// Логика для пакетов
 				const pkg = await PackageStore.findByPk(offer.itemId, {
 					transaction: t,
@@ -512,119 +495,132 @@ class MarketService {
 					transaction: t,
 				}
 			);
-			if (!transaction || transaction.status !== 'PENDING') {
+			if (!transaction || transaction.status !== 'PENDING')
 				throw new Error('Transaction not found or not pending');
-			}
 
-			const offer = await MarketOffer.findByPk(transaction.offerId, {
-				transaction: t,
-			});
-			if (!offer || offer.status !== 'ACTIVE') {
-				throw new Error('Offer not found or not active');
-			}
+			// Отменяем сделку
+			transaction.status = 'CANCELLED';
+			await transaction.save({ transaction: t });
 
-			// Проверяем, что это SYSTEM оферта
-			if (
-				offer.offerType !== 'SYSTEM' ||
-				offer.sellerId !== SYSTEM_USER_ID
-			) {
-				throw new Error('This is not a SYSTEM offer');
-			}
-
-			// Находим все платежи для этой транзакции
-			const payments = await PaymentTransaction.findAll({
+			// Отменяем платеж
+			const payment = await PaymentTransaction.findOne({
 				where: {
 					marketTransactionId: transaction.id,
+					txType: 'BUYER_TO_CONTRACT',
 				},
 				transaction: t,
 			});
-
-			// Возвращаем средства покупателю (если есть платеж)
-			const buyerPayment = payments.find(
-				(p) => p.txType === 'BUYER_TO_CONTRACT'
-			);
-			if (buyerPayment && buyerPayment.status === 'PENDING') {
-				const currencyMap = {
-					stardust: 'stardustCount',
-					darkMatter: 'darkMatterCount',
-					tgStars: 'tgStarsCount',
-					tonToken: 'tokenTonsCount',
-				};
-				const balanceField = currencyMap[offer.currency];
-				if (balanceField) {
-					const price = Number(offer.price);
-
-					// Возвращаем средства покупателю
-					const buyerState = await UserState.findOne({
-						where: { userId: transaction.buyerId },
-						transaction: t,
-					});
-					if (buyerState) {
-						if (typeof buyerState.state[balanceField] !== 'number')
-							buyerState.state[balanceField] = 0;
-						buyerState.state[balanceField] += price;
-						await buyerState.save({ transaction: t });
-					}
-
-					// Списываем с контракта
-					const systemState = await UserState.findOne({
-						where: { userId: SYSTEM_USER_ID },
-						transaction: t,
-					});
-					if (systemState) {
-						if (typeof systemState.state[balanceField] !== 'number')
-							systemState.state[balanceField] = 0;
-						systemState.state[balanceField] -= price;
-						await systemState.save({ transaction: t });
-					}
-				}
-			}
-
-			// Отменяем все платежи
-			for (const payment of payments) {
+			if (payment && payment.status === 'PENDING') {
 				payment.status = 'FAILED';
 				await payment.save({ transaction: t });
 			}
 
-			// Отменяем транзакцию
-			transaction.status = 'CANCELLED';
-			await transaction.save({ transaction: t });
+			return { transaction, reason };
+		});
+	}
 
-			// Удаляем оферту
-			offer.status = 'CANCELLED';
-			offer.cancelledAt = new Date();
-			offer.cancelReason = reason;
-			await offer.save({ transaction: t });
+	/**
+	 * Инициализация пакетов в системе
+	 * Создает пакеты в PackageStore и оферты для них из переданных данных
+	 */
+	async initializePackages(packagesData) {
+		const t = await sequelize.transaction();
 
-			// Удаляем объект (галактику, артефакт и т.д.)
-			if (offer.itemType === 'galaxy') {
-				const { Galaxy } = require('../models/models');
-				const galaxy = await Galaxy.findByPk(offer.itemId, {
-					transaction: t,
-				});
-				if (galaxy && galaxy.userId === SYSTEM_USER_ID) {
-					await galaxy.destroy({ transaction: t });
-				}
-			} else if (offer.itemType === 'artifact') {
-				const { Artifact } = require('../models/models');
-				const artifact = await Artifact.findByPk(offer.itemId, {
-					transaction: t,
-				});
-				if (artifact && artifact.userId === SYSTEM_USER_ID) {
-					await artifact.destroy({ transaction: t });
-				}
-			} else if (offer.itemType === 'package') {
-				// Для пакетов ничего не удаляем, так как они остаются в системе
+		try {
+			if (!Array.isArray(packagesData) || packagesData.length === 0) {
+				throw new Error('Packages data must be a non-empty array');
 			}
 
+			const createdPackages = [];
+			const createdOffers = [];
+
+			for (const pkgData of packagesData) {
+				// Валидация данных пакета
+				if (
+					!pkgData.id ||
+					!pkgData.amount ||
+					!pkgData.currencyGame ||
+					!pkgData.price ||
+					!pkgData.currency
+				) {
+					throw new Error(
+						'Invalid package data: missing required fields'
+					);
+				}
+
+				// Проверяем, существует ли уже пакет
+				const existingPackage = await PackageStore.findByPk(
+					pkgData.id,
+					{
+						transaction: t,
+					}
+				);
+
+				let packageRecord;
+				if (!existingPackage) {
+					// Создаем пакет
+					packageRecord = await PackageStore.create(
+						{
+							...pkgData,
+							status: pkgData.status || 'ACTIVE',
+						},
+						{
+							transaction: t,
+						}
+					);
+					createdPackages.push(packageRecord);
+				} else {
+					packageRecord = existingPackage;
+				}
+
+				// Проверяем, существует ли уже оферта для этого пакета
+				const existingOffer = await MarketOffer.findOne({
+					where: {
+						itemType: 'package',
+						itemId: packageRecord.id,
+						offerType: 'SYSTEM',
+						status: 'ACTIVE',
+					},
+					transaction: t,
+				});
+
+				if (!existingOffer) {
+					// Создаем оферту для пакета
+					const offer = await MarketOffer.create(
+						{
+							sellerId: SYSTEM_USER_ID,
+							itemType: 'package',
+							itemId: packageRecord.id,
+							price: packageRecord.price,
+							currency: packageRecord.currency,
+							offerType: 'SYSTEM',
+							status: 'ACTIVE',
+						},
+						{ transaction: t }
+					);
+
+					createdOffers.push({
+						packageId: packageRecord.id,
+						offerId: offer.id,
+						price: packageRecord.price,
+						currency: packageRecord.currency,
+						amount: packageRecord.amount,
+						currencyGame: packageRecord.currencyGame,
+					});
+				}
+			}
+
+			await t.commit();
 			return {
-				transaction,
-				offer,
-				payments,
-				reason,
-				deletedObjects: offer.itemType,
+				message: `Successfully initialized ${createdPackages.length} packages and ${createdOffers.length} offers`,
+				createdPackages,
+				createdOffers,
+				totalPackages: packagesData.length,
 			};
-		});
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to initialize packages: ${err.message}`);
+		}
 	}
 }
 
