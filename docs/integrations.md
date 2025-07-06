@@ -165,7 +165,7 @@ aws s3 cp /backups/ s3://nebulahant-backups/ --recursive
 
 ```js
 const { initTracer } = require('jaeger-client');
-const tracer = initTracer({ serviceName: 'nebulahant-server' });
+const tracer = initTracer({ serviceName: 'nebulahunt-server' });
 // Используйте middleware для старта/завершения спанов
 ```
 

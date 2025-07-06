@@ -16,7 +16,7 @@
 
 ## Обзор
 
-Система мониторинга NebulaHant Server обеспечивает полную видимость состояния приложения, инфраструктуры и пользовательского опыта.
+Система мониторинга Nebulahunt Server обеспечивает полную видимость состояния приложения, инфраструктуры и пользовательского опыта.
 
 ### Компоненты системы мониторинга
 
@@ -266,7 +266,7 @@ scrape_configs:
   params:
       dsn:
           [
-              'postgresql://postgres:password@postgres:5432/nebulahant?sslmode=disable',
+              'postgresql://postgres:password@postgres:5432/nebulahunt?sslmode=disable',
           ]
 ```
 
@@ -292,15 +292,15 @@ groups:
       rules:
           # Сервис недоступен
           - alert: ServiceDown
-            expr: up{job="nebulahant-server"} == 0
+            expr: up{job="nebulahunt-server"} == 0
             for: 1m
             labels:
                 severity: critical
                 priority: p0
             annotations:
-                summary: 'NebulaHant Server is down'
+                summary: 'Nebulahunt Server is down'
                 description: 'Service has been down for more than 1 minute'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/service-down'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/service-down'
 
           # База данных недоступна
           - alert: DatabaseDown
@@ -312,7 +312,7 @@ groups:
             annotations:
                 summary: 'Database is down'
                 description: 'PostgreSQL database is not responding'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/database-down'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/database-down'
 
           # Высокий процент ошибок
           - alert: HighErrorRate
@@ -327,7 +327,7 @@ groups:
             annotations:
                 summary: 'High error rate detected'
                 description: 'Error rate is {{ $value | humanizePercentage }}'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/high-error-rate'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/high-error-rate'
 
           # Критическое время ответа
           - alert: CriticalResponseTime
@@ -339,7 +339,7 @@ groups:
             annotations:
                 summary: 'Critical response time'
                 description: '95th percentile response time is {{ $value }} seconds'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/slow-response-time'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/slow-response-time'
 
           # Нехватка памяти
           - alert: OutOfMemory
@@ -351,7 +351,7 @@ groups:
             annotations:
                 summary: 'System running out of memory'
                 description: 'Only {{ $value | humanizePercentage }} memory available'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/out-of-memory'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/out-of-memory'
 
           # Диск заполнен
           - alert: DiskFull
@@ -363,7 +363,7 @@ groups:
             annotations:
                 summary: 'Disk space critical'
                 description: 'Only {{ $value | humanizePercentage }} disk space available'
-                runbook_url: 'https://wiki.nebulahant.com/runbooks/disk-full'
+                runbook_url: 'https://wiki.nebulahunt.com/runbooks/disk-full'
 ```
 
 ### Важные алерты (P1)
@@ -502,7 +502,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'nebulahant-prod'
+    cluster: 'nebulahunt-prod'
     environment: 'production'
 
 rule_files:
@@ -515,9 +515,9 @@ alerting:
           - alertmanager:9093
 
 scrape_configs:
-  - job_name: 'nebulahant-server'
+  - job_name: 'nebulahunt-server'
     static_configs:
-      - targets: ['nebulahant-service:5000']
+      - targets: ['nebulahunt-service:5000']
     metrics_path: '/metrics'
     scrape_interval: 10s
     honor_labels: true
@@ -537,7 +537,7 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
     scrape_interval: 10s
     params:
-      dsn: ['postgresql://postgres:password@postgres:5432/nebulahant?sslmode=disable']
+      dsn: ['postgresql://postgres:password@postgres:5432/nebulahunt?sslmode=disable']
 
   - job_name: 'redis-exporter'
     static_configs:
@@ -555,8 +555,8 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-        - https://api.nebulahant.com/health
-        - https://api.nebulahant.com/metrics
+        - https://api.nebulahunt.com/health
+        - https://api.nebulahunt.com/metrics
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -623,7 +623,7 @@ groups:
 ```json
 {
 	"dashboard": {
-		"title": "NebulaHant Server - Overview",
+		"title": "Nebulahunt Server - Overview",
 		"panels": [
 			{
 				"title": "HTTP Request Rate",
@@ -747,7 +747,7 @@ groups:
 ```json
 {
 	"dashboard": {
-		"title": "NebulaHant - Game Analytics",
+		"title": "Nebulahunt - Game Analytics",
 		"panels": [
 			{
 				"title": "User Registrations",
@@ -814,8 +814,8 @@ global:
     resolve_timeout: 5m
     slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
     smtp_smarthost: 'smtp.gmail.com:587'
-    smtp_from: 'alerts@nebulahant.com'
-    smtp_auth_username: 'alerts@nebulahant.com'
+    smtp_from: 'alerts@nebulahunt.com'
+    smtp_auth_username: 'alerts@nebulahunt.com'
     smtp_auth_password: 'your-password'
 
 route:
@@ -852,9 +852,9 @@ receivers:
 
     - name: 'email-notifications'
       email_configs:
-          - to: 'ops@nebulahant.com'
+          - to: 'ops@nebulahunt.com'
             headers:
-                subject: 'NebulaHant Alert: {{ .GroupLabels.alertname }}'
+                subject: 'Nebulahunt Alert: {{ .GroupLabels.alertname }}'
             body: '{{ template "email.body" . }}'
 
 templates:
@@ -925,7 +925,7 @@ const logger = pino({
 			return {
 				...object,
 				timestamp: new Date().toISOString(),
-				service: 'nebulahant-server',
+				service: 'nebulahunt-server',
 				version: process.env.npm_package_version,
 			};
 		},
@@ -1067,7 +1067,7 @@ module.exports = new GameLogger();
 const { initTracer } = require('jaeger-client');
 
 const config = {
-	serviceName: 'nebulahant-server',
+	serviceName: 'nebulahunt-server',
 	sampler: {
 		type: 'probabilistic',
 		param: 0.1,
@@ -1129,12 +1129,12 @@ module.exports = {
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-    name: nebulahant-slo
+    name: nebulahunt-slo
     namespace: monitoring
 spec:
     selector:
         matchLabels:
-            app: nebulahant-server
+            app: nebulahunt-server
     endpoints:
         - port: metrics
           path: /metrics
@@ -1144,7 +1144,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-    name: nebulahant-slo
+    name: nebulahunt-slo
     namespace: monitoring
 spec:
     groups:
@@ -1177,7 +1177,7 @@ spec:
 ```json
 {
 	"dashboard": {
-		"title": "NebulaHant - SLA Dashboard",
+		"title": "Nebulahunt - SLA Dashboard",
 		"panels": [
 			{
 				"title": "Availability SLO",

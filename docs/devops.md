@@ -134,8 +134,8 @@ jobs:
                   context: .
                   push: true
                   tags: |
-                      nebulahant/server:${{ github.sha }}
-                      nebulahant/server:${{ github.ref_name }}
+                      nebulahunt/server:${{ github.sha }}
+                      nebulahunt/server:${{ github.ref_name }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
@@ -248,7 +248,7 @@ services:
             - '5000:5000'
         environment:
             - NODE_ENV=production
-            - DATABASE_URL=postgresql://postgres:password@db:5432/nebulahant
+            - DATABASE_URL=postgresql://postgres:password@db:5432/nebulahunt
             - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
             - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
             - BOT_TOKEN=${BOT_TOKEN}
@@ -262,7 +262,7 @@ services:
     db:
         image: postgres:14-alpine
         environment:
-            - POSTGRES_DB=nebulahant
+            - POSTGRES_DB=nebulahunt
             - POSTGRES_USER=postgres
             - POSTGRES_PASSWORD=password
         volumes:
@@ -355,9 +355,9 @@ CMD ["node", "dist/index.js"]
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: nebulahant
+    name: nebulahunt
     labels:
-        name: nebulahant
+        name: nebulahunt
 ```
 
 ### ConfigMap
@@ -367,13 +367,13 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-    name: nebulahant-config
-    namespace: nebulahant
+    name: nebulahunt-config
+    namespace: nebulahunt
 data:
     NODE_ENV: 'production'
     PORT: '5000'
     LOG_LEVEL: 'info'
-    CORS_ORIGIN: 'https://nebulahant.com'
+    CORS_ORIGIN: 'https://nebulahunt.com'
 ```
 
 ### Secret
@@ -383,8 +383,8 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-    name: nebulahant-secrets
-    namespace: nebulahant
+    name: nebulahunt-secrets
+    namespace: nebulahunt
 type: Opaque
 data:
     JWT_ACCESS_SECRET: <base64-encoded>
@@ -400,55 +400,55 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: nebulahant-server
-    namespace: nebulahant
+    name: nebulahunt-server
+    namespace: nebulahunt
     labels:
-        app: nebulahant-server
+        app: nebulahunt-server
 spec:
     replicas: 3
     selector:
         matchLabels:
-            app: nebulahant-server
+            app: nebulahunt-server
     template:
         metadata:
             labels:
-                app: nebulahant-server
+                app: nebulahunt-server
         spec:
             containers:
-                - name: nebulahant-server
-                  image: nebulahant/server:latest
+                - name: nebulahunt-server
+                  image: nebulahunt/server:latest
                   ports:
                       - containerPort: 5000
                   env:
                       - name: NODE_ENV
                         valueFrom:
                             configMapKeyRef:
-                                name: nebulahant-config
+                                name: nebulahunt-config
                                 key: NODE_ENV
                       - name: PORT
                         valueFrom:
                             configMapKeyRef:
-                                name: nebulahant-config
+                                name: nebulahunt-config
                                 key: PORT
                       - name: JWT_ACCESS_SECRET
                         valueFrom:
                             secretKeyRef:
-                                name: nebulahant-secrets
+                                name: nebulahunt-secrets
                                 key: JWT_ACCESS_SECRET
                       - name: JWT_REFRESH_SECRET
                         valueFrom:
                             secretKeyRef:
-                                name: nebulahant-secrets
+                                name: nebulahunt-secrets
                                 key: JWT_REFRESH_SECRET
                       - name: BOT_TOKEN
                         valueFrom:
                             secretKeyRef:
-                                name: nebulahant-secrets
+                                name: nebulahunt-secrets
                                 key: BOT_TOKEN
                       - name: DATABASE_URL
                         valueFrom:
                             secretKeyRef:
-                                name: nebulahant-secrets
+                                name: nebulahunt-secrets
                                 key: DATABASE_URL
                   resources:
                       requests:
@@ -483,10 +483,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: nebulahant-service
-    namespace: nebulahant
+    name: nebulahunt-service
+    namespace: nebulahunt
     labels:
-        app: nebulahant-server
+        app: nebulahunt-server
 spec:
     type: ClusterIP
     ports:
@@ -494,7 +494,7 @@ spec:
           targetPort: 5000
           protocol: TCP
     selector:
-        app: nebulahant-server
+        app: nebulahunt-server
 ```
 
 ### Ingress
@@ -504,8 +504,8 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    name: nebulahant-ingress
-    namespace: nebulahant
+    name: nebulahunt-ingress
+    namespace: nebulahunt
     annotations:
         kubernetes.io/ingress.class: 'nginx'
         cert-manager.io/cluster-issuer: 'letsencrypt-prod'
@@ -514,17 +514,17 @@ metadata:
 spec:
     tls:
         - hosts:
-              - api.nebulahant.com
-          secretName: nebulahant-tls
+              - api.nebulahunt.com
+          secretName: nebulahunt-tls
     rules:
-        - host: api.nebulahant.com
+        - host: api.nebulahunt.com
           http:
               paths:
                   - path: /
                     pathType: Prefix
                     backend:
                         service:
-                            name: nebulahant-service
+                            name: nebulahunt-service
                             port:
                                 number: 80
 ```
@@ -536,13 +536,13 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-    name: nebulahant-hpa
-    namespace: nebulahant
+    name: nebulahunt-hpa
+    namespace: nebulahunt
 spec:
     scaleTargetRef:
         apiVersion: apps/v1
         kind: Deployment
-        name: nebulahant-server
+        name: nebulahunt-server
     minReplicas: 3
     maxReplicas: 10
     metrics:
@@ -574,9 +574,9 @@ rule_files:
     - 'rules/*.yml'
 
 scrape_configs:
-    - job_name: 'nebulahant-server'
+    - job_name: 'nebulahunt-server'
       static_configs:
-          - targets: ['nebulahant-service:5000']
+          - targets: ['nebulahunt-service:5000']
       metrics_path: '/metrics'
       scrape_interval: 10s
 
@@ -645,7 +645,7 @@ scrape_configs:
 ```yaml
 # monitoring/rules/alerts.yml
 groups:
-    - name: nebulahant-alerts
+    - name: nebulahunt-alerts
       rules:
           - alert: HighErrorRate
             expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
@@ -690,7 +690,7 @@ groups:
 
 ```yaml
 # logging/elasticsearch.yml
-cluster.name: nebulahant-cluster
+cluster.name: nebulahunt-cluster
 node.name: node-1
 network.host: 0.0.0.0
 http.port: 9200
@@ -707,7 +707,7 @@ port => 5044
 }
 
 filter {
-if [fields][service] == "nebulahant" {
+if [fields][service] == "nebulahunt" {
 grok {
 match => { "message" => "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}" }
 }
@@ -727,7 +727,7 @@ add_tag => [ "error" ]
 output {
 elasticsearch {
 hosts => ["elasticsearch:9200"]
-index => "nebulahant-logs-%{+YYYY.MM.dd}"
+index => "nebulahunt-logs-%{+YYYY.MM.dd}"
 }
 }
 ```
@@ -757,12 +757,12 @@ logging.json: true
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-    name: nebulahant-network-policy
-    namespace: nebulahant
+    name: nebulahunt-network-policy
+    namespace: nebulahunt
 spec:
     podSelector:
         matchLabels:
-            app: nebulahant-server
+            app: nebulahunt-server
     policyTypes:
         - Ingress
         - Egress
@@ -778,14 +778,14 @@ spec:
         - to:
               - namespaceSelector:
                     matchLabels:
-                        name: nebulahant
+                        name: nebulahunt
           ports:
               - protocol: TCP
                 port: 5432
         - to:
               - namespaceSelector:
                     matchLabels:
-                        name: nebulahant
+                        name: nebulahunt
           ports:
               - protocol: TCP
                 port: 6379
@@ -798,14 +798,14 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-    name: nebulahant-secure-pod
+    name: nebulahunt-secure-pod
 spec:
     securityContext:
         runAsNonRoot: true
         runAsUser: 1001
         fsGroup: 1001
     containers:
-        - name: nebulahant-server
+        - name: nebulahunt-server
           securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -843,13 +843,13 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name = "nebulahant-vpc"
+    Name = "nebulahunt-vpc"
   }
 }
 
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
-  name     = "nebulahant-cluster"
+  name     = "nebulahunt-cluster"
   role_arn = aws_iam_role.eks_cluster.arn
   version  = "1.28"
 
@@ -864,13 +864,13 @@ resource "aws_eks_cluster" "main" {
 
 # RDS Instance
 resource "aws_db_instance" "postgres" {
-  identifier           = "nebulahant-db"
+  identifier           = "nebulahunt-db"
   engine               = "postgres"
   engine_version       = "14"
   instance_class       = "db.t3.micro"
   allocated_storage    = 20
   storage_type         = "gp2"
-  db_name              = "nebulahant"
+  db_name              = "nebulahunt"
   username             = var.db_username
   password             = var.db_password
   skip_final_snapshot  = true
@@ -881,7 +881,7 @@ resource "aws_db_instance" "postgres" {
 
 # ElastiCache Redis
 resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "nebulahant-redis"
+  cluster_id           = "nebulahunt-redis"
   engine               = "redis"
   node_type            = "cache.t3.micro"
   num_cache_nodes      = 1
@@ -897,14 +897,14 @@ resource "aws_elasticache_cluster" "redis" {
 ```yaml
 # ansible/deploy.yml
 ---
-- name: Deploy NebulaHant Server
+- name: Deploy NebulaHunt Server
   hosts: app_servers
   become: yes
 
   vars:
-      app_name: nebulahant
+      app_name: nebulahunt
       app_version: "{{ lookup('env', 'APP_VERSION') }}"
-      docker_image: 'nebulahant/server:{{ app_version }}'
+      docker_image: 'nebulahunt/server:{{ app_version }}'
 
   tasks:
       - name: Update system packages
@@ -957,20 +957,20 @@ resource "aws_elasticache_cluster" "redis" {
 ### Helm Chart
 
 ```yaml
-# helm/nebulahant/Chart.yaml
+# helm/nebulahunt/Chart.yaml
 apiVersion: v2
-name: nebulahant
-description: NebulaHant Server Helm Chart
+name: nebulahunt
+description: NebulaHunt Server Helm Chart
 version: 1.0.0
 appVersion: '1.0.0'
 ```
 
 ```yaml
-# helm/nebulahant/values.yaml
+# helm/nebulahunt/values.yaml
 replicaCount: 3
 
 image:
-    repository: nebulahant/server
+    repository: nebulahunt/server
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -985,7 +985,7 @@ ingress:
     annotations:
         cert-manager.io/cluster-issuer: letsencrypt-prod
     hosts:
-        - host: api.nebulahant.com
+        - host: api.nebulahunt.com
           paths:
               - path: /
                 pathType: Prefix
@@ -1018,17 +1018,17 @@ env:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-    name: nebulahant
+    name: nebulahunt
     namespace: argocd
 spec:
     project: default
     source:
-        repoURL: https://github.com/your-org/nebulahant-infrastructure
+        repoURL: https://github.com/your-org/nebulahunt-infrastructure
         targetRevision: HEAD
         path: k8s
     destination:
         server: https://kubernetes.default.svc
-        namespace: nebulahant
+        namespace: nebulahunt
     syncPolicy:
         automated:
             prune: true
@@ -1058,7 +1058,7 @@ pg_dump $DATABASE_URL > /backups/db_$(date +%Y%m%d_%H%M%S).sql
 tar -czf /backups/files_$(date +%Y%m%d_%H%M%S).tar.gz /app/data
 
 # Upload to S3
-aws s3 cp /backups/ s3://nebulahant-backups/ --recursive
+aws s3 cp /backups/ s3://nebulahunt-backups/ --recursive
 
 # Clean old backups (keep last 7 days)
 find /backups -name "*.sql" -mtime +7 -delete
@@ -1109,7 +1109,7 @@ groups:
 
 ## Заключение
 
-Этот DevOps гайд покрывает все основные аспекты автоматизации и управления инфраструктурой для NebulaHant Server:
+Этот DevOps гайд покрывает все основные аспекты автоматизации и управления инфраструктурой для NebulaHunt Server:
 
 -   **CI/CD Pipeline** - автоматизация разработки и развертывания
 -   **Docker** - контейнеризация приложения

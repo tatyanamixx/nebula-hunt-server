@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Модели данных в Nebulahant Server построены с использованием Sequelize ORM и PostgreSQL. Система использует JSONB поля для хранения сложных игровых структур, что обеспечивает гибкость и производительность.
+Модели данных в Nebulahunt Server построены с использованием Sequelize ORM и PostgreSQL. Система использует JSONB поля для хранения сложных игровых структур, что обеспечивает гибкость и производительность.
 
 ## Схема базы данных
 
@@ -755,13 +755,13 @@ CREATE INDEX userstate_new_field_idx ON userstates USING GIN (new_field);
 
 ```bash
 # Полный бэкап
-pg_dump -h localhost -U postgres -d nebulahant > backup.sql
+pg_dump -h localhost -U postgres -d nebulahunt > backup.sql
 
 # Бэкап только схемы
-pg_dump -h localhost -U postgres -d nebulahant --schema-only > schema.sql
+pg_dump -h localhost -U postgres -d nebulahunt --schema-only > schema.sql
 
 # Бэкап только данных
-pg_dump -h localhost -U postgres -d nebulahant --data-only > data.sql
+pg_dump -h localhost -U postgres -d nebulahunt --data-only > data.sql
 ```
 
 ### Artifact
@@ -1128,4 +1128,4 @@ module.exports = {
 
 ---
 
-Эта структура данных обеспечивает гибкость, производительность и масштабируемость для игры Nebulahant, позволяя эффективно хранить и обрабатывать сложные игровые данные.
+Эта структура данных обеспечивает гибкость, производительность и масштабируемость для игры Nebulahunt, позволяя эффективно хранить и обрабатывать сложные игровые данные.

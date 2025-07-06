@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Документация по развертыванию Nebulahant Server включает различные способы деплоя, конфигурацию окружения, мониторинг и поддержку системы в продакшене.
+Документация по развертыванию Nebulahunt Server включает различные способы деплоя, конфигурацию окружения, мониторинг и поддержку системы в продакшене.
 
 ## Требования к окружению
 
@@ -40,7 +40,7 @@ CLIENT_URL=https://your-client-url.com
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=nebulahant
+DB_NAME=nebulahunt
 DB_USER=postgres
 DB_PASSWORD=your_secure_password
 
@@ -144,7 +144,7 @@ services:
             - NODE_ENV=production
             - DB_HOST=postgres
             - DB_PORT=5432
-            - DB_NAME=nebulahant
+            - DB_NAME=nebulahunt
             - DB_USER=postgres
             - DB_PASSWORD=your_password
             - JWT_ACCESS_SECRET=your_access_secret
@@ -154,12 +154,12 @@ services:
             - postgres
         restart: unless-stopped
         networks:
-            - nebulahant-network
+            - nebulahunt-network
 
     postgres:
         image: postgres:15-alpine
         environment:
-            - POSTGRES_DB=nebulahant
+            - POSTGRES_DB=nebulahunt
             - POSTGRES_USER=postgres
             - POSTGRES_PASSWORD=your_password
         volumes:
@@ -169,7 +169,7 @@ services:
             - '5432:5432'
         restart: unless-stopped
         networks:
-            - nebulahant-network
+            - nebulahunt-network
 
     nginx:
         image: nginx:alpine
@@ -183,13 +183,13 @@ services:
             - app
         restart: unless-stopped
         networks:
-            - nebulahant-network
+            - nebulahunt-network
 
 volumes:
     postgres_data:
 
 networks:
-    nebulahant-network:
+    nebulahunt-network:
         driver: bridge
 ```
 
@@ -225,7 +225,7 @@ npm install -g pm2
 module.exports = {
 	apps: [
 		{
-			name: 'nebulahant-server',
+			name: 'nebulahunt-server',
 			script: 'index.js',
 			instances: 'max',
 			exec_mode: 'cluster',
@@ -238,7 +238,7 @@ module.exports = {
 				PORT: 5000,
 				DB_HOST: 'localhost',
 				DB_PORT: 5432,
-				DB_NAME: 'nebulahant',
+				DB_NAME: 'nebulahunt',
 				DB_USER: 'postgres',
 				DB_PASSWORD: 'your_password',
 				JWT_ACCESS_SECRET: 'your_access_secret',
@@ -266,16 +266,16 @@ pm2 start ecosystem.config.js --env production
 pm2 list
 
 # Просмотр логов
-pm2 logs nebulahant-server
+pm2 logs nebulahunt-server
 
 # Перезапуск
-pm2 restart nebulahant-server
+pm2 restart nebulahunt-server
 
 # Остановка
-pm2 stop nebulahant-server
+pm2 stop nebulahunt-server
 
 # Удаление из PM2
-pm2 delete nebulahant-server
+pm2 delete nebulahunt-server
 
 # Мониторинг
 pm2 monit
@@ -292,7 +292,7 @@ pm2 startup
 #### Конфигурация Nginx
 
 ```nginx
-# /etc/nginx/sites-available/nebulahant
+# /etc/nginx/sites-available/nebulahunt
 server {
     listen 80;
     server_name your-domain.com;
@@ -319,8 +319,8 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     # Логирование
-    access_log /var/log/nginx/nebulahant_access.log;
-    error_log /var/log/nginx/nebulahant_error.log;
+    access_log /var/log/nginx/nebulahunt_access.log;
+    error_log /var/log/nginx/nebulahunt_error.log;
 
     # Проксирование к приложению
     location / {
@@ -342,7 +342,7 @@ server {
 
     # Статические файлы (если есть)
     location /static/ {
-        alias /var/www/nebulahant/static/;
+        alias /var/www/nebulahunt/static/;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
@@ -359,7 +359,7 @@ server {
 
 ```bash
 # Создание символической ссылки
-sudo ln -s /etc/nginx/sites-available/nebulahant /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/nebulahunt /etc/nginx/sites-enabled/
 
 # Проверка конфигурации
 sudo nginx -t
@@ -372,25 +372,25 @@ sudo systemctl restart nginx
 
 #### Создание сервиса
 
-Создайте файл `/etc/systemd/system/nebulahant.service`:
+Создайте файл `/etc/systemd/system/nebulahunt.service`:
 
 ```ini
 [Unit]
-Description=Nebulahant Server
+Description=Nebulahunt Server
 After=network.target postgresql.service
 Wants=postgresql.service
 
 [Service]
 Type=simple
-User=nebulahant
-Group=nebulahant
-WorkingDirectory=/var/www/nebulahant
+User=nebulahunt
+Group=nebulahunt
+WorkingDirectory=/var/www/nebulahunt
 Environment=NODE_ENV=production
 Environment=PORT=5000
 Environment=DB_HOST=localhost
 Environment=DB_PORT=5432
-Environment=DB_NAME=nebulahant
-Environment=DB_USER=nebulahant
+Environment=DB_NAME=nebulahunt
+Environment=DB_USER=nebulahunt
 Environment=DB_PASSWORD=your_password
 Environment=JWT_ACCESS_SECRET=your_access_secret
 Environment=JWT_REFRESH_SECRET=your_refresh_secret
@@ -411,22 +411,22 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 
 # Включение автозапуска
-sudo systemctl enable nebulahant
+sudo systemctl enable nebulahunt
 
 # Запуск сервиса
-sudo systemctl start nebulahant
+sudo systemctl start nebulahunt
 
 # Проверка статуса
-sudo systemctl status nebulahant
+sudo systemctl status nebulahunt
 
 # Просмотр логов
-sudo journalctl -u nebulahant -f
+sudo journalctl -u nebulahunt -f
 
 # Перезапуск
-sudo systemctl restart nebulahant
+sudo systemctl restart nebulahunt
 
 # Остановка
-sudo systemctl stop nebulahant
+sudo systemctl stop nebulahunt
 ```
 
 ## Настройка базы данных
@@ -454,9 +454,9 @@ sudo systemctl enable postgresql
 sudo -u postgres psql
 
 # Создание пользователя и базы данных
-CREATE USER nebulahant WITH PASSWORD 'your_secure_password';
-CREATE DATABASE nebulahant OWNER nebulahant;
-GRANT ALL PRIVILEGES ON DATABASE nebulahant TO nebulahant;
+CREATE USER nebulahunt WITH PASSWORD 'your_secure_password';
+CREATE DATABASE nebulahunt OWNER nebulahunt;
+GRANT ALL PRIVILEGES ON DATABASE nebulahunt TO nebulahunt;
 
 # Выход
 \q
@@ -502,9 +502,9 @@ ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'
 ```conf
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
 local   all             postgres                                peer
-local   nebulahant      nebulahant                              md5
-host    nebulahant      nebulahant      127.0.0.1/32            md5
-host    nebulahant      nebulahant      ::1/128                 md5
+local   nebulahunt      nebulahunt                              md5
+host    nebulahunt      nebulahunt      127.0.0.1/32            md5
+host    nebulahunt      nebulahunt      ::1/128                 md5
 host    all             all             0.0.0.0/0               reject
 ```
 
@@ -583,17 +583,17 @@ module.exports = {
 #### Ротация логов
 
 ```bash
-# /etc/logrotate.d/nebulahant
-/var/log/nebulahant/*.log {
+# /etc/logrotate.d/nebulahunt
+/var/log/nebulahunt/*.log {
     daily
     missingok
     rotate 52
     compress
     delaycompress
     notifempty
-    create 644 nebulahant nebulahant
+    create 644 nebulahunt nebulahunt
     postrotate
-        systemctl reload nebulahant
+        systemctl reload nebulahunt
     endscript
 }
 ```
@@ -656,12 +656,12 @@ app.get('/metrics', async (req, res) => {
 
 ```bash
 #!/bin/bash
-# /usr/local/bin/backup-nebulahant.sh
+# /usr/local/bin/backup-nebulahunt.sh
 
-BACKUP_DIR="/var/backups/nebulahant"
+BACKUP_DIR="/var/backups/nebulahunt"
 DATE=$(date +%Y%m%d_%H%M%S)
-DB_NAME="nebulahant"
-DB_USER="nebulahant"
+DB_NAME="nebulahunt"
+DB_USER="nebulahunt"
 
 # Создание директории для бэкапов
 mkdir -p $BACKUP_DIR
@@ -683,14 +683,14 @@ echo "Backup completed: db_backup_$DATE.sql.gz" >> $BACKUP_DIR/backup.log
 
 ```bash
 # Добавить в crontab
-0 2 * * * /usr/local/bin/backup-nebulahant.sh
+0 2 * * * /usr/local/bin/backup-nebulahunt.sh
 ```
 
 ### Восстановление из бэкапа
 
 ```bash
 # Восстановление базы данных
-gunzip -c /var/backups/nebulahant/db_backup_20240101_020000.sql.gz | psql -h localhost -U nebulahant -d nebulahant
+gunzip -c /var/backups/nebulahunt/db_backup_20240101_020000.sql.gz | psql -h localhost -U nebulahunt -d nebulahunt
 ```
 
 ## Обновление приложения
@@ -699,16 +699,16 @@ gunzip -c /var/backups/nebulahant/db_backup_20240101_020000.sql.gz | psql -h loc
 
 ```bash
 #!/bin/bash
-# /usr/local/bin/update-nebulahant.sh
+# /usr/local/bin/update-nebulahunt.sh
 
-APP_DIR="/var/www/nebulahant"
-BACKUP_DIR="/var/backups/nebulahant"
+APP_DIR="/var/www/nebulahunt"
+BACKUP_DIR="/var/backups/nebulahunt"
 
 # Создание бэкапа перед обновлением
-/usr/local/bin/backup-nebulahant.sh
+/usr/local/bin/backup-nebulahunt.sh
 
 # Остановка приложения
-sudo systemctl stop nebulahant
+sudo systemctl stop nebulahunt
 
 # Переход в директорию приложения
 cd $APP_DIR
@@ -723,11 +723,11 @@ npm ci --only=production
 npx sequelize-cli db:migrate
 
 # Запуск приложения
-sudo systemctl start nebulahant
+sudo systemctl start nebulahunt
 
 # Проверка статуса
 sleep 10
-if sudo systemctl is-active --quiet nebulahant; then
+if sudo systemctl is-active --quiet nebulahunt; then
     echo "Update completed successfully"
 else
     echo "Update failed, rolling back..."
@@ -746,7 +746,7 @@ fi
 sudo systemctl status postgresql
 
 # Проверка подключения
-psql -h localhost -U nebulahant -d nebulahant
+psql -h localhost -U nebulahunt -d nebulahunt
 
 # Проверка логов PostgreSQL
 sudo tail -f /var/log/postgresql/postgresql-15-main.log
@@ -760,7 +760,7 @@ free -h
 top
 
 # Проверка логов приложения
-sudo journalctl -u nebulahant -f
+sudo journalctl -u nebulahunt -f
 ```
 
 #### 3. Проблемы с сетью
@@ -781,10 +781,10 @@ sudo systemctl status nginx
 
 ```bash
 # Логи приложения
-sudo journalctl -u nebulahant -f
+sudo journalctl -u nebulahunt -f
 
 # Логи Nginx
-sudo tail -f /var/log/nginx/nebulahant_error.log
+sudo tail -f /var/log/nginx/nebulahunt_error.log
 
 # Логи PostgreSQL
 sudo tail -f /var/log/postgresql/postgresql-15-main.log
@@ -835,4 +835,4 @@ ALTER TABLE userstates SET (autovacuum_vacuum_scale_factor = 0.1);
 
 ---
 
-Этот документ предоставляет полное руководство по развертыванию Nebulahant Server в различных окружениях, от простой установки до высоконагруженных продакшн систем.
+Этот документ предоставляет полное руководство по развертыванию Nebulahunt Server в различных окружениях, от простой установки до высоконагруженных продакшн систем.
