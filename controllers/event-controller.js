@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 29.05.2025
  */
 const eventService = require('../service/event-service');
 const ApiError = require('../exceptions/api-error');

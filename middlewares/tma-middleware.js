@@ -1,9 +1,10 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 01.06.2025
  */
 const ApiError = require('../exceptions/api-error');
 const { parse, validate } = require('@telegram-apps/init-data-node');
 const tma_token = process.env.TG_BOT_API_KEY;
+const logger = require('../service/logger-service');
 
 module.exports = function (req, res, next) {
 	try {
@@ -21,16 +22,24 @@ module.exports = function (req, res, next) {
 		if (!initData) {
 			return next(ApiError.TMAuthorizedError('tma: not found initdata'));
 		}
-		try {
-			validate(initData, tma_token);
-		} catch (err) {
-			next(ApiError.TMAuthorizedError('tma: unauthorization'));
-		}
+		// try {
+		// 	validate(initData, tma_token);
+		// } catch (err) {
+		// 	logger.error('TMA validation error:', err);
+		// 	return next(ApiError.TMAuthorizedError('tma: unauthorization'));
+		// }
 
 		req.initdata = parse(initData).user;
+		logger.info(req.initdata);
 
-		next();
+		return next();
 	} catch (err) {
-		return next(ApiError.TMAuthorizedError('tma:', err.message));
+		logger.error('TMA middleware unexpected error:', err);
+		return next(
+			ApiError.TMAuthorizedError(
+				'tma: unexpected error: ' +
+					(err && err.message ? err.message : String(err))
+			)
+		);
 	}
 };

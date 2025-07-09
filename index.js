@@ -2,56 +2,16 @@
  * created by Tatyana Mikhniukevich on 04.05.2025
  */
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const pino = require('pino');
-const pinoHttp = require('pino-http');
-const config = require('./config/logger.config');
-//const { swaggerUi, specs } = require('./swagger');
-
+const app = require('./app');
 const sequelize = require('./db');
-const models = require('./models/models');
 const loggerService = require('./service/logger-service');
 const { updateActiveUsers } = require('./service/metrics-service');
 
-const router = require('./routes/index');
-const errorMiddleware = require('./middlewares/error-middleware');
-const { prometheusMetrics } = require('./middlewares/prometheus-middleware');
-
 const PORT = process.env.PORT || 5000;
-
-const app = express();
-
-// Initialize request logger with base Pino instance
-const httpLogger = pinoHttp({
-	logger: pino(config),
-});
-app.use(httpLogger);
-
-app.use(
-	cors({
-		credentials: true,
-		origin: process.env.CLIENT_URL,
-	})
-);
-app.use(express.json());
-app.use(cookieParser());
-
-app.use('/api', router);
-//app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-
-app.use(prometheusMetrics.prometheusHttpMiddleware);
-
-// Healthcheck endpoint
-app.get('/health', (req, res) => res.status(200).send('OK'));
-
-app.use(errorMiddleware);
 
 const start = async () => {
 	try {
 		await sequelize.authenticate();
-		await sequelize.sync();
 
 		// Инициализация комиссий маркета
 		const { MarketCommission } = require('./models/models');
@@ -61,9 +21,7 @@ const start = async () => {
 			([currency, rate]) => ({
 				currency,
 				rate,
-				description: `Комиссия ${(rate * 100).toFixed(
-					0
-				)}% для ${currency}`,
+				description: `Fee ${(rate * 100).toFixed(0)}% for ${currency}`,
 			})
 		);
 
@@ -80,21 +38,31 @@ const start = async () => {
 		await userService.ensureSystemUserExists();
 		loggerService.info('System user initialized');
 
-		loggerService.info(`Server started on port ${PORT}`);
-		app.listen(PORT, () =>
-			loggerService.info(`Server started on port ${PORT}`)
-		);
+		app.listen(PORT, () => {
+			loggerService.info(`Server started on port ${PORT}`);
+			console.log(`Server started on port ${PORT}`);
+		});
 
 		setInterval(() => {
 			updateActiveUsers().catch(console.error);
 		}, 10 * 60 * 1000);
 
+		const {
+			prometheusMetrics,
+		} = require('./middlewares/prometheus-middleware');
 		setInterval(() => {
 			prometheusMetrics.updateDbConnections(sequelize);
 		}, 10000);
 	} catch (e) {
 		loggerService.error('Failed to start server:', { error: e.message });
+		console.error('Failed to start server:', e);
 	}
 };
 
-start();
+// Запускаем сервер только если файл запущен напрямую, а не импортирован
+if (require.main === module) {
+	start();
+}
+
+// Экспортируем app для тестов
+module.exports = { app, start };

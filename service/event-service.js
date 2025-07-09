@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 26.05.2025
  */
 const { GameEvent, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');

@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 05.05.2025
  */
 module.exports = class ApiError extends Error {
 	status;

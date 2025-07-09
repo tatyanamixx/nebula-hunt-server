@@ -1,3 +1,4 @@
+/* created by Tatyana Mikhniukevich on 04.07.2025 */
 const { sequelize, MarketCommission } = require('../models/models');
 const marketConfig = require('../config/market.config');
 
@@ -16,11 +17,4 @@ async function initMarketCommission() {
 			defaults: entry,
 		});
 	}
-	console.log('MarketCommission table initialized');
 }
-
-sequelize.sync().then(() => {
-	initMarketCommission().then(() => {
-		process.exit(0);
-	});
-});

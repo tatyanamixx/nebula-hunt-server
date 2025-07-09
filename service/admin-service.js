@@ -1,11 +1,12 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 28.05.2025
  */
 const { User } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const galaxyService = require('./galaxy-service');
 const userService = require('./user-service');
 const sequelize = require('../db');
+const tokenService = require('./token-service');
 
 class AdminService {
 	async getAllUsers() {
@@ -63,6 +64,24 @@ class AdminService {
 			await t.rollback();
 			throw ApiError.Internal(`Failed to unblock user: ${err.message}`);
 		}
+	}
+
+	async findAdminByTelegramId(id) {
+		const admin = await User.findOne({ where: { id, role: 'ADMIN' } });
+		if (!admin) {
+			throw ApiError.BadRequest(
+				'Admin not found for this Telegram account'
+			);
+		}
+		return admin;
+	}
+
+	async removeAdminToken(refreshToken) {
+		await tokenService.removeToken(refreshToken);
+	}
+
+	async findUserByTelegramId(id) {
+		return await User.findOne({ where: { id } });
 	}
 }
 

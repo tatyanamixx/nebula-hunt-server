@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 29.05.2025
  */
 const { UpgradeNode, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
@@ -13,7 +13,6 @@ class UpgradeService {
 		try {
 			const createdNodes = [];
 			for (const node of nodes) {
-				console.log('node', node);
 				// Validate node data
 				if (!node.id || !node.name || !node.description) {
 					throw ApiError.BadRequest(
@@ -68,55 +67,14 @@ class UpgradeService {
 		}
 	}
 
-	async getAvailableUpgradeNodes(userId) {
-		const t = await sequelize.transaction();
+	async getAvailableUpgradeNodes() {
 		try {
-			// Получаем состояние пользователя
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (!userState) {
-				throw ApiError.BadRequest('User state not found');
-			}
-
-			// Инициализируем поля апгрейтов, если их нет
-			if (!userState.userUpgrades) userState.userUpgrades = {};
-			if (!userState.completedUpgrades) userState.completedUpgrades = [];
-			if (!userState.activeUpgrades) userState.activeUpgrades = [];
-
-			// Получаем все завершенные апгрейды пользователя
-			const completedUpgradeIds = userState.completedUpgrades;
-
-			// Собираем все потенциально разблокированные ID узлов
-			const unlockedNodeIds = new Set();
-			for (const upgradeId of completedUpgradeIds) {
-				const upgradeNode = await UpgradeNode.findByPk(upgradeId, {
-					transaction: t,
-				});
-				if (upgradeNode && upgradeNode.children) {
-					upgradeNode.children.forEach((childId) =>
-						unlockedNodeIds.add(childId)
-					);
-				}
-			}
-
-			// Получаем все активные узлы, которые либо корневые, либо разблокированы завершенными апгрейдами
 			const availableNodes = await UpgradeNode.findAll({
 				where: {
 					active: true,
 					[Op.or]: [
-						{ conditions: {} }, // корневые узлы
-						{ id: Array.from(unlockedNodeIds) },
-					],
-					[Op.and]: [
-						{
-							[Op.or]: [
-								{ delayedUntil: null },
-								{ delayedUntil: { [Op.lte]: new Date() } },
-							],
-						},
+						{ delayedUntil: null },
+						{ delayedUntil: { [Op.lte]: new Date() } },
 					],
 				},
 				attributes: [
@@ -138,13 +96,9 @@ class UpgradeService {
 					'children',
 					'weight',
 				],
-				transaction: t,
 			});
-
-			await t.commit();
 			return availableNodes;
 		} catch (err) {
-			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to get available upgrade nodes: ${err.message}`
 			);

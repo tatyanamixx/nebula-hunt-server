@@ -287,7 +287,7 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 
 **GET** `/admin/users`
 
-Получает список всех пользователей (только для администраторов). Требует TMA, JWT авторизации, админ прав и rate limiting (30 запросов в минуту).
+Получает список всех пользователей (только для администраторов). Требует JWT авторизации, админ прав и rate limiting (30 запросов в минуту).
 
 **Параметры запроса:**
 
@@ -322,7 +322,7 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 
 **POST** `/admin/block-user`
 
-Блокирует пользователя (только для администраторов). Требует TMA, JWT авторизации, админ прав и rate limiting (20 запросов в минуту).
+Блокирует пользователя (только для администраторов). Требует JWT авторизации, админ прав и rate limiting (20 запросов в минуту).
 
 **Тело запроса:**
 
@@ -350,7 +350,7 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 
 **POST** `/admin/unblock-user`
 
-Разблокирует пользователя (только для администраторов). Требует TMA, JWT авторизации, админ прав и rate limiting (20 запросов в минуту).
+Разблокирует пользователя (только для администраторов). Требует JWT авторизации, админ прав и rate limiting (20 запросов в минуту).
 
 **Тело запроса:**
 
@@ -377,7 +377,7 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 
 **POST** `/admin/initialize-package-offers`
 
-Создает оферты для всех активных пакетов в PackageStore (только для администраторов). Требует TMA, JWT авторизации, админ прав и rate limiting (10 запросов в минуту).
+Создает оферты для всех активных пакетов в PackageStore (только для администраторов). Требует JWT авторизации, админ прав и rate limiting (10 запросов в минуту).
 
 **Тело запроса:**
 
@@ -1461,3 +1461,119 @@ API использует rate limiting для защиты от злоупотр
 -   **Все метрики**: 30 запросов в минуту (TMA + JWT + rate limiting)
 
 При превышении лимита возвращается ошибка 429 с заголовком `Retry-After`.
+
+## Административные эндпойнты
+
+### Логин администратора
+
+**POST** `/admin/login`
+
+Аутентификация администратора через Telegram Mini Apps (initData) и Google 2FA.
+
+**Заголовки:**
+
+-   `x-telegram-init-data`: строка initData от Telegram WebApp
+-   `x-2fa-code`: одноразовый код из Google Authenticator (или в теле запроса как `otp`)
+
+**Тело запроса:**
+
+```json
+{}
+```
+
+или
+
+```json
+{ "otp": "123456" }
+```
+
+**Ответ:**
+
+```json
+{
+	"message": "Admin login successful",
+	"username": "admin",
+	"id": 123456,
+	"role": "ADMIN",
+	"accessToken": "...jwt...",
+	"refreshToken": "...jwt..."
+}
+```
+
+---
+
+### Logout администратора
+
+**POST** `/admin/logout`
+
+Завершение сессии администратора. Требует JWT и роль ADMIN.
+
+**Заголовки:**
+
+-   `Authorization: Bearer <accessToken>`
+
+**Тело запроса:**
+
+```json
+{ "refreshToken": "...jwt..." }
+```
+
+**Ответ:**
+
+```json
+{ "message": "Admin logged out successfully" }
+```
+
+---
+
+### Пример последовательности
+
+1. Получить initData в Telegram WebApp (или через клиент).
+2. Получить 2FA-код из Google Authenticator.
+3. Вызвать `/admin/login` с нужными заголовками.
+4. Использовать полученный accessToken для всех защищённых админских эндпойнтов.
+5. Для выхода вызвать `/admin/logout` с accessToken и refreshToken.
+
+### Инициализация администратора
+
+**POST** `/admin/init`
+
+Создаёт администратора на основе уже существующего пользователя Telegram (по id), если он ещё не админ. Требует секретный ключ (из переменной окружения).
+
+**Тело запроса:**
+
+```json
+{
+	"telegramId": "<id пользователя из Telegram>",
+	"secretKey": "<секретный ключ>"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"message": "Admin initialized",
+	"username": "admin",
+	"id": 123456,
+	"google2faSecret": "BASE32SECRET",
+	"otpAuthUrl": "otpauth://totp/Nebulahunt%20Admin%20(admin)?secret=..."
+}
+```
+
+**Важно:**
+
+-   `secretKey` должен совпадать с переменной окружения `ADMIN_INIT_SECRET` (по умолчанию: `supersecret`).
+-   После инициализации рекомендуется удалить или ограничить этот эндпойнт.
+
+---
+
+### Переменные окружения
+
+Добавьте в `.env`:
+
+```
+ADMIN_INIT_SECRET=your_super_secret_key
+```
+
+Используется для защиты эндпойнта `/admin/init` от несанкционированного доступа.

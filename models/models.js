@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 02.06.2025
  */
 const sequelize = require('../db');
 const { DataTypes } = require('sequelize');
@@ -15,6 +15,11 @@ const User = sequelize.define(
 			defaultValue: 'USER',
 		},
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
+		google2faSecret: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: 'Google 2FA secret (base32)',
+		},
 	},
 	{
 		indexes: [
@@ -174,18 +179,6 @@ const UserState = sequelize.define(
 			type: DataTypes.JSONB,
 			defaultValue: [],
 			comment: 'Array of active upgrade node IDs that user can purchase',
-		},
-		upgradeTree: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				activeNodes: [],
-				completedNodes: [],
-				nodeStates: {},
-				treeStructure: {},
-				totalProgress: 0,
-				lastNodeUpdate: DataTypes.DATE,
-			},
-			comment: 'User-specific upgrade tree structure and progress',
 		},
 		upgradeMultipliers: {
 			type: DataTypes.JSONB,
@@ -512,16 +505,25 @@ const PaymentTransaction = sequelize.define('paymenttransaction', {
 	confirmedAt: { type: DataTypes.DATE, allowNull: true },
 });
 
-const MarketCommission = sequelize.define('marketcommission', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	currency: {
-		type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
-		unique: true,
-		allowNull: false,
+const MarketCommission = sequelize.define(
+	'marketcommission',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		currency: {
+			type: DataTypes.ENUM(
+				'stardust',
+				'darkMatter',
+				'tgStars',
+				'tonToken'
+			),
+			unique: true,
+			allowNull: false,
+		},
+		rate: { type: DataTypes.FLOAT, allowNull: false },
+		description: { type: DataTypes.STRING, allowNull: true },
 	},
-	rate: { type: DataTypes.FLOAT, allowNull: false },
-	description: { type: DataTypes.STRING, allowNull: true },
-});
+	{ tableName: 'marketcommissions' }
+);
 
 const PackageStore = sequelize.define('packagestore', {
 	id: { type: DataTypes.STRING, primaryKey: true },

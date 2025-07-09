@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 04.07.2025
  */
 const artifactService = require('../service/artifact-service');
 

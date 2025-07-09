@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 07.05.2025
  */
 const ApiError = require('../exceptions/api-error');
 const tokenService = require('../service/token-service');

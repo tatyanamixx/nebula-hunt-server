@@ -2,3 +2,77 @@
 {"level":30,"time":1749101723476,"pid":8716,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
 {"level":30,"time":1749101758489,"pid":6748,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
 {"level":30,"time":1749101758492,"pid":6748,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752002135636,"pid":8732,"hostname":"DESKTOP-SL6FQDI","error":"relation \"marketcommissions\" does not exist","msg":"Failed to start server:"}
+{"level":50,"time":1752002278901,"pid":14140,"hostname":"DESKTOP-SL6FQDI","error":"relation \"marketcommissions\" does not exist","msg":"Failed to start server:"}
+{"level":30,"time":1752002873590,"pid":12328,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752002873600,"pid":12328,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752002873600,"pid":12328,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752002873603,"pid":12328,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003343867,"pid":9620,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752003343870,"pid":9620,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752003343870,"pid":9620,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003343872,"pid":9620,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003544299,"pid":3448,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752003544301,"pid":3448,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752003544301,"pid":3448,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003544304,"pid":3448,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752003560983,"pid":14272,"hostname":"DESKTOP-SL6FQDI","error":"log is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003565317,"pid":22196,"hostname":"DESKTOP-SL6FQDI","error":"log is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003567191,"pid":18332,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":30,"time":1752003634065,"pid":18992,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752003634068,"pid":18992,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752003634068,"pid":18992,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003634070,"pid":18992,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003725399,"pid":15348,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752003725401,"pid":15348,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752003725401,"pid":15348,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003725403,"pid":15348,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003733915,"pid":8092,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752003733917,"pid":8092,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752003733918,"pid":8092,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752003733920,"pid":8092,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752003735096,"pid":17392,"hostname":"DESKTOP-SL6FQDI","error":"д is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003739282,"pid":20944,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003743003,"pid":17088,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003744717,"pid":15180,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003746455,"pid":5928,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":50,"time":1752003775963,"pid":7668,"hostname":"DESKTOP-SL6FQDI","error":"logger is not defined","msg":"Failed to start server:"}
+{"level":30,"time":1752008186289,"pid":21540,"hostname":"DESKTOP-SL6FQDI","0":{"current_database":"nebulahunt","current_user":"postgres","inet_server_addr":"127.0.0.1"},"msg":"Connected to DB:"}
+{"level":30,"time":1752008186290,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"вызов модели"}
+{"level":30,"time":1752008186290,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"initialized ?"}
+{"level":30,"time":1752008186314,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752008186325,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752008186325,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008186328,"pid":21540,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008389856,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"Connected to DB:"}
+{"level":30,"time":1752008389949,"pid":22076,"hostname":"DESKTOP-SL6FQDI","0":{"current_database":"nebulahunt","current_user":"postgres","inet_server_addr":"127.0.0.1"},"msg":"Connected to DB:"}
+{"level":30,"time":1752008389949,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"вызов модели"}
+{"level":30,"time":1752008389949,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"initialized ?"}
+{"level":30,"time":1752008389961,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752008389963,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752008389963,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008389965,"pid":22076,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008400611,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":""}
+{"level":30,"time":1752008400708,"pid":1376,"hostname":"DESKTOP-SL6FQDI","0":{"current_database":"nebulahunt","current_user":"postgres","inet_server_addr":"127.0.0.1"},"msg":"Connected to DB:"}
+{"level":30,"time":1752008400708,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"вызов модели"}
+{"level":30,"time":1752008400708,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"initialized ?"}
+{"level":30,"time":1752008400720,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752008400722,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752008400722,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008400724,"pid":1376,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008402976,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"до старт"}
+{"level":30,"time":1752008403071,"pid":13748,"hostname":"DESKTOP-SL6FQDI","0":{"current_database":"nebulahunt","current_user":"postgres","inet_server_addr":"127.0.0.1"},"msg":"Connected to DB:"}
+{"level":30,"time":1752008403071,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"вызов модели"}
+{"level":30,"time":1752008403071,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"initialized ?"}
+{"level":30,"time":1752008403085,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752008403087,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752008403087,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008403089,"pid":13748,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008407810,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"до старт"}
+{"level":30,"time":1752008407904,"pid":5032,"hostname":"DESKTOP-SL6FQDI","0":{"current_database":"nebulahunt","current_user":"postgres","inet_server_addr":"127.0.0.1"},"msg":"Connected to DB:"}
+{"level":30,"time":1752008407904,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"вызов модели"}
+{"level":30,"time":1752008407904,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"initialized ?"}
+{"level":30,"time":1752008407917,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752008407919,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752008407919,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752008407922,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}

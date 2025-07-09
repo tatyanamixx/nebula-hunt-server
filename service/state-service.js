@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 08.05.2025
  */
 const { UserState, User, UpgradeNode } = require('../models/models');
 const loggerService = require('./logger-service');
@@ -116,7 +116,7 @@ class UserStateService {
 			});
 
 			// Initialize upgrade tree for new user
-			await this.initializeUserUpgradeTree(userId, transaction);
+			//await this.initializeUserUpgradeTree(userId, transaction);
 
 			return stateNew;
 		} catch (err) {
@@ -211,9 +211,11 @@ class UserStateService {
 
 	async initializeUserUpgradeTree(userId, transaction) {
 		try {
-			// Get root nodes from UpgradeService
+			// Получаем все доступные узлы апгрейдов (теперь возвращаются все активные)
 			const availableNodes =
-				await UpgradeService.getAvailableUpgradeNodes(userId);
+				await UpgradeService.getAvailableUpgradeNodes();
+
+			// Фильтруем корневые узлы (без условий)
 			const rootNodes = availableNodes.filter(
 				(node) =>
 					!node.conditions ||
@@ -253,6 +255,24 @@ class UserStateService {
 				};
 			}
 
+			// Добавляем информацию о всех доступных узлах (не только корневых)
+			// для построения полной структуры дерева
+			for (const node of availableNodes) {
+				// Пропускаем корневые узлы, которые уже обработаны
+				if (!rootNodes.some((rootNode) => rootNode.id === node.id)) {
+					upgradeTree.treeStructure[node.id] = {
+						children: node.children || [],
+						category: node.category,
+						basePrice: node.basePrice,
+						currency: node.currency,
+						maxLevel: node.maxLevel,
+						effectPerLevel: node.effectPerLevel,
+						priceMultiplier: node.priceMultiplier,
+						conditions: node.conditions,
+					};
+				}
+			}
+
 			// Update user state
 			const userState = await UserState.findOne({
 				where: { userId },
@@ -261,6 +281,22 @@ class UserStateService {
 
 			if (!userState) {
 				throw ApiError.BadRequest('User state not found');
+			}
+
+			// Инициализируем state, если его нет
+			if (!userState.state) {
+				userState.state = {
+					totalStars: 0,
+					stardustCount: 0,
+					darkMatterCount: 0,
+					tgStarsCount: 0,
+					tokenTonsCount: 0,
+					ownedGalaxiesCount: 0,
+					ownedNodesCount: 0,
+					ownedTasksCount: 0,
+					ownedUpgradesCount: 0,
+					ownedEventsCount: 0,
+				};
 			}
 
 			userState.upgradeTree = upgradeTree;

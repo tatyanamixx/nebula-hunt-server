@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 08.05.2025
  */
 const { User, Galaxy } = require('../models/models');
 const loggerService = require('./logger-service');

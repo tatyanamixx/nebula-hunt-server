@@ -1,5 +1,5 @@
 /**
- * created by Tatyana Mikhniukevich on 04.05.2025
+ * created by Tatyana Mikhniukevich on 01.06.2025
  */
 const userService = require('../service/user-service');
 const { validationResult } = require('express-validator');
@@ -12,7 +12,29 @@ class UserController {
 			const id = req.initdata.id;
 			const username = req.initdata.username;
 
-			const { referral, userState, galaxies } = req.body;
+			let { referral, userState, galaxies } = req.body;
+			if (typeof referral === 'string') {
+				try {
+					referral = BigInt(referral);
+				} catch {
+					return next(
+						ApiError.BadRequest(
+							'Referral must be a number, bigint, or numeric string'
+						)
+					);
+				}
+			} else if (typeof referral === 'number') {
+				// Оставляем как есть (Number)
+			} else if (typeof referral === 'bigint') {
+				// Оставляем как есть (BigInt)
+			} else if (referral !== undefined && referral !== null) {
+				return next(
+					ApiError.BadRequest(
+						'Referral must be a number, bigint, or numeric string'
+					)
+				);
+			}
+
 			const userData = await userService.registration(
 				id,
 				username,
