@@ -5,7 +5,7 @@ const Router = require('express').Router;
 const router = new Router();
 const userController = require('../controllers/user-controller');
 const { body } = require('express-validator');
-const tmaMiddleware = require('../middlewares/tma-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const authMiddleware = require('../middlewares/auth-middleware');
 
@@ -18,7 +18,7 @@ const authMiddleware = require('../middlewares/auth-middleware');
 
 router.post(
 	'/registration',
-	[tmaMiddleware, rateLimitMiddleware(10, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(10, 60)],
 	userController.registration
 );
 
@@ -51,7 +51,7 @@ router.post(
 
 router.post(
 	'/login',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	userController.login
 );
 
@@ -82,7 +82,7 @@ router.post(
 
 router.post(
 	'/logout',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(20, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(20, 60)],
 	userController.logout
 );
 
@@ -101,7 +101,7 @@ router.post(
 
 router.get(
 	'/refresh',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	userController.refresh
 );
 
@@ -120,7 +120,7 @@ router.get(
 
 router.get(
 	'/friends',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	userController.getFriends
 );
 

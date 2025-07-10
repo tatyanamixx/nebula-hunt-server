@@ -7,6 +7,8 @@ const config = require('./config/logger.config');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 const helmet = require('helmet');
+const path = require('path');
+const logger = require('./service/logger-service');
 
 const router = require('./routes/index');
 const errorMiddleware = require('./middlewares/error-middleware');
@@ -31,7 +33,26 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+// Добавляем в конфиг настройки для пагинации и срока действия оферт
+app.use(express.static(path.resolve(__dirname, 'static')));
 app.use('/api', router);
+
+// Запуск скрипта для обработки истекших оферт по расписанию
+const marketService = require('./service/market-service');
+const CronJob = require('cron').CronJob;
+
+// Запускаем задачу по расписанию (каждый час)
+const expiredOffersJob = new CronJob('0 * * * *', async function () {
+	try {
+		const processedCount = await marketService.processExpiredOffers();
+		logger.info(`Обработано ${processedCount} истекших оферт`);
+	} catch (error) {
+		logger.error(`Ошибка при обработке истекших оферт: ${error.message}`);
+	}
+});
+
+// Запускаем задачу
+expiredOffersJob.start();
 
 // Swagger setup
 const swaggerDefinition = {

@@ -3,6 +3,8 @@
  */
 const marketService = require('../service/market-service');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
+const { User } = require('../models/models'); // Правильный импорт модели User
+const { SYSTEM_USER_ID } = require('../config/constants');
 
 class MarketController {
 	async getAllOffers(req, res) {
@@ -174,6 +176,308 @@ class MarketController {
 			const { packages } = req.body;
 			const result = await marketService.initializePackages(packages);
 			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async registerFarmingReward(req, res, next) {
+		try {
+			const { amount, currency, source } = req.body;
+			const userId = req.initdata.id;
+			const result = await marketService.registerFarmingReward({
+				userId,
+				amount,
+				currency,
+				source,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async registerUpgradePayment(req, res, next) {
+		try {
+			const { nodeId, amount, currency } = req.body;
+			const userId = req.initdata.id;
+			const result = await marketService.registerUpgradePayment({
+				userId,
+				nodeId,
+				amount,
+				currency,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async registerTaskReward(req, res, next) {
+		try {
+			const { taskId, amount, currency } = req.body;
+			const userId = req.initdata.id;
+			const result = await marketService.registerTaskReward({
+				userId,
+				taskId,
+				amount,
+				currency,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async registerEventReward(req, res, next) {
+		try {
+			const { eventId, amount, currency } = req.body;
+			const userId = req.initdata.id;
+			const result = await marketService.registerEventReward({
+				userId,
+				eventId,
+				amount,
+				currency,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async registerGalaxyStarsTransfer(req, res, next) {
+		try {
+			const { galaxyId, amount, currency } = req.body;
+			const userId = req.initdata.id;
+			const result = await marketService.registerGalaxyStarsTransfer({
+				userId,
+				galaxyId,
+				amount,
+				currency,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async createResourceOffer(req, res, next) {
+		try {
+			const { resourceType, amount, price, currency } = req.body;
+			const sellerId = req.initdata.id;
+			const result = await marketService.createResourceOffer({
+				sellerId,
+				resourceType,
+				amount,
+				price,
+				currency,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async exchangeResources(req, res, next) {
+		try {
+			const { toUserId, resourceType, amount } = req.body;
+			const fromUserId = req.initdata.id;
+			const result = await marketService.exchangeResources({
+				fromUserId,
+				toUserId,
+				resourceType,
+				amount,
+			});
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async updateTonWallet(req, res, next) {
+		try {
+			const { tonWallet } = req.body;
+			const userId = req.initdata.id;
+
+			// Обновляем адрес кошелька пользователя
+			const user = await User.findByPk(userId);
+			if (!user) {
+				return res.status(404).json({ error: 'User not found' });
+			}
+
+			user.tonWallet = tonWallet;
+			await user.save();
+
+			res.json({ success: true, tonWallet });
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getTonWallet(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+
+			// Получаем адрес кошелька пользователя
+			const user = await User.findByPk(userId);
+			if (!user) {
+				return res.status(404).json({ error: 'User not found' });
+			}
+
+			res.json({ tonWallet: user.tonWallet });
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getOffers(req, res, next) {
+		try {
+			const { page, limit, itemType, offerType, status, currency } =
+				req.query;
+
+			const result = await marketService.getOffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				itemType,
+				offerType,
+				status,
+				currency,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getGalaxyOffers(req, res, next) {
+		try {
+			const { page, limit, status, currency } = req.query;
+
+			const result = await marketService.getGalaxyOffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				status,
+				currency,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getResourceOffers(req, res, next) {
+		try {
+			const { page, limit, resourceType, status } = req.query;
+
+			const result = await marketService.getResourceOffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				resourceType,
+				status,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getArtifactOffers(req, res, next) {
+		try {
+			const { page, limit, status, currency, rarity } = req.query;
+
+			const result = await marketService.getArtifactOffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				status,
+				currency,
+				rarity,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getP2POffers(req, res, next) {
+		try {
+			const { page, limit, status, currency, itemType } = req.query;
+
+			const result = await marketService.getP2POffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				status,
+				currency,
+				itemType,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getSystemOffers(req, res, next) {
+		try {
+			const { page, limit, status, currency, itemType } = req.query;
+
+			const result = await marketService.getSystemOffers({
+				page: parseInt(page) || 1,
+				limit: parseInt(limit) || undefined,
+				status,
+				currency,
+				itemType,
+			});
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async cancelOffer(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { offerId } = req.params;
+
+			const result = await marketService.cancelOffer(offerId, userId);
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async buyOffer(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { offerId } = req.params;
+
+			const result = await marketService.completeOffer(offerId, userId);
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async processExpiredOffers(req, res, next) {
+		try {
+			// Проверяем, что запрос от администратора
+			if (req.initdata.id !== SYSTEM_USER_ID && !req.initdata.isAdmin) {
+				return res.status(403).json({ error: 'Доступ запрещен' });
+			}
+
+			const count = await marketService.processExpiredOffers();
+
+			res.json({
+				success: true,
+				processedOffers: count,
+				message: `Обработано ${count} истекших оферт`,
+			});
 		} catch (e) {
 			next(e);
 		}

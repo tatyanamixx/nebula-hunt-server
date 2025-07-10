@@ -1,7 +1,7 @@
 /**
  * created by Tatyana Mikhniukevich on 29.05.2025
  */
-const Router = require('express').Router;
+const Router = require('express');
 const router = new Router();
 const adminController = require('../controllers/admin-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
@@ -11,9 +11,9 @@ const eventController = require('../controllers/event-controller');
 const taskController = require('../controllers/task-controller');
 const upgradeController = require('../controllers/upgrade-controller');
 const marketController = require('../controllers/market-controller');
+const packageTemplateController = require('../controllers/package-template-controller');
 const { param } = require('express-validator');
-const validateTelegramWebAppData = require('../middlewares/validate-telegram-webapp-middleware');
-const google2faMiddleware = require('../middlewares/google-2fa-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 
 /**
  * @swagger
@@ -24,12 +24,10 @@ const google2faMiddleware = require('../middlewares/google-2fa-middleware');
 
 router.get(
 	'/users',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(30, 60),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
 	adminController.getUsers
 );
 
@@ -48,13 +46,11 @@ router.get(
 
 router.post(
 	'/block/:userId',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('userId').isString().withMessage('userId must be a string'),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('userId').isString().withMessage('userId must be a string'),
 	adminController.blockUser
 );
 
@@ -79,13 +75,11 @@ router.post(
 
 router.post(
 	'/unblock/:userId',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('userId').isString().withMessage('userId must be a string'),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('userId').isString().withMessage('userId must be a string'),
 	adminController.unblockUser
 );
 
@@ -111,13 +105,11 @@ router.post(
 // --- Админ роуты для событий ---
 router.post(
 	'/events',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-	],
-	eventController.createGameEvent
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	eventController.createEvents
 );
 
 /**
@@ -135,14 +127,12 @@ router.post(
 
 router.put(
 	'/events/:eventId',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('eventId').isString().withMessage('eventId must be a string'),
-	],
-	eventController.updateGameEvent
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('eventId').isString().withMessage('eventId must be a string'),
+	eventController.updateEvent
 );
 
 /**
@@ -158,7 +148,7 @@ router.put(
  *         name: eventId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Event updated
@@ -167,13 +157,11 @@ router.put(
 // --- Админ роуты для задач ---
 router.post(
 	'/tasks',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-	],
-	taskController.createTask
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	taskController.createTasks
 );
 
 /**
@@ -191,13 +179,11 @@ router.post(
 
 router.put(
 	'/tasks/:taskId',
-	[
-		validateTelegramWebAppData,
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('taskId').isString().withMessage('taskId must be a string'),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('taskId').isString().withMessage('taskId must be a string'),
 	taskController.updateTask
 );
 
@@ -214,7 +200,7 @@ router.put(
  *         name: taskId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Task updated
@@ -223,7 +209,10 @@ router.put(
 // --- Админ роуты для апгрейдов ---
 router.post(
 	'/upgrades/nodes',
-	[authMiddleware, adminMiddleware, rateLimitMiddleware(20, 60)],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
 	upgradeController.createUpgradeNodes
 );
 
@@ -242,12 +231,11 @@ router.post(
 
 router.put(
 	'/upgrades/node/:nodeId',
-	[
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('nodeId').isString().withMessage('nodeId must be a string'),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('nodeId').isString().withMessage('nodeId must be a string'),
 	upgradeController.updateUpgradeNode
 );
 
@@ -264,7 +252,7 @@ router.put(
  *         name: nodeId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Upgrade node updated
@@ -272,12 +260,11 @@ router.put(
 
 router.delete(
 	'/upgrades/node/:nodeId',
-	[
-		authMiddleware,
-		adminMiddleware,
-		rateLimitMiddleware(20, 60),
-		param('nodeId').isString().withMessage('nodeId must be a string'),
-	],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(20, 60),
+	param('nodeId').isString().withMessage('nodeId must be a string'),
 	upgradeController.deleteUpgradeNode
 );
 
@@ -294,7 +281,7 @@ router.delete(
  *         name: nodeId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: Upgrade node deleted
@@ -302,7 +289,10 @@ router.delete(
 
 router.get(
 	'/upgrades/nodes',
-	[authMiddleware, adminMiddleware, rateLimitMiddleware(30, 60)],
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
 	upgradeController.getAllUpgradeNodes
 );
 
@@ -319,43 +309,262 @@ router.get(
  *         description: List of upgrade nodes
  */
 
-// --- Админ роут для инициализации пакетов ---
-router.post(
-	'/market/initialize-packages',
-	[authMiddleware, adminMiddleware, rateLimitMiddleware(5, 60)],
-	marketController.initializePackages
-);
+// Шаг 1: Проверка Telegram WebApp данных и получение OTP кода
+router.post('/verify-2fa', telegramAuthMiddleware, adminController.verify2FA);
 
 /**
  * @swagger
- * /admin/market/initialize-packages:
+ * /admin/verify-2fa:
  *   post:
- *     summary: Initialize market packages
+ *     summary: Verify 2FA code for admin
  *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               otp:
+ *                 type: string
+ *                 description: 2FA code
  *     responses:
- *       201:
- *         description: Market packages initialized
+ *       200:
+ *         description: 2FA verification successful
+ *       401:
+ *         description: Invalid 2FA code
+ *       403:
+ *         description: Access denied
  */
 
-// Логин администратора через Telegram + Google 2FA
-router.post(
-	'/login',
-	validateTelegramWebAppData,
-	google2faMiddleware,
-	adminController.loginAdmin
-);
+// Шаг 2: Логин админа после проверки 2FA
+router.post('/login', telegramAuthMiddleware, adminController.loginAdmin);
 
-// Logout администратора (JWT + ADMIN)
+/**
+ * @swagger
+ * /admin/login:
+ *   post:
+ *     summary: Login as admin
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Admin login successful
+ *       403:
+ *         description: Access denied
+ */
+
+// Выход админа из системы
 router.post(
 	'/logout',
+	telegramAuthMiddleware,
 	authMiddleware,
 	adminMiddleware,
 	adminController.logoutAdmin
 );
 
+/**
+ * @swagger
+ * /admin/logout:
+ *   post:
+ *     summary: Logout admin
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin logout successful
+ */
+
 // Защищённый эндпойнт для инициализации админа по Telegram id
 router.post('/init', adminController.initAdmin);
+
+/**
+ * @swagger
+ * /admin/init:
+ *   post:
+ *     summary: Initialize admin
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               telegramId:
+ *                 type: string
+ *                 description: Telegram user ID
+ *               secretKey:
+ *                 type: string
+ *                 description: Secret key for admin initialization
+ *     responses:
+ *       201:
+ *         description: Admin initialized
+ *       400:
+ *         description: Invalid request
+ *       403:
+ *         description: Invalid secret key
+ */
+
+/**
+ * @swagger
+ * /admin/package-templates:
+ *   post:
+ *     summary: Create a new package template (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               amount:
+ *                 type: integer
+ *               currencyGame:
+ *                 type: string
+ *                 enum: [stardust, darkMatter]
+ *               price:
+ *                 type: number
+ *               currency:
+ *                 type: string
+ *                 enum: [tgStars, tonToken]
+ *               imageUrl:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               sortOrder:
+ *                 type: integer
+ *               isPromoted:
+ *                 type: boolean
+ *               validUntil:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       201:
+ *         description: Package template created
+ *       403:
+ *         description: Access denied
+ */
+router.post(
+	'/package-templates',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(10, 60),
+	packageTemplateController.createTemplate
+);
+
+/**
+ * @swagger
+ * /admin/package-templates/{id}:
+ *   put:
+ *     summary: Update package template (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Package template ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               amount:
+ *                 type: integer
+ *               currencyGame:
+ *                 type: string
+ *                 enum: [stardust, darkMatter]
+ *               price:
+ *                 type: number
+ *               currency:
+ *                 type: string
+ *                 enum: [tgStars, tonToken]
+ *               imageUrl:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               sortOrder:
+ *                 type: integer
+ *               isPromoted:
+ *                 type: boolean
+ *               validUntil:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Package template updated
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Package template not found
+ */
+router.put(
+	'/package-templates/:id',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(10, 60),
+	packageTemplateController.updateTemplate
+);
+
+/**
+ * @swagger
+ * /admin/package-templates/{id}/status:
+ *   patch:
+ *     summary: Change package template status (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Package template ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE]
+ *     responses:
+ *       200:
+ *         description: Package template status updated
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Package template not found
+ */
+router.patch(
+	'/package-templates/:id/status',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(10, 60),
+	packageTemplateController.changeTemplateStatus
+);
 
 module.exports = router;

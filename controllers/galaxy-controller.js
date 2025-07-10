@@ -4,6 +4,8 @@
 const galaxyService = require('../service/galaxy-service');
 const ApiError = require('../exceptions/api-error');
 const logger = require('../service/logger-service');
+const marketService = require('../service/market-service');
+const { Galaxy } = require('../models/models');
 
 class GalaxyController {
 	async createGalaxy(req, res, next) {
@@ -34,6 +36,47 @@ class GalaxyController {
 			const galaxyData = req.body;
 			const galaxy = await galaxyService.updateGalaxy(id, galaxyData);
 			return res.json(galaxy);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async addStarsToGalaxy(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { galaxyId, amount } = req.body;
+
+			// Проверяем, что галактика принадлежит пользователю
+			const galaxy = await Galaxy.findOne({
+				where: { id: galaxyId, userId },
+			});
+
+			if (!galaxy) {
+				return res.status(404).json({
+					error: 'Galaxy not found or not owned by user',
+				});
+			}
+
+			// Регистрируем передачу звезд через marketService
+			const result = await marketService.registerGalaxyStarsTransfer({
+				userId,
+				galaxyId,
+				amount,
+				currency: 'tgStars',
+			});
+
+			logger.info('Stars added to galaxy', {
+				userId,
+				galaxyId,
+				amount,
+				newStarCount: result.galaxy.starCurrent,
+			});
+
+			return res.json({
+				success: true,
+				galaxy: result.galaxy,
+				transaction: result.transaction,
+			});
 		} catch (e) {
 			next(e);
 		}

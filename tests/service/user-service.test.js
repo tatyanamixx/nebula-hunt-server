@@ -4,6 +4,8 @@ const ApiError = require('../../exceptions/api-error');
 const stateService = require('../../service/state-service');
 const marketService = require('../../service/market-service');
 const UserDto = require('../../dtos/user-dto');
+const upgradeService = require('../../service/upgrade-service');
+const taskService = require('../../service/task-service');
 
 // Мокаем зависимости
 jest.mock('../../service/token-service');
@@ -96,10 +98,17 @@ jest.mock('../../service/event-service', () => ({
 
 jest.mock('../../service/task-service', () => ({
 	activateUserTasks: jest.fn().mockResolvedValue({}),
+	initializeUserTasks: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../service/upgrade-service', () => ({
 	activateUserUpgradeNodes: jest.fn().mockResolvedValue({}),
+	initializeUserUpgradeTree: jest.fn().mockResolvedValue({
+		activeNodes: [],
+		completedNodes: [],
+		nodeStates: {},
+		treeStructure: {},
+	}),
 }));
 
 jest.mock('../../service/artifact-service', () => ({
@@ -127,15 +136,6 @@ describe('UserService', () => {
 						state: initialState.state || { totalStars: 0 },
 						save: jest.fn().mockResolvedValue(true),
 					});
-				});
-
-			stateService.initializeUserUpgradeTree = jest
-				.fn()
-				.mockResolvedValue({
-					activeNodes: [],
-					completedNodes: [],
-					nodeStates: {},
-					treeStructure: {},
 				});
 
 			marketService.getPackageOffers = jest.fn().mockResolvedValue([
@@ -208,7 +208,10 @@ describe('UserService', () => {
 
 			// Проверяем вызовы методов
 			expect(stateService.createUserState).toHaveBeenCalled();
-			expect(stateService.initializeUserUpgradeTree).toHaveBeenCalledWith(
+			expect(
+				upgradeService.initializeUserUpgradeTree
+			).toHaveBeenCalledWith(userData.id, expect.anything());
+			expect(taskService.initializeUserTasks).toHaveBeenCalledWith(
 				userData.id,
 				expect.anything()
 			);
@@ -331,6 +334,48 @@ describe('UserService', () => {
 			stateService.getUserState = jest.fn().mockImplementation(() => {
 				return Promise.resolve({
 					state: { totalStars: 100 },
+					upgrades: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								nodeId: 'node1',
+								completed: false,
+							},
+							{
+								id: 2,
+								userId: 12345,
+								nodeId: 'node2',
+								completed: true,
+							},
+						],
+						completed: 1,
+						active: 1,
+					},
+					tasks: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								taskId: 'task1',
+								completed: false,
+								active: true,
+							},
+							{
+								id: 2,
+								userId: 12345,
+								taskId: 'task2',
+								completed: true,
+								active: true,
+							},
+						],
+						completed: 1,
+						active: 1,
+					},
+					events: {
+						active: [],
+						settings: {},
+					},
 					save: jest.fn().mockResolvedValue(true),
 				});
 			});
@@ -357,6 +402,10 @@ describe('UserService', () => {
 				userId,
 				expect.anything()
 			);
+			expect(stateService.getUserState).toHaveBeenCalledWith(userId);
+			expect(
+				upgradeService.activateUserUpgradeNodes
+			).toHaveBeenCalledWith(userId, expect.anything());
 			expect(marketService.getPackageOffers).toHaveBeenCalled();
 			expect(tokenService.generateTokens).toHaveBeenCalled();
 			expect(tokenService.saveToken).toHaveBeenCalled();
@@ -364,6 +413,8 @@ describe('UserService', () => {
 			// Проверяем результат
 			expect(result.user).toBeDefined();
 			expect(result.userState).toBeDefined();
+			expect(result.userState.upgrades).toBeDefined();
+			expect(result.userState.tasks).toBeDefined();
 			expect(result.userGalaxies).toBeDefined();
 			expect(result.userArtifacts).toBeDefined();
 			expect(result.packageOffers).toBeDefined();
@@ -372,6 +423,89 @@ describe('UserService', () => {
 			expect(result.packageOffers[1].id).toBe(2);
 			expect(result.accessToken).toBeDefined();
 			expect(result.refreshToken).toBeDefined();
+		});
+
+		it('should initialize upgrades when user has no upgrades', async () => {
+			// Mock state with no upgrades
+			stateService.getUserState = jest.fn().mockImplementation(() => {
+				return Promise.resolve({
+					state: { totalStars: 100 },
+					upgrades: {
+						items: [],
+						completed: 0,
+						active: 0,
+					},
+					tasks: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								taskId: 'task1',
+								completed: false,
+								active: true,
+							},
+						],
+						completed: 0,
+						active: 1,
+					},
+					events: {
+						active: [],
+						settings: {},
+					},
+					save: jest.fn().mockResolvedValue(true),
+				});
+			});
+
+			const userId = 12345;
+			await userService.login(userId);
+
+			// Verify that initializeUserUpgradeTree was called
+			expect(
+				upgradeService.initializeUserUpgradeTree
+			).toHaveBeenCalledWith(userId, expect.anything());
+			expect(
+				upgradeService.activateUserUpgradeNodes
+			).not.toHaveBeenCalled();
+		});
+
+		it('should initialize tasks when user has no tasks', async () => {
+			// Mock state with no tasks
+			stateService.getUserState = jest.fn().mockImplementation(() => {
+				return Promise.resolve({
+					state: { totalStars: 100 },
+					upgrades: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								nodeId: 'node1',
+								completed: false,
+							},
+						],
+						completed: 0,
+						active: 1,
+					},
+					tasks: {
+						items: [],
+						completed: 0,
+						active: 0,
+					},
+					events: {
+						active: [],
+						settings: {},
+					},
+					save: jest.fn().mockResolvedValue(true),
+				});
+			});
+
+			const userId = 12345;
+			await userService.login(userId);
+
+			// Verify that initializeUserTasks was called
+			expect(taskService.initializeUserTasks).toHaveBeenCalledWith(
+				userId,
+				expect.anything()
+			);
 		});
 
 		it('should throw error when user not found', async () => {

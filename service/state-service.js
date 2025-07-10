@@ -1,25 +1,28 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const { UserState, User, UpgradeNode } = require('../models/models');
+const {
+	UserState,
+	User,
+	UpgradeNode,
+	UserUpgrade,
+	UserTask,
+	UserEvent,
+	UserEventSetting,
+} = require('../models/models');
 const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
-const UpgradeService = require('./upgrade-service');
+const upgradeService = require('./upgrade-service');
+const taskService = require('./task-service');
+const eventService = require('./event-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
+const { LEADERBOARD_LIMIT } = require('../config/constants');
 
 class UserStateService {
 	async updateStreak(userState) {
 		const now = new Date();
-		// const today = new Date(
-		// 	now.getFullYear(),
-		// 	now.getMonth(),
-		// 	now.getDate()
-		// );
-
 		const today = new Date(now);
-		// loggerService.info(userState.userId, `today: ${today}`);
-		// loggerService.info(userState.userId, `now: ${now}`);
 
 		const lastLogin = userState.lastLoginDate
 			? new Date(userState.lastLoginDate)
@@ -43,12 +46,10 @@ class UserStateService {
 			return;
 		}
 
-		// Calculate the difference in hours
+		// Calculate the difference in days
 		const diffDays = Math.floor(
 			(today - lastLogin) / (1000 * 60 * 60 * 24)
 		);
-
-		// loggerService.info(userState.userId, `diffDays: ${diffDays}`);
 
 		if (diffDays === 1) {
 			// Consecutive day
@@ -70,25 +71,75 @@ class UserStateService {
 		const t = await sequelize.transaction();
 
 		try {
+			// Get basic user state
 			let userState = await UserState.findOne({
 				where: { userId: userId },
 				transaction: t,
 			});
 
 			if (userState) {
+				// Update streak information
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
-				userState = await this.updateUpgradeTreeOnLogin(userId, t);
-			}
 
-			await t.commit();
+				// Get user upgrades, tasks, and events
+				const [userUpgrades, userTasks, userEvents, userEventSettings] =
+					await Promise.all([
+						UserUpgrade.findAll({
+							where: { userId },
+							transaction: t,
+						}),
+						UserTask.findAll({
+							where: { userId },
+							transaction: t,
+						}),
+						UserEvent.findAll({
+							where: {
+								userId,
+								status: 'ACTIVE',
+							},
+							transaction: t,
+						}),
+						UserEventSetting.findOne({
+							where: { userId },
+							transaction: t,
+						}),
+					]);
 
-			if (userState) {
+				// Convert to JSON for response
 				const userStateObj = userState.toJSON
 					? userState.toJSON()
 					: { ...userState };
+
+				// Add aggregated data from related tables
+				userStateObj.upgrades = {
+					items: userUpgrades,
+					completed: userUpgrades.filter(
+						(upgrade) => upgrade.completed
+					).length,
+					active: userUpgrades.filter((upgrade) => !upgrade.completed)
+						.length,
+				};
+
+				userStateObj.tasks = {
+					items: userTasks,
+					completed: userTasks.filter((task) => task.completed)
+						.length,
+					active: userTasks.filter(
+						(task) => task.active && !task.completed
+					).length,
+				};
+
+				userStateObj.events = {
+					active: userEvents,
+					settings: userEventSettings || {},
+				};
+
+				await t.commit();
 				return userStateObj;
 			}
+
+			await t.commit();
 			return userState;
 		} catch (err) {
 			await t.rollback();
@@ -97,10 +148,9 @@ class UserStateService {
 	}
 
 	async createUserState(userId, userState, transaction) {
-		// Create new state for new user
-
 		try {
 			await this.updateStreak(userState);
+
 			// Create new state for new user
 			const stateNew = await UserState.findOrCreate({
 				where: { userId: userId },
@@ -111,201 +161,37 @@ class UserStateService {
 					currentStreak: userState.currentStreak,
 					maxStreak: userState.maxStreak,
 					streakUpdatedAt: userState.streakUpdatedAt,
+					chaosLevel: userState.chaosLevel || 0.0,
+					stabilityLevel: userState.stabilityLevel || 0.0,
+					entropyVelocity: userState.entropyVelocity || 0.0,
+					taskProgress: userState.taskProgress || {
+						completedTasks: [],
+						currentWeight: 0,
+						unlockedNodes: [],
+					},
+					upgradeTree: userState.upgradeTree || {
+						activeNodes: [],
+						completedNodes: [],
+						nodeStates: {},
+						treeStructure: {},
+						totalProgress: 0,
+						lastNodeUpdate: new Date(),
+					},
 				},
 				transaction: transaction,
 			});
 
-			// Initialize upgrade tree for new user
-			//await this.initializeUserUpgradeTree(userId, transaction);
+			// Initialize related data for the new user
+			await Promise.all([
+				upgradeService.initializeUserUpgradeTree(userId, transaction),
+				taskService.initializeUserTasks(userId, transaction),
+				eventService.initializeUserEvents(userId, transaction),
+			]);
 
 			return stateNew;
 		} catch (err) {
 			throw ApiError.Internal(
 				`Failed to create/update user state: ${err.message}`
-			);
-		}
-	}
-
-	async updateUpgradeTreeOnLogin(userId, transaction) {
-		try {
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction,
-			});
-
-			if (!userState) {
-				throw ApiError.BadRequest('User state not found');
-			}
-
-			// Инициализируем поля апгрейтов, если их нет
-			if (!userState.userUpgrades) userState.userUpgrades = {};
-			if (!userState.completedUpgrades) userState.completedUpgrades = [];
-			if (!userState.activeUpgrades) userState.activeUpgrades = [];
-
-			// Получаем доступные узлы
-			const availableNodes =
-				await UpgradeService.getAvailableUpgradeNodes(userId);
-
-			// Обновляем структуру дерева апгрейдов
-			const upgradeTree = {
-				activeNodes: availableNodes.map((node) => node.id),
-				completedNodes: userState.completedUpgrades,
-				nodeStates: {},
-				treeStructure: {},
-				totalProgress: 0,
-				lastNodeUpdate: new Date(),
-			};
-
-			// Строим состояния узлов и структуру дерева
-			for (const node of availableNodes) {
-				const userNode = userState.userUpgrades[node.id];
-
-				upgradeTree.nodeStates[node.id] = {
-					progress: userNode?.progress || 0,
-					targetProgress:
-						userNode?.targetProgress ||
-						node.conditions?.targetProgress ||
-						100,
-					unlocked: true,
-					completed: userNode?.completed || false,
-					lastUpdate: userNode?.lastProgressUpdate || new Date(),
-					progressHistory: userNode?.progressHistory || [],
-				};
-
-				upgradeTree.treeStructure[node.id] = {
-					children: node.children || [],
-					category: node.category,
-					basePrice: node.basePrice,
-					currency: node.currency,
-					maxLevel: node.maxLevel,
-					effectPerLevel: node.effectPerLevel,
-					priceMultiplier: node.priceMultiplier,
-					conditions: node.conditions,
-				};
-			}
-
-			// Вычисляем общий прогресс
-			const totalNodes = Object.keys(upgradeTree.nodeStates).length;
-			if (totalNodes > 0) {
-				const progressSum = Object.values(
-					upgradeTree.nodeStates
-				).reduce(
-					(sum, state) =>
-						sum + (state.progress / state.targetProgress) * 100,
-					0
-				);
-				upgradeTree.totalProgress = progressSum / totalNodes;
-			}
-
-			// Обновляем состояние пользователя
-			userState.upgradeTree = upgradeTree;
-			await userState.save({ transaction });
-
-			return userState;
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to update upgrade tree: ${err.message}`
-			);
-		}
-	}
-
-	async initializeUserUpgradeTree(userId, transaction) {
-		try {
-			// Получаем все доступные узлы апгрейдов (теперь возвращаются все активные)
-			const availableNodes =
-				await UpgradeService.getAvailableUpgradeNodes();
-
-			// Фильтруем корневые узлы (без условий)
-			const rootNodes = availableNodes.filter(
-				(node) =>
-					!node.conditions ||
-					Object.keys(node.conditions).length === 0
-			);
-
-			// Initialize upgrade tree structure
-			const upgradeTree = {
-				activeNodes: rootNodes.map((node) => node.id),
-				completedNodes: [],
-				nodeStates: {},
-				treeStructure: {},
-				totalProgress: 0,
-				lastNodeUpdate: new Date(),
-			};
-
-			// Initialize states for root nodes
-			for (const node of rootNodes) {
-				upgradeTree.nodeStates[node.id] = {
-					progress: 0,
-					targetProgress: node.conditions?.targetProgress || 100,
-					unlocked: true,
-					completed: false,
-					lastUpdate: new Date(),
-					progressHistory: [],
-				};
-
-				upgradeTree.treeStructure[node.id] = {
-					children: node.children || [],
-					category: node.category,
-					basePrice: node.basePrice,
-					currency: node.currency,
-					maxLevel: node.maxLevel,
-					effectPerLevel: node.effectPerLevel,
-					priceMultiplier: node.priceMultiplier,
-					conditions: node.conditions,
-				};
-			}
-
-			// Добавляем информацию о всех доступных узлах (не только корневых)
-			// для построения полной структуры дерева
-			for (const node of availableNodes) {
-				// Пропускаем корневые узлы, которые уже обработаны
-				if (!rootNodes.some((rootNode) => rootNode.id === node.id)) {
-					upgradeTree.treeStructure[node.id] = {
-						children: node.children || [],
-						category: node.category,
-						basePrice: node.basePrice,
-						currency: node.currency,
-						maxLevel: node.maxLevel,
-						effectPerLevel: node.effectPerLevel,
-						priceMultiplier: node.priceMultiplier,
-						conditions: node.conditions,
-					};
-				}
-			}
-
-			// Update user state
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction,
-			});
-
-			if (!userState) {
-				throw ApiError.BadRequest('User state not found');
-			}
-
-			// Инициализируем state, если его нет
-			if (!userState.state) {
-				userState.state = {
-					totalStars: 0,
-					stardustCount: 0,
-					darkMatterCount: 0,
-					tgStarsCount: 0,
-					tokenTonsCount: 0,
-					ownedGalaxiesCount: 0,
-					ownedNodesCount: 0,
-					ownedTasksCount: 0,
-					ownedUpgradesCount: 0,
-					ownedEventsCount: 0,
-				};
-			}
-
-			userState.upgradeTree = upgradeTree;
-			await userState.save({ transaction });
-
-			return upgradeTree;
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to initialize upgrade tree: ${err.message}`
 			);
 		}
 	}
@@ -320,24 +206,98 @@ class UserStateService {
 			});
 
 			if (stateData) {
-				stateData.stars = userState.stars;
+				// Update basic state fields
 				stateData.state = userState.state;
+				stateData.chaosLevel =
+					userState.chaosLevel !== undefined
+						? userState.chaosLevel
+						: stateData.chaosLevel;
+				stateData.stabilityLevel =
+					userState.stabilityLevel !== undefined
+						? userState.stabilityLevel
+						: stateData.stabilityLevel;
+				stateData.entropyVelocity =
+					userState.entropyVelocity !== undefined
+						? userState.entropyVelocity
+						: stateData.entropyVelocity;
+
+				// Update streak information
 				await this.updateStreak(stateData);
-				// Update upgrade tree
-				await this.updateUpgradeTreeOnLogin(userId, t);
 				await stateData.save({ transaction: t });
-				const string = JSON.stringify(stateData.state);
+
+				// Get user upgrades, tasks, and events for the response
+				const [userUpgrades, userTasks, userEvents, userEventSettings] =
+					await Promise.all([
+						UserUpgrade.findAll({
+							where: { userId },
+							transaction: t,
+						}),
+						UserTask.findAll({
+							where: { userId },
+							transaction: t,
+						}),
+						UserEvent.findAll({
+							where: {
+								userId,
+								status: 'ACTIVE',
+							},
+							transaction: t,
+						}),
+						UserEventSetting.findOne({
+							where: { userId },
+							transaction: t,
+						}),
+					]);
+
+				// Prepare response object
+				const responseObj = {
+					userId,
+					userState: stateData.toJSON
+						? stateData.toJSON()
+						: { ...stateData },
+				};
+
+				// Add aggregated data from related tables
+				responseObj.userState.upgrades = {
+					items: userUpgrades,
+					completed: userUpgrades.filter(
+						(upgrade) => upgrade.completed
+					).length,
+					active: userUpgrades.filter((upgrade) => !upgrade.completed)
+						.length,
+				};
+
+				responseObj.userState.tasks = {
+					items: userTasks,
+					completed: userTasks.filter((task) => task.completed)
+						.length,
+					active: userTasks.filter(
+						(task) => task.active && !task.completed
+					).length,
+				};
+
+				responseObj.userState.events = {
+					active: userEvents,
+					settings: userEventSettings || {},
+				};
 
 				await t.commit();
-				return { userId, userState: stateData };
+				return responseObj;
 			}
 
 			// Create new state for new user
 			const stateNew = await UserState.create(
 				{
 					userId: userId,
-					stars: userState.stars,
 					state: userState.state,
+					chaosLevel: userState.chaosLevel || 0.0,
+					stabilityLevel: userState.stabilityLevel || 0.0,
+					entropyVelocity: userState.entropyVelocity || 0.0,
+					taskProgress: {
+						completedTasks: [],
+						currentWeight: 0,
+						unlockedNodes: [],
+					},
 					upgradeTree: {
 						activeNodes: [],
 						completedNodes: [],
@@ -351,8 +311,13 @@ class UserStateService {
 			);
 
 			await this.updateStreak(stateNew);
-			// Initialize upgrade tree for new user
-			await this.initializeUserUpgradeTree(userId, t);
+
+			// Initialize related data for the new user
+			await Promise.all([
+				upgradeService.initializeUserUpgradeTree(userId, t),
+				taskService.initializeUserTasks(userId, t),
+				eventService.initializeUserEvents(userId, t),
+			]);
 
 			await t.commit();
 			return { userId, userState: stateNew };
@@ -368,12 +333,21 @@ class UserStateService {
 		const t = await sequelize.transaction();
 
 		try {
-			// Get count of users with more stars than the requested user
+			// Get user data and position in the leaderboard
 			let userRating = null;
+			let userData = null;
+
 			if (userId) {
 				const userState = await UserState.findOne({
 					where: { userId },
-					attributes: ['state', 'updatedAt'],
+					include: User,
+					attributes: [
+						'state',
+						'currentStreak',
+						'maxStreak',
+						'updatedAt',
+						'userId',
+					],
 					transaction: t,
 				});
 
@@ -406,11 +380,13 @@ class UserStateService {
 					});
 
 					userRating = higherUsers + 1;
+					userData = userState.toJSON();
+					userData.rating = userRating;
 				}
 			}
 
-			// Get top 100 users with full data
-			const top100Users = await UserState.findAll(
+			// Get top users based on LEADERBOARD_LIMIT
+			const topUsers = await UserState.findAll(
 				{
 					include: User,
 					order: [
@@ -422,7 +398,7 @@ class UserStateService {
 						],
 						['updatedAt', 'DESC'],
 					],
-					limit: 100,
+					limit: LEADERBOARD_LIMIT,
 					attributes: [
 						'state',
 						'currentStreak',
@@ -434,12 +410,21 @@ class UserStateService {
 				{ transaction: t }
 			);
 
-			// Calculate ratings for top 100
-			const users = top100Users.map((item, index) => {
+			// Calculate ratings for top users
+			const users = topUsers.map((item, index) => {
 				const user = item.toJSON();
 				user.rating = index + 1;
 				return user;
 			});
+
+			// Check if user is already in the leaderboard
+			const userInLeaderboard =
+				userId && users.some((user) => user.userId === userId);
+
+			// Add user data to the end of the leaderboard if not already included
+			if (userId && userData && !userInLeaderboard) {
+				users.push(userData);
+			}
 
 			await t.commit();
 			return {
@@ -449,95 +434,20 @@ class UserStateService {
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
-				`Failed to update user state: ${err.message}`
+				`Failed to get leaderboard: ${err.message}`
 			);
 		}
-	}
-
-	async updateUpgradeProgress(userId, nodeId, progressIncrement) {
-		const userState = await UserState.findOne({
-			where: { userId: userId },
-		});
-		if (userState) {
-			userState.progress = Math.min(
-				userState.progress + progressIncrement,
-				100
-			);
-			await this.updateStreak(userState);
-			await userState.save();
-		}
-	}
-
-	async getUserUpgradeProgress(userId) {
-		const userState = await UserState.findOne({
-			where: { userId: userId },
-		});
-		if (userState) {
-			return {
-				progress: userState.progress,
-				targetProgress: 100,
-				progressHistory: [],
-				lastProgressUpdate: userState.streakUpdatedAt,
-				stats: {
-					completedNodes: userState.progress === 100 ? 1 : 0,
-					totalNodes: 1,
-					averageProgress: userState.progress,
-				},
-			};
-		}
-		return null;
 	}
 
 	async getUserUpgradeTree(userId) {
-		const userState = await UserState.findOne({
-			where: { userId },
-		});
-
-		if (!userState || !userState.upgradeTree) {
-			return await this.initializeUserUpgradeTree(userId);
+		try {
+			// This method now delegates to the upgrade service
+			return await upgradeService.getUserUpgradeNodes(userId);
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to get user upgrade tree: ${err.message}`
+			);
 		}
-
-		const {
-			activeNodes,
-			completedNodes,
-			nodeStates,
-			treeStructure,
-			totalProgress,
-		} = userState.upgradeTree;
-
-		return {
-			activeNodes: activeNodes.map((nodeName) => ({
-				name: nodeName,
-				...nodeStates[nodeName],
-				...treeStructure[nodeName],
-			})),
-			completedNodes: completedNodes.map((nodeName) => ({
-				name: nodeName,
-				...nodeStates[nodeName],
-				...treeStructure[nodeName],
-			})),
-			treeStructure,
-			totalProgress,
-			stats: {
-				totalNodes: Object.keys(nodeStates).length,
-				activeCount: activeNodes.length,
-				completedCount: completedNodes.length,
-			},
-		};
-	}
-
-	async resetUserUpgradeTree(userId) {
-		const userState = await UserState.findOne({
-			where: { userId },
-		});
-
-		if (!userState) {
-			throw ApiError.BadRequest('User state not found');
-		}
-
-		// Reset the tree to initial state
-		await this.initializeUserUpgradeTree(userId);
-		return await this.getUserUpgradeTree(userId);
 	}
 }
 

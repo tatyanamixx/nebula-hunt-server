@@ -3,54 +3,43 @@ jest.mock('../../service/user-service');
 jest.mock('../../service/logger-service');
 jest.mock('../../service/market-service');
 
-// Мокаем middleware для тестирования
-jest.mock('../../middlewares/tma-middleware', () => (req, res, next) => {
-	req.initdata = {
-		id: 676176761,
-		username: 'testuser',
-	};
-	next();
-});
-
-jest.mock('../../middlewares/auth-middleware', () => (req, res, next) => {
-	// Пропускаем авторизацию в тестах и добавляем пользователя в запрос
-	req.user = {
-		id: 676176761,
-		username: 'testuser',
-		role: 'USER',
-	};
-	next();
-});
-
-jest.mock(
-	'../../middlewares/rate-limit-middleware',
-	() => () => (req, res, next) => next()
-);
-
-const request = require('supertest');
-const app = require('../../app'); // Импортируем app напрямую из app.js
+const userController = require('../../controllers/user-controller');
 const userService = require('../../service/user-service');
-const marketService = require('../../service/market-service');
+const ApiError = require('../../exceptions/api-error');
 
 describe('UserController', () => {
+	let req;
+	let res;
+	let next;
+
 	beforeEach(() => {
 		// Очищаем все моки перед каждым тестом
 		jest.clearAllMocks();
+
+		// Создаем моки для req, res и next
+		req = {
+			initdata: {
+				id: 676176761,
+				username: 'testuser',
+			},
+			body: {},
+			cookies: {},
+		};
+
+		res = {
+			status: jest.fn().mockReturnThis(),
+			json: jest.fn(),
+			cookie: jest.fn(),
+			clearCookie: jest.fn(),
+		};
+
+		next = jest.fn();
 	});
 
-	describe('POST /api/auth/registration', () => {
+	describe('registration', () => {
 		it('should register new user', async () => {
-			// Мокаем ответ от сервиса
-			userService.registration.mockResolvedValue({
-				user: { id: 676176761, username: 'testuser' },
-				userState: { state: { totalStars: 100 } },
-				userGalaxies: [{ id: 1, starMin: 100 }],
-				packageOffers: [{ id: 1, price: 100 }],
-				accessToken: 'test-access-token',
-				refreshToken: 'test-refresh-token',
-			});
-
-			const userData = {
+			// Подготавливаем тестовые данные
+			req.body = {
 				referral: 0,
 				userState: { state: { totalStars: 100 } },
 				galaxies: [
@@ -85,60 +74,66 @@ describe('UserController', () => {
 				],
 			};
 
-			const response = await request(app)
-				.post('/api/auth/registration')
-				.set('x-telegram-init-data', 'mock-telegram-data')
-				.send(userData);
+			// Мокаем ответ от сервиса
+			userService.registration.mockResolvedValue({
+				user: { id: req.initdata.id, username: req.initdata.username },
+				userState: { state: { totalStars: 100 } },
+				userGalaxies: [{ id: 1, starMin: 100 }],
+				packageOffers: [{ id: 1, price: 100 }],
+				accessToken: 'test-access-token',
+				refreshToken: 'test-refresh-token',
+			});
+
+			// Вызываем метод контроллера
+			await userController.registration(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильными параметрами
 			expect(userService.registration).toHaveBeenCalledWith(
-				676176761,
-				'testuser',
-				userData.referral,
-				userData.userState,
-				userData.galaxies
+				req.initdata.id,
+				req.initdata.username,
+				req.body.referral,
+				req.body.userState,
+				req.body.galaxies
+			);
+
+			// Проверяем, что cookie был установлен
+			expect(res.cookie).toHaveBeenCalledWith(
+				'refreshToken',
+				'test-refresh-token',
+				expect.any(Object)
 			);
 
 			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body.user).toBeDefined();
-			expect(response.body.userState).toBeDefined();
-			expect(response.body.userGalaxies).toBeDefined();
-			expect(response.body.packageOffers).toBeDefined();
-			expect(response.body.accessToken).toBeDefined();
-			expect(response.body.refreshToken).toBeDefined();
-			// Проверяем, что upgradeTree не возвращается отдельно
-			expect(response.body.upgradeTree).toBeUndefined();
+			expect(res.json).toHaveBeenCalled();
+			const responseData = res.json.mock.calls[0][0];
+			expect(responseData.user).toBeDefined();
+			expect(responseData.userState).toBeDefined();
+			expect(responseData.userGalaxies).toBeDefined();
+			expect(responseData.packageOffers).toBeDefined();
+			expect(responseData.accessToken).toBeDefined();
+			expect(responseData.refreshToken).toBeDefined();
 		});
 
 		it('should handle registration error', async () => {
 			// Мокаем ошибку от сервиса
-			userService.registration.mockRejectedValue(
-				new Error('Registration failed')
-			);
+			const errorMessage = 'Registration failed';
+			userService.registration.mockRejectedValue(new Error(errorMessage));
 
-			const userData = {
-				referral: 0,
-				userState: { state: { totalStars: 100 } },
-				galaxies: [],
-			};
+			// Вызываем метод контроллера
+			await userController.registration(req, res, next);
 
-			const response = await request(app)
-				.post('/api/auth/registration')
-				.set('x-telegram-init-data', 'mock-telegram-data')
-				.send(userData);
-
-			// Проверяем ответ с ошибкой
-			expect(response.status).toBe(500);
-			expect(response.body.message).toBeDefined();
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 
-	describe('POST /api/auth/login', () => {
+	describe('login', () => {
 		it('should login user successfully', async () => {
 			// Мокаем ответ от сервиса
 			userService.login.mockResolvedValue({
-				user: { id: 676176761, username: 'testuser' },
+				user: { id: req.initdata.id, username: req.initdata.username },
 				userState: { state: { totalStars: 100 } },
 				userGalaxies: [{ id: 1, starMin: 100 }],
 				userArtifacts: [{ id: 1, type: 'rare' }],
@@ -147,114 +142,135 @@ describe('UserController', () => {
 				refreshToken: 'test-refresh-token',
 			});
 
-			const response = await request(app)
-				.post('/api/auth/login')
-				.set('x-telegram-init-data', 'mock-telegram-data')
-				.set('Authorization', 'Bearer test-token');
+			// Вызываем метод контроллера
+			await userController.login(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильным ID
-			expect(userService.login).toHaveBeenCalledWith(676176761);
+			expect(userService.login).toHaveBeenCalledWith(req.initdata.id);
+
+			// Проверяем, что cookie был установлен
+			expect(res.cookie).toHaveBeenCalledWith(
+				'refreshToken',
+				'test-refresh-token',
+				expect.any(Object)
+			);
 
 			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body.user).toBeDefined();
-			expect(response.body.userState).toBeDefined();
-			expect(response.body.userGalaxies).toBeDefined();
-			expect(response.body.userArtifacts).toBeDefined();
-			expect(response.body.packageOffers).toBeDefined();
-			expect(response.body.accessToken).toBeDefined();
-			expect(response.body.refreshToken).toBeDefined();
+			expect(res.json).toHaveBeenCalled();
+			const responseData = res.json.mock.calls[0][0];
+			expect(responseData.user).toBeDefined();
+			expect(responseData.userState).toBeDefined();
+			expect(responseData.userGalaxies).toBeDefined();
+			expect(responseData.userArtifacts).toBeDefined();
+			expect(responseData.packageOffers).toBeDefined();
+			expect(responseData.accessToken).toBeDefined();
+			expect(responseData.refreshToken).toBeDefined();
 		});
 
 		it('should handle login error', async () => {
 			// Мокаем ошибку от сервиса
-			userService.login.mockRejectedValue(new Error('Login failed'));
+			const errorMessage = 'Login failed';
+			userService.login.mockRejectedValue(new Error(errorMessage));
 
-			const response = await request(app)
-				.post('/api/auth/login')
-				.set('x-telegram-init-data', 'mock-telegram-data');
+			// Вызываем метод контроллера
+			await userController.login(req, res, next);
 
-			// Проверяем ответ с ошибкой
-			expect(response.status).toBe(500);
-			expect(response.body.message).toBeDefined();
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 
-	describe('POST /api/auth/logout', () => {
+	describe('logout', () => {
 		it('should logout user successfully', async () => {
+			// Подготавливаем тестовые данные
+			req.cookies = { refreshToken: 'test-refresh-token' };
+
 			// Мокаем ответ от сервиса
 			userService.logout.mockResolvedValue({ success: true });
 
-			const response = await request(app)
-				.post('/api/auth/logout')
-				.set('Authorization', 'Bearer test-token')
-				.set('Cookie', ['refreshToken=test-refresh-token']);
+			// Вызываем метод контроллера
+			await userController.logout(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильным токеном
 			expect(userService.logout).toHaveBeenCalledWith(
 				'test-refresh-token'
 			);
 
+			// Проверяем, что cookie был очищен
+			expect(res.clearCookie).toHaveBeenCalledWith('refreshToken');
+
 			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ success: true });
+			expect(res.json).toHaveBeenCalledWith({ success: true });
 		});
 
 		it('should handle logout error', async () => {
 			// Мокаем ошибку от сервиса
-			userService.logout.mockRejectedValue(new Error('Logout failed'));
+			const errorMessage = 'Logout failed';
+			userService.logout.mockRejectedValue(new Error(errorMessage));
 
-			const response = await request(app)
-				.post('/api/auth/logout')
-				.set('Authorization', 'Bearer test-token');
+			// Вызываем метод контроллера
+			await userController.logout(req, res, next);
 
-			// Проверяем ответ с ошибкой
-			expect(response.status).toBe(500);
-			expect(response.body.message).toBeDefined();
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 
-	describe('GET /api/auth/refresh', () => {
+	describe('refresh', () => {
 		it('should refresh tokens successfully', async () => {
+			// Подготавливаем тестовые данные
+			req.cookies = { refreshToken: 'test-refresh-token' };
+
 			// Мокаем ответ от сервиса
 			userService.refresh.mockResolvedValue({
-				user: { id: 676176761, username: 'testuser' },
+				user: { id: req.initdata.id, username: req.initdata.username },
 				accessToken: 'new-access-token',
 				refreshToken: 'new-refresh-token',
 			});
 
-			const response = await request(app)
-				.get('/api/auth/refresh')
-				.set('Authorization', 'Bearer test-token')
-				.set('Cookie', ['refreshToken=test-refresh-token']);
+			// Вызываем метод контроллера
+			await userController.refresh(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильным токеном
 			expect(userService.refresh).toHaveBeenCalledWith(
 				'test-refresh-token'
 			);
 
+			// Проверяем, что cookie был установлен
+			expect(res.cookie).toHaveBeenCalledWith(
+				'refreshToken',
+				'new-refresh-token',
+				expect.any(Object)
+			);
+
 			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body.user).toBeDefined();
-			expect(response.body.accessToken).toBeDefined();
-			expect(response.body.refreshToken).toBeDefined();
+			expect(res.json).toHaveBeenCalled();
+			const responseData = res.json.mock.calls[0][0];
+			expect(responseData.user).toBeDefined();
+			expect(responseData.accessToken).toBeDefined();
+			expect(responseData.refreshToken).toBeDefined();
 		});
 
 		it('should handle refresh error', async () => {
 			// Мокаем ошибку от сервиса
-			userService.refresh.mockRejectedValue(new Error('Refresh failed'));
+			const errorMessage = 'Refresh failed';
+			userService.refresh.mockRejectedValue(new Error(errorMessage));
 
-			const response = await request(app)
-				.get('/api/auth/refresh')
-				.set('Authorization', 'Bearer test-token');
+			// Вызываем метод контроллера
+			await userController.refresh(req, res, next);
 
-			// Проверяем ответ с ошибкой
-			expect(response.status).toBe(500);
-			expect(response.body.message).toBeDefined();
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 
-	describe('GET /api/auth/friends', () => {
+	describe('getFriends', () => {
 		it('should get user friends successfully', async () => {
 			// Мокаем ответ от сервиса
 			userService.getFriends.mockResolvedValue({
@@ -265,34 +281,36 @@ describe('UserController', () => {
 				],
 			});
 
-			const response = await request(app)
-				.get('/api/auth/friends')
-				.set('x-telegram-init-data', 'mock-telegram-data')
-				.set('Authorization', 'Bearer test-token');
+			// Вызываем метод контроллера
+			await userController.getFriends(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильным ID
-			expect(userService.getFriends).toHaveBeenCalledWith(676176761);
+			expect(userService.getFriends).toHaveBeenCalledWith(
+				req.initdata.id
+			);
 
 			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body.count).toBe(2);
-			expect(response.body.friends).toHaveLength(2);
+			expect(res.json).toHaveBeenCalledWith({
+				count: 2,
+				friends: [
+					{ id: 123, username: 'friend1' },
+					{ id: 456, username: 'friend2' },
+				],
+			});
 		});
 
 		it('should handle getFriends error', async () => {
 			// Мокаем ошибку от сервиса
-			userService.getFriends.mockRejectedValue(
-				new Error('Failed to get friends')
-			);
+			const errorMessage = 'Failed to get friends';
+			userService.getFriends.mockRejectedValue(new Error(errorMessage));
 
-			const response = await request(app)
-				.get('/api/auth/friends')
-				.set('x-telegram-init-data', 'mock-telegram-data')
-				.set('Authorization', 'Bearer test-token');
+			// Вызываем метод контроллера
+			await userController.getFriends(req, res, next);
 
-			// Проверяем ответ с ошибкой
-			expect(response.status).toBe(500);
-			expect(response.body.message).toBeDefined();
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 });

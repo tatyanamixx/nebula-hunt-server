@@ -1,93 +1,23 @@
 /**
  * created by Tatyana Mikhniukevich on 29.05.2025
  */
-const stateService = require('../service/state-service');
 const upgradeService = require('../service/upgrade-service');
 const ApiError = require('../exceptions/api-error');
-const logger = require('../service/logger-service');
 
 class UpgradeController {
-	async getUserUpgradeTree(req, res, next) {
-		try {
-			const id = req.initdata.id;
-			const tree = await stateService.getUserUpgradeTree(id);
-			return res.json(tree);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async getUpgradeNodeProgress(req, res, next) {
-		try {
-			const id = req.initdata.id;
-			const { nodeId } = req.params;
-
-			if (!nodeId) {
-				throw ApiError.BadRequest('Node ID is required');
-			}
-
-			const progress = await stateService.getUpgradeProgress(id, nodeId);
-			return res.json(progress);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async updateNodeProgress(req, res, next) {
-		try {
-			const id = req.initdata.id;
-			const { nodeId } = req.params;
-			const { progressIncrement } = req.body;
-
-			if (!nodeId) {
-				throw ApiError.BadRequest('Node ID is required');
-			}
-
-			if (typeof progressIncrement !== 'number') {
-				throw ApiError.BadRequest(
-					'Progress increment must be a number'
-				);
-			}
-
-			const result = await upgradeService.updateUpgradeProgress(
-				id,
-				nodeId,
-				progressIncrement
-			);
-			logger.info('Upgrade progressed', {
-				userId: id,
-				nodeId,
-				progressIncrement,
-			});
-			return res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async getUserUpgradeStats(req, res, next) {
-		try {
-			const id = req.initdata.id;
-			const stats = await stateService.getUserUpgradeProgress(id);
-			return res.json(stats);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	// Административные методы
 	async createUpgradeNodes(req, res, next) {
 		try {
 			const { nodes } = req.body;
-
-			if (!Array.isArray(nodes)) {
-				throw ApiError.BadRequest('Nodes must be an array');
+			if (!nodes || !Array.isArray(nodes)) {
+				return next(
+					ApiError.BadRequest('Invalid request: nodes array required')
+				);
 			}
 
-			const createdNodes = await upgradeService.createUpgradeNodes(nodes);
-			return res.json(createdNodes);
-		} catch (e) {
-			next(e);
+			const result = await upgradeService.createUpgradeNodes(nodes);
+			return res.json(result);
+		} catch (err) {
+			next(err);
 		}
 	}
 
@@ -97,13 +27,20 @@ class UpgradeController {
 			const nodeData = req.body;
 
 			if (!nodeId) {
-				throw ApiError.BadRequest('Node ID is required');
+				return next(ApiError.BadRequest('Node ID is required'));
 			}
 
-			const node = await upgradeService.updateNode(nodeId, nodeData);
+			if (!nodeData) {
+				return next(ApiError.BadRequest('Node data is required'));
+			}
+
+			const node = await upgradeService.updateUpgradeNode(
+				nodeId,
+				nodeData
+			);
 			return res.json(node);
-		} catch (e) {
-			next(e);
+		} catch (err) {
+			next(err);
 		}
 	}
 
@@ -112,22 +49,133 @@ class UpgradeController {
 			const { nodeId } = req.params;
 
 			if (!nodeId) {
-				throw ApiError.BadRequest('Node ID is required');
+				return next(ApiError.BadRequest('Node ID is required'));
 			}
 
-			await upgradeService.deleteNode(nodeId);
-			return res.json({ message: 'Node deleted successfully' });
-		} catch (e) {
-			next(e);
+			const result = await upgradeService.deleteUpgradeNode(nodeId);
+			return res.json(result);
+		} catch (err) {
+			next(err);
 		}
 	}
 
 	async getAllUpgradeNodes(req, res, next) {
 		try {
-			const nodes = await upgradeService.getAllNodes();
+			const nodes = await upgradeService.getAllUpgradeNodes();
 			return res.json(nodes);
-		} catch (e) {
-			next(e);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async getUserUpgradeNodes(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const nodes = await upgradeService.getUserUpgradeNodes(userId);
+			return res.json(nodes);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async getUserUpgradeNode(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { nodeId } = req.params;
+
+			if (!nodeId) {
+				return next(ApiError.BadRequest('Node ID is required'));
+			}
+
+			const node = await upgradeService.getUserUpgradeNode(
+				userId,
+				nodeId
+			);
+			return res.json(node);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async completeUpgradeNode(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { nodeId } = req.body;
+
+			if (!nodeId) {
+				return next(ApiError.BadRequest('Node ID is required'));
+			}
+
+			const result = await upgradeService.completeUpgradeNode(
+				userId,
+				nodeId
+			);
+			return res.json(result);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async updateUpgradeProgress(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { nodeId, progress } = req.body;
+
+			if (!nodeId || progress === undefined) {
+				return next(
+					ApiError.BadRequest('Node ID and progress are required')
+				);
+			}
+
+			const result = await upgradeService.updateUpgradeProgress(
+				userId,
+				nodeId,
+				progress
+			);
+			return res.json(result);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async getUpgradeProgress(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const { nodeId } = req.params;
+
+			if (!nodeId) {
+				return next(ApiError.BadRequest('Node ID is required'));
+			}
+
+			const progress = await upgradeService.getUpgradeProgress(
+				userId,
+				nodeId
+			);
+			return res.json(progress);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async initializeUserUpgradeTree(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const result = await upgradeService.initializeUserUpgradeTree(
+				userId
+			);
+			return res.json(result);
+		} catch (err) {
+			next(err);
+		}
+	}
+
+	async getUserUpgradeStats(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const stats = await upgradeService.getUserUpgradeStats(userId);
+			return res.json(stats);
+		} catch (err) {
+			next(err);
 		}
 	}
 }

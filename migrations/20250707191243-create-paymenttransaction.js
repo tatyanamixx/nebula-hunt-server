@@ -39,7 +39,13 @@ module.exports = {
 				type: Sequelize.ENUM(
 					'BUYER_TO_CONTRACT',
 					'CONTRACT_TO_SELLER',
-					'FEE'
+					'FEE',
+					'FARMING_REWARD',
+					'UPGRADE_PAYMENT',
+					'TASK_REWARD',
+					'EVENT_REWARD',
+					'GALAXY_STARS_TRANSFER',
+					'RESOURCE_EXCHANGE'
 				),
 				allowNull: false,
 			},

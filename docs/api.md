@@ -151,7 +151,8 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
     "username": "player1",
     "referral": 0,
     "role": "USER",
-    "blocked": false
+    "blocked": false,
+    "tonWallet": null
   },
   "userState": {
     "id": 1,
@@ -261,6 +262,56 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 		}
 	}
 ]
+```
+
+### Получение таблицы лидеров
+
+**GET** `/state/leaderboard`
+
+Получает таблицу лидеров с топ-N пользователями (где N = LEADERBOARD_LIMIT из конфигурации, по умолчанию 100) и позицией текущего пользователя. Если текущий пользователь не входит в топ, его данные добавляются в конец списка. Требует TMA, JWT авторизации и rate limiting (60 запросов в минуту).
+
+**Ответ:**
+
+```json
+{
+	"leaderboard": [
+		{
+			"userId": 123,
+			"state": {
+				"totalStars": 1000,
+				"stardustCount": 500,
+				"darkMatterCount": 100
+			},
+			"currentStreak": 5,
+			"maxStreak": 10,
+			"updatedAt": "2025-07-10T12:55:41.000Z",
+			"User": {
+				"username": "user1"
+			},
+			"rating": 1
+		},
+		// ... другие пользователи из топа (всего LEADERBOARD_LIMIT записей)
+
+		// Если запрашивающий пользователь не входит в топ,
+		// его данные будут добавлены в конец списка:
+		{
+			"userId": 456,
+			"state": {
+				"totalStars": 50,
+				"stardustCount": 20,
+				"darkMatterCount": 5
+			},
+			"currentStreak": 2,
+			"maxStreak": 3,
+			"updatedAt": "2025-07-09T10:30:00.000Z",
+			"User": {
+				"username": "currentUser"
+			},
+			"rating": 120
+		}
+	],
+	"userRating": 120
+}
 ```
 
 ### Получение системного пользователя
@@ -652,285 +703,230 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 }
 ```
 
-## Апгрейды
+## Upgrades API
 
-### Получение доступных апгрейдов
+### Get All User Upgrade Nodes
 
-**GET** `/upgrades`
-
-Получает список доступных апгрейдов для пользователя.
-
-**Ответ:**
-
-```json
-[
-	{
-		"id": "upgrade_1",
-		"name": "Star Production",
-		"description": {
-			"en": "Increase star production by 10%",
-			"ru": "Увеличивает производство звезд на 10%"
-		},
-		"maxLevel": 10,
-		"basePrice": 100,
-		"effectPerLevel": 0.1,
-		"priceMultiplier": 1.5,
-		"currency": "stardust",
-		"category": "production",
-		"icon": "⭐",
-		"stability": 0.8,
-		"instability": 0.2,
-		"modifiers": {
-			"productionBonus": 0.1,
-			"costReduction": 0.05
-		},
-		"conditions": {
-			"minStars": 100,
-			"requiredUpgrades": ["upgrade_2"]
-		},
-		"children": ["upgrade_3", "upgrade_4"],
-		"weight": 1
-	}
-]
+```
+GET /upgrades/nodes
 ```
 
-### Покупка апгрейда
+Returns all upgrade nodes available to the user.
 
-**POST** `/upgrades/purchase`
+### Get User Upgrade Node
 
-Покупает апгрейд для пользователя.
+```
+GET /upgrades/nodes/:nodeId
+```
 
-**Тело запроса:**
+Returns details of a specific upgrade node for the user.
+
+### Complete Upgrade Node
+
+```
+POST /upgrades/complete
+```
+
+Marks an upgrade node as completed.
+
+**Request Body:**
 
 ```json
 {
-	"upgradeId": "upgrade_1",
-	"level": 1
+	"nodeId": "string"
 }
 ```
 
-**Ответ:**
+### Update Upgrade Progress
+
+```
+POST /upgrades/progress
+```
+
+Updates progress for an upgrade node.
+
+**Request Body:**
 
 ```json
 {
-	"message": "Upgrade purchased successfully",
-	"upgrade": {
-		"id": "upgrade_1",
-		"level": 1,
-		"progress": 1.0,
-		"completed": true,
-		"cost": 100,
-		"effects": {
-			"productionBonus": 0.1
-		}
-	},
-	"userState": {
-		"stardustCount": 50,
-		"upgradeTree": {
-			"activeNodes": ["upgrade_3", "upgrade_4"],
-			"completedNodes": ["upgrade_1"],
-			"totalProgress": 15
-		}
-	}
+	"nodeId": "string",
+	"progress": 10
 }
 ```
 
-### Получение дерева апгрейдов
+### Get Upgrade Progress
 
-**GET** `/upgrades/tree`
+```
+GET /upgrades/progress/:nodeId
+```
 
-Получает полное дерево апгрейдов с прогрессом пользователя.
+Returns progress details for a specific upgrade node.
 
-**Ответ:**
+### Initialize User Upgrade Tree
+
+```
+POST /upgrades/initialize
+```
+
+Initializes the upgrade tree for a user.
+
+### Get User Upgrade Stats
+
+```
+GET /upgrades/stats
+```
+
+Returns statistics about user's upgrades.
+
+## Tasks API
+
+### Get All User Tasks
+
+```
+GET /tasks
+```
+
+Returns all tasks available to the user.
+
+### Get User Task
+
+```
+GET /tasks/:taskId
+```
+
+Returns details of a specific task for the user.
+
+### Complete Task
+
+```
+POST /tasks/complete
+```
+
+Marks a task as completed.
+
+**Request Body:**
 
 ```json
 {
-	"tree": {
-		"nodes": {
-			"upgrade_1": {
-				"id": "upgrade_1",
-				"name": "Star Production",
-				"level": 2,
-				"maxLevel": 10,
-				"completed": true,
-				"children": ["upgrade_3", "upgrade_4"],
-				"requirements": {
-					"met": true,
-					"missing": []
-				}
-			}
-		},
-		"connections": [
-			{
-				"from": "upgrade_1",
-				"to": "upgrade_3"
-			}
-		]
-	},
-	"userProgress": {
-		"activeNodes": ["upgrade_3", "upgrade_4"],
-		"completedNodes": ["upgrade_1", "upgrade_2"],
-		"totalProgress": 25,
-		"availableUpgrades": ["upgrade_3", "upgrade_4"]
-	}
+	"taskId": "string"
 }
 ```
 
-## События
+### Update Task Progress
 
-### Получение активных событий
+```
+POST /tasks/progress
+```
 
-**GET** `/events`
+Updates progress for a task.
 
-Получает активные события для пользователя.
-
-**Ответ:**
+**Request Body:**
 
 ```json
 {
-	"activeEvents": [
-		{
-			"id": "event_1",
-			"name": "Star Storm",
-			"description": {
-				"en": "Increased star production for 1 hour",
-				"ru": "Увеличенное производство звезд на 1 час"
-			},
-			"type": "RANDOM",
-			"effect": {
-				"type": "multiplier",
-				"target": "production",
-				"value": 2.0,
-				"duration": 3600000
-			},
-			"startTime": "2024-01-01T12:00:00.000Z",
-			"endTime": "2024-01-01T13:00:00.000Z",
-			"progress": 0.5
-		}
-	],
-	"eventMultipliers": {
-		"production": 2.0,
-		"chaos": 1.0,
-		"stability": 1.0,
-		"entropy": 1.0,
-		"rewards": 1.0
-	},
-	"nextEventCheck": "2024-01-01T12:30:00.000Z"
+	"taskId": "string",
+	"progress": 10
 }
 ```
 
-### Принудительный запуск события
+### Get Task Progress
 
-**POST** `/events/trigger`
+```
+GET /tasks/progress/:taskId
+```
 
-Принудительно запускает событие (только для администраторов).
+Returns progress details for a specific task.
 
-**Тело запроса:**
+### Initialize User Tasks
+
+```
+POST /tasks/initialize
+```
+
+Initializes tasks for a user.
+
+### Get User Task Stats
+
+```
+GET /tasks/stats
+```
+
+Returns statistics about user's tasks.
+
+## Events API
+
+### Get All User Events
+
+```
+GET /events
+```
+
+Returns all events for the user.
+
+### Get User Event
+
+```
+GET /events/:eventId
+```
+
+Returns details of a specific event for the user.
+
+### Trigger Event
+
+```
+POST /events/trigger
+```
+
+Triggers a specific event for the user.
+
+**Request Body:**
 
 ```json
 {
-	"eventId": "event_1",
-	"userId": 123456
+	"eventId": "string"
 }
 ```
 
-**Ответ:**
+### Get User Event Settings
+
+```
+GET /events/settings
+```
+
+Returns event settings for the user.
+
+### Update User Event Settings
+
+```
+PUT /events/settings
+```
+
+Updates event settings for the user.
+
+**Request Body:**
 
 ```json
 {
-	"message": "Event triggered successfully",
-	"event": {
-		"id": "event_1",
-		"name": "Star Storm",
-		"startTime": "2024-01-01T12:00:00.000Z",
-		"endTime": "2024-01-01T13:00:00.000Z"
-	}
+	"enabledTypes": ["RANDOM", "PERIODIC", "CONDITIONAL"],
+	"disabledEvents": ["event1", "event2"]
 }
 ```
 
-## Задачи
+### Initialize User Events
 
-### Получение доступных задач
-
-**GET** `/tasks`
-
-Получает доступные задачи для пользователя.
-
-**Ответ:**
-
-```json
-{
-	"availableTasks": [
-		{
-			"id": "task_1",
-			"title": {
-				"en": "First Steps",
-				"ru": "Первые шаги"
-			},
-			"description": {
-				"en": "Produce 100 stars",
-				"ru": "Произведите 100 звезд"
-			},
-			"reward": 50,
-			"condition": {
-				"type": "production",
-				"target": "totalStars",
-				"operator": ">=",
-				"value": 100
-			},
-			"icon": "⭐",
-			"progress": {
-				"current": 75,
-				"target": 100,
-				"percentage": 0.75
-			},
-			"completed": false
-		}
-	],
-	"completedTasks": ["task_2", "task_3"],
-	"taskMultipliers": {
-		"progress": 1.0,
-		"rewards": 1.0,
-		"unlock": 1.0
-	}
-}
+```
+POST /events/initialize
 ```
 
-### Завершение задачи
+Initializes events for a user.
 
-**POST** `/tasks/complete`
+### Get User Event Stats
 
-Завершает задачу и выдает награду.
-
-**Тело запроса:**
-
-```json
-{
-	"taskId": "task_1"
-}
+```
+GET /events/stats
 ```
 
-**Ответ:**
-
-```json
-{
-	"message": "Task completed successfully",
-	"task": {
-		"id": "task_1",
-		"title": "First Steps",
-		"completed": true,
-		"completedAt": "2024-01-01T12:00:00.000Z"
-	},
-	"reward": {
-		"stardust": 50,
-		"experience": 10
-	},
-	"userState": {
-		"stardustCount": 200,
-		"completedTasks": ["task_1", "task_2", "task_3"]
-	}
-}
-```
+Returns statistics about user's events.
 
 ## Обработка ошибок
 
@@ -1409,6 +1405,698 @@ const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
 }
 ```
 
+## Маркет и платежи
+
+### Управление TON-кошельком
+
+#### Получение адреса TON-кошелька
+
+**GET** `/market/ton-wallet`
+
+Получает адрес TON-кошелька пользователя.
+
+**Ответ:**
+
+```json
+{
+	"tonWallet": "EQD7-buI0-VuhTBQbM_Zj_8qV4lf2EA5AoCv9yGF5HzDTuT7"
+}
+```
+
+#### Обновление адреса TON-кошелька
+
+**PUT** `/market/ton-wallet`
+
+Обновляет адрес TON-кошелька пользователя.
+
+**Тело запроса:**
+
+```json
+{
+	"tonWallet": "EQD7-buI0-VuhTBQbM_Zj_8qV4lf2EA5AoCv9yGF5HzDTuT7"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"success": true,
+	"tonWallet": "EQD7-buI0-VuhTBQbM_Zj_8qV4lf2EA5AoCv9yGF5HzDTuT7"
+}
+```
+
+### Внутриигровые транзакции
+
+#### Регистрация награды за фарминг
+
+**POST** `/market/farming-reward`
+
+Регистрирует получение ресурсов (пыль, темная материя) через фарминг.
+
+**Тело запроса:**
+
+```json
+{
+	"amount": 100,
+	"currency": "stardust",
+	"source": "mining"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 1,
+		"offerId": null,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:00:00.000Z"
+	},
+	"payment": {
+		"id": 1,
+		"marketTransactionId": 1,
+		"fromAccount": -1,
+		"toAccount": 123456,
+		"amount": "100",
+		"currency": "stardust",
+		"txType": "FARMING_REWARD",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T12:00:00.000Z"
+	}
+}
+```
+
+#### Регистрация оплаты апгрейда
+
+**POST** `/market/upgrade-payment`
+
+Регистрирует оплату за приобретение апгрейда.
+
+**Тело запроса:**
+
+```json
+{
+	"nodeId": "production_1",
+	"amount": 50,
+	"currency": "stardust"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 2,
+		"offerId": null,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:05:00.000Z"
+	},
+	"payment": {
+		"id": 2,
+		"marketTransactionId": 2,
+		"fromAccount": 123456,
+		"toAccount": -1,
+		"amount": "50",
+		"currency": "stardust",
+		"txType": "UPGRADE_PAYMENT",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T12:05:00.000Z"
+	}
+}
+```
+
+#### Регистрация награды за задачу
+
+**POST** `/market/task-reward`
+
+Регистрирует получение награды за выполнение задачи.
+
+**Тело запроса:**
+
+```json
+{
+	"taskId": "daily_1",
+	"amount": 25,
+	"currency": "darkMatter"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 3,
+		"offerId": null,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:10:00.000Z"
+	},
+	"payment": {
+		"id": 3,
+		"marketTransactionId": 3,
+		"fromAccount": -1,
+		"toAccount": 123456,
+		"amount": "25",
+		"currency": "darkMatter",
+		"txType": "TASK_REWARD",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T12:10:00.000Z"
+	}
+}
+```
+
+#### Регистрация награды за событие
+
+**POST** `/market/event-reward`
+
+Регистрирует получение награды за завершение события.
+
+**Тело запроса:**
+
+```json
+{
+	"eventId": "event_1",
+	"amount": 30,
+	"currency": "stardust"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 4,
+		"offerId": null,
+		"buyerId": 123456,
+		"sellerId": -1,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:15:00.000Z"
+	},
+	"payment": {
+		"id": 4,
+		"marketTransactionId": 4,
+		"fromAccount": -1,
+		"toAccount": 123456,
+		"amount": "30",
+		"currency": "stardust",
+		"txType": "EVENT_REWARD",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T12:15:00.000Z"
+	}
+}
+```
+
+### Операции с галактиками
+
+#### Добавление звезд в галактику
+
+**POST** `/galaxy/add-stars`
+
+Добавляет звезды в галактику пользователя.
+
+**Тело запроса:**
+
+```json
+{
+	"galaxyId": 1,
+	"amount": 50
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"success": true,
+	"galaxy": {
+		"id": 1,
+		"userId": 123456,
+		"starMin": 100,
+		"starCurrent": 150,
+		"price": 100,
+		"seed": "galaxy_seed_1",
+		"particleCount": 100
+	},
+	"transaction": {
+		"id": 5,
+		"offerId": null,
+		"buyerId": -1,
+		"sellerId": 123456,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:20:00.000Z"
+	}
+}
+```
+
+### P2P торговля ресурсами
+
+#### Создание оферты на продажу ресурсов
+
+**POST** `/market/resource-offer`
+
+Создает оферту на продажу ресурсов (пыль, темная материя, звезды) за TON.
+
+**Тело запроса:**
+
+```json
+{
+	"resourceType": "stardust",
+	"amount": 1000,
+	"price": "0.1",
+	"currency": "tonToken"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": 6,
+	"sellerId": 123456,
+	"itemType": "resource",
+	"itemId": "stardust_1000",
+	"price": "0.1",
+	"currency": "tonToken",
+	"status": "ACTIVE",
+	"offerType": "P2P",
+	"createdAt": "2025-07-10T12:25:00.000Z",
+	"expiresAt": null
+}
+```
+
+#### Обмен ресурсами между пользователями
+
+**POST** `/market/exchange-resources`
+
+Выполняет обмен ресурсами между пользователями.
+
+**Тело запроса:**
+
+```json
+{
+	"toUserId": 654321,
+	"resourceType": "darkMatter",
+	"amount": 50
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 7,
+		"offerId": null,
+		"buyerId": 654321,
+		"sellerId": 123456,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T12:30:00.000Z"
+	},
+	"payment": {
+		"id": 7,
+		"marketTransactionId": 7,
+		"fromAccount": 123456,
+		"toAccount": 654321,
+		"amount": "50",
+		"currency": "darkMatter",
+		"txType": "RESOURCE_EXCHANGE",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T12:30:00.000Z"
+	}
+}
+```
+
+### Получение оферт с пагинацией
+
+#### Получение всех оферт
+
+**GET** `/market/offers?page=1&limit=10&itemType=resource&offerType=P2P&status=ACTIVE&currency=tonToken`
+
+Получает список всех оферт с пагинацией и фильтрацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `itemType` - тип предмета (galaxy, artifact, resource, package)
+-   `offerType` - тип оферты (SYSTEM, P2P)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED)
+-   `currency` - валюта оферты (tgStars, stardust, darkMatter, tonToken)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 1,
+			"sellerId": 123456,
+			"itemType": "resource",
+			"itemId": "stardust_1000",
+			"price": "0.1",
+			"currency": "tonToken",
+			"status": "ACTIVE",
+			"offerType": "P2P",
+			"createdAt": "2025-07-10T12:25:00.000Z",
+			"expiresAt": null,
+			"seller": {
+				"id": 123456,
+				"username": "player1"
+			}
+		}
+		// ... другие оферты
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 25,
+		"totalPages": 3
+	}
+}
+```
+
+#### Получение оферт галактик
+
+**GET** `/market/offers/galaxy?page=1&limit=10&status=ACTIVE&currency=tgStars`
+
+Получает список оферт галактик с пагинацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED)
+-   `currency` - валюта оферты (tgStars, stardust, darkMatter, tonToken)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 2,
+			"sellerId": 123456,
+			"itemType": "galaxy",
+			"itemId": "1",
+			"price": "100",
+			"currency": "tgStars",
+			"status": "ACTIVE",
+			"offerType": "P2P",
+			"createdAt": "2025-07-10T12:30:00.000Z",
+			"expiresAt": null,
+			"seller": {
+				"id": 123456,
+				"username": "player1"
+			}
+		}
+		// ... другие оферты галактик
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 15,
+		"totalPages": 2
+	}
+}
+```
+
+#### Получение оферт ресурсов
+
+**GET** `/market/offers/resource?page=1&limit=10&resourceType=stardust&status=ACTIVE`
+
+Получает список оферт ресурсов с пагинацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `resourceType` - тип ресурса (stardust, darkMatter, tgStars)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 3,
+			"sellerId": 123456,
+			"itemType": "resource",
+			"itemId": "stardust_1000",
+			"price": "0.1",
+			"currency": "tonToken",
+			"status": "ACTIVE",
+			"offerType": "P2P",
+			"createdAt": "2025-07-10T12:35:00.000Z",
+			"expiresAt": null,
+			"seller": {
+				"id": 123456,
+				"username": "player1",
+				"tonWallet": "EQD7-buI0-VuhTBQbM_Zj_8qV4lf2EA5AoCv9yGF5HzDTuT7"
+			},
+			"resourceType": "stardust",
+			"resourceAmount": 1000
+		}
+		// ... другие оферты ресурсов
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 20,
+		"totalPages": 2
+	}
+}
+```
+
+#### Получение оферт артефактов
+
+**GET** `/market/offers/artifact?page=1&limit=10&status=ACTIVE&currency=darkMatter&rarity=LEGENDARY`
+
+Получает список оферт артефактов с пагинацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED)
+-   `currency` - валюта оферты (tgStars, stardust, darkMatter, tonToken)
+-   `rarity` - редкость артефакта (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 4,
+			"sellerId": 123456,
+			"itemType": "artifact",
+			"itemId": "1",
+			"price": "500",
+			"currency": "darkMatter",
+			"status": "ACTIVE",
+			"offerType": "P2P",
+			"createdAt": "2025-07-10T12:40:00.000Z",
+			"expiresAt": null,
+			"seller": {
+				"id": 123456,
+				"username": "player1"
+			}
+		}
+		// ... другие оферты артефактов
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 5,
+		"totalPages": 1
+	}
+}
+```
+
+#### Получение P2P оферт
+
+**GET** `/market/offers/p2p?page=1&limit=10&status=ACTIVE&currency=tonToken&itemType=resource`
+
+Получает список P2P оферт с пагинацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED)
+-   `currency` - валюта оферты (tgStars, stardust, darkMatter, tonToken)
+-   `itemType` - тип предмета (galaxy, artifact, resource, package)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 5,
+			"sellerId": 123456,
+			"itemType": "resource",
+			"itemId": "stardust_1000",
+			"price": "0.1",
+			"currency": "tonToken",
+			"status": "ACTIVE",
+			"offerType": "P2P",
+			"createdAt": "2025-07-10T12:45:00.000Z",
+			"expiresAt": null,
+			"seller": {
+				"id": 123456,
+				"username": "player1"
+			}
+		}
+		// ... другие P2P оферты
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 30,
+		"totalPages": 3
+	}
+}
+```
+
+#### Получение системных оферт
+
+**GET** `/market/offers/system?page=1&limit=10&status=ACTIVE&currency=tgStars&itemType=galaxy`
+
+Получает список системных оферт с пагинацией.
+
+**Параметры запроса:**
+
+-   `page` - номер страницы (по умолчанию: 1)
+-   `limit` - количество элементов на странице (по умолчанию: 10, максимум: 50)
+-   `status` - статус оферты (ACTIVE, COMPLETED, CANCELLED, EXPIRED)
+-   `currency` - валюта оферты (tgStars, stardust, darkMatter, tonToken)
+-   `itemType` - тип предмета (galaxy, artifact, resource, package)
+
+**Ответ:**
+
+```json
+{
+	"offers": [
+		{
+			"id": 6,
+			"sellerId": -1,
+			"itemType": "galaxy",
+			"itemId": "2",
+			"price": "200",
+			"currency": "tgStars",
+			"status": "ACTIVE",
+			"offerType": "SYSTEM",
+			"createdAt": "2025-07-10T12:50:00.000Z",
+			"expiresAt": "2025-07-24T12:50:00.000Z",
+			"isItemLocked": true,
+			"seller": {
+				"id": -1,
+				"username": "SYSTEM"
+			}
+		}
+		// ... другие системные оферты
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 10,
+		"totalItems": 25,
+		"totalPages": 3
+	}
+}
+```
+
+#### Отмена оферты
+
+**POST** `/market/offers/{offerId}/cancel`
+
+Отменяет активную оферту и разблокирует ресурсы или объект.
+
+**Параметры пути:**
+
+-   `offerId` - ID оферты для отмены
+
+**Ответ:**
+
+```json
+{
+	"id": 5,
+	"sellerId": 123456,
+	"itemType": "resource",
+	"itemId": "stardust_1000",
+	"price": "0.1",
+	"currency": "tonToken",
+	"status": "CANCELLED",
+	"offerType": "P2P",
+	"createdAt": "2025-07-10T12:45:00.000Z",
+	"expiresAt": "2025-07-13T12:45:00.000Z",
+	"isItemLocked": false
+}
+```
+
+#### Покупка оферты
+
+**POST** `/market/offers/{offerId}/buy`
+
+Покупает оферту, переводит средства продавцу и передает право собственности на предмет покупателю.
+
+**Параметры пути:**
+
+-   `offerId` - ID оферты для покупки
+
+**Ответ:**
+
+```json
+{
+	"transaction": {
+		"id": 8,
+		"offerId": 5,
+		"buyerId": 654321,
+		"sellerId": 123456,
+		"status": "COMPLETED",
+		"completedAt": "2025-07-10T13:00:00.000Z"
+	},
+	"payment": {
+		"id": 8,
+		"marketTransactionId": 8,
+		"fromAccount": 654321,
+		"toAccount": 123456,
+		"amount": "0.1",
+		"currency": "tonToken",
+		"txType": "MARKET_PURCHASE",
+		"status": "CONFIRMED",
+		"confirmedAt": "2025-07-10T13:00:00.000Z"
+	}
+}
+```
+
+#### Обработка истекших оферт
+
+**POST** `/market/offers/process-expired`
+
+Обрабатывает истекшие оферты, меняя их статус на EXPIRED и разблокируя ресурсы или объекты. Доступно только для администраторов.
+
+**Ответ:**
+
+```json
+{
+	"success": true,
+	"processedOffers": 3,
+	"message": "Обработано 3 истекших оферт"
+}
+```
+
 ## Rate Limiting
 
 API использует rate limiting для защиты от злоупотреблений:
@@ -1577,3 +2265,206 @@ ADMIN_INIT_SECRET=your_super_secret_key
 ```
 
 Используется для защиты эндпойнта `/admin/init` от несанкционированного доступа.
+
+## Шаблоны пакетов
+
+### Получение всех активных шаблонов пакетов
+
+```
+GET /api/package-templates
+```
+
+**Параметры запроса:**
+
+-   `category` (опционально) - категория шаблонов
+-   `sortBy` (опционально) - поле для сортировки (по умолчанию: sortOrder)
+-   `sortDir` (опционально) - направление сортировки (ASC или DESC, по умолчанию: ASC)
+
+**Ответ:**
+
+```json
+[
+	{
+		"id": "pkg_12345678",
+		"name": "Стартовый набор",
+		"description": "Набор для новичков",
+		"amount": 1000,
+		"currencyGame": "stardust",
+		"price": "10.00000000",
+		"currency": "tgStars",
+		"status": "ACTIVE",
+		"imageUrl": "https://example.com/images/starter-pack.png",
+		"sortOrder": 1,
+		"category": "starter",
+		"isPromoted": true,
+		"validUntil": "2025-12-31T23:59:59.999Z",
+		"createdAt": "2025-07-15T12:00:00.000Z",
+		"updatedAt": "2025-07-15T12:00:00.000Z"
+	}
+]
+```
+
+### Получение шаблона пакета по ID
+
+```
+GET /api/package-templates/:id
+```
+
+**Ответ:**
+
+```json
+{
+	"id": "pkg_12345678",
+	"name": "Стартовый набор",
+	"description": "Набор для новичков",
+	"amount": 1000,
+	"currencyGame": "stardust",
+	"price": "10.00000000",
+	"currency": "tgStars",
+	"status": "ACTIVE",
+	"imageUrl": "https://example.com/images/starter-pack.png",
+	"sortOrder": 1,
+	"category": "starter",
+	"isPromoted": true,
+	"validUntil": "2025-12-31T23:59:59.999Z",
+	"createdAt": "2025-07-15T12:00:00.000Z",
+	"updatedAt": "2025-07-15T12:00:00.000Z"
+}
+```
+
+### Создание шаблона пакета (только для администраторов)
+
+```
+POST /api/package-templates
+```
+
+**Тело запроса:**
+
+```json
+{
+	"name": "Стартовый набор",
+	"description": "Набор для новичков",
+	"amount": 1000,
+	"currencyGame": "stardust",
+	"price": "10.00000000",
+	"currency": "tgStars",
+	"imageUrl": "https://example.com/images/starter-pack.png",
+	"sortOrder": 1,
+	"category": "starter",
+	"isPromoted": true,
+	"validUntil": "2025-12-31T23:59:59.999Z"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": "pkg_12345678",
+	"name": "Стартовый набор",
+	"description": "Набор для новичков",
+	"amount": 1000,
+	"currencyGame": "stardust",
+	"price": "10.00000000",
+	"currency": "tgStars",
+	"status": "ACTIVE",
+	"imageUrl": "https://example.com/images/starter-pack.png",
+	"sortOrder": 1,
+	"category": "starter",
+	"isPromoted": true,
+	"validUntil": "2025-12-31T23:59:59.999Z",
+	"createdAt": "2025-07-15T12:00:00.000Z",
+	"updatedAt": "2025-07-15T12:00:00.000Z"
+}
+```
+
+### Обновление шаблона пакета (только для администраторов)
+
+```
+PUT /api/package-templates/:id
+```
+
+**Тело запроса:**
+
+```json
+{
+	"name": "Обновленный стартовый набор",
+	"description": "Улучшенный набор для новичков",
+	"amount": 1500,
+	"price": "15.00000000",
+	"imageUrl": "https://example.com/images/starter-pack-v2.png",
+	"isPromoted": false
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": "pkg_12345678",
+	"name": "Обновленный стартовый набор",
+	"description": "Улучшенный набор для новичков",
+	"amount": 1500,
+	"currencyGame": "stardust",
+	"price": "15.00000000",
+	"currency": "tgStars",
+	"status": "ACTIVE",
+	"imageUrl": "https://example.com/images/starter-pack-v2.png",
+	"sortOrder": 1,
+	"category": "starter",
+	"isPromoted": false,
+	"validUntil": "2025-12-31T23:59:59.999Z",
+	"createdAt": "2025-07-15T12:00:00.000Z",
+	"updatedAt": "2025-07-15T12:30:00.000Z"
+}
+```
+
+### Изменение статуса шаблона пакета (только для администраторов)
+
+```
+PATCH /api/package-templates/:id/status
+```
+
+**Тело запроса:**
+
+```json
+{
+	"status": "INACTIVE"
+}
+```
+
+**Ответ:**
+
+```json
+{
+	"id": "pkg_12345678",
+	"name": "Обновленный стартовый набор",
+	"status": "INACTIVE",
+	"updatedAt": "2025-07-15T12:45:00.000Z"
+}
+```
+
+### Создание оферты из шаблона пакета (только для администраторов)
+
+```
+POST /api/package-templates/:id/offer
+```
+
+**Ответ:**
+
+```json
+{
+	"id": 123,
+	"sellerId": "system",
+	"itemType": "package",
+	"itemId": "pkg_12345678",
+	"price": "15.00000000",
+	"currency": "tgStars",
+	"offerType": "SYSTEM",
+	"status": "ACTIVE",
+	"expiresAt": "2025-08-15T12:45:00.000Z",
+	"isItemLocked": false,
+	"createdAt": "2025-07-15T12:45:00.000Z",
+	"updatedAt": "2025-07-15T12:45:00.000Z"
+}
+```

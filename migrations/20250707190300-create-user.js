@@ -14,6 +14,15 @@ module.exports = {
 				type: Sequelize.STRING,
 				allowNull: false,
 			},
+			password: {
+				type: Sequelize.STRING,
+				allowNull: true,
+			},
+			tonWallet: {
+				type: Sequelize.STRING,
+				allowNull: true,
+				comment: 'TON wallet address of the user',
+			},
 			referral: {
 				type: Sequelize.BIGINT,
 				defaultValue: 0,

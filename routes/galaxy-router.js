@@ -5,7 +5,7 @@ const Router = require('express').Router;
 const router = new Router();
 const galaxyController = require('../controllers/galaxy-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
-const tmaMiddleware = require('../middlewares/tma-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 /**
@@ -17,7 +17,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 router.post(
 	'/',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(10, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(10, 60)],
 	galaxyController.createGalaxy
 );
 
@@ -36,7 +36,7 @@ router.post(
 
 router.get(
 	'/',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	galaxyController.getGalaxies
 );
 
@@ -55,7 +55,7 @@ router.get(
 
 router.put(
 	'/',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	galaxyController.updateGalaxy
 );
 
@@ -75,7 +75,7 @@ router.put(
 // Создать галактику от SYSTEM с офертой и инвойсом
 router.post(
 	'/system-offer',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(5, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(5, 60)],
 	galaxyController.createSystemGalaxyWithOffer
 );
 
@@ -90,6 +90,41 @@ router.post(
  *     responses:
  *       201:
  *         description: System galaxy created with offer
+ */
+
+// Добавить звезды в галактику
+router.post(
+	'/add-stars',
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	galaxyController.addStarsToGalaxy
+);
+
+/**
+ * @swagger
+ * /galaxy/add-stars:
+ *   post:
+ *     summary: Add stars to a galaxy
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               galaxyId:
+ *                 type: integer
+ *                 description: ID of the galaxy
+ *               amount:
+ *                 type: integer
+ *                 description: Amount of stars to add
+ *     responses:
+ *       200:
+ *         description: Stars added to galaxy
+ *       404:
+ *         description: Galaxy not found or not owned by user
  */
 
 module.exports = router;

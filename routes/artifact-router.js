@@ -4,7 +4,7 @@
 const Router = require('express').Router;
 const artifactController = require('../controllers/artifact-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
-const tmaMiddleware = require('../middlewares/tma-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 const router = Router();
@@ -19,7 +19,7 @@ const router = Router();
 // Добавить артефакт пользователю
 router.post(
 	'/artifact',
-	tmaMiddleware,
+	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(10, 60),
 	artifactController.addArtifactToUser
@@ -41,7 +41,7 @@ router.post(
 // Получить список артефактов пользователя
 router.get(
 	'/artifact',
-	tmaMiddleware,
+	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
 	artifactController.getUserArtifacts
@@ -63,7 +63,7 @@ router.get(
 // Создать артефакт от SYSTEM с офертой и инвойсом
 router.post(
 	'/system-offer',
-	tmaMiddleware,
+	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(5, 60),
 	artifactController.createSystemArtifactWithOffer

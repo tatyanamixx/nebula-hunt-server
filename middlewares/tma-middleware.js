@@ -22,15 +22,15 @@ module.exports = function (req, res, next) {
 		if (!initData) {
 			return next(ApiError.TMAuthorizedError('tma: not found initdata'));
 		}
-		// try {
-		// 	validate(initData, tma_token);
-		// } catch (err) {
-		// 	logger.error('TMA validation error:', err);
-		// 	return next(ApiError.TMAuthorizedError('tma: unauthorization'));
-		// }
 
+		try {
+			validate(initData, tma_token);
+		} catch (err) {
+			logger.error('TMA validation error:', err);
+			return next(ApiError.TMAuthorizedError('tma: unauthorization'));
+		}
+		
 		req.initdata = parse(initData).user;
-		logger.info(req.initdata);
 
 		return next();
 	} catch (err) {

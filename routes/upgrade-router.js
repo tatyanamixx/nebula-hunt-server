@@ -5,9 +5,9 @@ const Router = require('express').Router;
 const router = new Router();
 const upgradeController = require('../controllers/upgrade-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
-const tmaMiddleware = require('../middlewares/tma-middleware');
+const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
-const { param } = require('express-validator');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 
 /**
  * @swagger
@@ -16,29 +16,20 @@ const { param } = require('express-validator');
  *   description: User upgrades management
  */
 
-// Пользовательские роуты
-/**
- * @swagger
- * /upgrades/tree:
- *   get:
- *     summary: Get user upgrade tree
- *     tags: [Upgrade]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User upgrade tree
- */
+// Пользовательские маршруты
 router.get(
-	'/tree',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
-	upgradeController.getUserUpgradeTree
+	'/nodes',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.getUserUpgradeNodes
 );
+
 /**
  * @swagger
- * /upgrades/node/{nodeId}:
+ * /upgrades/nodes/{nodeId}:
  *   get:
- *     summary: Get upgrade node progress
+ *     summary: Get specific user upgrade node by ID
  *     tags: [Upgrade]
  *     security:
  *       - bearerAuth: []
@@ -47,65 +38,86 @@ router.get(
  *         name: nodeId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
- *         description: Node progress
+ *         description: User upgrade node details
  */
 router.get(
-	'/node/:nodeId',
-	[
-		tmaMiddleware,
-		authMiddleware,
-		rateLimitMiddleware(60, 60),
-		param('nodeId').isString().withMessage('nodeId must be a string'),
-	],
-	upgradeController.getUpgradeNodeProgress
+	'/nodes/:nodeId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.getUserUpgradeNode
 );
-/**
- * @swagger
- * /upgrades/node/{nodeId}/progress:
- *   post:
- *     summary: Update node progress
- *     tags: [Upgrade]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: nodeId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Node progress updated
- */
+
 router.post(
-	'/node/:nodeId/progress',
-	[
-		tmaMiddleware,
-		authMiddleware,
-		rateLimitMiddleware(30, 60),
-		param('nodeId').isString().withMessage('nodeId must be a string'),
-	],
-	upgradeController.updateNodeProgress
+	'/complete',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.completeUpgradeNode
 );
+
+router.post(
+	'/progress',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.updateUpgradeProgress
+);
+
+router.get(
+	'/progress/:nodeId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.getUpgradeProgress
+);
+
+router.post(
+	'/initialize',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	upgradeController.initializeUserUpgradeTree
+);
+
 /**
  * @swagger
  * /upgrades/stats:
  *   get:
- *     summary: Get user upgrade stats
+ *     summary: Get user upgrade statistics
  *     tags: [Upgrade]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User upgrade stats
+ *         description: User upgrade statistics
  */
 router.get(
 	'/stats',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
 	upgradeController.getUserUpgradeStats
+);
+
+// Административные маршруты
+router.post(
+	'/admin/nodes',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	upgradeController.createUpgradeNodes
+);
+
+router.get(
+	'/admin/available',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	upgradeController.getAllUpgradeNodes
 );
 
 module.exports = router;

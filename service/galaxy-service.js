@@ -189,7 +189,7 @@ class GalaxyService {
 			});
 
 			// Validate stars value
-			if (starCurrent < 0) {
+			if (galaxyData.starCurrent < 0) {
 				throw ApiError.BadRequest('Stars cannot be negative');
 			}
 			galaxy.starCurrent = galaxyData.starCurrent;
@@ -223,8 +223,7 @@ class GalaxyService {
 				throw ApiError.BadRequest('Galaxy not found');
 			}
 
-			const newUser = await User.findByPk({
-				where: { id: id },
+			const newUser = await User.findByPk(id, {
 				transaction: t,
 			});
 			if (!newUser) {

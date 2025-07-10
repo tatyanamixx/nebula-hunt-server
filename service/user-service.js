@@ -173,13 +173,13 @@ class UserService {
 			}
 
 			// 4. Инициализируем дерево апгрейдов
-			await stateService.initializeUserUpgradeTree(user.id, t);
+			await upgradeService.initializeUserUpgradeTree(user.id, t);
 
 			// 5. Инициализируем события пользователя
 			await eventService.initializeUserEvents(user.id, t);
 
 			// 6. Инициализируем список задач пользователя
-			await taskService.activateUserTasks(user.id);
+			await taskService.initializeUserTasks(user.id, t);
 
 			// 7. Получаем системные пакеты услуг
 			const packageOffers = await marketService.getPackageOffers();
@@ -264,26 +264,18 @@ class UserService {
 			await eventService.checkAndTriggerEvents(userDto.id);
 
 			// 5. Проверяем и инициализируем дерево апгрейдов
-			if (
-				!userState.userUpgrades ||
-				Object.keys(userState.userUpgrades).length === 0
-			) {
+			if (!userState.upgrades || userState.upgrades.items.length === 0) {
 				// Если дерево апгрейдов не инициализировано - инициализируем
-				await stateService.initializeUserUpgradeTree(userDto.id, t);
+				await upgradeService.initializeUserUpgradeTree(userDto.id, t);
 			} else {
 				// Если дерево существует - активируем новые доступные узлы
 				await upgradeService.activateUserUpgradeNodes(userDto.id, t);
 			}
 
 			// 6. Проверяем и инициализируем задачи пользователя
-			if (
-				!userState.userTasks ||
-				Object.keys(userState.userTasks).length === 0 ||
-				!userState.activeTasks ||
-				userState.activeTasks.length === 0
-			) {
+			if (!userState.tasks || userState.tasks.items.length === 0) {
 				// Если задачи не инициализированы - инициализируем
-				await taskService.activateUserTasks(userDto.id);
+				await taskService.initializeUserTasks(userDto.id, t);
 			}
 
 			// 7. Генерируем и сохраняем новые токены

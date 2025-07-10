@@ -20,6 +20,11 @@ const User = sequelize.define(
 			allowNull: true,
 			comment: 'Google 2FA secret (base32)',
 		},
+		tonWallet: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: 'TON wallet address of the user',
+		},
 	},
 	{
 		indexes: [
@@ -31,77 +36,177 @@ const User = sequelize.define(
 	}
 );
 
-const UserState = sequelize.define(
-	'userstate',
+const UserState = sequelize.define('userstate', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	userId: { type: DataTypes.BIGINT, unique: true, allowNull: false },
+	stardust: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+	darkMatter: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+	tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+	lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
+	lockedStardust: {
+		type: DataTypes.INTEGER,
+		allowNull: false,
+		defaultValue: 0,
+	},
+	lockedDarkMatter: {
+		type: DataTypes.INTEGER,
+		allowNull: false,
+		defaultValue: 0,
+	},
+	lockedTgStars: {
+		type: DataTypes.INTEGER,
+		allowNull: false,
+		defaultValue: 0,
+	},
+});
+
+// Новая модель для пользовательских апгрейдов
+const UserUpgrade = sequelize.define(
+	'userupgrade',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		state: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				totalStars: 0,
-				stardustCount: 0,
-				darkMatterCount: 0,
-				tgStarsCount: 0,
-				tokenTonsCount: 0,
-				ownedGalaxiesCount: 0,
-				ownedNodesCount: 0,
-				ownedTasksCount: 0,
-				ownedUpgradesCount: 0,
-				ownedEventsCount: 0,
-			},
-		},
-		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		taskProgress: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				completedTasks: [],
-				currentWeight: 0,
-				unlockedNodes: [],
-			},
-			comment: 'Tracks user progress in task network',
-		},
-		upgradeTree: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				activeNodes: [],
-				completedNodes: [],
-				nodeStates: {},
-				treeStructure: {},
-				totalProgress: 0,
-				lastNodeUpdate: DataTypes.DATE,
-			},
-			comment: 'User-specific upgrade tree structure and progress',
-		},
-		// Streak related fields
-		lastLoginDate: {
-			type: DataTypes.DATEONLY,
-			allowNull: true,
-			comment: 'Date of the last login (YYYY-MM-DD)',
-		},
-		currentStreak: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-			comment: 'Number of consecutive days logged in',
-		},
-		maxStreak: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-			comment: 'Maximum streak achieved',
-		},
-		streakUpdatedAt: {
-			type: DataTypes.DATE,
-			allowNull: true,
-			comment: 'Timestamp of the last streak update',
-		},
-		// Event state fields
-		activeEvents: {
+		level: { type: DataTypes.INTEGER, defaultValue: 0 },
+		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
+		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
+		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		progressHistory: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
-			comment:
-				'Currently active events for the user with their progress and effects',
 		},
+		lastProgressUpdate: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+		},
+	},
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userupgrades_user_id_idx',
+			},
+			{
+				fields: ['nodeId'],
+				name: 'userupgrades_node_id_idx',
+			},
+			{
+				fields: ['userId', 'nodeId'],
+				name: 'userupgrades_user_node_idx',
+				unique: true,
+			},
+			{
+				fields: ['completed'],
+				name: 'userupgrades_completed_idx',
+			},
+		],
+	}
+);
+
+// Новая модель для пользовательских задач
+const UserTask = sequelize.define(
+	'usertask',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
+		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
+		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+		progressHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+		},
+		lastProgressUpdate: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+		},
+		active: { type: DataTypes.BOOLEAN, defaultValue: true },
+		completedAt: { type: DataTypes.DATE, allowNull: true },
+	},
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'usertasks_user_id_idx',
+			},
+			{
+				fields: ['taskId'],
+				name: 'usertasks_task_id_idx',
+			},
+			{
+				fields: ['userId', 'taskId'],
+				name: 'usertasks_user_task_idx',
+				unique: true,
+			},
+			{
+				fields: ['completed'],
+				name: 'usertasks_completed_idx',
+			},
+			{
+				fields: ['active'],
+				name: 'usertasks_active_idx',
+			},
+		],
+	}
+);
+
+// Новая модель для пользовательских событий
+const UserEvent = sequelize.define(
+	'userevent',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		status: {
+			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED', 'CANCELLED'),
+			defaultValue: 'ACTIVE',
+		},
+		triggeredAt: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+		},
+		expiresAt: { type: DataTypes.DATE, allowNull: true },
+		effects: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Эффекты события (множители и т.д.)',
+		},
+		progress: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Прогресс выполнения события',
+		},
+		completedAt: { type: DataTypes.DATE, allowNull: true },
+	},
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userevents_user_id_idx',
+			},
+			{
+				fields: ['eventId'],
+				name: 'userevents_event_id_idx',
+			},
+			{
+				fields: ['status'],
+				name: 'userevents_status_idx',
+			},
+			{
+				fields: ['expiresAt'],
+				name: 'userevents_expires_at_idx',
+			},
+			{
+				fields: ['triggeredAt'],
+				name: 'userevents_triggered_at_idx',
+			},
+		],
+	}
+);
+
+// Новая модель для настроек пользовательских событий
+const UserEventSetting = sequelize.define(
+	'usereventsetting',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		eventMultipliers: {
 			type: DataTypes.JSONB,
 			defaultValue: {
@@ -111,112 +216,44 @@ const UserState = sequelize.define(
 				entropy: 1.0,
 				rewards: 1.0,
 			},
-			comment: 'Current active multipliers from events',
+			comment: 'Текущие активные множители от событий',
 		},
 		lastEventCheck: {
 			type: DataTypes.DATE,
 			defaultValue: DataTypes.NOW,
-			comment: 'Last time events were checked and processed',
+			comment: 'Последнее время проверки событий',
 		},
 		eventCooldowns: {
 			type: DataTypes.JSONB,
 			defaultValue: {},
-			comment: 'Cooldown timestamps for different event types',
+			comment: 'Кулдауны для разных типов событий',
 		},
-		eventPreferences: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-				disabledEvents: [],
-				priorityEvents: [],
-			},
-			comment: 'User preferences for event types and specific events',
+		enabledTypes: {
+			type: DataTypes.ARRAY(DataTypes.STRING),
+			defaultValue: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+			comment: 'Включенные типы событий',
 		},
-		// Task state fields
-		userTasks: {
-			type: DataTypes.JSONB,
-			defaultValue: {},
-			comment:
-				'User progress for each task: { taskId: { progress, targetProgress, completed, reward, progressHistory, lastProgressUpdate } }',
-		},
-		completedTasks: {
-			type: DataTypes.JSONB,
+		disabledEvents: {
+			type: DataTypes.ARRAY(DataTypes.STRING),
 			defaultValue: [],
-			comment: 'Array of completed task IDs with completion timestamps',
+			comment: 'Отключенные конкретные события',
 		},
-		activeTasks: {
-			type: DataTypes.JSONB,
+		priorityEvents: {
+			type: DataTypes.ARRAY(DataTypes.STRING),
 			defaultValue: [],
-			comment: 'Array of active task IDs that user can work on',
-		},
-		taskMultipliers: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				progress: 1.0,
-				rewards: 1.0,
-				unlock: 1.0,
-			},
-			comment: 'Current active multipliers from tasks',
-		},
-		lastTaskCheck: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-			comment: 'Last time tasks were checked and updated',
-		},
-		// Upgrade state fields
-		userUpgrades: {
-			type: DataTypes.JSONB,
-			defaultValue: {},
-			comment:
-				'User progress for each upgrade node: { nodeId: { level, progress, targetProgress, completed, stability, instability, progressHistory, lastProgressUpdate } }',
-		},
-		completedUpgrades: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'Array of completed upgrade node IDs',
-		},
-		activeUpgrades: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'Array of active upgrade node IDs that user can purchase',
-		},
-		upgradeMultipliers: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				production: 1.0,
-				efficiency: 1.0,
-				cost: 1.0,
-				unlock: 1.0,
-			},
-			comment: 'Current active multipliers from upgrades',
-		},
-		lastUpgradeCheck: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
-			comment: 'Last time upgrades were checked and updated',
+			comment: 'Приоритетные события',
 		},
 	},
 	{
 		indexes: [
 			{
-				fields: [sequelize.literal("((state->'totalStars')::integer)")],
-				name: 'userstate_totalstars_idx',
-			},
-			{
 				fields: ['userId'],
-				name: 'userstate_user_id_idx',
+				name: 'usereventsettings_user_id_idx',
+				unique: true,
 			},
 			{
 				fields: ['lastEventCheck'],
-				name: 'userstate_last_event_check_idx',
-			},
-			{
-				fields: ['lastTaskCheck'],
-				name: 'userstate_last_task_check_idx',
-			},
-			{
-				fields: ['lastUpgradeCheck'],
-				name: 'userstate_last_upgrade_check_idx',
+				name: 'usereventsettings_last_event_check_idx',
 			},
 		],
 	}
@@ -453,7 +490,7 @@ const MarketOffer = sequelize.define('marketoffer', {
 		allowNull: false,
 	},
 	status: {
-		type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED'),
+		type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED', 'EXPIRED'),
 		defaultValue: 'ACTIVE',
 	},
 	offerType: {
@@ -463,6 +500,11 @@ const MarketOffer = sequelize.define('marketoffer', {
 	},
 	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 	expiresAt: { type: DataTypes.DATE, allowNull: true },
+	isItemLocked: {
+		type: DataTypes.BOOLEAN,
+		allowNull: false,
+		defaultValue: true,
+	}, // Флаг блокировки ресурса или объекта
 });
 
 const MarketTransaction = sequelize.define('markettransaction', {
@@ -489,7 +531,17 @@ const PaymentTransaction = sequelize.define('paymenttransaction', {
 		allowNull: false,
 	},
 	txType: {
-		type: DataTypes.ENUM('BUYER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'FEE'),
+		type: DataTypes.ENUM(
+			'BUYER_TO_CONTRACT',
+			'CONTRACT_TO_SELLER',
+			'FEE',
+			'FARMING_REWARD',
+			'UPGRADE_PAYMENT',
+			'TASK_REWARD',
+			'EVENT_REWARD',
+			'GALAXY_STARS_TRANSFER',
+			'RESOURCE_EXCHANGE'
+		),
 		allowNull: false,
 	},
 	blockchainTxId: {
@@ -527,6 +579,7 @@ const MarketCommission = sequelize.define(
 
 const PackageStore = sequelize.define('packagestore', {
 	id: { type: DataTypes.STRING, primaryKey: true },
+	userId: { type: DataTypes.BIGINT, allowNull: false },
 	amount: { type: DataTypes.INTEGER, allowNull: false },
 	currencyGame: {
 		type: DataTypes.ENUM('stardust', 'darkMatter'),
@@ -542,7 +595,62 @@ const PackageStore = sequelize.define('packagestore', {
 		defaultValue: 'ACTIVE',
 		allowNull: false,
 	},
+	isUsed: {
+		type: DataTypes.BOOLEAN,
+		defaultValue: false,
+		allowNull: false,
+	},
+	isLocked: {
+		type: DataTypes.BOOLEAN,
+		defaultValue: false,
+		allowNull: false,
+	},
 });
+
+const PackageTemplate = sequelize.define(
+	'packagetemplate',
+	{
+		id: { type: DataTypes.STRING, primaryKey: true },
+		name: { type: DataTypes.STRING, allowNull: false },
+		description: { type: DataTypes.TEXT, allowNull: true },
+		amount: { type: DataTypes.INTEGER, allowNull: false },
+		currencyGame: {
+			type: DataTypes.ENUM('stardust', 'darkMatter'),
+			allowNull: false,
+		},
+		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		currency: {
+			type: DataTypes.ENUM('tgStars', 'tonToken'),
+			allowNull: false,
+		},
+		status: {
+			type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+			defaultValue: 'ACTIVE',
+			allowNull: false,
+		},
+		imageUrl: { type: DataTypes.STRING, allowNull: true },
+		sortOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
+		category: { type: DataTypes.STRING, allowNull: true },
+		isPromoted: { type: DataTypes.BOOLEAN, defaultValue: false },
+		validUntil: { type: DataTypes.DATE, allowNull: true },
+	},
+	{
+		indexes: [
+			{
+				fields: ['status'],
+				name: 'packagetemplate_status_idx',
+			},
+			{
+				fields: ['category'],
+				name: 'packagetemplate_category_idx',
+			},
+			{
+				fields: ['sortOrder'],
+				name: 'packagetemplate_sort_order_idx',
+			},
+		],
+	}
+);
 
 User.hasOne(UserState);
 UserState.belongsTo(User);
@@ -583,6 +691,32 @@ User.hasMany(PaymentTransaction, {
 	as: 'receivedPayments',
 });
 
+// Связь для пакетов
+User.hasMany(PackageStore, { foreignKey: 'userId' });
+PackageStore.belongsTo(User, { foreignKey: 'userId' });
+
+// Связи для новых моделей
+User.hasMany(UserUpgrade);
+UserUpgrade.belongsTo(User);
+
+UpgradeNode.hasMany(UserUpgrade);
+UserUpgrade.belongsTo(UpgradeNode, { foreignKey: 'nodeId' });
+
+User.hasMany(UserTask);
+UserTask.belongsTo(User);
+
+Task.hasMany(UserTask);
+UserTask.belongsTo(Task, { foreignKey: 'taskId' });
+
+User.hasMany(UserEvent);
+UserEvent.belongsTo(User);
+
+GameEvent.hasMany(UserEvent);
+UserEvent.belongsTo(GameEvent, { foreignKey: 'eventId' });
+
+User.hasOne(UserEventSetting);
+UserEventSetting.belongsTo(User);
+
 module.exports = {
 	User,
 	UserState,
@@ -597,4 +731,10 @@ module.exports = {
 	PaymentTransaction,
 	MarketCommission,
 	PackageStore,
+	// Новые модели
+	UserUpgrade,
+	UserTask,
+	UserEvent,
+	UserEventSetting,
+	PackageTemplate,
 };

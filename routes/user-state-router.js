@@ -5,7 +5,7 @@ const Router = require('express').Router;
 const router = new Router();
 const userStateController = require('../controllers/user-state-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
-const tmaMiddleware = require('../middlewares/tma-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 /**
@@ -16,7 +16,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  */
 router.get(
 	'/',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
 	userStateController.getUserState
 );
 /**
@@ -33,7 +33,7 @@ router.get(
  */
 router.put(
 	'/',
-	[tmaMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
 	userStateController.updateUserState
 );
 /**
@@ -50,7 +50,7 @@ router.put(
  */
 router.get(
 	'/leaderboard',
-	[tmaMiddleware, rateLimitMiddleware(120, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(120, 60)],
 	userStateController.getLeaderboard
 );
 /**
@@ -58,10 +58,55 @@ router.get(
  * /state/leaderboard:
  *   get:
  *     summary: Get leaderboard
+ *     description: Returns the top users based on LEADERBOARD_LIMIT (default 100) and the current user's position if not in top list
  *     tags: [UserState]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Leaderboard
+ *         description: Leaderboard data with top users and current user's position
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 leaderboard:
+ *                   type: array
+ *                   description: Top users based on LEADERBOARD_LIMIT, with current user appended if not in top list
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: integer
+ *                         description: User ID
+ *                       state:
+ *                         type: object
+ *                         properties:
+ *                           totalStars:
+ *                             type: integer
+ *                             description: Total stars earned by user
+ *                       currentStreak:
+ *                         type: integer
+ *                         description: Current login streak
+ *                       maxStreak:
+ *                         type: integer
+ *                         description: Maximum login streak achieved
+ *                       User:
+ *                         type: object
+ *                         properties:
+ *                           username:
+ *                             type: string
+ *                             description: Username
+ *                       rating:
+ *                         type: integer
+ *                         description: User's position in the leaderboard
+ *                 userRating:
+ *                   type: integer
+ *                   description: Current user's position in the overall leaderboard
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 
 module.exports = router;

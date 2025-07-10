@@ -3,10 +3,11 @@
  */
 const ApiError = require('../exceptions/api-error');
 const { User } = require('../models/models');
+const logger = require('../service/logger-service');
 
 module.exports = async function (req, res, next) {
 	try {
-		const id = req.tmaInitdata.id;
+		const id = req.userToken?.id;
 		if (!id) {
 			return next(
 				ApiError.UnauthorizedError('User ID not found in token')
@@ -19,18 +20,28 @@ module.exports = async function (req, res, next) {
 		}
 
 		if (user.role !== 'ADMIN') {
+			logger.warn(
+				'Access denied: non-admin user tried to access admin route',
+				{ id }
+			);
 			return next(
 				ApiError.ForbiddenError('Access denied. Admin role required')
 			);
 		}
 
-		// Проверка, что 2FA пройдена (req.userToken должен быть и совпадать по id)
-		if (!req.userToken || req.userToken.id !== user.id) {
-			return next(ApiError.UnauthorizedError('2FA required for admin'));
+		if (user.blocked) {
+			logger.warn(
+				'Access denied: blocked admin tried to access admin route',
+				{ id }
+			);
+			return next(
+				ApiError.ForbiddenError('Access denied. Account is blocked')
+			);
 		}
 
 		next();
 	} catch (err) {
+		logger.error('Admin middleware error:', err);
 		return next(ApiError.UnauthorizedError('Admin authorization error'));
 	}
 };
