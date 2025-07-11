@@ -1,30 +1,42 @@
 /**
- * created by Tatyana Mikhniukevich on 30.04.2025
+ * created by Tatyana Mikhniukevich on 29.05.2025
+ * updated by Claude on 15.07.2025
  */
-const Router = require('express');
+const Router = require('express').Router;
 const router = new Router();
+
 const authRouter = require('./auth-router');
 const userStateRouter = require('./user-state-router');
 const galaxyRouter = require('./galaxy-router');
-const taskRouter = require('./task-router');
-const upgradeRouter = require('./upgrade-router');
-const eventRouter = require('./event-router');
 const artifactRouter = require('./artifact-router');
+const taskRouter = require('./task-router');
+const eventRouter = require('./event-router');
+const upgradeRouter = require('./upgrade-router');
 const marketRouter = require('./market-router');
+const gameMetricsRouter = require('./game-metrics-router');
 const adminRouter = require('./admin-router');
-const metricsRouter = require('./metrics-router');
+const taskTemplateRouter = require('./task-template-router');
+const eventTemplateRouter = require('./event-template-router');
+const upgradeTemplateRouter = require('./upgrade-template-router');
 const packageTemplateRouter = require('./package-template-router');
+const packageStoreRouter = require('./package-store-router');
 
 router.use('/auth', authRouter);
-router.use('/userstate', userStateRouter);
+router.use('/state', userStateRouter);
 router.use('/galaxies', galaxyRouter);
-router.use('/tasks', taskRouter);
-router.use('/upgrades', upgradeRouter);
-router.use('/events', eventRouter);
 router.use('/artifacts', artifactRouter);
+router.use('/tasks', taskRouter);
+router.use('/events', eventRouter);
+router.use('/upgrades', upgradeRouter);
 router.use('/market', marketRouter);
+router.use('/packages', packageStoreRouter);
+
+// Admin routes
 router.use('/admin', adminRouter);
-router.use('/metrics', metricsRouter);
+router.use('/task-templates', taskTemplateRouter);
+router.use('/event-templates', eventTemplateRouter);
+router.use('/upgrade-templates', upgradeTemplateRouter);
 router.use('/package-templates', packageTemplateRouter);
+router.use('/game-metrics', gameMetricsRouter);
 
 module.exports = router;

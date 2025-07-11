@@ -1,14 +1,19 @@
+/**
+ * created by Tatyana Mikhniukevich on 02.06.2025
+ * updated by Claude on 15.07.2025
+ */
 const packageTemplateService = require('../service/package-template-service');
 const { SYSTEM_USER_ID } = require('../config/constants');
+const ApiError = require('../exceptions/api-error');
 
 class PackageTemplateController {
 	/**
-	 * Получение всех активных шаблонов пакетов
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Get all package templates
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async getAllTemplates(req, res, next) {
+	async getAllPackageTemplates(req, res, next) {
 		try {
 			const { category, sortBy, sortDir } = req.query;
 
@@ -25,16 +30,18 @@ class PackageTemplateController {
 	}
 
 	/**
-	 * Получение шаблона пакета по ID
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Get package template by ID
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async getTemplateById(req, res, next) {
+	async getPackageTemplate(req, res, next) {
 		try {
-			const { id } = req.params;
+			const { packageId } = req.params;
 
-			const template = await packageTemplateService.getTemplateById(id);
+			const template = await packageTemplateService.getTemplateById(
+				packageId
+			);
 
 			res.json(template);
 		} catch (e) {
@@ -43,12 +50,12 @@ class PackageTemplateController {
 	}
 
 	/**
-	 * Создание шаблона пакета (только для администраторов)
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Create a new package template
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async createTemplate(req, res, next) {
+	async createPackageTemplate(req, res, next) {
 		try {
 			const templateData = req.body;
 
@@ -63,18 +70,18 @@ class PackageTemplateController {
 	}
 
 	/**
-	 * Обновление шаблона пакета (только для администраторов)
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Update a package template
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async updateTemplate(req, res, next) {
+	async updatePackageTemplate(req, res, next) {
 		try {
-			const { id } = req.params;
+			const { packageId } = req.params;
 			const templateData = req.body;
 
 			const template = await packageTemplateService.updateTemplate(
-				id,
+				packageId,
 				templateData
 			);
 
@@ -85,19 +92,38 @@ class PackageTemplateController {
 	}
 
 	/**
-	 * Изменение статуса шаблона пакета (только для администраторов)
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Delete a package template
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async changeTemplateStatus(req, res, next) {
+	async deletePackageTemplate(req, res, next) {
 		try {
-			const { id } = req.params;
-			const { status } = req.body;
+			const { packageId } = req.params;
+
+			const result = await packageTemplateService.deleteTemplate(
+				packageId
+			);
+
+			res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Activate a package template
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 */
+	async activatePackageTemplate(req, res, next) {
+		try {
+			const { packageId } = req.params;
 
 			const template = await packageTemplateService.changeTemplateStatus(
-				id,
-				status
+				packageId,
+				'ACTIVE'
 			);
 
 			res.json(template);
@@ -107,20 +133,21 @@ class PackageTemplateController {
 	}
 
 	/**
-	 * Создание оферты на основе шаблона пакета (только для администраторов)
-	 * @param {Object} req Запрос
-	 * @param {Object} res Ответ
-	 * @param {Function} next Следующий middleware
+	 * Deactivate a package template
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
 	 */
-	async createOfferFromTemplate(req, res, next) {
+	async deactivatePackageTemplate(req, res, next) {
 		try {
-			const { id } = req.params;
+			const { packageId } = req.params;
 
-			const offer = await packageTemplateService.createOfferFromTemplate(
-				id
+			const template = await packageTemplateService.changeTemplateStatus(
+				packageId,
+				'INACTIVE'
 			);
 
-			res.status(201).json(offer);
+			res.json(template);
 		} catch (e) {
 			next(e);
 		}

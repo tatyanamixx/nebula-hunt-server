@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+    migrate:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: nebulahunt-migrate
+        depends_on:
+            - postgres
+        environment:
+            - NODE_ENV=production
+            - DB_HOST=postgres
+            - DB_PORT=5432
+            - DB_NAME=nebulahunt
+            - DB_USER=postgres
+            - DB_PASSWORD=postgres
+        command: npm run migrate
+        networks:
+            - nebulahunt-network
+
+    postgres:
+        image: postgres:16-alpine
+        container_name: nebulahunt-postgres-migrate
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_DB=nebulahunt
+        volumes:
+            - postgres-data-migrate:/var/lib/postgresql/data
+        networks:
+            - nebulahunt-network
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+volumes:
+    postgres-data-migrate:
+
+networks:
+    nebulahunt-network:
+        driver: bridge

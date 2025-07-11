@@ -13,6 +13,7 @@ jest.mock('../../models/models', () => {
 	const mockArtifact = {
 		create: jest.fn(),
 		findAll: jest.fn(),
+		findOne: jest.fn(),
 	};
 
 	const mockMarketOffer = {
@@ -178,6 +179,260 @@ describe('ArtifactService', () => {
 		});
 	});
 
+	describe('getArtifactById', () => {
+		it('should return an artifact by ID', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const mockArtifact = {
+				id: artifactId,
+				userId,
+				seed: 'artifact-seed-123',
+				name: 'Ancient Relic',
+				rarity: 'LEGENDARY',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method
+			const result = await artifactService.getArtifactById(
+				artifactId,
+				userId
+			);
+
+			// Assertions
+			expect(Artifact.findOne).toHaveBeenCalledWith({
+				where: { id: artifactId },
+			});
+			expect(result).toEqual(mockArtifact);
+		});
+
+		it('should return null when artifact not found', async () => {
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(null);
+
+			// Call the method
+			const result = await artifactService.getArtifactById(999, 1);
+
+			// Assertions
+			expect(result).toBeNull();
+		});
+
+		it('should throw error when user does not own the artifact', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const differentUserId = 2;
+			const mockArtifact = {
+				id: artifactId,
+				userId: differentUserId, // Different from the requesting user
+				seed: 'artifact-seed-123',
+				name: 'Ancient Relic',
+				rarity: 'LEGENDARY',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method and expect it to throw
+			await expect(
+				artifactService.getArtifactById(artifactId, userId)
+			).rejects.toThrow(
+				'You do not have permission to access this artifact'
+			);
+		});
+
+		it('should allow access to system artifacts', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const mockArtifact = {
+				id: artifactId,
+				userId: SYSTEM_USER_ID, // System user
+				seed: 'system-artifact-seed',
+				name: 'System Artifact',
+				rarity: 'MYTHICAL',
+				effects: { special: 200 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method
+			const result = await artifactService.getArtifactById(
+				artifactId,
+				userId
+			);
+
+			// Assertions
+			expect(result).toEqual(mockArtifact);
+		});
+	});
+
+	describe('generateRandomArtifact', () => {
+		it('should generate a random artifact for user', async () => {
+			// Mock data
+			const userId = 1;
+			const mockArtifact = {
+				id: 3,
+				userId,
+				seed: 'generated-seed-789',
+				name: 'Cosmic Crystal',
+				rarity: 'EPIC',
+				effects: { chaos: 0.2, stability: 0.15 },
+				tradable: true,
+			};
+
+			// Setup mocks
+			Artifact.create.mockResolvedValue(mockArtifact);
+
+			// Call the method
+			const result = await artifactService.generateRandomArtifact(userId);
+
+			// Assertions
+			expect(Artifact.create).toHaveBeenCalled();
+			expect(result).toEqual(mockArtifact);
+
+			// Check that create was called with userId
+			const createCall = Artifact.create.mock.calls[0][0];
+			expect(createCall.userId).toBe(userId);
+
+			// Check that required fields are present
+			expect(createCall.seed).toBeDefined();
+			expect(createCall.name).toBeDefined();
+			expect(createCall.rarity).toBeDefined();
+			expect(createCall.effects).toBeDefined();
+			expect(createCall.tradable).toBe(true);
+		});
+	});
+
+	describe('activateArtifact', () => {
+		it('should activate an artifact', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const mockArtifact = {
+				id: artifactId,
+				userId,
+				name: 'Ancient Relic',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method
+			const result = await artifactService.activateArtifact(
+				artifactId,
+				userId
+			);
+
+			// Assertions
+			expect(Artifact.findOne).toHaveBeenCalledWith({
+				where: { id: artifactId },
+			});
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('has been activated');
+			expect(result.effects).toEqual(mockArtifact.effects);
+		});
+
+		it('should throw error when artifact not found', async () => {
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(null);
+
+			// Call the method and expect it to throw
+			await expect(
+				artifactService.activateArtifact(999, 1)
+			).rejects.toThrow('Artifact not found');
+		});
+
+		it('should throw error when user does not own the artifact', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const differentUserId = 2;
+			const mockArtifact = {
+				id: artifactId,
+				userId: differentUserId, // Different from the requesting user
+				name: 'Ancient Relic',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method and expect it to throw
+			await expect(
+				artifactService.activateArtifact(artifactId, userId)
+			).rejects.toThrow('You can only activate artifacts that you own');
+		});
+	});
+
+	describe('deactivateArtifact', () => {
+		it('should deactivate an artifact', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const mockArtifact = {
+				id: artifactId,
+				userId,
+				name: 'Ancient Relic',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method
+			const result = await artifactService.deactivateArtifact(
+				artifactId,
+				userId
+			);
+
+			// Assertions
+			expect(Artifact.findOne).toHaveBeenCalledWith({
+				where: { id: artifactId },
+			});
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('has been deactivated');
+			expect(result.effects).toEqual(mockArtifact.effects);
+		});
+
+		it('should throw error when artifact not found', async () => {
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(null);
+
+			// Call the method and expect it to throw
+			await expect(
+				artifactService.deactivateArtifact(999, 1)
+			).rejects.toThrow('Artifact not found');
+		});
+
+		it('should throw error when user does not own the artifact', async () => {
+			// Mock data
+			const artifactId = 1;
+			const userId = 1;
+			const differentUserId = 2;
+			const mockArtifact = {
+				id: artifactId,
+				userId: differentUserId, // Different from the requesting user
+				name: 'Ancient Relic',
+				effects: { power: 100 },
+			};
+
+			// Setup mocks
+			Artifact.findOne.mockResolvedValue(mockArtifact);
+
+			// Call the method and expect it to throw
+			await expect(
+				artifactService.deactivateArtifact(artifactId, userId)
+			).rejects.toThrow('You can only deactivate artifacts that you own');
+		});
+	});
+
 	describe('createSystemArtifactWithOffer', () => {
 		it('should create a system artifact with offer and transaction', async () => {
 			// Mock data
@@ -254,37 +509,43 @@ describe('ArtifactService', () => {
 					effects: artifactData.effects,
 					tradable: true,
 				},
-				{ transaction: expect.anything() }
+				expect.anything()
 			);
 
 			expect(MarketOffer.create).toHaveBeenCalledWith(
-				expect.objectContaining({
+				{
 					sellerId: SYSTEM_USER_ID,
 					itemType: 'artifact',
 					itemId: mockArtifact.id,
 					price: offerData.price,
 					currency: offerData.currency,
-				}),
+					offerType: 'SYSTEM',
+					expiresAt: offerData.expiresAt,
+					status: 'ACTIVE',
+				},
 				expect.anything()
 			);
 
 			expect(MarketTransaction.create).toHaveBeenCalledWith(
-				expect.objectContaining({
+				{
 					offerId: mockOffer.id,
-					buyerId,
+					buyerId: buyerId,
 					sellerId: SYSTEM_USER_ID,
-				}),
+					status: 'PENDING',
+				},
 				expect.anything()
 			);
 
 			expect(PaymentTransaction.create).toHaveBeenCalledWith(
-				expect.objectContaining({
+				{
 					marketTransactionId: mockTransaction.id,
 					fromAccount: buyerId,
 					toAccount: SYSTEM_USER_ID,
 					amount: offerData.price,
 					currency: offerData.currency,
-				}),
+					txType: 'BUYER_TO_CONTRACT',
+					status: 'PENDING',
+				},
 				expect.anything()
 			);
 
@@ -301,28 +562,35 @@ describe('ArtifactService', () => {
 			const artifactData = {
 				seed: 'system-artifact-seed',
 				name: 'System Artifact',
+				rarity: 'MYTHICAL',
 			};
 
-			// Setup mocks to throw an error
-			const mockError = new Error('Database error');
-			Artifact.create.mockRejectedValue(mockError);
+			const buyerId = 5;
+			const offerData = {
+				price: 1000,
+				currency: 'tgStars',
+			};
 
-			// Mock transaction
+			// Setup mocks to simulate an error
 			const mockTransaction = {
 				commit: jest.fn().mockResolvedValue(),
 				rollback: jest.fn().mockResolvedValue(),
 			};
 			sequelize.transaction.mockResolvedValue(mockTransaction);
 
+			const error = new Error('Database error');
+			Artifact.create.mockRejectedValue(error);
+
 			// Call the method and expect it to throw
 			await expect(
-				artifactService.createSystemArtifactWithOffer(artifactData, 1, {
-					price: 100,
-					currency: 'tgStars',
-				})
+				artifactService.createSystemArtifactWithOffer(
+					artifactData,
+					buyerId,
+					offerData
+				)
 			).rejects.toThrow('Failed to create system artifact with offer');
 
-			// Verify transaction was rolled back
+			// Verify that rollback was called
 			expect(mockTransaction.rollback).toHaveBeenCalled();
 			expect(mockTransaction.commit).not.toHaveBeenCalled();
 		});
@@ -332,78 +600,78 @@ describe('ArtifactService', () => {
 			const artifactData = {
 				seed: 'system-artifact-seed',
 				name: 'System Artifact',
-				description: 'Special artifact from the system',
 				rarity: 'MYTHICAL',
-				image: 'system-artifact.jpg',
-				effects: { special: 200 },
-				// tradable not specified
 			};
 
+			const buyerId = 5;
+			const offerData = {
+				price: 1000,
+				currency: 'tgStars',
+			};
+
+			// Setup mocks
 			const mockArtifact = {
 				id: 10,
 				userId: SYSTEM_USER_ID,
 				...artifactData,
 				tradable: true,
 			};
-
-			// Setup minimal mocks for this test
 			Artifact.create.mockResolvedValue(mockArtifact);
-			MarketOffer.create.mockResolvedValue({ id: 20 });
-			MarketTransaction.create.mockResolvedValue({ id: 30 });
-			PaymentTransaction.create.mockResolvedValue({ id: 40 });
+			MarketOffer.create.mockResolvedValue({});
+			MarketTransaction.create.mockResolvedValue({});
+			PaymentTransaction.create.mockResolvedValue({});
 
 			// Call the method
 			await artifactService.createSystemArtifactWithOffer(
 				artifactData,
-				5,
-				{ price: 1000, currency: 'tgStars' }
+				buyerId,
+				offerData
 			);
 
 			// Assertions
 			expect(Artifact.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tradable: true,
-				}),
+				expect.objectContaining({ tradable: true }),
 				expect.anything()
 			);
 		});
 
 		it('should respect tradable=false if specified', async () => {
-			// Mock data with tradable explicitly set to false
+			// Mock data with tradable=false
 			const artifactData = {
 				seed: 'system-artifact-seed',
 				name: 'System Artifact',
-				description: 'Special artifact from the system',
 				rarity: 'MYTHICAL',
-				image: 'system-artifact.jpg',
-				effects: { special: 200 },
 				tradable: false,
 			};
 
+			const buyerId = 5;
+			const offerData = {
+				price: 1000,
+				currency: 'tgStars',
+			};
+
+			// Setup mocks
 			const mockArtifact = {
 				id: 10,
 				userId: SYSTEM_USER_ID,
 				...artifactData,
+				tradable: false,
 			};
-
-			// Setup minimal mocks for this test
 			Artifact.create.mockResolvedValue(mockArtifact);
-			MarketOffer.create.mockResolvedValue({ id: 20 });
-			MarketTransaction.create.mockResolvedValue({ id: 30 });
-			PaymentTransaction.create.mockResolvedValue({ id: 40 });
+			MarketOffer.create.mockResolvedValue({});
+			MarketTransaction.create.mockResolvedValue({});
+			PaymentTransaction.create.mockResolvedValue({});
 
 			// Call the method
 			await artifactService.createSystemArtifactWithOffer(
 				artifactData,
-				5,
-				{ price: 1000, currency: 'tgStars' }
+				buyerId,
+				offerData
 			);
 
 			// Assertions
 			expect(Artifact.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tradable: false,
-				}),
+				expect.objectContaining({ tradable: false }),
 				expect.anything()
 			);
 		});

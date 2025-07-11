@@ -29,7 +29,7 @@ npm ci --only=production
 
 ### Переменные окружения
 
-Создайте файл `.env` в корне проекта:
+Создайте файл `.env` в корне проекта на основе файла `env.example`:
 
 ```bash
 # Server Configuration
@@ -38,7 +38,7 @@ NODE_ENV=production
 CLIENT_URL=https://your-client-url.com
 
 # Database Configuration
-DB_HOST=localhost
+DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=nebulahunt
 DB_USER=postgres
@@ -50,6 +50,11 @@ JWT_REFRESH_SECRET=your_very_long_and_random_refresh_secret_key_here
 
 # Telegram Configuration
 BOT_TOKEN=your_telegram_bot_token
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
 
 # Logging
 LOG_LEVEL=info
@@ -97,116 +102,373 @@ node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 
 ### 1. Docker (Рекомендуется)
 
-#### Dockerfile
+Проект поставляется с полным набором Docker-конфигураций для различных сценариев использования.
+
+#### Структура Docker-файлов
+
+-   `Dockerfile` - Основной файл для продакшн-сборки
+-   `Dockerfile.dev` - Файл для разработки с hot-reload
+-   `docker-compose.yml` - Основная конфигурация для продакшена
+-   `docker-compose.dev.yml` - Конфигурация для разработки
+-   `docker-compose.migrate.yml` - Конфигурация для запуска миграций
+-   `.dockerignore` - Файлы, исключаемые из Docker-контекста
+-   `docker-scripts.sh` - Вспомогательные скрипты для работы с Docker
+-   `env.example` - Пример файла с переменными окружения
+
+#### Продакшн-окружение
+
+Продакшн-сборка использует многоэтапную сборку для оптимизации размера образа:
 
 ```dockerfile
-# Используем официальный Node.js образ
-FROM node:18-alpine
-
-# Устанавливаем рабочую директорию
+# Этап сборки
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Копируем файлы зависимостей
 COPY package*.json ./
-
-# Устанавливаем зависимости
-RUN npm ci --only=production
-
-# Копируем исходный код
+RUN npm ci
 COPY . .
 
-# Создаем пользователя для безопасности
+# Этап продакшена
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app ./
+
+# Создание непривилегированного пользователя
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
-
-# Меняем владельца файлов
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Открываем порт
 EXPOSE 5000
-
-# Запускаем приложение
 CMD ["npm", "start"]
 ```
 
-#### Docker Compose
+#### Docker Compose для продакшена
 
 ```yaml
 version: '3.8'
 
 services:
     app:
-        build: .
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: always
         ports:
             - '5000:5000'
-        environment:
-            - NODE_ENV=production
-            - DB_HOST=postgres
-            - DB_PORT=5432
-            - DB_NAME=nebulahunt
-            - DB_USER=postgres
-            - DB_PASSWORD=your_password
-            - JWT_ACCESS_SECRET=your_access_secret
-            - JWT_REFRESH_SECRET=your_refresh_secret
-            - BOT_TOKEN=your_bot_token
+        env_file: .env
         depends_on:
             - postgres
-        restart: unless-stopped
+            - redis
+        networks:
+            - nebulahunt-network
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '--no-verbose',
+                    '--tries=1',
+                    '--spider',
+                    'http://localhost:5000/health',
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    postgres:
+        image: postgres:15-alpine
+        restart: always
+        environment:
+            POSTGRES_DB: ${DB_NAME:-nebulahunt}
+            POSTGRES_USER: ${DB_USER:-postgres}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        ports:
+            - '5432:5432'
+        networks:
+            - nebulahunt-network
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:7-alpine
+        restart: always
+        command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
+        volumes:
+            - redis_data:/data
+        ports:
+            - '6379:6379'
+        networks:
+            - nebulahunt-network
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    pgadmin:
+        image: dpage/pgadmin4
+        restart: always
+        environment:
+            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@nebulahunt.com}
+            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+        ports:
+            - '5050:80'
+        volumes:
+            - pgadmin_data:/var/lib/pgadmin
+        depends_on:
+            - postgres
+        networks:
+            - nebulahunt-network
+
+networks:
+    nebulahunt-network:
+        driver: bridge
+
+volumes:
+    postgres_data:
+    redis_data:
+    pgadmin_data:
+```
+
+#### Разработка с Docker
+
+Для разработки предусмотрен отдельный Docker Compose файл с hot-reload и дополнительными инструментами:
+
+```yaml
+version: '3.8'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+        restart: always
+        ports:
+            - '5000:5000'
+        env_file: .env.dev
+        volumes:
+            - .:/app
+            - /app/node_modules
+        depends_on:
+            - postgres
+            - redis
+        networks:
+            - nebulahunt-network-dev
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '--no-verbose',
+                    '--tries=1',
+                    '--spider',
+                    'http://localhost:5000/health',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
+
+    postgres:
+        image: postgres:15-alpine
+        restart: always
+        environment:
+            POSTGRES_DB: ${DB_NAME:-nebulahunt_dev}
+            POSTGRES_USER: ${DB_USER:-postgres}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+        volumes:
+            - postgres_data_dev:/var/lib/postgresql/data
+        ports:
+            - '5432:5432'
+        networks:
+            - nebulahunt-network-dev
+
+    redis:
+        image: redis:7-alpine
+        restart: always
+        command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
+        volumes:
+            - redis_data_dev:/data
+        ports:
+            - '6379:6379'
+        networks:
+            - nebulahunt-network-dev
+
+    pgadmin:
+        image: dpage/pgadmin4
+        restart: always
+        environment:
+            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@nebulahunt.com}
+            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+        ports:
+            - '5050:80'
+        volumes:
+            - pgadmin_data_dev:/var/lib/pgadmin
+        depends_on:
+            - postgres
+        networks:
+            - nebulahunt-network-dev
+
+networks:
+    nebulahunt-network-dev:
+        driver: bridge
+
+volumes:
+    postgres_data_dev:
+    redis_data_dev:
+    pgadmin_data_dev:
+```
+
+#### Запуск миграций
+
+Для запуска миграций используется отдельный Docker Compose файл:
+
+```yaml
+version: '3.8'
+
+services:
+    migrations:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: npx sequelize-cli db:migrate
+        env_file: .env
+        depends_on:
+            - postgres
         networks:
             - nebulahunt-network
 
     postgres:
         image: postgres:15-alpine
         environment:
-            - POSTGRES_DB=nebulahunt
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASSWORD=your_password
+            POSTGRES_DB: ${DB_NAME:-nebulahunt}
+            POSTGRES_USER: ${DB_USER:-postgres}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
         volumes:
             - postgres_data:/var/lib/postgresql/data
-            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-        ports:
-            - '5432:5432'
-        restart: unless-stopped
         networks:
             - nebulahunt-network
-
-    nginx:
-        image: nginx:alpine
-        ports:
-            - '80:80'
-            - '443:443'
-        volumes:
-            - ./nginx.conf:/etc/nginx/nginx.conf
-            - ./ssl:/etc/nginx/ssl
-        depends_on:
-            - app
-        restart: unless-stopped
-        networks:
-            - nebulahunt-network
-
-volumes:
-    postgres_data:
 
 networks:
     nebulahunt-network:
-        driver: bridge
+        external: true
+
+volumes:
+    postgres_data:
+        external: true
+```
+
+#### Вспомогательные скрипты
+
+Для удобства работы с Docker созданы вспомогательные скрипты в файле `docker-scripts.sh`:
+
+```bash
+#!/bin/bash
+
+# Функция для вывода справки
+show_help() {
+  echo "Использование: ./docker-scripts.sh [команда]"
+  echo ""
+  echo "Доступные команды:"
+  echo "  start-prod     - Запуск продакшн-окружения"
+  echo "  start-dev      - Запуск окружения для разработки"
+  echo "  stop-prod      - Остановка продакшн-окружения"
+  echo "  stop-dev       - Остановка окружения для разработки"
+  echo "  build-prod     - Сборка продакшн-образа"
+  echo "  build-dev      - Сборка образа для разработки"
+  echo "  migrate        - Запуск миграций"
+  echo "  logs           - Просмотр логов продакшн-окружения"
+  echo "  logs-dev       - Просмотр логов окружения для разработки"
+  echo "  clean          - Удаление всех контейнеров и образов"
+  echo "  help           - Показать эту справку"
+}
+
+# Проверка наличия аргумента
+if [ $# -eq 0 ]; then
+  show_help
+  exit 1
+fi
+
+# Обработка команд
+case "$1" in
+  start-prod)
+    echo "Запуск продакшн-окружения..."
+    docker-compose -f docker-compose.yml up -d
+    ;;
+  start-dev)
+    echo "Запуск окружения для разработки..."
+    docker-compose -f docker-compose.dev.yml up -d
+    ;;
+  stop-prod)
+    echo "Остановка продакшн-окружения..."
+    docker-compose -f docker-compose.yml down
+    ;;
+  stop-dev)
+    echo "Остановка окружения для разработки..."
+    docker-compose -f docker-compose.dev.yml down
+    ;;
+  build-prod)
+    echo "Сборка продакшн-образа..."
+    docker-compose -f docker-compose.yml build
+    ;;
+  build-dev)
+    echo "Сборка образа для разработки..."
+    docker-compose -f docker-compose.dev.yml build
+    ;;
+  migrate)
+    echo "Запуск миграций..."
+    docker-compose -f docker-compose.migrate.yml up --abort-on-container-exit
+    ;;
+  logs)
+    echo "Просмотр логов продакшн-окружения..."
+    docker-compose -f docker-compose.yml logs -f
+    ;;
+  logs-dev)
+    echo "Просмотр логов окружения для разработки..."
+    docker-compose -f docker-compose.dev.yml logs -f
+    ;;
+  clean)
+    echo "Удаление всех контейнеров и образов..."
+    docker-compose -f docker-compose.yml down -v
+    docker-compose -f docker-compose.dev.yml down -v
+    docker system prune -af --volumes
+    ;;
+  help)
+    show_help
+    ;;
+  *)
+    echo "Неизвестная команда: $1"
+    show_help
+    exit 1
+    ;;
+esac
 ```
 
 #### Запуск с Docker
 
 ```bash
-# Сборка и запуск
-docker-compose up -d
+# Запуск продакшн-окружения
+./docker-scripts.sh start-prod
+
+# Запуск окружения для разработки
+./docker-scripts.sh start-dev
+
+# Запуск миграций
+./docker-scripts.sh migrate
 
 # Просмотр логов
-docker-compose logs -f app
+./docker-scripts.sh logs
 
-# Остановка
-docker-compose down
-
-# Пересборка
-docker-compose up -d --build
+# Остановка окружения
+./docker-scripts.sh stop-prod
 ```
 
 ### 2. PM2 (Process Manager)

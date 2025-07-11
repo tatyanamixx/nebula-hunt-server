@@ -129,7 +129,7 @@ class GalaxyService {
 	}
 
 	// create one galaxy
-	async createGalaxy(userId, galaxyData) {
+	async createUserGalaxy(userId, galaxyData) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -172,11 +172,12 @@ class GalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyStars(galaxyData) {
+	async updateUserGalaxy(userId, galaxyData) {
 		const t = await sequelize.transaction();
 
 		try {
-			const galaxy = await Galaxy.findOne(galaxyData.seed, {
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxyData.seed },
 				transaction: t,
 			});
 			if (!galaxy) {
@@ -184,7 +185,7 @@ class GalaxyService {
 			}
 
 			const user = await User.findOne({
-				where: { id: galaxy.userId },
+				where: { id: userId },
 				transaction: t,
 			});
 
@@ -368,6 +369,44 @@ class GalaxyService {
 			throw ApiError.Internal(
 				`Failed to create system galaxy with offer: ${err.message}`
 			);
+		}
+	}
+
+	async deleteGalaxy(userId, galaxyId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const galaxy = await Galaxy.findOne({
+				where: {
+					id: galaxyId,
+					userId: userId,
+				},
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				await t.rollback();
+				throw ApiError.NotFound(
+					'Galaxy not found or not owned by user'
+				);
+			}
+
+			// Soft delete by setting active to false
+			galaxy.active = false;
+			await galaxy.save({ transaction: t });
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'Galaxy deleted successfully',
+				galaxyId: galaxyId,
+			};
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to delete galaxy: ${err.message}`);
 		}
 	}
 }

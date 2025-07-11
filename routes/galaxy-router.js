@@ -1,5 +1,6 @@
 /**
- * created by Tatyana Mikhniukevich on 29.05.2025
+ * created by Tatyana Mikhniukevich on 02.06.2025
+ * updated by Claude on 15.07.2025
  */
 const Router = require('express').Router;
 const router = new Router();
@@ -15,95 +16,57 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  *   description: Galaxy management
  */
 
-router.post(
-	'/',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(10, 60)],
-	galaxyController.createGalaxy
-);
-
 /**
  * @swagger
- * /galaxy/:
- *   post:
- *     summary: Create a galaxy
+ * /galaxies:
+ *   get:
+ *     summary: Get user galaxies
  *     tags: [Galaxy]
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       201:
- *         description: Galaxy created
+ *       200:
+ *         description: List of user galaxies
  */
-
 router.get(
 	'/',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
-	galaxyController.getGalaxies
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	galaxyController.getUserGalaxies
 );
 
 /**
  * @swagger
- * /galaxy/:
+ * /galaxies/{galaxyId}:
  *   get:
- *     summary: Get galaxies
+ *     summary: Get specific galaxy by ID
  *     tags: [Galaxy]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: galaxyId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: List of galaxies
+ *         description: Galaxy details
  */
-
-router.put(
-	'/',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
-	galaxyController.updateGalaxy
+router.get(
+	'/:galaxyId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	galaxyController.getGalaxy
 );
 
 /**
  * @swagger
- * /galaxy/:
- *   put:
- *     summary: Update a galaxy
- *     tags: [Galaxy]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Galaxy updated
- */
-
-// Создать галактику от SYSTEM с офертой и инвойсом
-router.post(
-	'/system-offer',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(5, 60)],
-	galaxyController.createSystemGalaxyWithOffer
-);
-
-/**
- * @swagger
- * /galaxy/system-offer:
+ * /galaxies:
  *   post:
- *     summary: Create system galaxy with offer
- *     tags: [Galaxy]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       201:
- *         description: System galaxy created with offer
- */
-
-// Добавить звезды в галактику
-router.post(
-	'/add-stars',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
-	galaxyController.addStarsToGalaxy
-);
-
-/**
- * @swagger
- * /galaxy/add-stars:
- *   post:
- *     summary: Add stars to a galaxy
+ *     summary: Create a new galaxy
  *     tags: [Galaxy]
  *     security:
  *       - bearerAuth: []
@@ -114,17 +77,78 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               galaxyId:
- *                 type: integer
- *                 description: ID of the galaxy
- *               amount:
- *                 type: integer
- *                 description: Amount of stars to add
+ *               seed:
+ *                 type: string
+ *               particleCount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Galaxy created successfully
+ */
+router.post(
+	'/',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(10, 60),
+	galaxyController.createUserGalaxy
+);
+
+/**
+ * @swagger
+ * /galaxies/{galaxyId}:
+ *   put:
+ *     summary: Update a galaxy
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: galaxyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
  *     responses:
  *       200:
- *         description: Stars added to galaxy
- *       404:
- *         description: Galaxy not found or not owned by user
+ *         description: Galaxy updated successfully
  */
+router.put(
+	'/:galaxyId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	galaxyController.updateUserGalaxy
+);
+
+/**
+ * @swagger
+ * /galaxies/{galaxyId}:
+ *   delete:
+ *     summary: Delete a galaxy
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: galaxyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Galaxy deleted successfully
+ */
+router.delete(
+	'/:galaxyId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(10, 60),
+	galaxyController.deleteGalaxy
+);
 
 module.exports = router;

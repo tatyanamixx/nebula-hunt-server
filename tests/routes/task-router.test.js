@@ -10,7 +10,7 @@ jest.mock('../../middlewares/auth-middleware', () =>
 jest.mock('../../middlewares/telegram-auth-middleware', () =>
 	jest.fn((req, res, next) => {
 		// Добавляем данные Telegram в запрос для тестов
-		req.initdata = {
+		req.user = {
 			id: 123456789,
 			username: 'testuser',
 		};
@@ -26,39 +26,37 @@ jest.mock('../../middlewares/rate-limit-middleware', () =>
 
 // Мокаем контроллер
 jest.mock('../../controllers/task-controller', () => ({
-	getUserTasks: jest.fn((req, res) => res.status(200).json({ tasks: [] })),
+	getUserTasks: jest.fn((req, res) =>
+		res.status(200).json([{ id: 1, taskId: 'task1' }])
+	),
+	getActiveTasks: jest.fn((req, res) =>
+		res.status(200).json([{ id: 1, taskId: 'task1', active: true }])
+	),
 	getUserTask: jest.fn((req, res) =>
-		res.status(200).json({ id: req.params.taskId, title: 'Test Task' })
+		res
+			.status(200)
+			.json({
+				id: 1,
+				taskId: req.params.taskId,
+				title: { en: 'Test Task' },
+			})
 	),
 	completeTask: jest.fn((req, res) =>
-		res.status(200).json({ success: true, task: { id: req.body.taskId } })
+		res.status(200).json({
+			task: { id: 1, taskId: req.params.taskId, completed: true },
+			reward: 100,
+			rewardType: 'stardust',
+		})
 	),
 	updateTaskProgress: jest.fn((req, res) =>
 		res.status(200).json({
-			success: true,
-			task: {
-				id: req.body.taskId,
-				progress: req.body.progress,
-			},
-		})
-	),
-	getTaskProgress: jest.fn((req, res) =>
-		res.status(200).json({
-			taskId: req.params.taskId,
-			progress: 50,
-			targetProgress: 100,
+			id: 1,
+			taskId: req.body.taskId,
+			progress: req.body.progress,
 		})
 	),
 	initializeUserTasks: jest.fn((req, res) =>
 		res.status(200).json({ tasks: [] })
-	),
-	getUserTaskStats: jest.fn((req, res) =>
-		res.status(200).json({
-			total: 10,
-			completed: 5,
-			active: 5,
-			overallProgress: 50,
-		})
 	),
 }));
 
@@ -98,7 +96,28 @@ describe('Task Router', () => {
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('tasks');
+			expect(response.body).toBeInstanceOf(Array);
+			expect(response.body[0]).toHaveProperty('taskId', 'task1');
+		});
+	});
+
+	describe('GET /tasks/active', () => {
+		it('should use correct middleware and controller', async () => {
+			// Выполняем запрос
+			const response = await request(app).get('/tasks/active');
+
+			// Проверяем, что использовались правильные middleware
+			expect(telegramAuthMiddleware).toHaveBeenCalled();
+			expect(authMiddleware).toHaveBeenCalled();
+
+			// Проверяем, что вызван правильный метод контроллера
+			expect(taskController.getActiveTasks).toHaveBeenCalled();
+
+			// Проверяем ответ
+			expect(response.status).toBe(200);
+			expect(response.body).toBeInstanceOf(Array);
+			expect(response.body[0]).toHaveProperty('taskId', 'task1');
+			expect(response.body[0]).toHaveProperty('active', true);
 		});
 	});
 
@@ -116,22 +135,15 @@ describe('Task Router', () => {
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id', 'task123');
-			expect(response.body).toHaveProperty('title', 'Test Task');
+			expect(response.body).toHaveProperty('taskId', 'task123');
+			expect(response.body).toHaveProperty('title');
 		});
 	});
 
-	describe('POST /tasks/complete', () => {
+	describe('POST /tasks/:taskId/complete', () => {
 		it('should use correct middleware and controller', async () => {
-			// Подготавливаем тестовые данные
-			const requestData = {
-				taskId: 'task123',
-			};
-
 			// Выполняем запрос
-			const response = await request(app)
-				.post('/tasks/complete')
-				.send(requestData);
+			const response = await request(app).post('/tasks/task123/complete');
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
@@ -142,8 +154,11 @@ describe('Task Router', () => {
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('success', true);
-			expect(response.body.task).toHaveProperty('id', 'task123');
+			expect(response.body).toHaveProperty('task');
+			expect(response.body.task).toHaveProperty('taskId', 'task123');
+			expect(response.body.task).toHaveProperty('completed', true);
+			expect(response.body).toHaveProperty('reward', 100);
+			expect(response.body).toHaveProperty('rewardType', 'stardust');
 		});
 	});
 
@@ -169,29 +184,8 @@ describe('Task Router', () => {
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('success', true);
-			expect(response.body.task).toHaveProperty('id', 'task123');
-			expect(response.body.task).toHaveProperty('progress', 25);
-		});
-	});
-
-	describe('GET /tasks/progress/:taskId', () => {
-		it('should use correct middleware and controller', async () => {
-			// Выполняем запрос
-			const response = await request(app).get('/tasks/progress/task123');
-
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(taskController.getTaskProgress).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(200);
 			expect(response.body).toHaveProperty('taskId', 'task123');
-			expect(response.body).toHaveProperty('progress', 50);
-			expect(response.body).toHaveProperty('targetProgress', 100);
+			expect(response.body).toHaveProperty('progress', 25);
 		});
 	});
 
@@ -210,27 +204,6 @@ describe('Task Router', () => {
 			// Проверяем ответ
 			expect(response.status).toBe(200);
 			expect(response.body).toHaveProperty('tasks');
-		});
-	});
-
-	describe('GET /tasks/stats', () => {
-		it('should use correct middleware and controller', async () => {
-			// Выполняем запрос
-			const response = await request(app).get('/tasks/stats');
-
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(taskController.getUserTaskStats).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('total', 10);
-			expect(response.body).toHaveProperty('completed', 5);
-			expect(response.body).toHaveProperty('active', 5);
-			expect(response.body).toHaveProperty('overallProgress', 50);
 		});
 	});
 });

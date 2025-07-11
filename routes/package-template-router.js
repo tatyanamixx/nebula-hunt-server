@@ -1,4 +1,7 @@
-const Router = require('express');
+/**
+ * created by Claude on 15.07.2025
+ */
+const Router = require('express').Router;
 const router = new Router();
 const packageTemplateController = require('../controllers/package-template-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
@@ -6,104 +9,74 @@ const adminMiddleware = require('../middlewares/admin-middleware');
 const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
-/**
- * @swagger
- * /package-templates:
- *   get:
- *     summary: Get all active package templates
- *     tags: [PackageTemplates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *         description: Filter by category
- *       - in: query
- *         name: sortBy
- *         schema:
- *           type: string
- *           default: sortOrder
- *         description: Field to sort by
- *       - in: query
- *         name: sortDir
- *         schema:
- *           type: string
- *           enum: [ASC, DESC]
- *           default: ASC
- *         description: Sort direction
- *     responses:
- *       200:
- *         description: List of package templates
- */
+// Get all package templates
 router.get(
 	'/',
 	telegramAuthMiddleware,
 	authMiddleware,
+	adminMiddleware,
 	rateLimitMiddleware(60, 60),
-	packageTemplateController.getAllTemplates
+	packageTemplateController.getAllPackageTemplates
 );
 
-/**
- * @swagger
- * /package-templates/{id}:
- *   get:
- *     summary: Get package template by ID
- *     tags: [PackageTemplates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Package template ID
- *     responses:
- *       200:
- *         description: Package template
- *       404:
- *         description: Package template not found
- */
+// Get a specific package template
 router.get(
-	'/:id',
+	'/:packageId',
 	telegramAuthMiddleware,
 	authMiddleware,
+	adminMiddleware,
 	rateLimitMiddleware(60, 60),
-	packageTemplateController.getTemplateById
+	packageTemplateController.getPackageTemplate
 );
 
-/**
- * @swagger
- * /package-templates/{id}/offer:
- *   post:
- *     summary: Create offer from package template (admin only)
- *     tags: [PackageTemplates]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Package template ID
- *     responses:
- *       201:
- *         description: Offer created
- *       403:
- *         description: Access denied
- *       404:
- *         description: Package template not found
- */
+// Create a new package template
 router.post(
-	'/:id/offer',
+	'/',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
+	packageTemplateController.createPackageTemplate
+);
+
+// Update a package template
+router.put(
+	'/:packageId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
+	packageTemplateController.updatePackageTemplate
+);
+
+// Delete a package template
+router.delete(
+	'/:packageId',
 	telegramAuthMiddleware,
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(10, 60),
-	packageTemplateController.createOfferFromTemplate
+	packageTemplateController.deletePackageTemplate
+);
+
+// Activate a package template
+router.post(
+	'/:packageId/activate',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
+	packageTemplateController.activatePackageTemplate
+);
+
+// Deactivate a package template
+router.post(
+	'/:packageId/deactivate',
+	telegramAuthMiddleware,
+	authMiddleware,
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
+	packageTemplateController.deactivatePackageTemplate
 );
 
 module.exports = router;

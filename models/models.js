@@ -336,8 +336,8 @@ const UpgradeNode = sequelize.define('upgradenode', {
 	basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
 	effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
 	priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
-	currency: {
-		type: DataTypes.ENUM('stardust', 'darkmetter'),
+	resource: {
+		type: DataTypes.ENUM('stardust', 'darkmetter', 'stars'),
 		defaultValue: 'stardust',
 	},
 	category: {
@@ -382,7 +382,7 @@ const UpgradeNode = sequelize.define('upgradenode', {
 	},
 });
 
-const Task = sequelize.define('task', {
+const TaskTemplate = sequelize.define('tasktemplate', {
 	id: {
 		type: DataTypes.STRING,
 		primaryKey: true,
@@ -415,7 +415,7 @@ const Task = sequelize.define('task', {
 	},
 });
 
-const GameEvent = sequelize.define('gameevent', {
+const EventTemplate = sequelize.define('eventtemplate', {
 	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
 	name: { type: DataTypes.STRING, allowNull: false },
 	description: {
@@ -437,7 +437,14 @@ const GameEvent = sequelize.define('gameevent', {
 			'GLOBAL_TIMED',
 			'LIMITED_REPEATABLE',
 			'SEASONAL',
-			'PASSIVE'
+			'PASSIVE',
+			'RESOURCE_BASED',
+			'UPGRADE_DEPENDENT',
+			'TASK_DEPENDENT',
+			'MARKET_DEPENDENT',
+			'MULTIPLAYER',
+			'PROGRESSIVE',
+			'TIERED'
 		),
 		allowNull: false,
 	},
@@ -451,7 +458,14 @@ const GameEvent = sequelize.define('gameevent', {
 - CHAINED: { after: 'eventId' }
 - TRIGGERED_BY_ACTION: { action: 'burn-core' }
 - SEASONAL: { start: '2025-06-01', end: '2025-06-30' }
-- GLOBAL_TIMED: { at: '2025-07-01T00:00:00Z' }`,
+- GLOBAL_TIMED: { at: '2025-07-01T00:00:00Z' }
+- RESOURCE_BASED: { resource: 'stardust', threshold: 1000, operator: '>' }
+- UPGRADE_DEPENDENT: { upgradeId: 'upgrade_id', level: 3 }
+- TASK_DEPENDENT: { taskId: 'task_id', progress: 50 }
+- MARKET_DEPENDENT: { action: 'purchase', itemType: 'artifact' }
+- MULTIPLAYER: { minPlayers: 2, maxPlayers: 5, duration: '2h' }
+- PROGRESSIVE: { stages: [{ threshold: 100, reward: 10 }, { threshold: 200, reward: 20 }] }
+- TIERED: { tier: 1, requirements: { resources: { stardust: 1000 }, upgrades: ['upgrade_id'] } }`,
 	},
 	effect: {
 		type: DataTypes.JSONB,
@@ -486,7 +500,7 @@ const MarketOffer = sequelize.define('marketoffer', {
 	itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
 	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 	currency: {
-		type: DataTypes.ENUM('tgStars', 'stardust', 'darkMatter', 'tonToken'),
+		type: DataTypes.ENUM('tgStars', 'tonToken'),
 		allowNull: false,
 	},
 	status: {
@@ -527,7 +541,7 @@ const PaymentTransaction = sequelize.define('paymenttransaction', {
 	toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
 	amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 	currency: {
-		type: DataTypes.ENUM('tgStars', 'stardust', 'darkMatter', 'tonToken'),
+		type: DataTypes.ENUM('tgStars', 'tonToken'),
 		allowNull: false,
 	},
 	txType: {
@@ -535,12 +549,12 @@ const PaymentTransaction = sequelize.define('paymenttransaction', {
 			'BUYER_TO_CONTRACT',
 			'CONTRACT_TO_SELLER',
 			'FEE',
-			'FARMING_REWARD',
-			'UPGRADE_PAYMENT',
-			'TASK_REWARD',
-			'EVENT_REWARD',
-			'GALAXY_STARS_TRANSFER',
-			'RESOURCE_EXCHANGE'
+			'RESOURCE_TRANSFER',
+			'UPGRADE_RESOURCE',
+			'TASK_RESOURCE',
+			'EVENT_RESOURCE',
+			'FARMING_RESOURCE',
+			'GALAXY_RESOURCE'
 		),
 		allowNull: false,
 	},
@@ -562,12 +576,7 @@ const MarketCommission = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		currency: {
-			type: DataTypes.ENUM(
-				'stardust',
-				'darkMatter',
-				'tgStars',
-				'tonToken'
-			),
+			type: DataTypes.ENUM('tgStars', 'tonToken'),
 			unique: true,
 			allowNull: false,
 		},
@@ -581,8 +590,8 @@ const PackageStore = sequelize.define('packagestore', {
 	id: { type: DataTypes.STRING, primaryKey: true },
 	userId: { type: DataTypes.BIGINT, allowNull: false },
 	amount: { type: DataTypes.INTEGER, allowNull: false },
-	currencyGame: {
-		type: DataTypes.ENUM('stardust', 'darkMatter'),
+	resource: {
+		type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
 		allowNull: false,
 	},
 	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
@@ -614,8 +623,8 @@ const PackageTemplate = sequelize.define(
 		name: { type: DataTypes.STRING, allowNull: false },
 		description: { type: DataTypes.TEXT, allowNull: true },
 		amount: { type: DataTypes.INTEGER, allowNull: false },
-		currencyGame: {
-			type: DataTypes.ENUM('stardust', 'darkMatter'),
+		resource: {
+			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
 			allowNull: false,
 		},
 		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
@@ -705,14 +714,14 @@ UserUpgrade.belongsTo(UpgradeNode, { foreignKey: 'nodeId' });
 User.hasMany(UserTask);
 UserTask.belongsTo(User);
 
-Task.hasMany(UserTask);
-UserTask.belongsTo(Task, { foreignKey: 'taskId' });
+TaskTemplate.hasMany(UserTask);
+UserTask.belongsTo(TaskTemplate, { foreignKey: 'taskId' });
 
 User.hasMany(UserEvent);
 UserEvent.belongsTo(User);
 
-GameEvent.hasMany(UserEvent);
-UserEvent.belongsTo(GameEvent, { foreignKey: 'eventId' });
+EventTemplate.hasMany(UserEvent);
+UserEvent.belongsTo(EventTemplate, { foreignKey: 'eventId' });
 
 User.hasOne(UserEventSetting);
 UserEventSetting.belongsTo(User);
@@ -724,8 +733,8 @@ module.exports = {
 	Galaxy,
 	Artifact,
 	UpgradeNode,
-	Task,
-	GameEvent,
+	TaskTemplate,
+	EventTemplate,
 	MarketOffer,
 	MarketTransaction,
 	PaymentTransaction,

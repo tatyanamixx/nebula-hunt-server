@@ -1,181 +1,159 @@
 /**
- * created by Tatyana Mikhniukevich on 29.05.2025
+ * created by Claude on 15.07.2025
  */
 const upgradeService = require('../service/upgrade-service');
 const ApiError = require('../exceptions/api-error');
 
 class UpgradeController {
-	async createUpgradeNodes(req, res, next) {
+	/**
+	 * Get all upgrades for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async getUserUpgrades(req, res, next) {
 		try {
-			const { nodes } = req.body;
-			if (!nodes || !Array.isArray(nodes)) {
-				return next(
-					ApiError.BadRequest('Invalid request: nodes array required')
-				);
-			}
-
-			const result = await upgradeService.createUpgradeNodes(nodes);
-			return res.json(result);
-		} catch (err) {
-			next(err);
+			const userId = req.user.id;
+			const upgrades = await upgradeService.getUserUpgrades(userId);
+			return res.json(upgrades);
+		} catch (e) {
+			next(e);
 		}
 	}
 
-	async updateUpgradeNode(req, res, next) {
+	/**
+	 * Get a specific upgrade for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async getUserUpgrade(req, res, next) {
 		try {
-			const { nodeId } = req.params;
-			const nodeData = req.body;
+			const userId = req.user.id;
+			const { upgradeId } = req.params;
 
-			if (!nodeId) {
-				return next(ApiError.BadRequest('Node ID is required'));
+			if (!upgradeId) {
+				return next(ApiError.BadRequest('Upgrade ID is required'));
 			}
 
-			if (!nodeData) {
-				return next(ApiError.BadRequest('Node data is required'));
-			}
-
-			const node = await upgradeService.updateUpgradeNode(
-				nodeId,
-				nodeData
-			);
-			return res.json(node);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async deleteUpgradeNode(req, res, next) {
-		try {
-			const { nodeId } = req.params;
-
-			if (!nodeId) {
-				return next(ApiError.BadRequest('Node ID is required'));
-			}
-
-			const result = await upgradeService.deleteUpgradeNode(nodeId);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async getAllUpgradeNodes(req, res, next) {
-		try {
-			const nodes = await upgradeService.getAllUpgradeNodes();
-			return res.json(nodes);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async getUserUpgradeNodes(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const nodes = await upgradeService.getUserUpgradeNodes(userId);
-			return res.json(nodes);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async getUserUpgradeNode(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const { nodeId } = req.params;
-
-			if (!nodeId) {
-				return next(ApiError.BadRequest('Node ID is required'));
-			}
-
-			const node = await upgradeService.getUserUpgradeNode(
+			const upgrade = await upgradeService.getUserUpgrade(
 				userId,
-				nodeId
+				upgradeId
 			);
-			return res.json(node);
-		} catch (err) {
-			next(err);
+			return res.json(upgrade);
+		} catch (e) {
+			next(e);
 		}
 	}
 
-	async completeUpgradeNode(req, res, next) {
+	/**
+	 * Get all available upgrades for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async getAvailableUpgrades(req, res, next) {
 		try {
-			const userId = req.initdata.id;
-			const { nodeId } = req.body;
+			const userId = req.user.id;
+			const upgrades = await upgradeService.getAvailableUpgrades(userId);
+			return res.json(upgrades);
+		} catch (e) {
+			next(e);
+		}
+	}
 
-			if (!nodeId) {
-				return next(ApiError.BadRequest('Node ID is required'));
+	/**
+	 * Purchase an upgrade for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async purchaseUpgrade(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { upgradeId } = req.params;
+
+			if (!upgradeId) {
+				return next(ApiError.BadRequest('Upgrade ID is required'));
 			}
 
-			const result = await upgradeService.completeUpgradeNode(
+			const result = await upgradeService.purchaseUpgrade(
 				userId,
-				nodeId
+				upgradeId
 			);
 			return res.json(result);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
+	/**
+	 * Update progress for a user upgrade
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async updateUpgradeProgress(req, res, next) {
 		try {
-			const userId = req.initdata.id;
-			const { nodeId, progress } = req.body;
+			const userId = req.user.id;
+			const { upgradeId } = req.params;
+			const { progress } = req.body;
 
-			if (!nodeId || progress === undefined) {
-				return next(
-					ApiError.BadRequest('Node ID and progress are required')
-				);
+			if (!upgradeId) {
+				return next(ApiError.BadRequest('Upgrade ID is required'));
+			}
+
+			if (progress === undefined || progress === null) {
+				return next(ApiError.BadRequest('Progress value is required'));
 			}
 
 			const result = await upgradeService.updateUpgradeProgress(
 				userId,
-				nodeId,
+				upgradeId,
 				progress
 			);
 			return res.json(result);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
-	async getUpgradeProgress(req, res, next) {
+	/**
+	 * Get upgrade statistics for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async getUpgradeStats(req, res, next) {
 		try {
-			const userId = req.initdata.id;
-			const { nodeId } = req.params;
-
-			if (!nodeId) {
-				return next(ApiError.BadRequest('Node ID is required'));
-			}
-
-			const progress = await upgradeService.getUpgradeProgress(
-				userId,
-				nodeId
-			);
-			return res.json(progress);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async initializeUserUpgradeTree(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const result = await upgradeService.initializeUserUpgradeTree(
-				userId
-			);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async getUserUpgradeStats(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const stats = await upgradeService.getUserUpgradeStats(userId);
+			const userId = req.user.id;
+			const stats = await upgradeService.getUpgradeStats(userId);
 			return res.json(stats);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Reset all upgrades for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async resetUpgrades(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const result = await upgradeService.resetUpgrades(userId);
+			return res.json(result);
+		} catch (e) {
+			next(e);
 		}
 	}
 }

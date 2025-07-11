@@ -20,12 +20,19 @@ async function checkExpiredOffers() {
 			`Проверка истекших оферт завершена. Обработано ${count} оферт.`
 		);
 
-		process.exit(0);
+		return { success: true, count };
 	} catch (error) {
 		logger.error(`Ошибка при проверке истекших оферт: ${error.message}`);
-		process.exit(1);
+		throw error;
 	}
 }
 
-// Запускаем проверку
-checkExpiredOffers();
+// Экспортируем функцию для тестирования
+module.exports = checkExpiredOffers;
+
+// Если скрипт запущен напрямую (не через require), выполняем проверку
+if (require.main === module) {
+	checkExpiredOffers()
+		.then(() => process.exit(0))
+		.catch(() => process.exit(1));
+}

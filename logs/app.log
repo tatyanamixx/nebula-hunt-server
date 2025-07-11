@@ -76,3 +76,18 @@
 {"level":30,"time":1752008407919,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
 {"level":30,"time":1752008407919,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
 {"level":30,"time":1752008407922,"pid":5032,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752201936353,"pid":10512,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":50,"time":1752201936359,"pid":10512,"hostname":"DESKTOP-SL6FQDI","error":"Failed to ensure system user exists: column \"tonWallet\" does not exist","msg":"Failed to start server:"}
+{"level":30,"time":1752202602188,"pid":2452,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":50,"time":1752202602191,"pid":2452,"hostname":"DESKTOP-SL6FQDI","error":"Failed to ensure system user exists: column \"tonWallet\" does not exist","msg":"Failed to start server:"}
+{"level":50,"time":1752202800057,"pid":2452,"hostname":"DESKTOP-SL6FQDI","msg":"Ошибка при обработке истекших оферт: column \"isItemLocked\" does not exist"}
+{"level":50,"time":1752202800057,"pid":2452,"hostname":"DESKTOP-SL6FQDI","msg":"Ошибка при обработке истекших оферт: column \"isItemLocked\" does not exist"}
+{"level":50,"time":1752265640614,"pid":9492,"hostname":"DESKTOP-SL6FQDI","error":"invalid input value for enum enum_marketcommissions_currency: \"stardust\"","msg":"Failed to start server:"}
+{"level":30,"time":1752265741797,"pid":20264,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752265741801,"pid":20264,"hostname":"DESKTOP-SL6FQDI","msg":-1}
+{"level":30,"time":1752265741804,"pid":20264,"hostname":"DESKTOP-SL6FQDI","msg":-1}
+{"level":30,"time":1752265741808,"pid":20264,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752265741810,"pid":20264,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752265955315,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752265955318,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752265955320,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}

@@ -1,58 +1,12 @@
 /**
  * created by Tatyana Mikhniukevich on 09.06.2025
  */
-const { Task, UserState, UserTask } = require('../models/models');
+const { TaskTemplate, UserState, UserTask } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const marketService = require('./market-service');
 
 class TaskService {
-	async createTasks(tasks) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create tasks in bulk
-			const createdTasks = [];
-
-			for (const task of tasks) {
-				// Validate task data
-				if (
-					!task.id ||
-					!task.title ||
-					!task.description ||
-					!task.reward ||
-					!task.condition ||
-					!task.icon
-				) {
-					await t.rollback();
-					throw ApiError.BadRequest('Invalid task data structure');
-				}
-
-				// Create task with levels included
-				const newTask = await Task.create(
-					{
-						id: task.id,
-						title: task.title,
-						description: task.description,
-						reward: task.reward,
-						condition: task.condition,
-						icon: task.icon,
-						active: task.active ?? true,
-					},
-					{ transaction: t }
-				);
-
-				createdTasks.push(newTask);
-			}
-
-			await t.commit();
-			return createdTasks;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to create tasks: ${err.message}`);
-		}
-	}
-
 	/**
 	 * Initialize tasks for a new user
 	 * @param {number} userId - User ID
@@ -65,7 +19,7 @@ class TaskService {
 
 		try {
 			// Get all active tasks
-			const tasks = await Task.findAll({
+			const tasks = await TaskTemplate.findAll({
 				where: {
 					active: true,
 				},
@@ -138,7 +92,7 @@ class TaskService {
 
 		try {
 			// Получаем все активные задачи
-			const tasks = await Task.findAll({
+			const tasks = await TaskTemplate.findAll({
 				where: {
 					active: true,
 				},
@@ -251,7 +205,7 @@ class TaskService {
 				where: { userId },
 				include: [
 					{
-						model: Task,
+						model: TaskTemplate,
 						attributes: [
 							'id',
 							'title',
@@ -278,7 +232,7 @@ class TaskService {
 				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
-				task: userTask.task,
+				task: userTask.tasktemplate,
 			}));
 
 			await t.commit();
@@ -301,7 +255,7 @@ class TaskService {
 				},
 				include: [
 					{
-						model: Task,
+						model: TaskTemplate,
 						attributes: ['reward'],
 					},
 				],
@@ -342,7 +296,7 @@ class TaskService {
 			if (userTask.progress >= userTask.targetProgress) {
 				userTask.completed = true;
 				userTask.completedAt = now;
-				userTask.reward = userTask.task.reward;
+				userTask.reward = userTask.tasktemplate.reward;
 				await userTask.save({ transaction: t });
 
 				// Обновляем счетчик в UserState
@@ -368,27 +322,6 @@ class TaskService {
 		}
 	}
 
-	async updateTask(taskId, taskData) {
-		const t = await sequelize.transaction();
-
-		try {
-			const task = await Task.findByPk(taskId, { transaction: t });
-
-			if (!task) {
-				await t.rollback();
-				throw ApiError.BadRequest('Task not found');
-			}
-
-			await task.update(taskData, { transaction: t });
-
-			await t.commit();
-			return task;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to update task: ${err.message}`);
-		}
-	}
-
 	async getActiveTasks(userId) {
 		const t = await sequelize.transaction();
 
@@ -401,7 +334,7 @@ class TaskService {
 				},
 				include: [
 					{
-						model: Task,
+						model: TaskTemplate,
 						attributes: [
 							'id',
 							'title',
@@ -428,7 +361,7 @@ class TaskService {
 				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
-				task: userTask.task,
+				task: userTask.tasktemplate,
 			}));
 
 			await t.commit();
@@ -452,7 +385,7 @@ class TaskService {
 				},
 				include: [
 					{
-						model: Task,
+						model: TaskTemplate,
 						attributes: [
 							'id',
 							'title',
@@ -479,7 +412,7 @@ class TaskService {
 				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
-				task: userTask.task,
+				task: userTask.tasktemplate,
 			}));
 
 			await t.commit();
@@ -526,7 +459,7 @@ class TaskService {
 				},
 				include: [
 					{
-						model: Task,
+						model: TaskTemplate,
 						attributes: [
 							'id',
 							'title',
@@ -556,7 +489,7 @@ class TaskService {
 				active: userTask.active,
 				progressHistory: userTask.progressHistory,
 				lastProgressUpdate: userTask.lastProgressUpdate,
-				task: userTask.task,
+				task: userTask.tasktemplate,
 			};
 
 			await t.commit();
@@ -600,7 +533,9 @@ class TaskService {
 			}
 
 			// Get the task to determine reward
-			const task = await Task.findByPk(taskId, { transaction: t });
+			const task = await TaskTemplate.findByPk(taskId, {
+				transaction: t,
+			});
 			if (!task) {
 				await t.rollback();
 				throw ApiError.BadRequest('Task not found');
@@ -727,6 +662,11 @@ class TaskService {
 				`Failed to get user task stats: ${err.message}`
 			);
 		}
+	}
+
+	async getTaskStats(userId) {
+		// Alias for getUserTaskStats
+		return await this.getUserTaskStats(userId);
 	}
 }
 

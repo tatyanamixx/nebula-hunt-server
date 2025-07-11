@@ -9,12 +9,14 @@ const {
 	UserTask,
 	UserEvent,
 	UserEventSetting,
+	PackageStore,
 } = require('../models/models');
 const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const upgradeService = require('./upgrade-service');
 const taskService = require('./task-service');
 const eventService = require('./event-service');
+const packageStoreService = require('./package-store-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const { LEADERBOARD_LIMIT } = require('../config/constants');
@@ -82,29 +84,42 @@ class UserStateService {
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
 
-				// Get user upgrades, tasks, and events
-				const [userUpgrades, userTasks, userEvents, userEventSettings] =
-					await Promise.all([
-						UserUpgrade.findAll({
-							where: { userId },
-							transaction: t,
-						}),
-						UserTask.findAll({
-							where: { userId },
-							transaction: t,
-						}),
-						UserEvent.findAll({
-							where: {
-								userId,
-								status: 'ACTIVE',
-							},
-							transaction: t,
-						}),
-						UserEventSetting.findOne({
-							where: { userId },
-							transaction: t,
-						}),
-					]);
+				// Get user upgrades, tasks, events, and packages
+				const [
+					userUpgrades,
+					userTasks,
+					userEvents,
+					userEventSettings,
+					userPackages,
+				] = await Promise.all([
+					UserUpgrade.findAll({
+						where: { userId },
+						transaction: t,
+					}),
+					UserTask.findAll({
+						where: { userId },
+						transaction: t,
+					}),
+					UserEvent.findAll({
+						where: {
+							userId,
+							status: 'ACTIVE',
+						},
+						transaction: t,
+					}),
+					UserEventSetting.findOne({
+						where: { userId },
+						transaction: t,
+					}),
+					PackageStore.findAll({
+						where: {
+							userId,
+							status: 'ACTIVE',
+							isUsed: false,
+						},
+						transaction: t,
+					}),
+				]);
 
 				// Convert to JSON for response
 				const userStateObj = userState.toJSON
@@ -133,6 +148,11 @@ class UserStateService {
 				userStateObj.events = {
 					active: userEvents,
 					settings: userEventSettings || {},
+				};
+
+				userStateObj.packages = {
+					available: userPackages,
+					count: userPackages.length,
 				};
 
 				await t.commit();
@@ -186,6 +206,7 @@ class UserStateService {
 				upgradeService.initializeUserUpgradeTree(userId, transaction),
 				taskService.initializeUserTasks(userId, transaction),
 				eventService.initializeUserEvents(userId, transaction),
+				packageStoreService.initializePackageStore(userId, transaction),
 			]);
 
 			return stateNew;
@@ -446,6 +467,122 @@ class UserStateService {
 		} catch (err) {
 			throw ApiError.Internal(
 				`Failed to get user upgrade tree: ${err.message}`
+			);
+		}
+	}
+
+	async getUserResources(userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
+
+			if (!userState) {
+				await t.rollback();
+				throw ApiError.NotFound('User state not found');
+			}
+
+			// Extract resources from user state
+			const resources = {
+				stardust: userState.stardust || 0,
+				darkMatter: userState.darkMatter || 0,
+				tgStars: userState.tgStars || 0,
+				lockedResources: {
+					stardust: userState.lockedStardust || 0,
+					darkMatter: userState.lockedDarkMatter || 0,
+					tgStars: userState.lockedTgStars || 0,
+				},
+			};
+
+			await t.commit();
+			return resources;
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(
+				`Failed to get user resources: ${err.message}`
+			);
+		}
+	}
+
+	async claimDailyBonus(userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
+
+			if (!userState) {
+				await t.rollback();
+				throw ApiError.NotFound('User state not found');
+			}
+
+			const now = new Date();
+			const today = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate()
+			);
+
+			// Check if bonus was already claimed today
+			if (userState.lastDailyBonus) {
+				const lastClaim = new Date(userState.lastDailyBonus);
+				const lastClaimDate = new Date(
+					lastClaim.getFullYear(),
+					lastClaim.getMonth(),
+					lastClaim.getDate()
+				);
+
+				if (lastClaimDate.getTime() === today.getTime()) {
+					await t.rollback();
+					throw ApiError.BadRequest(
+						'Daily bonus already claimed today'
+					);
+				}
+			}
+
+			// Calculate bonus based on streak
+			const baseBonus = 100; // Base stardust bonus
+			const streakMultiplier = Math.min(userState.currentStreak || 1, 7); // Max 7x multiplier
+			const bonusAmount = baseBonus * streakMultiplier;
+
+			// Add bonus to user's stardust
+			userState.stardust = (userState.stardust || 0) + bonusAmount;
+			userState.lastDailyBonus = now;
+
+			await userState.save({ transaction: t });
+
+			await t.commit();
+
+			return {
+				bonus: {
+					stardust: bonusAmount,
+					streakMultiplier: streakMultiplier,
+					baseAmount: baseBonus,
+				},
+				newBalance: {
+					stardust: userState.stardust,
+					darkMatter: userState.darkMatter || 0,
+					tgStars: userState.tgStars || 0,
+				},
+				nextClaimAvailable: new Date(
+					today.getTime() + 24 * 60 * 60 * 1000
+				), // Tomorrow
+			};
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(
+				`Failed to claim daily bonus: ${err.message}`
 			);
 		}
 	}

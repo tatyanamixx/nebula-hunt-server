@@ -1,27 +1,63 @@
-# Используем официальный Node.js образ
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
-# Устанавливаем рабочую директорию
+# Set working directory
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
+# Copy package files for dependency installation
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --omit=dev
+# Install all dependencies including dev dependencies
+RUN npm ci
 
-# Копируем исходный код
+# Copy source code
 COPY . .
 
-# Переменные окружения (можно переопределять при запуске)
+# Build the application if needed (uncomment if you have a build step)
+# RUN npm run build
+
+# Production image
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
 ENV NODE_ENV=production
+ENV PORT=5000
 
-# Открываем порт приложения
-EXPOSE 3000
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Healthcheck (проверка, что сервер отвечает)
+# Copy application files from build stage
+COPY --from=build /app/config ./config
+COPY --from=build /app/controllers ./controllers
+COPY --from=build /app/dtos ./dtos
+COPY --from=build /app/exceptions ./exceptions
+COPY --from=build /app/middlewares ./middlewares
+COPY --from=build /app/migrations ./migrations
+COPY --from=build /app/models ./models
+COPY --from=build /app/routes ./routes
+COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/service ./service
+COPY --from=build /app/app.js ./app.js
+COPY --from=build /app/db.js ./db.js
+COPY --from=build /app/index.js ./index.js
+COPY --from=build /app/.sequelizerc ./.sequelizerc
+
+# Create directory for logs
+RUN mkdir -p /app/logs && \
+    chown -R node:node /app/logs
+
+# Use non-root user for security
+USER node
+
+# Expose application port
+EXPOSE 5000
+
+# Healthcheck to verify the application is running
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
-# Запуск приложения
+# Start the application
 CMD ["node", "index.js"] 

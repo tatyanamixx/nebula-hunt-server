@@ -5,7 +5,7 @@ require('dotenv').config();
 const app = require('./app');
 const sequelize = require('./db');
 const loggerService = require('./service/logger-service');
-const { updateActiveUsers } = require('./service/metrics-service');
+const { updateActiveUsers } = require('./service/game-metrics-service');
 
 const PORT = process.env.PORT || 5000;
 

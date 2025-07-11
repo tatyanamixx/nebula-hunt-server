@@ -1,88 +1,140 @@
 /**
- * created by Tatyana Mikhniukevich on 26.05.2025
+ * created by Claude on 15.07.2025
  */
 const eventService = require('../service/event-service');
 const ApiError = require('../exceptions/api-error');
 
 class EventController {
-	async createEvents(req, res, next) {
+	/**
+	 * Get all active events for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async getActiveEvents(req, res, next) {
 		try {
-			const events = req.body;
-			if (!events || !Array.isArray(events)) {
-				return next(
-					ApiError.BadRequest(
-						'Invalid request: events array required'
-					)
-				);
-			}
-
-			const result = await eventService.createEvents(events);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async updateEvent(req, res, next) {
-		try {
-			const { eventId } = req.params;
-			const eventData = req.body;
-
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			if (!eventData) {
-				return next(ApiError.BadRequest('Event data is required'));
-			}
-
-			// Обновляем существующее событие
-			const event = await eventService.updateEvent(eventId, eventData);
-
-			return res.json(event);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async getAllEvents(req, res, next) {
-		try {
-			const events = await eventService.getAllEvents();
+			const userId = req.user.id;
+			const events = await eventService.getActiveEvents(userId);
 			return res.json(events);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
-	async triggerEvent(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const { eventId } = req.body;
-
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			const result = await eventService.triggerEvent(userId, eventId);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
+	/**
+	 * Get all events for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async getUserEvents(req, res, next) {
 		try {
-			const userId = req.initdata.id;
+			const userId = req.user.id;
 			const events = await eventService.getUserEvents(userId);
 			return res.json(events);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
+	/**
+	 * Check and trigger events for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async checkAndTriggerEvents(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const events = await eventService.checkAndTriggerEvents(userId);
+			return res.json(events);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Trigger a specific event for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async triggerEvent(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { eventId } = req.params;
+
+			if (!eventId) {
+				return next(ApiError.BadRequest('Event ID is required'));
+			}
+
+			const event = await eventService.triggerEvent(userId, eventId);
+			return res.json(event);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Complete an event for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async completeEvent(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { eventId } = req.params;
+
+			if (!eventId) {
+				return next(ApiError.BadRequest('Event ID is required'));
+			}
+
+			const event = await eventService.completeEvent(userId, eventId);
+			return res.json(event);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Cancel an event for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
+	async cancelEvent(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { eventId } = req.params;
+
+			if (!eventId) {
+				return next(ApiError.BadRequest('Event ID is required'));
+			}
+
+			const event = await eventService.cancelEvent(userId, eventId);
+			return res.json(event);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	/**
+	 * Get a specific event for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async getUserEvent(req, res, next) {
 		try {
-			const userId = req.initdata.id;
+			const userId = req.user.id;
 			const { eventId } = req.params;
 
 			if (!eventId) {
@@ -91,67 +143,68 @@ class EventController {
 
 			const event = await eventService.getUserEvent(userId, eventId);
 			return res.json(event);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
-	async checkAndTriggerEvents(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const result = await eventService.checkAndTriggerEvents(userId);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
-	async initializeUserEvents(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const result = await eventService.initializeUserEvents(userId);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
+	/**
+	 * Get event settings for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async getUserEventSettings(req, res, next) {
 		try {
-			const userId = req.initdata.id;
+			const userId = req.user.id;
 			const settings = await eventService.getUserEventSettings(userId);
 			return res.json(settings);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 
+	/**
+	 * Update event settings for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async updateUserEventSettings(req, res, next) {
 		try {
-			const userId = req.initdata.id;
-			const settings = req.body;
+			const userId = req.user.id;
+			const settingsData = req.body;
 
-			if (!settings) {
-				return next(ApiError.BadRequest('Settings are required'));
+			if (!settingsData) {
+				return next(ApiError.BadRequest('Settings data is required'));
 			}
 
-			const result = await eventService.updateUserEventSettings(
+			const settings = await eventService.updateUserEventSettings(
 				userId,
-				settings
+				settingsData
 			);
-			return res.json(result);
-		} catch (err) {
-			next(err);
+			return res.json(settings);
+		} catch (e) {
+			next(e);
 		}
 	}
 
+	/**
+	 * Get event statistics for a user
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 * @returns {Promise<void>}
+	 */
 	async getUserEventStats(req, res, next) {
 		try {
-			const userId = req.initdata.id;
+			const userId = req.user.id;
 			const stats = await eventService.getUserEventStats(userId);
 			return res.json(stats);
-		} catch (err) {
-			next(err);
+		} catch (e) {
+			next(e);
 		}
 	}
 }

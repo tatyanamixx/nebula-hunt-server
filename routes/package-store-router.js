@@ -1,0 +1,95 @@
+/**
+ * created by Claude on 15.07.2025
+ */
+const Router = require('express').Router;
+const router = new Router();
+const packageStoreController = require('../controllers/package-store-controller');
+const authMiddleware = require('../middlewares/auth-middleware');
+const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
+const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+
+/**
+ * @swagger
+ * /packages:
+ *   get:
+ *     summary: Get all packages for the authenticated user
+ *     tags: [Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user packages
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+	'/',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	packageStoreController.getUserPackages
+);
+
+/**
+ * @swagger
+ * /packages/{packageId}:
+ *   get:
+ *     summary: Get a specific package by ID for the authenticated user
+ *     tags: [Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: packageId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Package ID
+ *     responses:
+ *       200:
+ *         description: Package details
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Package not found
+ */
+router.get(
+	'/:packageId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60),
+	packageStoreController.getUserPackageById
+);
+
+/**
+ * @swagger
+ * /packages/{packageId}/use:
+ *   post:
+ *     summary: Use a package to add resources to user state
+ *     tags: [Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: packageId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Package ID
+ *     responses:
+ *       200:
+ *         description: Package used successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Package not found or already used
+ */
+router.post(
+	'/:packageId/use',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(20),
+	packageStoreController.usePackage
+);
+
+module.exports = router;

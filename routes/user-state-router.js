@@ -1,5 +1,6 @@
 /**
- * created by Tatyana Mikhniukevich on 29.05.2025
+ * created by Tatyana Mikhniukevich on 02.06.2025
+ * updated by Claude on 15.07.2025
  */
 const Router = require('express').Router;
 const router = new Router();
@@ -14,14 +15,10 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  *   name: UserState
  *   description: User state management
  */
-router.get(
-	'/',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
-	userStateController.getUserState
-);
+
 /**
  * @swagger
- * /state/:
+ * /state:
  *   get:
  *     summary: Get user state
  *     tags: [UserState]
@@ -31,82 +28,52 @@ router.get(
  *       200:
  *         description: User state
  */
-router.put(
+router.get(
 	'/',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
-	userStateController.updateUserState
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	userStateController.getUserState
 );
+
 /**
  * @swagger
- * /state/:
- *   put:
- *     summary: Update user state
+ * /state/resources:
+ *   get:
+ *     summary: Get user resources
  *     tags: [UserState]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User state updated
+ *         description: User resources
  */
 router.get(
-	'/leaderboard',
-	[telegramAuthMiddleware, rateLimitMiddleware(120, 60)],
-	userStateController.getLeaderboard
+	'/resources',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	userStateController.getUserResources
 );
+
 /**
  * @swagger
- * /state/leaderboard:
- *   get:
- *     summary: Get leaderboard
- *     description: Returns the top users based on LEADERBOARD_LIMIT (default 100) and the current user's position if not in top list
+ * /state/daily-bonus:
+ *   post:
+ *     summary: Claim daily bonus
  *     tags: [UserState]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Leaderboard data with top users and current user's position
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 leaderboard:
- *                   type: array
- *                   description: Top users based on LEADERBOARD_LIMIT, with current user appended if not in top list
- *                   items:
- *                     type: object
- *                     properties:
- *                       userId:
- *                         type: integer
- *                         description: User ID
- *                       state:
- *                         type: object
- *                         properties:
- *                           totalStars:
- *                             type: integer
- *                             description: Total stars earned by user
- *                       currentStreak:
- *                         type: integer
- *                         description: Current login streak
- *                       maxStreak:
- *                         type: integer
- *                         description: Maximum login streak achieved
- *                       User:
- *                         type: object
- *                         properties:
- *                           username:
- *                             type: string
- *                             description: Username
- *                       rating:
- *                         type: integer
- *                         description: User's position in the leaderboard
- *                 userRating:
- *                   type: integer
- *                   description: Current user's position in the overall leaderboard
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
+ *         description: Daily bonus claimed
  */
+router.post(
+	'/daily-bonus',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	userStateController.claimDailyBonus
+);
 
 module.exports = router;

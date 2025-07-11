@@ -6,6 +6,10 @@ jest.mock('../../service/artifact-service', () => ({
 	addArtifactToUser: jest.fn(),
 	getUserArtifacts: jest.fn(),
 	createSystemArtifactWithOffer: jest.fn(),
+	getArtifactById: jest.fn(),
+	generateRandomArtifact: jest.fn(),
+	activateArtifact: jest.fn(),
+	deactivateArtifact: jest.fn(),
 }));
 
 describe('ArtifactController', () => {
@@ -22,6 +26,7 @@ describe('ArtifactController', () => {
 			initdata: {
 				id: 1,
 			},
+			params: {},
 		};
 
 		res = {
@@ -131,6 +136,214 @@ describe('ArtifactController', () => {
 
 			// Проверяем, что был установлен правильный статус и сообщение об ошибке
 			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+		});
+	});
+
+	describe('getArtifact', () => {
+		it('should return a specific artifact', async () => {
+			// Подготавливаем тестовые данные
+			const artifactId = 1;
+			const mockArtifact = {
+				id: artifactId,
+				userId: req.initdata.id,
+				seed: 'artifact-seed-123',
+				name: 'Ancient Relic',
+				rarity: 'LEGENDARY',
+			};
+
+			// Устанавливаем параметры запроса
+			req.params.artifactId = artifactId;
+
+			// Устанавливаем мок для сервиса
+			artifactService.getArtifactById.mockResolvedValue(mockArtifact);
+
+			// Вызываем тестируемый метод
+			await artifactController.getArtifact(req, res);
+
+			// Проверяем, что сервис был вызван с правильными параметрами
+			expect(artifactService.getArtifactById).toHaveBeenCalledWith(
+				artifactId,
+				req.initdata.id
+			);
+
+			// Проверяем, что ответ был отправлен с правильными данными
+			expect(res.json).toHaveBeenCalledWith(mockArtifact);
+		});
+
+		it('should return 404 if artifact not found', async () => {
+			// Устанавливаем параметры запроса
+			req.params.artifactId = 999;
+
+			// Устанавливаем мок для сервиса
+			artifactService.getArtifactById.mockResolvedValue(null);
+
+			// Вызываем тестируемый метод
+			await artifactController.getArtifact(req, res);
+
+			// Проверяем, что был установлен правильный статус и сообщение об ошибке
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'Artifact not found',
+			});
+		});
+
+		it('should handle errors and return 500 status', async () => {
+			// Устанавливаем параметры запроса
+			req.params.artifactId = 1;
+
+			// Устанавливаем мок для сервиса, который выбрасывает ошибку
+			const errorMessage = 'Failed to get artifact';
+			artifactService.getArtifactById.mockRejectedValue(
+				new Error(errorMessage)
+			);
+
+			// Вызываем тестируемый метод
+			await artifactController.getArtifact(req, res);
+
+			// Проверяем, что был установлен правильный статус и сообщение об ошибке
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+		});
+	});
+
+	describe('generateArtifact', () => {
+		it('should generate a new artifact for user', async () => {
+			// Подготавливаем тестовые данные
+			const mockArtifact = {
+				id: 3,
+				userId: req.initdata.id,
+				seed: 'generated-seed-789',
+				name: 'Cosmic Crystal',
+				rarity: 'EPIC',
+			};
+
+			// Устанавливаем мок для сервиса
+			artifactService.generateRandomArtifact.mockResolvedValue(
+				mockArtifact
+			);
+
+			// Вызываем тестируемый метод
+			await artifactController.generateArtifact(req, res);
+
+			// Проверяем, что сервис был вызван с правильными параметрами
+			expect(artifactService.generateRandomArtifact).toHaveBeenCalledWith(
+				req.initdata.id
+			);
+
+			// Проверяем, что ответ был отправлен с правильными данными
+			expect(res.status).toHaveBeenCalledWith(201);
+			expect(res.json).toHaveBeenCalledWith(mockArtifact);
+		});
+
+		it('should handle errors and return 400 status', async () => {
+			// Устанавливаем мок для сервиса, который выбрасывает ошибку
+			const errorMessage = 'Failed to generate artifact';
+			artifactService.generateRandomArtifact.mockRejectedValue(
+				new Error(errorMessage)
+			);
+
+			// Вызываем тестируемый метод
+			await artifactController.generateArtifact(req, res);
+
+			// Проверяем, что был установлен правильный статус и сообщение об ошибке
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+		});
+	});
+
+	describe('activateArtifact', () => {
+		it('should activate an artifact', async () => {
+			// Подготавливаем тестовые данные
+			const artifactId = 1;
+			const mockResult = {
+				success: true,
+				message: 'Artifact Ancient Relic has been activated',
+				effects: { power: 100 },
+			};
+
+			// Устанавливаем параметры запроса
+			req.params.artifactId = artifactId;
+
+			// Устанавливаем мок для сервиса
+			artifactService.activateArtifact.mockResolvedValue(mockResult);
+
+			// Вызываем тестируемый метод
+			await artifactController.activateArtifact(req, res);
+
+			// Проверяем, что сервис был вызван с правильными параметрами
+			expect(artifactService.activateArtifact).toHaveBeenCalledWith(
+				artifactId,
+				req.initdata.id
+			);
+
+			// Проверяем, что ответ был отправлен с правильными данными
+			expect(res.json).toHaveBeenCalledWith(mockResult);
+		});
+
+		it('should handle errors and return 400 status', async () => {
+			// Устанавливаем параметры запроса
+			req.params.artifactId = 1;
+
+			// Устанавливаем мок для сервиса, который выбрасывает ошибку
+			const errorMessage = 'Failed to activate artifact';
+			artifactService.activateArtifact.mockRejectedValue(
+				new Error(errorMessage)
+			);
+
+			// Вызываем тестируемый метод
+			await artifactController.activateArtifact(req, res);
+
+			// Проверяем, что был установлен правильный статус и сообщение об ошибке
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+		});
+	});
+
+	describe('deactivateArtifact', () => {
+		it('should deactivate an artifact', async () => {
+			// Подготавливаем тестовые данные
+			const artifactId = 1;
+			const mockResult = {
+				success: true,
+				message: 'Artifact Ancient Relic has been deactivated',
+				effects: { power: 100 },
+			};
+
+			// Устанавливаем параметры запроса
+			req.params.artifactId = artifactId;
+
+			// Устанавливаем мок для сервиса
+			artifactService.deactivateArtifact.mockResolvedValue(mockResult);
+
+			// Вызываем тестируемый метод
+			await artifactController.deactivateArtifact(req, res);
+
+			// Проверяем, что сервис был вызван с правильными параметрами
+			expect(artifactService.deactivateArtifact).toHaveBeenCalledWith(
+				artifactId,
+				req.initdata.id
+			);
+
+			// Проверяем, что ответ был отправлен с правильными данными
+			expect(res.json).toHaveBeenCalledWith(mockResult);
+		});
+
+		it('should handle errors and return 400 status', async () => {
+			// Устанавливаем параметры запроса
+			req.params.artifactId = 1;
+
+			// Устанавливаем мок для сервиса, который выбрасывает ошибку
+			const errorMessage = 'Failed to deactivate artifact';
+			artifactService.deactivateArtifact.mockRejectedValue(
+				new Error(errorMessage)
+			);
+
+			// Вызываем тестируемый метод
+			await artifactController.deactivateArtifact(req, res);
+
+			// Проверяем, что был установлен правильный статус и сообщение об ошибке
+			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
 		});
 	});
@@ -248,21 +461,23 @@ describe('ArtifactController', () => {
 		});
 
 		it('should handle service errors and return 400 status', async () => {
-			// Подготавливаем полные данные запроса
-			req.body = {
-				artifactData: {
-					seed: 'seed1',
-					name: 'Test Artifact',
-					rarity: 'COMMON',
-				},
-				offerData: {
-					price: 1000,
-					currency: 'tgStars',
-				},
+			// Подготавливаем тестовые данные
+			const artifactData = {
+				seed: 'system-artifact-seed',
+				name: 'System Artifact',
+				rarity: 'MYTHICAL',
 			};
 
+			const offerData = {
+				price: 1000,
+				currency: 'tgStars',
+			};
+
+			// Устанавливаем входные данные запроса
+			req.body = { artifactData, offerData };
+
 			// Устанавливаем мок для сервиса, который выбрасывает ошибку
-			const errorMessage = 'Failed to create artifact offer';
+			const errorMessage = 'Failed to create system artifact with offer';
 			artifactService.createSystemArtifactWithOffer.mockRejectedValue(
 				new Error(errorMessage)
 			);

@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+        container_name: nebulahunt-server-dev
+        restart: unless-stopped
+        ports:
+            - '5000:5000'
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - NODE_ENV=development
+            - PORT=5000
+            - DB_HOST=postgres
+            - DB_PORT=5432
+            - DB_NAME=nebulahunt_dev
+            - DB_USER=postgres
+            - DB_PASSWORD=postgres
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - JWT_ACCESS_SECRET=dev_access_secret
+            - JWT_REFRESH_SECRET=dev_refresh_secret
+        volumes:
+            - .:/app
+            - /app/node_modules
+        command: npm run dev
+        networks:
+            - nebulahunt-network-dev
+
+    postgres:
+        image: postgres:16-alpine
+        container_name: nebulahunt-postgres-dev
+        restart: unless-stopped
+        ports:
+            - '5432:5432'
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_DB=nebulahunt_dev
+        volumes:
+            - postgres-data-dev:/var/lib/postgresql/data
+        networks:
+            - nebulahunt-network-dev
+
+    redis:
+        image: redis:7-alpine
+        container_name: nebulahunt-redis-dev
+        restart: unless-stopped
+        ports:
+            - '6379:6379'
+        networks:
+            - nebulahunt-network-dev
+
+    pgadmin:
+        image: dpage/pgadmin4
+        container_name: nebulahunt-pgadmin-dev
+        restart: unless-stopped
+        ports:
+            - '8080:80'
+        environment:
+            - PGADMIN_DEFAULT_EMAIL=admin@nebulahunt.com
+            - PGADMIN_DEFAULT_PASSWORD=admin
+        volumes:
+            - pgadmin-data-dev:/var/lib/pgadmin
+        depends_on:
+            - postgres
+        networks:
+            - nebulahunt-network-dev
+
+volumes:
+    postgres-data-dev:
+    pgadmin-data-dev:
+
+networks:
+    nebulahunt-network-dev:
+        driver: bridge

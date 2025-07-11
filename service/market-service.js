@@ -21,6 +21,7 @@ const { SYSTEM_USER_ID } = require('../config/constants');
 const logger = require('../service/logger-service');
 const stateService = require('./state-service');
 const packageTemplateService = require('./package-template-service');
+const packageStoreService = require('./package-store-service');
 
 class MarketService {
 	/**
@@ -828,7 +829,7 @@ class MarketService {
 								id: `${itemId}_${buyerId}_${Date.now()}`, // Генерируем уникальный ID
 								userId: buyerId,
 								amount: packageData.amount,
-								currencyGame: packageData.currencyGame,
+								resource: packageData.resource,
 								price: packageData.price,
 								currency: packageData.currency,
 								status: 'ACTIVE',
@@ -994,6 +995,340 @@ class MarketService {
 	}
 
 	/**
+	 * Регистрация передачи ресурса за апгрейд
+	 * @param {Object} params { userId, nodeId, amount, resource }
+	 * @returns {Promise<Object>} Результат операции
+	 */
+	async registerUpgradePayment({ userId, nodeId, amount, resource }) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Создаем оферту от системы для передачи ресурса
+			const offerData = {
+				sellerId: userId, // Пользователь "продает" ресурс системе
+				itemType: 'resource',
+				itemId: `${resource}_${amount}`,
+				price: 0, // Бесплатно, т.к. это обмен ресурса на апгрейд
+				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				offerType: 'SYSTEM',
+			};
+
+			// Проверяем наличие ресурса
+			await this.checkResourceAvailability(
+				userId,
+				{ type: resource, amount },
+				t
+			);
+
+			// Блокируем ресурс
+			await this.lockResource(userId, { type: resource, amount }, t);
+
+			// Создаем оферту
+			const offer = await MarketOffer.create(offerData, {
+				transaction: t,
+			});
+
+			// Создаем транзакцию
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: SYSTEM_USER_ID, // Система "покупает" ресурс
+					sellerId: userId,
+					status: 'COMPLETED',
+					completedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Создаем запись о транзакции
+			await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: userId,
+					toAccount: SYSTEM_USER_ID,
+					amount,
+					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					txType: 'UPGRADE_RESOURCE',
+					status: 'CONFIRMED',
+					confirmedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Разблокируем и передаем ресурс системе
+			await this.transferResource(offer, SYSTEM_USER_ID, t);
+
+			// Завершаем оферту
+			await offer.update(
+				{
+					status: 'COMPLETED',
+					isItemLocked: false,
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'Ресурс передан системе за апгрейд',
+				nodeId,
+				resource,
+				amount,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register upgrade payment: ${err.message}`
+				  );
+		}
+	}
+
+	/**
+	 * Регистрация передачи ресурса за выполнение задачи
+	 * @param {Object} params { userId, taskId, amount, resource }
+	 * @returns {Promise<Object>} Результат операции
+	 */
+	async registerTaskReward({ userId, taskId, amount, resource }) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Создаем оферту от системы для передачи ресурса
+			const offerData = {
+				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				itemType: 'resource',
+				itemId: `${resource}_${amount}`,
+				price: 0, // Бесплатно, т.к. это награда за задачу
+				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				offerType: 'SYSTEM',
+			};
+
+			// Создаем оферту
+			const offer = await MarketOffer.create(offerData, {
+				transaction: t,
+			});
+
+			// Создаем транзакцию
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: userId, // Пользователь "покупает" ресурс
+					sellerId: SYSTEM_USER_ID,
+					status: 'COMPLETED',
+					completedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Создаем запись о транзакции
+			await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: SYSTEM_USER_ID,
+					toAccount: userId,
+					amount,
+					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					txType: 'TASK_RESOURCE',
+					status: 'CONFIRMED',
+					confirmedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Передаем ресурс пользователю
+			await this.transferResource(offer, userId, t);
+
+			// Завершаем оферту
+			await offer.update(
+				{
+					status: 'COMPLETED',
+					isItemLocked: false,
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'Ресурс передан пользователю за выполнение задачи',
+				taskId,
+				resource,
+				amount,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register task reward: ${err.message}`
+				  );
+		}
+	}
+
+	/**
+	 * Регистрация передачи ресурса за событие
+	 * @param {Object} params { userId, eventId, amount, resource }
+	 * @returns {Promise<Object>} Результат операции
+	 */
+	async registerEventReward({ userId, eventId, amount, resource }) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Создаем оферту от системы для передачи ресурса
+			const offerData = {
+				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				itemType: 'resource',
+				itemId: `${resource}_${amount}`,
+				price: 0, // Бесплатно, т.к. это награда за событие
+				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				offerType: 'SYSTEM',
+			};
+
+			// Создаем оферту
+			const offer = await MarketOffer.create(offerData, {
+				transaction: t,
+			});
+
+			// Создаем транзакцию
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: userId, // Пользователь "покупает" ресурс
+					sellerId: SYSTEM_USER_ID,
+					status: 'COMPLETED',
+					completedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Создаем запись о транзакции
+			await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: SYSTEM_USER_ID,
+					toAccount: userId,
+					amount,
+					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					txType: 'EVENT_RESOURCE',
+					status: 'CONFIRMED',
+					confirmedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Передаем ресурс пользователю
+			await this.transferResource(offer, userId, t);
+
+			// Завершаем оферту
+			await offer.update(
+				{
+					status: 'COMPLETED',
+					isItemLocked: false,
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'Ресурс передан пользователю за событие',
+				eventId,
+				resource,
+				amount,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register event reward: ${err.message}`
+				  );
+		}
+	}
+
+	/**
+	 * Регистрация передачи ресурса за фарминг
+	 * @param {Object} params { userId, amount, resource, source }
+	 * @returns {Promise<Object>} Результат операции
+	 */
+	async registerFarmingReward({ userId, amount, resource, source }) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Создаем оферту от системы для передачи ресурса
+			const offerData = {
+				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				itemType: 'resource',
+				itemId: `${resource}_${amount}`,
+				price: 0, // Бесплатно, т.к. это награда за фарминг
+				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				offerType: 'SYSTEM',
+			};
+
+			// Создаем оферту
+			const offer = await MarketOffer.create(offerData, {
+				transaction: t,
+			});
+
+			// Создаем транзакцию
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: userId, // Пользователь "покупает" ресурс
+					sellerId: SYSTEM_USER_ID,
+					status: 'COMPLETED',
+					completedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Создаем запись о транзакции
+			await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: SYSTEM_USER_ID,
+					toAccount: userId,
+					amount,
+					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					txType: 'FARMING_RESOURCE',
+					status: 'CONFIRMED',
+					confirmedAt: new Date(),
+				},
+				{ transaction: t }
+			);
+
+			// Передаем ресурс пользователю
+			await this.transferResource(offer, userId, t);
+
+			// Завершаем оферту
+			await offer.update(
+				{
+					status: 'COMPLETED',
+					isItemLocked: false,
+				},
+				{ transaction: t }
+			);
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'Ресурс передан пользователю за фарминг',
+				source,
+				resource,
+				amount,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register farming reward: ${err.message}`
+				  );
+		}
+	}
+
+	/**
 	 * Создание оферты на продажу ресурса
 	 * @param {number} userId ID пользователя
 	 * @param {string} resourceType Тип ресурса
@@ -1003,6 +1338,13 @@ class MarketService {
 	 * @returns {Promise<Object>} Созданная оферта
 	 */
 	async createResourceOffer(userId, resourceType, amount, price, currency) {
+		// Проверяем, что для P2P используется только TON
+		if (currency !== 'tonToken') {
+			throw ApiError.BadRequest(
+				'Для P2P транзакций можно использовать только TON'
+			);
+		}
+
 		// Формируем itemId в формате "тип_количество"
 		const itemId = `${resourceType}_${amount}`;
 
@@ -1129,7 +1471,7 @@ class MarketService {
 				if (!pkg) throw new Error('Package not found');
 
 				// Начисляем игровую валюту покупателю
-				const gameField = currencyMap[pkg.currencyGame];
+				const gameField = currencyMap[pkg.resource];
 				if (!gameField) throw new Error('Unknown game currency');
 				if (typeof buyerState.state[gameField] !== 'number')
 					buyerState.state[gameField] = 0;
@@ -1144,7 +1486,7 @@ class MarketService {
 						fromAccount: SYSTEM_USER_ID,
 						toAccount: transaction.buyerId,
 						amount: pkg.amount,
-						currency: pkg.currencyGame,
+						currency: pkg.resource,
 						txType: 'CONTRACT_TO_BUYER',
 						status: 'CONFIRMED',
 					},
@@ -1304,7 +1646,10 @@ class MarketService {
 
 		try {
 			const offers = await MarketOffer.findAll({
-				where: { itemType: 'galaxy', status: 'ACTIVE' },
+				where: {
+					itemType: 'galaxy',
+					status: 'ACTIVE',
+				},
 				transaction: t,
 			});
 
@@ -1316,10 +1661,16 @@ class MarketService {
 		}
 	}
 
-	async getPackageOffers() {
+	/**
+	 * Получение системных предложений пакетов и инициализация пакетов пользователя
+	 * @param {number} userId - ID пользователя (опционально)
+	 * @returns {Promise<Array>} - Список системных предложений пакетов
+	 */
+	async getPackageOffers(userId = null) {
 		const t = await sequelize.transaction();
 
 		try {
+			// Получаем системные предложения пакетов
 			const offers = await MarketOffer.findAll({
 				where: {
 					itemType: 'package',
@@ -1328,6 +1679,11 @@ class MarketService {
 				},
 				transaction: t,
 			});
+
+			// Если указан ID пользователя, инициализируем пакеты на основе активных шаблонов
+			if (userId) {
+				await packageStoreService.initializePackageStore(userId, t);
+			}
 
 			await t.commit();
 			return offers;
@@ -1537,7 +1893,7 @@ class MarketService {
 						id: packageId,
 						userId: buyerId,
 						amount: template.amount,
-						currencyGame: template.currencyGame,
+						resource: template.resource,
 						price: template.price,
 						currency: template.currency,
 						status: 'ACTIVE',
@@ -1621,6 +1977,50 @@ class MarketService {
 		} catch (e) {
 			await transaction.rollback();
 			throw e;
+		}
+	}
+
+	/**
+	 * Get offer by ID
+	 * @param {string} offerId - Offer ID
+	 * @returns {Promise<Object>} - Market offer
+	 */
+	async getOfferById(offerId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const offer = await MarketOffer.findByPk(offerId, {
+				include: [
+					{
+						model: User,
+						as: 'seller',
+						attributes: ['username', 'id'],
+					},
+					{
+						model: Artifact,
+						as: 'artifact',
+					},
+					{
+						model: Galaxy,
+						as: 'galaxy',
+					},
+				],
+				transaction: t,
+			});
+
+			if (!offer) {
+				await t.rollback();
+				throw ApiError.NotFound('Offer not found');
+			}
+
+			await t.commit();
+			return offer;
+		} catch (error) {
+			await t.rollback();
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			throw ApiError.Internal(`Failed to get offer: ${error.message}`);
 		}
 	}
 }

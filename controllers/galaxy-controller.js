@@ -8,11 +8,11 @@ const marketService = require('../service/market-service');
 const { Galaxy } = require('../models/models');
 
 class GalaxyController {
-	async createGalaxy(req, res, next) {
+	async createUserGalaxy(req, res, next) {
 		try {
 			const id = req.initdata.id;
 			const galaxyData = req.body;
-			const galaxy = await galaxyService.createGalaxy(id, galaxyData);
+			const galaxy = await galaxyService.createUserGalaxy(id, galaxyData);
 			logger.info('Galaxy created', { userId: id, galaxy: galaxyData });
 			return res.json(galaxy);
 		} catch (e) {
@@ -20,7 +20,7 @@ class GalaxyController {
 		}
 	}
 
-	async getGalaxies(req, res, next) {
+	async getUserGalaxies(req, res, next) {
 		try {
 			const id = req.initdata.id;
 			const galaxies = await galaxyService.getUserGalaxies(id);
@@ -30,18 +30,40 @@ class GalaxyController {
 		}
 	}
 
-	async updateGalaxy(req, res, next) {
+	async getGalaxy(req, res, next) {
 		try {
-			const id = req.initdata.id;
-			const galaxyData = req.body;
-			const galaxy = await galaxyService.updateGalaxy(id, galaxyData);
+			const galaxyId = req.params.galaxyId;
+			const galaxy = await galaxyService.getGalaxy(galaxyId);
 			return res.json(galaxy);
 		} catch (e) {
 			next(e);
 		}
 	}
 
-	async addStarsToGalaxy(req, res, next) {
+	async updateUserGalaxy(req, res, next) {
+		try {
+			const id = req.initdata.id;
+			const galaxyData = req.body;
+			const galaxy = await galaxyService.updateUserGalaxy(id, galaxyData);
+			return res.json(galaxy);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async deleteGalaxy(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const galaxyId = req.params.galaxyId;
+			const result = await galaxyService.deleteGalaxy(userId, galaxyId);
+			logger.info('Galaxy deleted', { userId, galaxyId });
+			return res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async addStarsToUserGalaxy(req, res, next) {
 		try {
 			const userId = req.initdata.id;
 			const { galaxyId, amount } = req.body;

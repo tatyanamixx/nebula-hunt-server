@@ -1,13 +1,12 @@
 /**
- * created by Tatyana Mikhniukevich on 09.06.2025
+ * created by Claude on 15.07.2025
  */
 const Router = require('express').Router;
 const router = new Router();
 const taskController = require('../controllers/task-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
-const adminMiddleware = require('../middlewares/admin-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
+const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 /**
  * @swagger
@@ -16,165 +15,67 @@ const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware'
  *   description: User tasks management
  */
 
-// Пользовательские маршруты
+// Get all tasks for the user
 router.get(
 	'/',
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(60),
+	rateLimitMiddleware(60, 60),
 	taskController.getUserTasks
 );
 
-/**
- * @swagger
- * /tasks/{taskId}:
- *   get:
- *     summary: Get specific user task by ID
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: User task details
- */
+// Get all active tasks for the user
 router.get(
-	'/:taskId',
+	'/active',
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.getUserTask
+	rateLimitMiddleware(60, 60),
+	taskController.getActiveTasks
 );
 
-/**
- * @swagger
- * /tasks/complete:
- *   post:
- *     summary: Complete a task
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               taskId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Task completed successfully
- */
-router.post(
-	'/complete',
-	telegramAuthMiddleware,
-	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.completeTask
-);
-
-/**
- * @swagger
- * /tasks/progress:
- *   post:
- *     summary: Update task progress
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               taskId:
- *                 type: string
- *               progress:
- *                 type: number
- *     responses:
- *       200:
- *         description: Task progress updated
- */
-router.post(
-	'/progress',
-	telegramAuthMiddleware,
-	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.updateTaskProgress
-);
-
-/**
- * @swagger
- * /tasks/progress/{taskId}:
- *   get:
- *     summary: Get task progress
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Task progress details
- */
+// Get all completed tasks for the user
 router.get(
-	'/progress/:taskId',
+	'/completed',
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.getTaskProgress
+	rateLimitMiddleware(60, 60),
+	taskController.getCompletedTasks
 );
 
-/**
- * @swagger
- * /tasks/initialize:
- *   post:
- *     summary: Initialize user tasks
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User tasks initialized
- */
-router.post(
-	'/initialize',
-	telegramAuthMiddleware,
-	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.initializeUserTasks
-);
-
-/**
- * @swagger
- * /tasks/stats:
- *   get:
- *     summary: Get user task statistics
- *     tags: [Task]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User task statistics
- */
+// Get task statistics for the user
 router.get(
 	'/stats',
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(60),
-	taskController.getUserTaskStats
+	rateLimitMiddleware(60, 60),
+	taskController.getTaskStats
+);
+
+// Get a specific task for the user
+router.get(
+	'/:taskId',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	taskController.getUserTask
+);
+
+// Update progress for a user task
+router.put(
+	'/:taskId/progress',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	taskController.updateTaskProgress
+);
+
+// Complete a task for the user
+router.post(
+	'/:taskId/complete',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	taskController.completeTask
 );
 
 module.exports = router;

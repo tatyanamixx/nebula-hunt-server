@@ -76,27 +76,10 @@ class MarketController {
 		}
 	}
 
-	async getGalaxyOffers(req, res, next) {
-		try {
-			const offers = await marketService.getGalaxyOffers();
-			res.json(offers);
-		} catch (e) {
-			next(e);
-		}
-	}
-
 	async getPackageOffers(req, res, next) {
 		try {
-			const offers = await marketService.getPackageOffers();
-			res.json(offers);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async getArtifactOffers(req, res, next) {
-		try {
-			const offers = await marketService.getArtifactOffers();
+			const userId = req.initdata.id;
+			const offers = await marketService.getPackageOffers(userId);
 			res.json(offers);
 		} catch (e) {
 			next(e);
@@ -130,13 +113,11 @@ class MarketController {
 		}
 	}
 
-	async cancelOffer(req, res, next) {
+	async cancelSystemDeal(req, res, next) {
 		try {
-			const { offerId, reason } = req.body;
-			const sellerId = req.initdata.id;
-			const result = await marketService.cancelOffer({
-				offerId,
-				sellerId,
+			const { transactionId, reason } = req.body;
+			const result = await marketService.cancelSystemDeal({
+				transactionId,
 				reason,
 			});
 			res.json(result);
@@ -145,13 +126,13 @@ class MarketController {
 		}
 	}
 
-	async cancelSystemDeal(req, res, next) {
+	async cancelOffer(req, res, next) {
 		try {
-			const { transactionId, reason } = req.body;
-			const result = await marketService.cancelSystemDeal({
-				transactionId,
-				reason,
-			});
+			const userId = req.initdata.id;
+			const { offerId } = req.params;
+
+			const result = await marketService.cancelOffer(offerId, userId);
+
 			res.json(result);
 		} catch (e) {
 			next(e);
@@ -183,12 +164,12 @@ class MarketController {
 
 	async registerFarmingReward(req, res, next) {
 		try {
-			const { amount, currency, source } = req.body;
+			const { amount, resource, source } = req.body;
 			const userId = req.initdata.id;
 			const result = await marketService.registerFarmingReward({
 				userId,
 				amount,
-				currency,
+				resource,
 				source,
 			});
 			res.json(result);
@@ -199,13 +180,13 @@ class MarketController {
 
 	async registerUpgradePayment(req, res, next) {
 		try {
-			const { nodeId, amount, currency } = req.body;
+			const { nodeId, amount, resource } = req.body;
 			const userId = req.initdata.id;
 			const result = await marketService.registerUpgradePayment({
 				userId,
 				nodeId,
 				amount,
-				currency,
+				resource,
 			});
 			res.json(result);
 		} catch (e) {
@@ -215,13 +196,13 @@ class MarketController {
 
 	async registerTaskReward(req, res, next) {
 		try {
-			const { taskId, amount, currency } = req.body;
+			const { taskId, amount, resource } = req.body;
 			const userId = req.initdata.id;
 			const result = await marketService.registerTaskReward({
 				userId,
 				taskId,
 				amount,
-				currency,
+				resource,
 			});
 			res.json(result);
 		} catch (e) {
@@ -231,13 +212,13 @@ class MarketController {
 
 	async registerEventReward(req, res, next) {
 		try {
-			const { eventId, amount, currency } = req.body;
+			const { eventId, amount, resource } = req.body;
 			const userId = req.initdata.id;
 			const result = await marketService.registerEventReward({
 				userId,
 				eventId,
 				amount,
-				currency,
+				resource,
 			});
 			res.json(result);
 		} catch (e) {
@@ -438,19 +419,6 @@ class MarketController {
 		}
 	}
 
-	async cancelOffer(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const { offerId } = req.params;
-
-			const result = await marketService.cancelOffer(offerId, userId);
-
-			res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
-
 	async buyOffer(req, res, next) {
 		try {
 			const userId = req.initdata.id;
@@ -478,6 +446,16 @@ class MarketController {
 				processedOffers: count,
 				message: `Обработано ${count} истекших оферт`,
 			});
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async getOffer(req, res, next) {
+		try {
+			const { offerId } = req.params;
+			const result = await marketService.getOfferById(offerId);
+			res.json(result);
 		} catch (e) {
 			next(e);
 		}

@@ -259,7 +259,7 @@ class PackageTemplateService {
 					id: packageId,
 					userId,
 					amount: template.amount,
-					currencyGame: template.currencyGame,
+					resource: template.resource,
 					price: template.price,
 					currency: template.currency,
 					status: 'ACTIVE',

@@ -42,6 +42,76 @@ class ArtifactController {
 		}
 	}
 
+	async getArtifact(req, res) {
+		try {
+			const { artifactId } = req.params;
+			const userId = req.initdata.id;
+
+			// This method needs to be implemented in the service
+			const artifact = await artifactService.getArtifactById(
+				artifactId,
+				userId
+			);
+
+			if (!artifact) {
+				return res.status(404).json({ error: 'Artifact not found' });
+			}
+
+			res.json(artifact);
+		} catch (e) {
+			res.status(500).json({ error: e.message });
+		}
+	}
+
+	async generateArtifact(req, res) {
+		try {
+			const userId = req.initdata.id;
+
+			// This method needs to be implemented in the service
+			const artifact = await artifactService.generateRandomArtifact(
+				userId
+			);
+
+			res.status(201).json(artifact);
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	}
+
+	async activateArtifact(req, res) {
+		try {
+			const { artifactId } = req.params;
+			const userId = req.initdata.id;
+
+			// This method needs to be implemented in the service
+			const result = await artifactService.activateArtifact(
+				artifactId,
+				userId
+			);
+
+			res.json(result);
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	}
+
+	async deactivateArtifact(req, res) {
+		try {
+			const { artifactId } = req.params;
+			const userId = req.initdata.id;
+
+			// This method needs to be implemented in the service
+			const result = await artifactService.deactivateArtifact(
+				artifactId,
+				userId
+			);
+
+			res.json(result);
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	}
+
 	async createSystemArtifactWithOffer(req, res) {
 		try {
 			const buyerId = req.initdata.id;

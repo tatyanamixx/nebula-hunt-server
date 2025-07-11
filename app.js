@@ -1,37 +1,51 @@
 const express = require('express');
-const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const pino = require('pino');
 const pinoHttp = require('pino-http');
 const config = require('./config/logger.config');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
-const helmet = require('helmet');
 const path = require('path');
 const logger = require('./service/logger-service');
 
 const router = require('./routes/index');
 const errorMiddleware = require('./middlewares/error-middleware');
+const helmetMiddleware = require('./middlewares/helmet-middleware');
+const securityHeadersMiddleware = require('./middlewares/security-headers-middleware');
+const corsMiddleware = require('./middlewares/cors-middleware');
+const {
+	validateRequestSize,
+	sanitizeRequestBody,
+} = require('./middlewares/request-validation-middleware');
+const {
+	blockBlacklistedIPs,
+	detectSuspiciousIP,
+} = require('./middlewares/ip-security-middleware');
 const { prometheusMetrics } = require('./middlewares/prometheus-middleware');
 
 const app = express();
 
-app.use(helmet());
-
+// Security middlewares
 // Initialize request logger with base Pino instance
 const httpLogger = pinoHttp({
 	logger: pino(config),
 });
 app.use(httpLogger);
 
-app.use(
-	cors({
-		credentials: true,
-		origin: process.env.CLIENT_URL,
-	})
-);
-app.use(express.json());
+// Security middlewares
+app.use(blockBlacklistedIPs); // IP blacklisting should be first
+app.use(detectSuspiciousIP); // Log suspicious IPs
+app.use(helmetMiddleware);
+app.use(securityHeadersMiddleware);
+app.use(corsMiddleware);
+app.use(validateRequestSize(2 * 1024 * 1024)); // 2MB max request size
+
+// Body parsing
+app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
+
+// Request sanitization
+app.use(sanitizeRequestBody());
 
 // Добавляем в конфиг настройки для пагинации и срока действия оферт
 app.use(express.static(path.resolve(__dirname, 'static')));

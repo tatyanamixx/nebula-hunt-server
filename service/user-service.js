@@ -17,6 +17,7 @@ const { Op, where } = require('sequelize');
 const artifactService = require('./artifact-service');
 const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 const marketService = require('./market-service');
+const packageStoreService = require('./package-store-service');
 
 const { SYSTEM_USER_ID } = require('../config/constants');
 
@@ -182,7 +183,7 @@ class UserService {
 			await taskService.initializeUserTasks(user.id, t);
 
 			// 7. Получаем системные пакеты услуг
-			const packageOffers = await marketService.getPackageOffers();
+			await packageStoreService.initializePackageStore(user.id, t);
 
 			// 8. Генерируем JWT токены
 			const tokens = tokenService.generateTokens({ ...userDto });
@@ -240,7 +241,7 @@ class UserService {
 					stateService.getUserState(userDto.id),
 					galaxyService.getUserGalaxies(userDto.id),
 					artifactService.getUserArtifacts(userDto.id),
-					marketService.getPackageOffers(),
+			
 				]);
 
 			// 3. Проверяем и инициализируем state, если его нет
@@ -278,7 +279,16 @@ class UserService {
 				await taskService.initializeUserTasks(userDto.id, t);
 			}
 
-			// 7. Генерируем и сохраняем новые токены
+			// 7. Проверяем и инициализируем пакеты пользователя
+			if (
+				!userState.packages ||
+				userState.packages.available.length === 0
+			) {
+				// Если пакеты не инициализированы - инициализируем
+				await packageStoreService.initializePackageStore(userDto.id, t);
+			}
+
+			// 8. Генерируем и сохраняем новые токены
 			const tokens = tokenService.generateTokens({ ...userDto });
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 

@@ -61,8 +61,11 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ Body Parser                                             │
 │  ├─ Cookie Parser                                           │
 │  ├─ Rate Limiting                                           │
-│  ├─ TMA Authentication                                      │
+│  ├─ Telegram Authentication                                 │
 │  ├─ Admin Authorization                                     │
+│  ├─ Security Headers                                        │
+│  ├─ IP Security                                             │
+│  ├─ Request Validation                                      │
 │  └─ Error Handling                                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Router Layer                                               │
@@ -73,8 +76,13 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ /market/*                                               │
 │  ├─ /state/*                                                │
 │  ├─ /upgrades/*                                             │
+│  ├─ /upgrade-templates/*                                    │
 │  ├─ /events/*                                               │
-│  └─ /tasks/*                                                │
+│  ├─ /event-templates/*                                      │
+│  ├─ /tasks/*                                                │
+│  ├─ /task-templates/*                                       │
+│  ├─ /package-store/*                                        │
+│  └─ /package-templates/*                                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Controller Layer                                           │
 │  ├─ UserController                                          │
@@ -84,8 +92,13 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ MarketController                                        │
 │  ├─ StateController                                         │
 │  ├─ UpgradeController                                       │
+│  ├─ UpgradeTemplateController                               │
 │  ├─ EventController                                         │
-│  └─ TaskController                                          │
+│  ├─ EventTemplateController                                 │
+│  ├─ TaskController                                          │
+│  ├─ TaskTemplateController                                  │
+│  ├─ PackageStoreController                                  │
+│  └─ PackageTemplateController                               │
 ├─────────────────────────────────────────────────────────────┤
 │  Service Layer                                              │
 │  ├─ UserService                                             │
@@ -94,9 +107,16 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ ArtifactService                                         │
 │  ├─ MarketService                                           │
 │  ├─ UpgradeService                                          │
+│  ├─ UpgradeTemplateService                                  │
 │  ├─ EventService                                            │
+│  ├─ EventTemplateService                                    │
 │  ├─ TaskService                                             │
+│  ├─ TaskTemplateService                                     │
+│  ├─ PackageStoreService                                     │
+│  ├─ PackageTemplateService                                  │
 │  ├─ TokenService                                            │
+│  ├─ UserEventService                                        │
+│  ├─ UserUpgradeService                                      │
 │  └─ LoggerService                                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Model Layer                                                │
@@ -107,29 +127,83 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ MarketOffer                                             │
 │  ├─ MarketTransaction                                       │
 │  ├─ PaymentTransaction                                      │
+│  ├─ MarketCommission                                        │
 │  ├─ PackageStore                                            │
+│  ├─ PackageTemplate                                         │
 │  ├─ UpgradeNode                                             │
-│  ├─ Task                                                    │
-│  ├─ GameEvent                                               │
+│  ├─ TaskTemplate                                            │
+│  ├─ EventTemplate                                           │
 │  └─ Token                                                   │
 └─────────────────────┬───────────────────────────────────────┘
                       │ SQL
 ┌─────────────────────▼───────────────────────────────────────┐
 │                    PostgreSQL Database                      │
-│  ├─ users                                                   │
-│  ├─ userstates                                             │
-│  ├─ galaxies                                               │
-│  ├─ artifacts                                              │
-│  ├─ marketoffers                                           │
-│  ├─ markettransactions                                     │
-│  ├─ paymenttransactions                                    │
-│  ├─ packagestore                                           │
-│  ├─ upgradenodes                                           │
-│  ├─ tasks                                                  │
-│  ├─ gameevents                                             │
-│  └─ tokens                                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Модели данных
+
+### Основные модели
+
+```
+User
+├─ UserState (содержит JSONB поля для хранения состояния пользователя)
+├─ Galaxy
+├─ Artifact
+└─ Token
+```
+
+### Рыночные модели
+
+```
+MarketOffer
+├─ MarketTransaction
+├─ PaymentTransaction
+└─ MarketCommission
+```
+
+### Шаблоны и хранилища
+
+```
+TaskTemplate
+EventTemplate
+UpgradeNode
+PackageTemplate
+└─ PackageStore
+```
+
+## Схема базы данных
+
+База данных разделена на логические группы таблиц:
+
+### Основные таблицы
+
+-   **users** - Информация о пользователях
+-   **userstates** - Состояние пользователя с JSONB полями для хранения игровых данных
+-   **tokens** - Токены авторизации
+
+### Игровые таблицы
+
+-   **galaxies** - Галактики
+-   **artifacts** - Артефакты
+
+### Таблицы шаблонов
+
+-   **upgradenodes** - Шаблоны апгрейдов
+-   **tasktemplates** - Шаблоны заданий
+-   **eventtemplates** - Шаблоны событий
+
+### Рыночные таблицы
+
+-   **marketoffers** - Предложения на рынке
+-   **markettransactions** - Транзакции на рынке
+-   **paymenttransactions** - Платежные транзакции
+-   **marketcommissions** - Комиссии рынка
+
+### Таблицы пакетов
+
+-   **packagetemplates** - Шаблоны пакетов
+-   **packagestore** - Хранилище пакетов пользователя
 
 ## Поток данных
 
@@ -176,13 +250,23 @@ Database → Model Layer → Service Layer → Controller → Response
 
 ### PostgreSQL Database
 
--   **Версия**: 12+
+-   **Версия**: 15+
 -   **Назначение**: Основная база данных
 -   **Особенности**:
     -   JSONB для сложных структур
     -   Индексы для производительности
     -   Транзакции ACID
     -   Масштабируемость
+
+### Redis
+
+-   **Версия**: 7+
+-   **Назначение**: Кэширование и хранение сессий
+-   **Особенности**:
+    -   Высокая производительность
+    -   Хранение временных данных
+    -   Поддержка TTL
+    -   Pub/Sub механизм
 
 ### JWT Authentication
 
@@ -198,19 +282,19 @@ Database → Model Layer → Service Layer → Controller → Response
 -   **Библиотека**: @telegram-apps/init-data-node
 -   **Назначение**: Интеграция с Telegram
 -   **Особенности**:
-
-### Система инициализации
-
--   **Автоматическая инициализация**: При запуске сервера
--   **Компоненты**:
-    -   Синхронизация схемы базы данных
-    -   Инициализация комиссий маркета
-    -   Создание системного пользователя
--   **Конфигурация**: `config/market.config.js`, `config/constants.js`
--   **Безопасность**: Транзакционное выполнение операций
     -   Верификация данных от Telegram
     -   Безопасная аутентификация
     -   Получение данных пользователя
+
+### Docker Контейнеризация
+
+-   **Версия**: Docker Engine 24+
+-   **Назначение**: Контейнеризация приложения
+-   **Особенности**:
+    -   Многоэтапные сборки
+    -   Оптимизация образов
+    -   Разделение сред разработки и продакшена
+    -   Оркестрация с Docker Compose
 
 ### Pino Logging
 
@@ -275,11 +359,13 @@ Database → Model Layer → Service Layer → Controller → Response
 -   Валидация на уровне моделей
 -   Санитизация пользовательского ввода
 
-### Rate Limiting
+### Защита от атак
 
--   Ограничение запросов по IP
--   Настраиваемые лимиты
--   Защита от DDoS атак
+-   Rate Limiting
+-   Helmet для HTTP заголовков
+-   CORS защита
+-   IP-based security
+-   Проверка входящих запросов
 
 ## Производительность
 
@@ -291,6 +377,7 @@ Database → Model Layer → Service Layer → Controller → Response
 
 ### Кэширование
 
+-   Redis для кэширования
 -   In-memory кэширование для статических данных
 -   Оптимизация запросов к БД
 
@@ -307,6 +394,7 @@ Database → Model Layer → Service Layer → Controller → Response
 -   Stateless архитектура
 -   Внешняя база данных
 -   Load balancing готовность
+-   Docker Swarm / Kubernetes совместимость
 
 ### Вертикальное масштабирование
 
@@ -342,6 +430,7 @@ Database → Model Layer → Service Layer → Controller → Response
 -   Docker образы
 -   Multi-stage builds
 -   Оптимизация размера
+-   Docker Compose для оркестрации
 
 ### CI/CD
 
@@ -405,6 +494,6 @@ Database → Model Layer → Service Layer → Controller → Response
 
 Эта архитектура обеспечивает надежную, масштабируемую и поддерживаемую основу для игры Nebulahunt, позволяя легко добавлять новые функции и адаптироваться к растущим потребностям пользователей.
 
-**UserState** — основная модель для хранения состояния пользователя. Все игровые параметры, события, задачи и апгрейды пользователя теперь централизованно хранятся в JSONB-полях этой таблицы. Таблицы UserEvent, UserTask, UserUpgradeNode удалены, их данные перенесены в UserState.
+**UserState** — основная модель для хранения состояния пользователя. Все игровые параметры, события, задачи и апгрейды пользователя централизованно хранятся в JSONB-полях этой таблицы.
 
-**UpgradeNode** и **Task** — глобальные шаблоны (справочники), не имеют связи с User. Прогресс и состояние пользователя по задачам и апгрейдам хранятся только в UserState.
+**UpgradeNode**, **TaskTemplate** и **EventTemplate** — глобальные шаблоны (справочники), не имеют прямой связи с User. Прогресс и состояние пользователя по задачам, событиям и апгрейдам хранятся в UserState.

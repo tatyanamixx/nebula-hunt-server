@@ -1,913 +1,75 @@
 /**
- * created by Tatyana Mikhniukevich on 29.05.2025
+ * created by Claude on 15.07.2025
  */
-const { UpgradeNode, UserState, UserUpgrade } = require('../models/models');
+const { UpgradeNode, UserUpgrade, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
-const marketService = require('./market-service');
 
 class UpgradeService {
-	async createUpgradeNodes(nodes) {
-		const t = await sequelize.transaction();
-
+	/**
+	 * Initialize the upgrade tree for a new user
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<Array>} Initialized user upgrades
+	 */
+	async initializeUserUpgradeTree(userId, t) {
 		try {
-			const createdNodes = [];
-			for (const node of nodes) {
-				// Validate node data
-				if (!node.id || !node.name || !node.description) {
-					throw ApiError.BadRequest(
-						'Invalid upgrade node data structure'
-					);
-				}
-
-				// Validate description structure
-				if (!node.description.en || !node.description.ru) {
-					throw ApiError.BadRequest(
-						'Description must contain both "en" and "ru" translations'
-					);
-				}
-
-				const newNode = await UpgradeNode.findOrCreate({
-					where: { id: node.id },
-					defaults: {
-						name: node.name,
-						description: {
-							en: node.description.en,
-							ru: node.description.ru,
-						},
-						maxLevel: node.maxLevel || 0,
-						basePrice: node.basePrice || 0,
-						effectPerLevel: node.effectPerLevel || 0,
-						priceMultiplier: node.priceMultiplier || 1.0,
-						currency: node.currency || 'stardust',
-						category: node.category || 'production',
-						icon: node.icon || '',
-						instability: node.instability || 0.0,
-						modifiers: node.modifiers || {},
-						stability: node.stability || 0,
-						active: node.active ?? true,
-						conditions: node.conditions || {},
-						delayedUntil: node.delayedUntil || null,
-						children: node.children || [],
-						weight: node.weight || 1,
-					},
-					transaction: t,
-				});
-
-				createdNodes.push(newNode);
-			}
-
-			await t.commit();
-			return createdNodes;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to create upgrade nodes: ${err.message}`
-			);
-		}
-	}
-
-	async updateUpgradeNode(nodeId, nodeData) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Ищем узел по ID
-			const node = await UpgradeNode.findByPk(nodeId, { transaction: t });
-
-			if (!node) {
-				await t.rollback();
-				throw ApiError.NotFound('Upgrade node not found');
-			}
-
-			// Обновляем данные узла
-			await node.update(nodeData, { transaction: t });
-
-			await t.commit();
-			return node;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.BadRequest(
-				'Failed to update upgrade node: ' + err.message
-			);
-		}
-	}
-
-	async deleteUpgradeNode(nodeId) {
-		const t = await sequelize.transaction();
-
-		try {
-			const node = await UpgradeNode.findByPk(nodeId, { transaction: t });
-
-			if (!node) {
-				await t.rollback();
-				throw ApiError.NotFound('Upgrade node not found');
-			}
-
-			await node.destroy({ transaction: t });
-
-			await t.commit();
-			return { message: 'Upgrade node deleted successfully' };
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.BadRequest(
-				'Failed to delete upgrade node: ' + err.message
-			);
-		}
-	}
-
-	async getAvailableUpgradeNodes() {
-		const t = await sequelize.transaction();
-
-		try {
-			const availableNodes = await UpgradeNode.findAll({
-				where: {
-					active: true,
-					[Op.or]: [
-						{ delayedUntil: null },
-						{ delayedUntil: { [Op.lte]: new Date() } },
-					],
-				},
-				attributes: [
-					'id',
-					'name',
-					'description',
-					'maxLevel',
-					'basePrice',
-					'effectPerLevel',
-					'priceMultiplier',
-					'currency',
-					'category',
-					'icon',
-					'stability',
-					'instability',
-					'modifiers',
-					'conditions',
-					'delayedUntil',
-					'children',
-					'weight',
-				],
-				transaction: t,
-			});
-
-			await t.commit();
-			return availableNodes;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to get available upgrade nodes: ${err.message}`
-			);
-		}
-	}
-
-	async activateUserUpgradeNodes(userId, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
-
-		try {
-			// Получаем все завершенные апгрейды пользователя
-			const completedUpgrades = await UserUpgrade.findAll({
-				where: {
-					userId,
-					completed: true,
-				},
-				attributes: ['nodeId'],
-				transaction: t,
-			});
-
-			const completedNodeIds = completedUpgrades.map(
-				(upgrade) => upgrade.nodeId
-			);
-
-			// Получаем все доступные узлы на основе завершенных апгрейдов
-			const availableNodes = await UpgradeNode.findAll({
-				where: {
-					active: true,
-					[Op.or]: [
-						{ conditions: {} }, // корневые узлы
-						{
-							id: {
-								[Op.in]: completedNodeIds.flatMap((nodeId) => {
-									const node = availableNodes.find(
-										(n) => n.id === nodeId
-									);
-									return node?.children || [];
-								}),
-							},
-						},
-					],
-					[Op.and]: [
-						{
-							[Op.or]: [
-								{ delayedUntil: null },
-								{ delayedUntil: { [Op.lte]: new Date() } },
-							],
-						},
-					],
-				},
-				attributes: [
-					'id',
-					'name',
-					'description',
-					'maxLevel',
-					'basePrice',
-					'effectPerLevel',
-					'priceMultiplier',
-					'currency',
-					'category',
-					'icon',
-					'stability',
-					'instability',
-					'modifiers',
-					'conditions',
-					'delayedUntil',
-					'children',
-					'weight',
-				],
-				transaction: t,
-			});
-
-			// Получаем существующие апгрейды пользователя
-			const existingUpgrades = await UserUpgrade.findAll({
-				where: { userId },
-				attributes: ['nodeId'],
-				transaction: t,
-			});
-
-			const existingNodeIds = new Set(
-				existingUpgrades.map((upgrade) => upgrade.nodeId)
-			);
-			const newActiveNodes = [];
-
-			// Создаем записи для новых апгрейдов
-			for (const node of availableNodes) {
-				if (!existingNodeIds.has(node.id)) {
-					await UserUpgrade.create(
-						{
-							userId,
-							nodeId: node.id,
-							level: 0,
-							progress: 0,
-							targetProgress: 100,
-							completed: false,
-							stability: node.stability || 0.0,
-							instability: node.instability || 0.0,
-							progressHistory: [],
-							lastProgressUpdate: new Date(),
-						},
-						{ transaction: t }
-					);
-
-					newActiveNodes.push(node);
-				}
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeUpgradeCount = await UserUpgrade.count({
-					where: {
-						userId,
-						completed: false,
-					},
-					transaction: t,
-				});
-
-				const completedUpgradeCount = await UserUpgrade.count({
-					where: {
-						userId,
-						completed: true,
-					},
-					transaction: t,
-				});
-
-				userState.state.ownedNodesCount =
-					activeUpgradeCount + completedUpgradeCount;
-				userState.state.ownedUpgradesCount = completedUpgradeCount;
-				await userState.save({ transaction: t });
-			}
-
-			if (!externalTransaction) {
-				await t.commit();
-			}
-
-			return newActiveNodes;
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to activate user upgrade nodes: ${err.message}`
-			);
-		}
-	}
-
-	async getUserUpgradeNodes(userId) {
-		try {
-			// Получаем все апгрейды пользователя с информацией о нодах
-			const userUpgrades = await UserUpgrade.findAll({
-				where: { userId },
-				include: [
-					{
-						model: UpgradeNode,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'currency',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'conditions',
-							'delayedUntil',
-							'children',
-							'weight',
-						],
-					},
-				],
-			});
-
-			// Разделяем на активные и завершенные
-			const activeNodes = userUpgrades
-				.filter((upgrade) => !upgrade.completed)
-				.map((upgrade) => ({
-					...upgrade.toJSON(),
-					node: upgrade.upgradenode,
-				}));
-
-			const completedNodes = userUpgrades
-				.filter((upgrade) => upgrade.completed)
-				.map((upgrade) => ({
-					...upgrade.toJSON(),
-					node: upgrade.upgradenode,
-				}));
-
-			return {
-				activeNodes,
-				completedNodes,
-				totalNodes: userUpgrades.length,
-			};
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get user upgrade nodes: ${err.message}`
-			);
-		}
-	}
-
-	async completeUpgradeNode(userId, nodeId) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Находим апгрейд пользователя
-			const userUpgrade = await UserUpgrade.findOne({
-				where: {
-					userId,
-					nodeId,
-				},
-				transaction: t,
-			});
-
-			if (!userUpgrade) {
-				await t.rollback();
-				throw ApiError.BadRequest('User upgrade node not found');
-			}
-
-			// Проверяем, достаточно ли прогресса для завершения
-			if (userUpgrade.progress < userUpgrade.targetProgress) {
-				await t.rollback();
-				throw ApiError.BadRequest(
-					'Not enough progress to complete this upgrade node'
-				);
-			}
-
-			// Получаем информацию об узле апгрейда
-			const upgradeNode = await UpgradeNode.findByPk(nodeId, {
-				transaction: t,
-			});
-
-			if (!upgradeNode) {
-				await t.rollback();
-				throw ApiError.BadRequest('Upgrade node not found');
-			}
-
-			// Регистрируем платеж за апгрейд
-			await marketService.registerUpgradePayment({
-				userId,
-				nodeId,
-				amount: upgradeNode.basePrice,
-				currency: upgradeNode.currency,
-			});
-
-			// Помечаем апгрейд как завершенный
-			userUpgrade.completed = true;
-			await userUpgrade.save({ transaction: t });
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				userState.state.ownedUpgradesCount =
-					(userState.state.ownedUpgradesCount || 0) + 1;
-				await userState.save({ transaction: t });
-			}
-
-			// Активируем дочерние узлы
-			if (upgradeNode.children && upgradeNode.children.length > 0) {
-				await this.unlockChildNodes(userId, upgradeNode.children, t);
-			}
-
-			await t.commit();
-			return userUpgrade;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to complete upgrade node: ${err.message}`
-			);
-		}
-	}
-
-	async updateUpgradeProgress(userId, nodeId, progressIncrement) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Находим апгрейд пользователя
-			const userUpgrade = await UserUpgrade.findOne({
-				where: {
-					userId,
-					nodeId,
-				},
-				transaction: t,
-			});
-
-			if (!userUpgrade) {
-				await t.rollback();
-				throw ApiError.BadRequest('User upgrade node not found');
-			}
-
-			// Если апгрейд уже завершен, ничего не делаем
-			if (userUpgrade.completed) {
-				await t.rollback();
-				return userUpgrade;
-			}
-
-			// Обновляем прогресс
-			const oldProgress = userUpgrade.progress;
-			userUpgrade.progress = Math.min(
-				userUpgrade.progress + progressIncrement,
-				userUpgrade.targetProgress
-			);
-
-			// Добавляем запись в историю прогресса
-			const now = new Date();
-			userUpgrade.progressHistory.push({
-				timestamp: now,
-				oldValue: oldProgress,
-				newValue: userUpgrade.progress,
-				increment: progressIncrement,
-			});
-
-			userUpgrade.lastProgressUpdate = now;
-			await userUpgrade.save({ transaction: t });
-
-			// Если прогресс достиг цели, помечаем как завершенный
-			if (userUpgrade.progress >= userUpgrade.targetProgress) {
-				userUpgrade.completed = true;
-				await userUpgrade.save({ transaction: t });
-
-				// Обновляем счетчик в UserState
-				const userState = await UserState.findOne({
-					where: { userId },
-					transaction: t,
-				});
-
-				if (userState && userState.state) {
-					userState.state.ownedUpgradesCount =
-						(userState.state.ownedUpgradesCount || 0) + 1;
-					await userState.save({ transaction: t });
-				}
-
-				// Активируем дочерние узлы
-				const upgradeNode = await UpgradeNode.findByPk(nodeId, {
-					transaction: t,
-				});
-
-				if (
-					upgradeNode &&
-					upgradeNode.children &&
-					upgradeNode.children.length > 0
-				) {
-					await this.unlockChildNodes(
-						userId,
-						upgradeNode.children,
-						t
-					);
-				}
-			}
-
-			await t.commit();
-			return userUpgrade;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to update upgrade progress: ${err.message}`
-			);
-		}
-	}
-
-	async unlockChildNodes(userId, childNodeIds, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
-
-		try {
-			// Получаем информацию о дочерних узлах
-			const childNodes = await UpgradeNode.findAll({
-				where: {
-					id: { [Op.in]: childNodeIds },
-					active: true,
-				},
-				transaction: t,
-			});
-
-			// Создаем записи для дочерних узлов
-			for (const node of childNodes) {
-				// Проверяем, существует ли уже такой апгрейд
-				const existingUpgrade = await UserUpgrade.findOne({
-					where: {
-						userId,
-						nodeId: node.id,
-					},
-					transaction: t,
-				});
-
-				// Если апгрейд не существует, создаем его
-				if (!existingUpgrade) {
-					await UserUpgrade.create(
-						{
-							userId,
-							nodeId: node.id,
-							level: 0,
-							progress: 0,
-							targetProgress: 100,
-							completed: false,
-							stability: node.stability || 0.0,
-							instability: node.instability || 0.0,
-							progressHistory: [],
-							lastProgressUpdate: new Date(),
-						},
-						{ transaction: t }
-					);
-				}
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeUpgradeCount = await UserUpgrade.count({
-					where: {
-						userId,
-						completed: false,
-					},
-					transaction: t,
-				});
-
-				userState.state.ownedNodesCount =
-					(userState.state.ownedUpgradesCount || 0) +
-					activeUpgradeCount;
-				await userState.save({ transaction: t });
-			}
-
-			if (!externalTransaction) {
-				await t.commit();
-			}
-
-			return childNodes;
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to unlock child nodes: ${err.message}`
-			);
-		}
-	}
-
-	async getUpgradeProgress(userId, nodeId) {
-		try {
-			const userUpgrade = await UserUpgrade.findOne({
-				where: {
-					userId,
-					nodeId,
-				},
-				include: [
-					{
-						model: UpgradeNode,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'currency',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'conditions',
-							'children',
-							'weight',
-						],
-					},
-				],
-			});
-
-			if (!userUpgrade) {
-				throw ApiError.BadRequest('User upgrade node not found');
-			}
-
-			return {
-				id: userUpgrade.id,
-				userId: userUpgrade.userId,
-				nodeId: userUpgrade.nodeId,
-				level: userUpgrade.level,
-				progress: userUpgrade.progress,
-				targetProgress: userUpgrade.targetProgress,
-				completed: userUpgrade.completed,
-				stability: userUpgrade.stability,
-				instability: userUpgrade.instability,
-				progressHistory: userUpgrade.progressHistory,
-				lastProgressUpdate: userUpgrade.lastProgressUpdate,
-				node: userUpgrade.upgradenode,
-			};
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get upgrade progress: ${err.message}`
-			);
-		}
-	}
-
-	async getUserUpgradeProgress(userId) {
-		try {
-			// Получаем все апгрейды пользователя
-			const userUpgrades = await UserUpgrade.findAll({
-				where: { userId },
-				include: [
-					{
-						model: UpgradeNode,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'currency',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'conditions',
-							'children',
-							'weight',
-						],
-					},
-				],
-			});
-
-			// Вычисляем общий прогресс
-			let totalProgress = 0;
-			const totalNodes = userUpgrades.length;
-
-			if (totalNodes > 0) {
-				const progressSum = userUpgrades.reduce(
-					(sum, upgrade) =>
-						sum + (upgrade.progress / upgrade.targetProgress) * 100,
-					0
-				);
-				totalProgress = progressSum / totalNodes;
-			}
-
-			// Находим последнее обновление
-			const lastUpdate = userUpgrades.reduce((latest, upgrade) => {
-				return upgrade.lastProgressUpdate > latest
-					? upgrade.lastProgressUpdate
-					: latest;
-			}, new Date(0));
-
-			// Считаем статистику
-			const completedNodes = userUpgrades.filter(
-				(upgrade) => upgrade.completed
-			).length;
-
-			return {
-				progress: totalProgress,
-				targetProgress: 100,
-				progressHistory: [],
-				lastProgressUpdate: lastUpdate,
-				stats: {
-					completedNodes,
-					totalNodes,
-					averageProgress: totalProgress,
-				},
-			};
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get user upgrade progress: ${err.message}`
-			);
-		}
-	}
-
-	async getRootUpgradeNodes(transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
-
-		try {
-			// Получаем все корневые узлы (без условий или с пустыми условиями)
+			// Get all root upgrade nodes (those without parent requirements)
 			const rootNodes = await UpgradeNode.findAll({
 				where: {
 					active: true,
 					[Op.or]: [
-						{ conditions: null },
-						{ conditions: {} },
-						{
-							conditions: {
-								[Op.eq]: {},
-							},
-						},
+						{ '$conditions.parents$': null },
+						{ '$conditions.parents$': [] },
+						{ $conditions$: {} },
 					],
 				},
 				transaction: t,
 			});
 
-			if (!externalTransaction) {
-				await t.commit();
-			}
-
-			return rootNodes;
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to get root upgrade nodes: ${err.message}`
-			);
-		}
-	}
-
-	async initializeUserUpgradeTree(userId, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
-
-		try {
-			// Получаем корневые узлы
-			const rootNodes = await this.getRootUpgradeNodes(t);
-
-			// Создаем записи для корневых узлов
+			// Create initial user upgrades for root nodes
+			const userUpgrades = [];
 			for (const node of rootNodes) {
-				// Проверяем, существует ли уже такой апгрейд
-				const existingUpgrade = await UserUpgrade.findOne({
-					where: {
+				const userUpgrade = await UserUpgrade.create(
+					{
 						userId,
 						nodeId: node.id,
-					},
-					transaction: t,
-				});
-
-				// Если апгрейд не существует, создаем его
-				if (!existingUpgrade) {
-					await UserUpgrade.create(
-						{
-							userId,
-							nodeId: node.id,
-							level: 0,
-							progress: 0,
-							targetProgress: 100,
-							completed: false,
-							stability: node.stability || 0.0,
-							instability: node.instability || 0.0,
-							progressHistory: [],
-							lastProgressUpdate: new Date(),
-						},
-						{ transaction: t }
-					);
-				}
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeUpgradeCount = await UserUpgrade.count({
-					where: {
-						userId,
+						level: 0,
+						progress: 0,
+						targetProgress: 100,
 						completed: false,
+						stability: node.stability || 0,
+						instability: node.instability || 0,
+						progressHistory: [
+							{
+								timestamp: Date.now(),
+								progress: 0,
+								level: 0,
+							},
+						],
+						lastProgressUpdate: new Date(),
 					},
-					transaction: t,
-				});
-
-				userState.state.ownedNodesCount = activeUpgradeCount;
-				await userState.save({ transaction: t });
+					{ transaction: t }
+				);
+				userUpgrades.push(userUpgrade);
 			}
 
-			if (!externalTransaction) {
-				await t.commit();
-			}
-
-			return await this.getUserUpgradeNodes(userId);
+			return userUpgrades;
 		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
 			throw ApiError.Internal(
 				`Failed to initialize user upgrade tree: ${err.message}`
 			);
 		}
 	}
 
-	async getUserUpgradeNode(userId, nodeId) {
-		try {
-			const userUpgrade = await UserUpgrade.findOne({
-				where: {
-					userId,
-					nodeId,
-				},
-				include: [
-					{
-						model: UpgradeNode,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'currency',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'conditions',
-							'children',
-							'weight',
-						],
-					},
-				],
-			});
-
-			if (!userUpgrade) {
-				throw ApiError.BadRequest('User upgrade node not found');
-			}
-
-			return {
-				id: userUpgrade.id,
-				userId: userUpgrade.userId,
-				nodeId: userUpgrade.nodeId,
-				level: userUpgrade.level,
-				progress: userUpgrade.progress,
-				targetProgress: userUpgrade.targetProgress,
-				completed: userUpgrade.completed,
-				stability: userUpgrade.stability,
-				instability: userUpgrade.instability,
-				progressHistory: userUpgrade.progressHistory,
-				lastProgressUpdate: userUpgrade.lastProgressUpdate,
-				node: userUpgrade.upgradenode,
-			};
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get user upgrade node: ${err.message}`
-			);
-		}
-	}
-
-	async getUserUpgradeStats(userId) {
-		const t = await sequelize.transaction();
-
+	/**
+	 * Activate available upgrade nodes for a user
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<Array>} Newly activated user upgrades
+	 */
+	async activateUserUpgradeNodes(userId, t) {
 		try {
 			// Get all user upgrades
 			const userUpgrades = await UserUpgrade.findAll({
@@ -915,70 +77,665 @@ class UpgradeService {
 				transaction: t,
 			});
 
-			// Calculate statistics
-			const totalUpgrades = userUpgrades.length;
-			const completedUpgrades = userUpgrades.filter(
-				(upgrade) => upgrade.completed
-			).length;
-			const activeUpgrades = totalUpgrades - completedUpgrades;
+			// Create a map of user upgrades for quick lookup
+			const userUpgradeMap = {};
+			userUpgrades.forEach((upgrade) => {
+				userUpgradeMap[upgrade.nodeId] = upgrade;
+			});
 
-			// Get categories
-			const nodes = await UpgradeNode.findAll({
-				where: {
-					id: {
-						[Op.in]: userUpgrades.map((upgrade) => upgrade.nodeId),
+			// Get all active upgrade nodes
+			const upgradeNodes = await UpgradeNode.findAll({
+				where: { active: true },
+				transaction: t,
+			});
+
+			// Find nodes that should be activated
+			const nodesToActivate = [];
+			for (const node of upgradeNodes) {
+				// Skip if user already has this node
+				if (userUpgradeMap[node.id]) {
+					continue;
+				}
+
+				// Check if the node has parent requirements
+				if (
+					node.conditions &&
+					node.conditions.parents &&
+					Array.isArray(node.conditions.parents)
+				) {
+					let allParentsCompleted = true;
+					// Check if all parent upgrades are completed
+					for (const parentId of node.conditions.parents) {
+						const parentUpgrade = userUpgradeMap[parentId];
+						if (
+							!parentUpgrade ||
+							!parentUpgrade.completed ||
+							(node.conditions.parentLevel &&
+								parentUpgrade.level <
+									node.conditions.parentLevel)
+						) {
+							allParentsCompleted = false;
+							break;
+						}
+					}
+
+					if (allParentsCompleted) {
+						nodesToActivate.push(node);
+					}
+				}
+			}
+
+			// Create user upgrades for nodes to activate
+			const newUserUpgrades = [];
+			for (const node of nodesToActivate) {
+				const userUpgrade = await UserUpgrade.create(
+					{
+						userId,
+						nodeId: node.id,
+						level: 0,
+						progress: 0,
+						targetProgress: 100,
+						completed: false,
+						stability: node.stability || 0,
+						instability: node.instability || 0,
+						progressHistory: [
+							{
+								timestamp: Date.now(),
+								progress: 0,
+								level: 0,
+							},
+						],
+						lastProgressUpdate: new Date(),
 					},
+					{ transaction: t }
+				);
+				newUserUpgrades.push(userUpgrade);
+			}
+
+			return newUserUpgrades;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to activate user upgrade nodes: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Get all upgrades for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Array>} User upgrades
+	 */
+	async getUserUpgrades(userId) {
+		try {
+			const userUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+				include: [
+					{
+						model: UpgradeNode,
+						attributes: [
+							'id',
+							'name',
+							'description',
+							'maxLevel',
+							'basePrice',
+							'effectPerLevel',
+							'priceMultiplier',
+							'resource',
+							'category',
+							'icon',
+							'stability',
+							'instability',
+							'modifiers',
+							'active',
+							'conditions',
+							'children',
+							'weight',
+						],
+					},
+				],
+			});
+
+			return userUpgrades;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to get user upgrades: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Get a specific upgrade for a user
+	 * @param {number} userId - User ID
+	 * @param {string} upgradeId - Upgrade node ID
+	 * @returns {Promise<Object>} User upgrade
+	 */
+	async getUserUpgrade(userId, upgradeId) {
+		try {
+			const userUpgrade = await UserUpgrade.findOne({
+				where: {
+					userId,
+					nodeId: upgradeId,
+				},
+				include: [
+					{
+						model: UpgradeNode,
+						attributes: [
+							'id',
+							'name',
+							'description',
+							'maxLevel',
+							'basePrice',
+							'effectPerLevel',
+							'priceMultiplier',
+							'resource',
+							'category',
+							'icon',
+							'stability',
+							'instability',
+							'modifiers',
+							'active',
+							'conditions',
+							'children',
+							'weight',
+						],
+					},
+				],
+			});
+
+			if (!userUpgrade) {
+				throw ApiError.NotFound('User upgrade not found');
+			}
+
+			return userUpgrade;
+		} catch (err) {
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(
+				`Failed to get user upgrade: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Get all available upgrades for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Array>} Available upgrades
+	 */
+	async getAvailableUpgrades(userId) {
+		try {
+			// Get all active upgrade nodes
+			const upgradeNodes = await UpgradeNode.findAll({
+				where: {
+					active: true,
+				},
+			});
+
+			// Get all user upgrades
+			const userUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+			});
+
+			// Create a map of user upgrades for quick lookup
+			const userUpgradeMap = {};
+			userUpgrades.forEach((upgrade) => {
+				userUpgradeMap[upgrade.nodeId] = upgrade;
+			});
+
+			// Filter upgrade nodes based on availability
+			const availableUpgrades = upgradeNodes.filter((node) => {
+				// If the user already has this upgrade, it's available
+				if (userUpgradeMap[node.id]) {
+					return true;
+				}
+
+				// Check if the upgrade has any conditions
+				if (
+					node.conditions &&
+					Object.keys(node.conditions).length > 0
+				) {
+					// Check if the upgrade requires parent upgrades
+					if (
+						node.conditions.parents &&
+						Array.isArray(node.conditions.parents)
+					) {
+						// Check if all parent upgrades are completed
+						for (const parentId of node.conditions.parents) {
+							const parentUpgrade = userUpgradeMap[parentId];
+							if (
+								!parentUpgrade ||
+								!parentUpgrade.completed ||
+								parentUpgrade.level <
+									node.conditions.parentLevel
+							) {
+								return false;
+							}
+						}
+					}
+
+					// Add more condition checks here as needed
+				}
+
+				// If no conditions or all conditions are met, the upgrade is available
+				return true;
+			});
+
+			// Map available upgrades to include user progress if exists
+			return availableUpgrades.map((node) => {
+				const userUpgrade = userUpgradeMap[node.id];
+				if (userUpgrade) {
+					return {
+						...node.toJSON(),
+						userProgress: {
+							level: userUpgrade.level,
+							progress: userUpgrade.progress,
+							targetProgress: userUpgrade.targetProgress,
+							completed: userUpgrade.completed,
+							stability: userUpgrade.stability,
+							instability: userUpgrade.instability,
+						},
+					};
+				} else {
+					return {
+						...node.toJSON(),
+						userProgress: {
+							level: 0,
+							progress: 0,
+							targetProgress: 100,
+							completed: false,
+							stability: 0,
+							instability: 0,
+						},
+					};
+				}
+			});
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to get available upgrades: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Purchase an upgrade for a user
+	 * @param {number} userId - User ID
+	 * @param {string} upgradeId - Upgrade node ID
+	 * @returns {Promise<Object>} Updated user upgrade
+	 */
+	async purchaseUpgrade(userId, upgradeId) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Get the upgrade node
+			const upgradeNode = await UpgradeNode.findByPk(upgradeId, {
+				transaction: t,
+			});
+
+			if (!upgradeNode) {
+				await t.rollback();
+				throw ApiError.NotFound('Upgrade not found');
+			}
+
+			if (!upgradeNode.active) {
+				await t.rollback();
+				throw ApiError.BadRequest('Upgrade is not active');
+			}
+
+			// Check if the user already has this upgrade
+			let userUpgrade = await UserUpgrade.findOne({
+				where: {
+					userId,
+					nodeId: upgradeId,
 				},
 				transaction: t,
 			});
 
-			// Calculate stats by category
-			const categoriesMap = {};
-			for (const node of nodes) {
-				const userUpgrade = userUpgrades.find(
-					(upgrade) => upgrade.nodeId === node.id
-				);
+			// Get user state for resource check
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
 
-				if (!userUpgrade) continue;
-
-				const category = node.category || 'unknown';
-				if (!categoriesMap[category]) {
-					categoriesMap[category] = {
-						total: 0,
-						completed: 0,
-						active: 0,
-					};
-				}
-
-				categoriesMap[category].total++;
-				if (userUpgrade.completed) {
-					categoriesMap[category].completed++;
-				} else {
-					categoriesMap[category].active++;
-				}
+			if (!userState) {
+				await t.rollback();
+				throw ApiError.NotFound('User state not found');
 			}
 
-			// Calculate overall progress
-			const overallProgress =
-				totalUpgrades > 0
-					? (completedUpgrades / totalUpgrades) * 100
-					: 0;
+			// Calculate the price based on the current level
+			const currentLevel = userUpgrade ? userUpgrade.level : 0;
+
+			// Check if the upgrade is already at max level
+			if (currentLevel >= upgradeNode.maxLevel) {
+				await t.rollback();
+				throw ApiError.BadRequest('Upgrade already at max level');
+			}
+
+			const price = this.calculateUpgradePrice(
+				upgradeNode.basePrice,
+				currentLevel,
+				upgradeNode.priceMultiplier
+			);
+
+			// Check if the user has enough resources
+			const resourceField = upgradeNode.resource;
+			if (userState[resourceField] < price) {
+				await t.rollback();
+				throw ApiError.BadRequest(
+					`Not enough ${resourceField} to purchase upgrade`
+				);
+			}
+
+			// Deduct the resources
+			userState[resourceField] -= price;
+			await userState.save({ transaction: t });
+
+			// Create or update the user upgrade
+			if (!userUpgrade) {
+				userUpgrade = await UserUpgrade.create(
+					{
+						userId,
+						nodeId: upgradeId,
+						level: 1,
+						progress: 0,
+						targetProgress: 100,
+						completed: false,
+						stability: upgradeNode.stability || 0,
+						instability: upgradeNode.instability || 0,
+						progressHistory: [
+							{
+								timestamp: Date.now(),
+								progress: 0,
+								level: 1,
+							},
+						],
+						lastProgressUpdate: new Date(),
+					},
+					{ transaction: t }
+				);
+			} else {
+				// Increment the level
+				userUpgrade.level += 1;
+
+				// Reset progress if not at max level
+				if (userUpgrade.level < upgradeNode.maxLevel) {
+					userUpgrade.progress = 0;
+					userUpgrade.completed = false;
+				} else {
+					userUpgrade.progress = userUpgrade.targetProgress;
+					userUpgrade.completed = true;
+				}
+
+				// Update progress history
+				userUpgrade.progressHistory = [
+					...(userUpgrade.progressHistory || []),
+					{
+						timestamp: Date.now(),
+						progress: userUpgrade.progress,
+						level: userUpgrade.level,
+					},
+				];
+
+				userUpgrade.lastProgressUpdate = new Date();
+
+				await userUpgrade.save({ transaction: t });
+			}
+
+			// Unlock child upgrades if this upgrade is completed
+			if (
+				userUpgrade.completed &&
+				upgradeNode.children &&
+				upgradeNode.children.length > 0
+			) {
+				// This could involve marking child upgrades as available
+				// or creating entries for them in the user_upgrades table
+				// Implementation depends on how availability is tracked
+			}
 
 			await t.commit();
 
+			// Return the updated user upgrade with the upgrade node
 			return {
-				total: totalUpgrades,
-				completed: completedUpgrades,
-				active: activeUpgrades,
-				overallProgress,
-				categories: categoriesMap,
-				lastUpdate: new Date(),
+				...userUpgrade.toJSON(),
+				upgradeNode: upgradeNode.toJSON(),
+				resourcesSpent: price,
 			};
 		} catch (err) {
 			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
 			throw ApiError.Internal(
-				`Failed to get user upgrade stats: ${err.message}`
+				`Failed to purchase upgrade: ${err.message}`
 			);
+		}
+	}
+
+	/**
+	 * Update progress for a user upgrade
+	 * @param {number} userId - User ID
+	 * @param {string} upgradeId - Upgrade node ID
+	 * @param {number} progress - New progress value
+	 * @returns {Promise<Object>} Updated user upgrade
+	 */
+	async updateUpgradeProgress(userId, upgradeId, progress) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Get the user upgrade
+			const userUpgrade = await UserUpgrade.findOne({
+				where: {
+					userId,
+					nodeId: upgradeId,
+				},
+				include: [
+					{
+						model: UpgradeNode,
+					},
+				],
+				transaction: t,
+			});
+
+			if (!userUpgrade) {
+				await t.rollback();
+				throw ApiError.NotFound('User upgrade not found');
+			}
+
+			// If the upgrade is already completed, don't update progress
+			if (userUpgrade.completed) {
+				await t.rollback();
+				return userUpgrade;
+			}
+
+			// Update progress
+			userUpgrade.progress = Math.min(
+				progress,
+				userUpgrade.targetProgress
+			);
+
+			// Check if the upgrade is now completed
+			if (userUpgrade.progress >= userUpgrade.targetProgress) {
+				userUpgrade.completed = true;
+
+				// If at max level, mark as completed
+				if (userUpgrade.level >= userUpgrade.upgradenode.maxLevel) {
+					userUpgrade.completed = true;
+				} else {
+					// Otherwise, prepare for next level
+					userUpgrade.progress = 0;
+					userUpgrade.level += 1;
+					userUpgrade.completed = false;
+				}
+			}
+
+			// Update progress history
+			userUpgrade.progressHistory = [
+				...(userUpgrade.progressHistory || []),
+				{
+					timestamp: Date.now(),
+					progress: userUpgrade.progress,
+					level: userUpgrade.level,
+				},
+			];
+
+			userUpgrade.lastProgressUpdate = new Date();
+
+			await userUpgrade.save({ transaction: t });
+			await t.commit();
+
+			return userUpgrade;
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(
+				`Failed to update upgrade progress: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Calculate the price of an upgrade based on level
+	 * @param {number} basePrice - Base price of the upgrade
+	 * @param {number} currentLevel - Current level of the upgrade
+	 * @param {number} priceMultiplier - Price multiplier for each level
+	 * @returns {number} Calculated price
+	 */
+	calculateUpgradePrice(basePrice, currentLevel, priceMultiplier) {
+		return Math.floor(basePrice * Math.pow(priceMultiplier, currentLevel));
+	}
+
+	/**
+	 * Get upgrade statistics for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Object>} Upgrade statistics
+	 */
+	async getUpgradeStats(userId) {
+		try {
+			// Get all user upgrades
+			const userUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+				include: [
+					{
+						model: UpgradeNode,
+						attributes: ['category', 'resource'],
+					},
+				],
+			});
+
+			// Get all upgrade nodes to calculate total available
+			const allUpgradeNodes = await UpgradeNode.findAll({
+				where: { active: true },
+			});
+
+			// Calculate statistics
+			const stats = {
+				total: userUpgrades.length,
+				completed: userUpgrades.filter((u) => u.completed).length,
+				inProgress: userUpgrades.filter((u) => !u.completed).length,
+				totalAvailable: allUpgradeNodes.length,
+				byCategory: {},
+				byResource: {},
+				totalLevels: 0,
+				totalMaxLevels: 0,
+			};
+
+			// Calculate by category and resource
+			userUpgrades.forEach((upgrade) => {
+				const category = upgrade.upgradenode?.category || 'unknown';
+				const resource = upgrade.upgradenode?.resource || 'unknown';
+
+				// Count by category
+				if (!stats.byCategory[category]) {
+					stats.byCategory[category] = {
+						total: 0,
+						completed: 0,
+						inProgress: 0,
+					};
+				}
+				stats.byCategory[category].total++;
+				if (upgrade.completed) {
+					stats.byCategory[category].completed++;
+				} else {
+					stats.byCategory[category].inProgress++;
+				}
+
+				// Count by resource
+				if (!stats.byResource[resource]) {
+					stats.byResource[resource] = {
+						total: 0,
+						completed: 0,
+						inProgress: 0,
+					};
+				}
+				stats.byResource[resource].total++;
+				if (upgrade.completed) {
+					stats.byResource[resource].completed++;
+				} else {
+					stats.byResource[resource].inProgress++;
+				}
+
+				// Count levels
+				stats.totalLevels += upgrade.level;
+				stats.totalMaxLevels += upgrade.upgradenode?.maxLevel || 0;
+			});
+
+			// Calculate completion percentage
+			stats.completionPercentage =
+				stats.total > 0
+					? Math.floor((stats.completed / stats.total) * 100)
+					: 0;
+
+			// Calculate level completion percentage
+			stats.levelCompletionPercentage =
+				stats.totalMaxLevels > 0
+					? Math.floor(
+							(stats.totalLevels / stats.totalMaxLevels) * 100
+					  )
+					: 0;
+
+			return stats;
+		} catch (err) {
+			throw ApiError.Internal(
+				`Failed to get upgrade stats: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Reset all upgrades for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Object>} Result of the reset operation
+	 */
+	async resetUpgrades(userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Delete all user upgrades
+			await UserUpgrade.destroy({
+				where: { userId },
+				transaction: t,
+			});
+
+			// Optionally, refund resources
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
+
+			if (userState) {
+				// You could implement resource refund logic here
+				await userState.save({ transaction: t });
+			}
+
+			await t.commit();
+			return {
+				success: true,
+				message: 'All upgrades reset successfully',
+			};
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(`Failed to reset upgrades: ${err.message}`);
 		}
 	}
 }

@@ -9,32 +9,77 @@ const env = process.env.NODE_ENV || 'development';
 const config = require(__dirname + '/../config/config.json')[env];
 const db = {};
 
+// Общие настройки безопасности для всех окружений
+const securityOptions = {
+	// Отключение выполнения необработанных запросов
+	quoteIdentifiers: true,
+	// Предотвращение использования небезопасных операторов
+	operatorsAliases: 0,
+	// Дополнительные настройки безопасности пула соединений
+	pool: {
+		max: 5,
+		min: 0,
+		acquire: 30000,
+		idle: 10000,
+	},
+	// Настройки SSL для продакшена
+	dialectOptions:
+		env === 'production'
+			? {
+					ssl: {
+						require: true,
+						rejectUnauthorized: false, // В идеале установить в true с правильными сертификатами
+					},
+			  }
+			: {},
+	// Отключение логирования для предотвращения утечки данных
+	logging: false,
+};
+
 let sequelize;
 if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+	sequelize = new Sequelize(process.env[config.use_env_variable], {
+		...config,
+		...securityOptions,
+	});
 } else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+	sequelize = new Sequelize(
+		config.database,
+		config.username,
+		config.password,
+		{
+			...config,
+			...securityOptions,
+		}
+	);
 }
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+// Безопасная загрузка моделей
+fs.readdirSync(__dirname)
+	.filter((file) => {
+		return (
+			file.indexOf('.') !== 0 &&
+			file !== basename &&
+			file.slice(-3) === '.js' &&
+			file.indexOf('.test.js') === -1
+		);
+	})
+	.forEach((file) => {
+		try {
+			const model = require(path.join(__dirname, file))(
+				sequelize,
+				Sequelize.DataTypes
+			);
+			db[model.name] = model;
+		} catch (error) {
+			console.error(`Error loading model from file ${file}:`, error);
+		}
+	});
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
+Object.keys(db).forEach((modelName) => {
+	if (db[modelName].associate) {
+		db[modelName].associate(db);
+	}
 });
 
 db.sequelize = sequelize;

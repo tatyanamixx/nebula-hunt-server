@@ -1,8 +1,8 @@
 /**
- * created by Tatyana Mikhniukevich on 09.06.2025
+ * created by Claude on 15.07.2025
  */
 const {
-	GameEvent,
+	EventTemplate,
 	UserState,
 	UserEvent,
 	UserEventSetting,
@@ -13,79 +13,54 @@ const { Op } = require('sequelize');
 const marketService = require('./market-service');
 
 class EventService {
-	async createEvents(events) {
+	/**
+	 * Initialize events for a new user
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<Object>} Initialized user event settings
+	 */
+	async initializeUserEvents(userId, t) {
 		try {
-			const createdEvents = [];
+			// Create default event settings for the user
+			const userEventSettings = await UserEventSetting.create(
+				{
+					userId,
+					eventMultipliers: {
+						production: 1.0,
+						chaos: 1.0,
+						stability: 1.0,
+						entropy: 1.0,
+						rewards: 1.0,
+					},
+					lastEventCheck: new Date(),
+					eventCooldowns: {},
+					enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+					disabledEvents: [],
+					priorityEvents: [],
+				},
+				{ transaction: t }
+			);
 
-			for (const eventData of events) {
-				// Try to find existing event with the same name
-				let event = await GameEvent.findOne({
-					where: { name: eventData.name },
-				});
-
-				if (event) {
-					// Update existing event
-					await event.update(eventData);
-					createdEvents.push(event);
-				} else {
-					// Create new event
-					event = await GameEvent.create(eventData);
-					createdEvents.push(event);
-				}
-			}
-
-			return { events: createdEvents };
+			return userEventSettings;
 		} catch (err) {
-			throw ApiError.BadRequest(
-				'Failed to create events: ' + err.message
+			throw ApiError.Internal(
+				`Failed to initialize user events: ${err.message}`
 			);
 		}
 	}
 
-	async createEvent(eventData) {
-		const t = await sequelize.transaction();
-
-		try {
-			const event = await GameEvent.create(eventData, { transaction: t });
-
-			await t.commit();
-			return event;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.BadRequest('Failed to create event: ' + err.message);
-		}
-	}
-
-	async updateEvent(eventId, eventData) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Ищем событие по ID
-			const event = await GameEvent.findByPk(eventId, { transaction: t });
-
-			if (!event) {
-				await t.rollback();
-				throw ApiError.NotFound('Event not found');
-			}
-
-			// Обновляем данные события
-			await event.update(eventData, { transaction: t });
-
-			await t.commit();
-			return event;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.BadRequest('Failed to update event: ' + err.message);
-		}
-	}
-
+	/**
+	 * Check and trigger events for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Array>} Triggered events
+	 */
 	async checkAndTriggerEvents(userId) {
 		const t = await sequelize.transaction();
 
 		try {
 			const now = new Date();
 
-			// Получаем или создаем настройки событий пользователя
+			// Get or create user event settings
 			let userEventSettings = await UserEventSetting.findOne({
 				where: { userId },
 				transaction: t,
@@ -112,13 +87,13 @@ class EventService {
 				);
 			}
 
-			// Получаем все доступные события
-			const availableEvents = await GameEvent.findAll({
+			// Get all available events
+			const availableEvents = await EventTemplate.findAll({
 				where: { active: true },
 				transaction: t,
 			});
 
-			// Получаем активные события пользователя
+			// Get active user events
 			const activeUserEvents = await UserEvent.findAll({
 				where: {
 					userId,
@@ -127,14 +102,14 @@ class EventService {
 				transaction: t,
 			});
 
-			// Проверяем и обновляем статусы существующих событий
+			// Check and update existing event statuses
 			for (const userEvent of activeUserEvents) {
-				// Проверяем, не истекло ли событие
+				// Check if event has expired
 				if (userEvent.expiresAt && userEvent.expiresAt <= now) {
 					userEvent.status = 'EXPIRED';
 					await userEvent.save({ transaction: t });
 
-					// Удаляем эффекты истекшего события
+					// Remove effects of expired event
 					if (userEvent.effects) {
 						for (const [key, value] of Object.entries(
 							userEvent.effects
@@ -149,7 +124,7 @@ class EventService {
 				}
 			}
 
-			// Проверяем и триггерим новые события
+			// Check and trigger new events
 			const triggeredEvents = [];
 			for (const event of availableEvents) {
 				const shouldTrigger = await this.shouldEventTrigger(
@@ -180,7 +155,7 @@ class EventService {
 						{ transaction: t }
 					);
 
-					// Применяем эффекты события
+					// Apply event effects
 					if (newEvent.effects) {
 						for (const [key, value] of Object.entries(
 							newEvent.effects
@@ -200,232 +175,205 @@ class EventService {
 				}
 			}
 
-			// Обновляем кулдауны для сработавших событий
-			for (const event of triggeredEvents) {
-				const gameEvent = availableEvents.find(
-					(e) => e.id === event.eventId
-				);
-				if (gameEvent) {
-					const cooldownKey = `${gameEvent.id}_${gameEvent.type}`;
-					userEventSettings.eventCooldowns[cooldownKey] = now;
-				}
-			}
-
-			// Обновляем время последней проверки
+			// Update last check time
 			userEventSettings.lastEventCheck = now;
 			await userEventSettings.save({ transaction: t });
 
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeEventCount = await UserEvent.count({
-					where: {
-						userId,
-						status: 'ACTIVE',
-					},
-					transaction: t,
-				});
-
-				userState.state.ownedEventsCount = activeEventCount;
-				await userState.save({ transaction: t });
-			}
-
 			await t.commit();
-
-			// Получаем обновленные активные события
-			const updatedActiveEvents = await this.getActiveEvents(userId);
-
-			return {
-				activeEvents: updatedActiveEvents,
-				eventMultipliers: userEventSettings.eventMultipliers,
-			};
+			return { triggeredEvents, activeEvents: activeUserEvents };
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal('Failed to check events: ' + err.message);
+			throw ApiError.Internal(
+				`Failed to check and trigger events: ${err.message}`
+			);
 		}
 	}
 
-	async shouldEventTrigger(
-		event,
-		userId,
-		now,
-		userEventSettings,
-		transaction
-	) {
-		// Проверяем кулдауны
-		const cooldownKey = `${event.id}_${event.type}`;
-		const lastTriggerTime = userEventSettings.eventCooldowns[cooldownKey];
-		if (
-			lastTriggerTime &&
-			now - new Date(lastTriggerTime) < (event.frequency?.cooldown || 0)
-		) {
+	/**
+	 * Check if an event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Date} now - Current time
+	 * @param {Object} userEventSettings - User event settings
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async shouldEventTrigger(event, userId, now, userEventSettings, t) {
+		// Check if event type is enabled
+		if (!userEventSettings.enabledTypes.includes(event.type)) {
 			return false;
 		}
 
-		// Проверяем предпочтения пользователя
+		// Check if event is in disabled list
 		if (userEventSettings.disabledEvents.includes(event.id)) {
 			return false;
 		}
 
-		// Проверяем, включен ли тип события
-		if (
-			userEventSettings.enabledTypes &&
-			!userEventSettings.enabledTypes.includes(event.type)
-		) {
+		// Check if event is on cooldown
+		const cooldown = userEventSettings.eventCooldowns[event.id];
+		if (cooldown && new Date(cooldown) > now) {
 			return false;
 		}
 
-		// Проверяем, не активно ли уже это событие
+		// Check if event is already active
 		const activeEvent = await UserEvent.findOne({
 			where: {
 				userId,
 				eventId: event.id,
 				status: 'ACTIVE',
 			},
-			transaction,
+			transaction: t,
 		});
 
 		if (activeEvent) {
 			return false;
 		}
 
-		// Проверяем историю событий для этого конкретного события
-		const eventHistory = await UserEvent.findAll({
-			where: {
-				userId,
-				eventId: event.id,
-			},
-			order: [['triggeredAt', 'DESC']],
-			limit: 1,
-			transaction,
-		});
-
-		const lastEvent = eventHistory.length > 0 ? eventHistory[0] : null;
-
+		// Check specific event type conditions
 		switch (event.type) {
-			case 'RANDOM': {
-				const timeSinceLastCheck =
-					now - userEventSettings.lastEventCheck;
-				const chance =
-					(timeSinceLastCheck / 1000) *
-					(event.frequency?.chancePerSecond || 0);
-				return Math.random() < chance;
-			}
-			case 'PERIODIC': {
-				if (!lastEvent) return true;
-				const timeSinceLastOccurrence =
-					now - new Date(lastEvent.triggeredAt);
-				return (
-					timeSinceLastOccurrence >= (event.frequency?.interval || 0)
+			case 'RANDOM':
+				return this.checkRandomEventTrigger(event);
+			case 'PERIODIC':
+				return this.checkPeriodicEventTrigger(
+					event,
+					userEventSettings.lastEventCheck,
+					now
 				);
-			}
-			case 'ONE_TIME':
-				return !lastEvent;
-			case 'CONDITIONAL': {
-				const cond = event.triggerConfig?.condition;
-				if (!cond) return false;
-
-				// Получаем состояние пользователя для проверки условий
-				const userState = await UserState.findOne({
-					where: { userId },
-					transaction,
-				});
-
-				if (!userState) return false;
-
-				// Проверяем условие на основе метрики
-				const metricValue =
-					cond.metric === 'chaosLevel'
-						? userState.chaosLevel
-						: cond.metric === 'stabilityLevel'
-						? userState.stabilityLevel
-						: cond.metric === 'entropyVelocity'
-						? userState.entropyVelocity
-						: userState.state?.[cond.metric];
-
-				if (metricValue === undefined) return false;
-
-				switch (cond.op) {
-					case '>':
-						return metricValue > cond.value;
-					case '<':
-						return metricValue < cond.value;
-					case '>=':
-						return metricValue >= cond.value;
-					case '<=':
-						return metricValue <= cond.value;
-					case '==':
-						return metricValue == cond.value;
-					case '!=':
-						return metricValue != cond.value;
-					default:
-						return false;
-				}
-			}
-			case 'CHAINED': {
-				if (!event.triggerConfig?.after) return false;
-
-				// Проверяем, завершено ли предыдущее событие в цепочке
-				const previousEvent = await UserEvent.findOne({
-					where: {
-						userId,
-						eventId: event.triggerConfig.after,
-						status: {
-							[Op.in]: ['COMPLETED', 'EXPIRED'],
-						},
-					},
-					transaction,
-				});
-
-				return !!previousEvent;
-			}
-			case 'TRIGGERED_BY_ACTION':
-				// Эти события триггерятся вручную, поэтому здесь всегда возвращаем false
-				return false;
-			case 'GLOBAL_TIMED': {
-				const targetTime = new Date(event.triggerConfig?.at);
-				// Событие срабатывает, если текущее время больше целевого,
-				// и событие еще не было активировано
-				return now >= targetTime && !lastEvent;
-			}
-			case 'LIMITED_REPEATABLE': {
-				if (!lastEvent) return true;
-
-				// Проверяем, не превышено ли максимальное количество повторений
-				const repeatCount = await UserEvent.count({
-					where: {
-						userId,
-						eventId: event.id,
-					},
-					transaction,
-				});
-
-				return repeatCount < (event.triggerConfig?.maxRepeats || 1);
-			}
-			case 'SEASONAL': {
-				const start = new Date(event.triggerConfig?.start);
-				const end = new Date(event.triggerConfig?.end);
-
-				// Событие активно, если текущая дата в пределах сезона
-				return now >= start && now <= end;
-			}
-			case 'PASSIVE':
-				// Пассивные события всегда активны, если не указано иное
-				return true;
+			case 'CONDITIONAL':
+				return this.checkConditionalEventTrigger(event, userId, t);
+			case 'RESOURCE_BASED':
+				return this.checkResourceBasedEventTrigger(event, userId, t);
+			case 'UPGRADE_DEPENDENT':
+				return this.checkUpgradeDependentEventTrigger(event, userId, t);
+			case 'TASK_DEPENDENT':
+				return this.checkTaskDependentEventTrigger(event, userId, t);
+			case 'MARKET_DEPENDENT':
+				return this.checkMarketDependentEventTrigger(event, userId, t);
 			default:
 				return false;
 		}
 	}
 
+	/**
+	 * Check if a random event should be triggered
+	 * @param {Object} event - Event template
+	 * @returns {boolean} Whether the event should be triggered
+	 */
+	async checkRandomEventTrigger(event) {
+		const chancePerHour = event.triggerConfig?.chancePerHour || 0.05;
+		return Math.random() < chancePerHour / 60; // Convert to per-minute chance
+	}
+
+	/**
+	 * Check if a periodic event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {Date} lastTriggered - Last time events were checked
+	 * @param {Date} now - Current time
+	 * @returns {boolean} Whether the event should be triggered
+	 */
+	async checkPeriodicEventTrigger(event, lastTriggered, now) {
+		const intervalStr = event.triggerConfig?.interval || '24h';
+		const intervalMs = this.parseInterval(intervalStr);
+
+		return now - new Date(lastTriggered) >= intervalMs;
+	}
+
+	/**
+	 * Check if a conditional event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async checkConditionalEventTrigger(event, userId, t) {
+		// Check conditions from configuration
+		const condition = event.triggerConfig?.condition;
+		if (!condition) return false;
+
+		// Here should be the logic to check the condition
+		// For example, checking chaos level, resource amount, etc.
+		return false; // Placeholder
+	}
+
+	/**
+	 * Check if a resource-based event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async checkResourceBasedEventTrigger(event, userId, t) {
+		const { resource, threshold, operator } = event.triggerConfig || {};
+		if (!resource || !threshold || !operator) return false;
+
+		const userState = await UserState.findOne({
+			where: { userId },
+			transaction: t,
+		});
+
+		if (!userState || !userState[resource]) return false;
+
+		switch (operator) {
+			case '>':
+				return userState[resource] > threshold;
+			case '>=':
+				return userState[resource] >= threshold;
+			case '<':
+				return userState[resource] < threshold;
+			case '<=':
+				return userState[resource] <= threshold;
+			case '==':
+				return userState[resource] == threshold;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * Check if an upgrade-dependent event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async checkUpgradeDependentEventTrigger(event, userId, t) {
+		// Implementation for checking upgrade dependency
+		return false; // Placeholder
+	}
+
+	/**
+	 * Check if a task-dependent event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async checkTaskDependentEventTrigger(event, userId, t) {
+		// Implementation for checking task dependency
+		return false; // Placeholder
+	}
+
+	/**
+	 * Check if a market-dependent event should be triggered
+	 * @param {Object} event - Event template
+	 * @param {number} userId - User ID
+	 * @param {Object} t - Transaction
+	 * @returns {Promise<boolean>} Whether the event should be triggered
+	 */
+	async checkMarketDependentEventTrigger(event, userId, t) {
+		// Implementation for checking market dependency
+		return false; // Placeholder
+	}
+
+	/**
+	 * Get all active events for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Array>} Active user events
+	 */
 	async getActiveEvents(userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Получаем все активные события пользователя с информацией о событиях
 			const activeEvents = await UserEvent.findAll({
 				where: {
 					userId,
@@ -433,38 +381,21 @@ class EventService {
 				},
 				include: [
 					{
-						model: GameEvent,
+						model: EventTemplate,
 						attributes: [
 							'id',
 							'name',
 							'description',
 							'type',
-							'triggerConfig',
 							'effect',
-							'frequency',
-							'conditions',
-							'active',
 						],
 					},
 				],
 				transaction: t,
 			});
 
-			const result = activeEvents.map((userEvent) => ({
-				id: userEvent.id,
-				userId: userEvent.userId,
-				eventId: userEvent.eventId,
-				status: userEvent.status,
-				triggeredAt: userEvent.triggeredAt,
-				expiresAt: userEvent.expiresAt,
-				effects: userEvent.effects,
-				progress: userEvent.progress,
-				completedAt: userEvent.completedAt,
-				event: userEvent.gameevent,
-			}));
-
 			await t.commit();
-			return result;
+			return activeEvents;
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
@@ -473,108 +404,84 @@ class EventService {
 		}
 	}
 
-	async initializeUserEvents(userId) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Создаем настройки событий пользователя, если они не существуют
-			let userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (!userEventSettings) {
-				userEventSettings = await UserEventSetting.create(
-					{
-						userId,
-						eventMultipliers: {
-							production: 1.0,
-							chaos: 1.0,
-							stability: 1.0,
-							entropy: 1.0,
-							rewards: 1.0,
-						},
-						lastEventCheck: new Date(),
-						eventCooldowns: {},
-						enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-						disabledEvents: [],
-						priorityEvents: [],
-					},
-					{ transaction: t }
-				);
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				userState.state.ownedEventsCount = 0;
-				await userState.save({ transaction: t });
-			}
-
-			await t.commit();
-			return userEventSettings;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to initialize user events: ${err.message}`
-			);
-		}
-	}
-
+	/**
+	 * Get all events for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Object>} User events
+	 */
 	async getUserEvents(userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Получаем все события пользователя с информацией о событиях
-			const userEvents = await UserEvent.findAll({
-				where: { userId },
-				include: [
-					{
-						model: GameEvent,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'type',
-							'triggerConfig',
-							'effect',
-							'frequency',
-							'conditions',
-							'active',
-						],
+			const [
+				activeEvents,
+				completedEvents,
+				expiredEvents,
+				userEventSettings,
+			] = await Promise.all([
+				UserEvent.findAll({
+					where: {
+						userId,
+						status: 'ACTIVE',
 					},
-				],
-				transaction: t,
-			});
-
-			// Получаем настройки событий пользователя
-			const userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			const result = {
-				events: userEvents.map((userEvent) => ({
-					id: userEvent.id,
-					userId: userEvent.userId,
-					eventId: userEvent.eventId,
-					status: userEvent.status,
-					triggeredAt: userEvent.triggeredAt,
-					expiresAt: userEvent.expiresAt,
-					effects: userEvent.effects,
-					progress: userEvent.progress,
-					completedAt: userEvent.completedAt,
-					event: userEvent.gameevent,
-				})),
-				settings: userEventSettings,
-			};
+					include: [
+						{
+							model: EventTemplate,
+							attributes: [
+								'id',
+								'name',
+								'description',
+								'type',
+								'effect',
+							],
+						},
+					],
+					transaction: t,
+				}),
+				UserEvent.findAll({
+					where: {
+						userId,
+						status: 'COMPLETED',
+					},
+					limit: 10,
+					order: [['completedAt', 'DESC']],
+					include: [
+						{
+							model: EventTemplate,
+							attributes: ['id', 'name', 'description', 'type'],
+						},
+					],
+					transaction: t,
+				}),
+				UserEvent.findAll({
+					where: {
+						userId,
+						status: 'EXPIRED',
+					},
+					limit: 10,
+					order: [['expiresAt', 'DESC']],
+					include: [
+						{
+							model: EventTemplate,
+							attributes: ['id', 'name', 'description', 'type'],
+						},
+					],
+					transaction: t,
+				}),
+				UserEventSetting.findOne({
+					where: { userId },
+					transaction: t,
+				}),
+			]);
 
 			await t.commit();
-			return result;
+
+			return {
+				active: activeEvents,
+				completed: completedEvents,
+				expired: expiredEvents,
+				settings: userEventSettings || {},
+			};
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
@@ -583,229 +490,44 @@ class EventService {
 		}
 	}
 
-	async updateEventProgress(userId, eventId, progress) {
+	/**
+	 * Trigger a specific event for a user
+	 * @param {number} userId - User ID
+	 * @param {string} eventId - Event ID
+	 * @returns {Promise<Object>} Triggered event
+	 */
+	async triggerEvent(userId, eventId) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Находим событие пользователя
-			const userEvent = await UserEvent.findOne({
+			const now = new Date();
+
+			// Check if event exists
+			const event = await EventTemplate.findByPk(eventId, {
+				transaction: t,
+			});
+
+			if (!event) {
+				await t.rollback();
+				throw ApiError.NotFound('Event not found');
+			}
+
+			// Check if event is already active
+			const existingEvent = await UserEvent.findOne({
 				where: {
 					userId,
-					id: eventId,
+					eventId,
+					status: 'ACTIVE',
 				},
 				transaction: t,
 			});
 
-			if (!userEvent) {
+			if (existingEvent) {
 				await t.rollback();
-				throw ApiError.BadRequest('User event not found');
+				throw ApiError.BadRequest('Event is already active');
 			}
 
-			// Если событие не активно, ничего не делаем
-			if (userEvent.status !== 'ACTIVE') {
-				await t.rollback();
-				return userEvent;
-			}
-
-			// Обновляем прогресс
-			userEvent.progress = {
-				...userEvent.progress,
-				...progress,
-			};
-
-			await userEvent.save({ transaction: t });
-
-			await t.commit();
-			return userEvent;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to update event progress: ${err.message}`
-			);
-		}
-	}
-
-	async completeEvent(userId, eventId) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Находим событие пользователя
-			const userEvent = await UserEvent.findOne({
-				where: {
-					userId,
-					id: eventId,
-				},
-				include: [
-					{
-						model: GameEvent,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'type',
-							'triggerConfig',
-							'effect',
-							'frequency',
-							'conditions',
-							'active',
-						],
-					},
-				],
-				transaction: t,
-			});
-
-			if (!userEvent) {
-				await t.rollback();
-				throw ApiError.BadRequest('User event not found');
-			}
-
-			// Если событие не активно, ничего не делаем
-			if (userEvent.status !== 'ACTIVE') {
-				await t.rollback();
-				return userEvent;
-			}
-
-			// Помечаем событие как завершенное
-			userEvent.status = 'COMPLETED';
-			userEvent.completedAt = new Date();
-			await userEvent.save({ transaction: t });
-
-			// Проверяем, есть ли награда за событие
-			if (
-				userEvent.gameevent &&
-				userEvent.gameevent.effect &&
-				userEvent.gameevent.effect.reward
-			) {
-				const reward = userEvent.gameevent.effect.reward.amount || 0;
-				const rewardType =
-					userEvent.gameevent.effect.reward.type || 'stardust';
-
-				// Регистрируем награду через marketService
-				await marketService.registerEventReward({
-					userId,
-					eventId: userEvent.eventId,
-					amount: reward,
-					currency: rewardType,
-				});
-			}
-
-			// Удаляем эффекты завершенного события
-			const userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userEventSettings && userEvent.effects) {
-				for (const [key, value] of Object.entries(userEvent.effects)) {
-					if (userEventSettings.eventMultipliers[key]) {
-						userEventSettings.eventMultipliers[key] /= value;
-					}
-				}
-				await userEventSettings.save({ transaction: t });
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeEventCount = await UserEvent.count({
-					where: {
-						userId,
-						status: 'ACTIVE',
-					},
-					transaction: t,
-				});
-
-				userState.state.ownedEventsCount = activeEventCount;
-				await userState.save({ transaction: t });
-			}
-
-			await t.commit();
-			return userEvent;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to complete event: ${err.message}`);
-		}
-	}
-
-	async cancelEvent(userId, eventId) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Находим событие пользователя
-			const userEvent = await UserEvent.findOne({
-				where: {
-					userId,
-					id: eventId,
-				},
-				transaction: t,
-			});
-
-			if (!userEvent) {
-				await t.rollback();
-				throw ApiError.BadRequest('User event not found');
-			}
-
-			// Если событие не активно, ничего не делаем
-			if (userEvent.status !== 'ACTIVE') {
-				await t.rollback();
-				return userEvent;
-			}
-
-			// Помечаем событие как отмененное
-			userEvent.status = 'CANCELLED';
-			await userEvent.save({ transaction: t });
-
-			// Удаляем эффекты отмененного события
-			const userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userEventSettings && userEvent.effects) {
-				for (const [key, value] of Object.entries(userEvent.effects)) {
-					if (userEventSettings.eventMultipliers[key]) {
-						userEventSettings.eventMultipliers[key] /= value;
-					}
-				}
-				await userEventSettings.save({ transaction: t });
-			}
-
-			// Обновляем счетчик в UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				const activeEventCount = await UserEvent.count({
-					where: {
-						userId,
-						status: 'ACTIVE',
-					},
-					transaction: t,
-				});
-
-				userState.state.ownedEventsCount = activeEventCount;
-				await userState.save({ transaction: t });
-			}
-
-			await t.commit();
-			return userEvent;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to cancel event: ${err.message}`);
-		}
-	}
-
-	async updateEventSettings(userId, settings) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Получаем настройки событий пользователя
+			// Get user event settings
 			let userEventSettings = await UserEventSetting.findOne({
 				where: { userId },
 				transaction: t,
@@ -822,29 +544,241 @@ class EventService {
 							entropy: 1.0,
 							rewards: 1.0,
 						},
-						lastEventCheck: new Date(),
+						lastEventCheck: now,
 						eventCooldowns: {},
 						enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
 						disabledEvents: [],
 						priorityEvents: [],
-						...settings,
 					},
 					{ transaction: t }
 				);
-			} else {
-				await userEventSettings.update(settings, { transaction: t });
+			}
+
+			// Create user event
+			const duration = event.effect.duration || 0;
+			const expiresAt =
+				duration > 0 ? new Date(now.getTime() + duration * 1000) : null;
+
+			const newEvent = await UserEvent.create(
+				{
+					userId,
+					eventId,
+					status: 'ACTIVE',
+					triggeredAt: now,
+					expiresAt: expiresAt,
+					effects: event.effect.multipliers || {},
+					progress: {},
+				},
+				{ transaction: t }
+			);
+
+			// Apply event effects
+			if (newEvent.effects) {
+				for (const [key, value] of Object.entries(newEvent.effects)) {
+					if (userEventSettings.eventMultipliers[key]) {
+						userEventSettings.eventMultipliers[key] *= value;
+					}
+				}
+				await userEventSettings.save({ transaction: t });
 			}
 
 			await t.commit();
-			return userEventSettings;
+
+			return {
+				...newEvent.toJSON(),
+				event: event.toJSON(),
+			};
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to update event settings: ${err.message}`
-			);
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to trigger event: ${err.message}`);
 		}
 	}
 
+	/**
+	 * Complete an event for a user
+	 * @param {number} userId - User ID
+	 * @param {string} eventId - Event ID
+	 * @returns {Promise<Object>} Completed event
+	 */
+	async completeEvent(userId, eventId) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Find the user event
+			const userEvent = await UserEvent.findOne({
+				where: {
+					userId,
+					id: eventId,
+					status: 'ACTIVE',
+				},
+				transaction: t,
+			});
+
+			if (!userEvent) {
+				await t.rollback();
+				throw ApiError.NotFound('Active event not found');
+			}
+
+			// Get event template
+			const event = await EventTemplate.findByPk(userEvent.eventId, {
+				transaction: t,
+			});
+
+			if (!event) {
+				await t.rollback();
+				throw ApiError.NotFound('Event template not found');
+			}
+
+			// Get user event settings
+			const userEventSettings = await UserEventSetting.findOne({
+				where: { userId },
+				transaction: t,
+			});
+
+			if (!userEventSettings) {
+				await t.rollback();
+				throw ApiError.NotFound('User event settings not found');
+			}
+
+			// Remove event effects
+			if (userEvent.effects) {
+				for (const [key, value] of Object.entries(userEvent.effects)) {
+					if (userEventSettings.eventMultipliers[key]) {
+						userEventSettings.eventMultipliers[key] /= value;
+					}
+				}
+				await userEventSettings.save({ transaction: t });
+			}
+
+			// Update event status
+			userEvent.status = 'COMPLETED';
+			userEvent.completedAt = new Date();
+			await userEvent.save({ transaction: t });
+
+			// Apply rewards if any
+			if (event.effect.rewards) {
+				const userState = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				if (userState) {
+					// Apply resource rewards
+					if (event.effect.rewards.stardust) {
+						userState.stardust += event.effect.rewards.stardust;
+					}
+					if (event.effect.rewards.darkMatter) {
+						userState.darkMatter += event.effect.rewards.darkMatter;
+					}
+					if (event.effect.rewards.tgStars) {
+						userState.tgStars += event.effect.rewards.tgStars;
+					}
+
+					await userState.save({ transaction: t });
+				}
+			}
+
+			// Set cooldown if specified
+			if (event.triggerConfig.cooldown) {
+				const cooldownMs = this.parseInterval(
+					event.triggerConfig.cooldown
+				);
+				const cooldownUntil = new Date(Date.now() + cooldownMs);
+
+				userEventSettings.eventCooldowns = {
+					...userEventSettings.eventCooldowns,
+					[event.id]: cooldownUntil,
+				};
+
+				await userEventSettings.save({ transaction: t });
+			}
+
+			await t.commit();
+
+			return {
+				...userEvent.toJSON(),
+				event: event.toJSON(),
+			};
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to complete event: ${err.message}`);
+		}
+	}
+
+	/**
+	 * Cancel an event for a user
+	 * @param {number} userId - User ID
+	 * @param {string} eventId - Event ID
+	 * @returns {Promise<Object>} Cancelled event
+	 */
+	async cancelEvent(userId, eventId) {
+		const t = await sequelize.transaction();
+
+		try {
+			// Find the user event
+			const userEvent = await UserEvent.findOne({
+				where: {
+					userId,
+					id: eventId,
+					status: 'ACTIVE',
+				},
+				transaction: t,
+			});
+
+			if (!userEvent) {
+				await t.rollback();
+				throw ApiError.NotFound('Active event not found');
+			}
+
+			// Get user event settings
+			const userEventSettings = await UserEventSetting.findOne({
+				where: { userId },
+				transaction: t,
+			});
+
+			if (!userEventSettings) {
+				await t.rollback();
+				throw ApiError.NotFound('User event settings not found');
+			}
+
+			// Remove event effects
+			if (userEvent.effects) {
+				for (const [key, value] of Object.entries(userEvent.effects)) {
+					if (userEventSettings.eventMultipliers[key]) {
+						userEventSettings.eventMultipliers[key] /= value;
+					}
+				}
+				await userEventSettings.save({ transaction: t });
+			}
+
+			// Update event status
+			userEvent.status = 'CANCELLED';
+			await userEvent.save({ transaction: t });
+
+			await t.commit();
+
+			return userEvent;
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to cancel event: ${err.message}`);
+		}
+	}
+
+	/**
+	 * Get a specific event for a user
+	 * @param {number} userId - User ID
+	 * @param {string} eventId - Event ID
+	 * @returns {Promise<Object>} User event
+	 */
 	async getUserEvent(userId, eventId) {
 		const t = await sequelize.transaction();
 
@@ -856,17 +790,13 @@ class EventService {
 				},
 				include: [
 					{
-						model: GameEvent,
+						model: EventTemplate,
 						attributes: [
 							'id',
 							'name',
 							'description',
 							'type',
-							'triggerConfig',
 							'effect',
-							'frequency',
-							'conditions',
-							'active',
 						],
 					},
 				],
@@ -875,41 +805,36 @@ class EventService {
 
 			if (!userEvent) {
 				await t.rollback();
-				throw ApiError.BadRequest('User event not found');
+				throw ApiError.NotFound('Event not found');
 			}
 
-			const result = {
-				id: userEvent.id,
-				userId: userEvent.userId,
-				eventId: userEvent.eventId,
-				status: userEvent.status,
-				triggeredAt: userEvent.triggeredAt,
-				expiresAt: userEvent.expiresAt,
-				effects: userEvent.effects,
-				progress: userEvent.progress,
-				event: userEvent.gameevent,
-			};
-
 			await t.commit();
-			return result;
+			return userEvent;
 		} catch (err) {
 			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
 			throw ApiError.Internal(`Failed to get user event: ${err.message}`);
 		}
 	}
 
+	/**
+	 * Get event settings for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Object>} User event settings
+	 */
 	async getUserEventSettings(userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			let userEventSettings = await UserEventSetting.findOne({
+			let settings = await UserEventSetting.findOne({
 				where: { userId },
 				transaction: t,
 			});
 
-			if (!userEventSettings) {
-				// Create default settings if they don't exist
-				userEventSettings = await UserEventSetting.create(
+			if (!settings) {
+				settings = await UserEventSetting.create(
 					{
 						userId,
 						eventMultipliers: {
@@ -930,7 +855,7 @@ class EventService {
 			}
 
 			await t.commit();
-			return userEventSettings;
+			return settings;
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
@@ -939,61 +864,36 @@ class EventService {
 		}
 	}
 
-	async updateUserEventSettings(userId, settings) {
+	/**
+	 * Update event settings for a user
+	 * @param {number} userId - User ID
+	 * @param {Object} settingsData - Event settings data
+	 * @returns {Promise<Object>} Updated user event settings
+	 */
+	async updateUserEventSettings(userId, settingsData) {
 		const t = await sequelize.transaction();
 
 		try {
-			let userEventSettings = await UserEventSetting.findOne({
+			let settings = await UserEventSetting.findOne({
 				where: { userId },
 				transaction: t,
 			});
 
-			if (!userEventSettings) {
-				// Create default settings if they don't exist
-				userEventSettings = await UserEventSetting.create(
+			if (!settings) {
+				settings = await UserEventSetting.create(
 					{
 						userId,
-						eventMultipliers: {
-							production: 1.0,
-							chaos: 1.0,
-							stability: 1.0,
-							entropy: 1.0,
-							rewards: 1.0,
-						},
+						...settingsData,
 						lastEventCheck: new Date(),
-						eventCooldowns: {},
-						enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-						disabledEvents: [],
-						priorityEvents: [],
 					},
 					{ transaction: t }
 				);
+			} else {
+				await settings.update(settingsData, { transaction: t });
 			}
 
-			// Update settings
-			if (settings.enabledTypes !== undefined) {
-				userEventSettings.enabledTypes = settings.enabledTypes;
-			}
-
-			if (settings.disabledEvents !== undefined) {
-				userEventSettings.disabledEvents = settings.disabledEvents;
-			}
-
-			if (settings.priorityEvents !== undefined) {
-				userEventSettings.priorityEvents = settings.priorityEvents;
-			}
-
-			if (settings.eventMultipliers !== undefined) {
-				userEventSettings.eventMultipliers = {
-					...userEventSettings.eventMultipliers,
-					...settings.eventMultipliers,
-				};
-			}
-
-			await userEventSettings.save({ transaction: t });
 			await t.commit();
-
-			return userEventSettings;
+			return settings;
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
@@ -1002,99 +902,83 @@ class EventService {
 		}
 	}
 
+	/**
+	 * Get event statistics for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Object>} User event statistics
+	 */
 	async getUserEventStats(userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Get all user events
-			const userEvents = await UserEvent.findAll({
-				where: { userId },
-				transaction: t,
-			});
-
-			// Get event settings
-			const eventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			// Calculate statistics
-			const totalEvents = userEvents.length;
-			const activeEvents = userEvents.filter(
-				(event) => event.status === 'ACTIVE'
-			).length;
-			const expiredEvents = userEvents.filter(
-				(event) => event.status === 'EXPIRED'
-			).length;
-			const cancelledEvents = userEvents.filter(
-				(event) => event.status === 'CANCELLED'
-			).length;
-
-			// Calculate stats by type
-			const eventIds = userEvents.map((event) => event.eventId);
-			const gameEvents = await GameEvent.findAll({
-				where: {
-					id: {
-						[Op.in]: eventIds,
-					},
-				},
-				transaction: t,
-			});
-
-			const typeMap = {};
-			for (const event of userEvents) {
-				const gameEvent = gameEvents.find(
-					(ge) => ge.id === event.eventId
-				);
-				if (!gameEvent) continue;
-
-				const type = gameEvent.type;
-				if (!typeMap[type]) {
-					typeMap[type] = {
-						total: 0,
-						active: 0,
-						expired: 0,
-						cancelled: 0,
-					};
-				}
-
-				typeMap[type].total++;
-				if (event.status === 'ACTIVE') {
-					typeMap[type].active++;
-				} else if (event.status === 'EXPIRED') {
-					typeMap[type].expired++;
-				} else if (event.status === 'CANCELLED') {
-					typeMap[type].cancelled++;
-				}
-			}
-
-			// Calculate multipliers
-			const multipliers = eventSettings?.eventMultipliers || {
-				production: 1.0,
-				chaos: 1.0,
-				stability: 1.0,
-				entropy: 1.0,
-				rewards: 1.0,
-			};
+			const [activeCount, completedCount, expiredCount, settings] =
+				await Promise.all([
+					UserEvent.count({
+						where: {
+							userId,
+							status: 'ACTIVE',
+						},
+						transaction: t,
+					}),
+					UserEvent.count({
+						where: {
+							userId,
+							status: 'COMPLETED',
+						},
+						transaction: t,
+					}),
+					UserEvent.count({
+						where: {
+							userId,
+							status: 'EXPIRED',
+						},
+						transaction: t,
+					}),
+					UserEventSetting.findOne({
+						where: { userId },
+						transaction: t,
+					}),
+				]);
 
 			await t.commit();
 
 			return {
-				total: totalEvents,
-				active: activeEvents,
-				expired: expiredEvents,
-				cancelled: cancelledEvents,
-				byType: typeMap,
-				multipliers,
-				lastEventCheck: eventSettings?.lastEventCheck || new Date(),
-				enabledTypes: eventSettings?.enabledTypes || [],
-				disabledEvents: eventSettings?.disabledEvents || [],
+				active: activeCount,
+				completed: completedCount,
+				expired: expiredCount,
+				cancelled: 0, // Add this if you track cancelled events
+				total: activeCount + completedCount + expiredCount,
+				multipliers: settings ? settings.eventMultipliers : {},
 			};
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to get user event stats: ${err.message}`
 			);
+		}
+	}
+
+	/**
+	 * Parse interval string to milliseconds
+	 * @param {string} intervalString - Interval string (e.g., '1h', '30m')
+	 * @returns {number} Milliseconds
+	 */
+	parseInterval(intervalString) {
+		const match = intervalString.match(/^(\d+)([hms])$/);
+		if (!match) return 3600000; // Default to 1 hour
+
+		const value = parseInt(match[1]);
+		const unit = match[2];
+
+		switch (unit) {
+			case 'h':
+				return value * 3600000; // hours to ms
+			case 'm':
+				return value * 60000; // minutes to ms
+			case 's':
+				return value * 1000; // seconds to ms
+			default:
+				return 3600000; // Default to 1 hour
 		}
 	}
 }

@@ -6,6 +6,7 @@ const marketService = require('../../service/market-service');
 const UserDto = require('../../dtos/user-dto');
 const upgradeService = require('../../service/upgrade-service');
 const taskService = require('../../service/task-service');
+const packageStoreService = require('../../service/package-store-service');
 
 // Мокаем зависимости
 jest.mock('../../service/token-service');
@@ -115,6 +116,21 @@ jest.mock('../../service/artifact-service', () => ({
 	getUserArtifacts: jest.fn().mockResolvedValue([]),
 }));
 
+jest.mock('../../service/package-store-service', () => ({
+	initializePackageStore: jest.fn().mockResolvedValue({}),
+	getUserPackages: jest.fn().mockResolvedValue([
+		{
+			id: 'template1_12345_1626345678',
+			userId: 12345,
+			amount: 100,
+			resource: 'stardust',
+			status: 'ACTIVE',
+			isUsed: false,
+			isLocked: false,
+		},
+	]),
+}));
+
 jest.mock('../../middlewares/prometheus-middleware', () => ({
 	prometheusMetrics: {
 		userRegistrationCounter: { inc: jest.fn() },
@@ -215,7 +231,9 @@ describe('UserService', () => {
 				userData.id,
 				expect.anything()
 			);
-			expect(marketService.getPackageOffers).toHaveBeenCalled();
+			expect(marketService.getPackageOffers).toHaveBeenCalledWith(
+				userData.id
+			);
 
 			// Проверяем результат
 			expect(result.user).toBeDefined();
@@ -406,7 +424,7 @@ describe('UserService', () => {
 			expect(
 				upgradeService.activateUserUpgradeNodes
 			).toHaveBeenCalledWith(userId, expect.anything());
-			expect(marketService.getPackageOffers).toHaveBeenCalled();
+			expect(marketService.getPackageOffers).toHaveBeenCalledWith(userId);
 			expect(tokenService.generateTokens).toHaveBeenCalled();
 			expect(tokenService.saveToken).toHaveBeenCalled();
 
@@ -506,6 +524,57 @@ describe('UserService', () => {
 				userId,
 				expect.anything()
 			);
+		});
+
+		it('should initialize package store when user has no packages', async () => {
+			// Mock state with no packages
+			stateService.getUserState = jest.fn().mockImplementation(() => {
+				return Promise.resolve({
+					state: { totalStars: 100 },
+					upgrades: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								nodeId: 'node1',
+								completed: false,
+							},
+						],
+						completed: 0,
+						active: 1,
+					},
+					tasks: {
+						items: [
+							{
+								id: 1,
+								userId: 12345,
+								taskId: 'task1',
+								completed: false,
+								active: true,
+							},
+						],
+						completed: 0,
+						active: 1,
+					},
+					events: {
+						active: [],
+						settings: {},
+					},
+					packages: {
+						available: [],
+						count: 0,
+					},
+					save: jest.fn().mockResolvedValue(true),
+				});
+			});
+
+			const userId = 12345;
+			await userService.login(userId);
+
+			// Verify that initializePackageStore was called
+			expect(
+				packageStoreService.initializePackageStore
+			).toHaveBeenCalledWith(userId, expect.anything());
 		});
 
 		it('should throw error when user not found', async () => {

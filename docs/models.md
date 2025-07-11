@@ -14,13 +14,17 @@
 │             │     │              │     │             │
 │ id (PK)     │     │ id (PK)      │     │ id (PK)     │
 │ username    │     │ userId (FK)  │     │ userId (FK) │
-│ referral    │     │ state (JSONB)│     │ refreshToken│
-│ role        │     │ chaosLevel   │     │             │
-│ blocked     │     │ stabilityLevel│    │             │
-└─────────────┘     └──────────────┘     └─────────────┘
-       │
-       │
-       ▼
+│ referral    │     │ stardust     │     │ refreshToken│
+│ role        │     │ darkMatter   │     │ expiresAt   │
+│ blocked     │     │ tgStars      │     │             │
+└─────────────┘     │ chaosLevel   │     └─────────────┘
+       │            │ stabilityLevel│
+       │            │ tasks (JSONB) │
+       │            │ events (JSONB)│
+       │            │ upgrades (JSONB)│
+       │            │ settings (JSONB)│
+       │            │ lockedResources (JSONB)│
+       ▼            └──────────────┘
 ┌─────────────┐
 │   Galaxy    │
 │             │
@@ -65,54 +69,41 @@
 │ cancelReason │    │             │    │             │
 └─────────────┘     └─────────────┘     └─────────────┘
 
-┌─────────────┐
-│PackageStore │
-│             │
-│ id (PK)     │
-│ name        │
-│ description │
-│ amount      │
-│ currencyGame│
-│ price       │
-│ currency    │
-│ active      │
-└─────────────┘
-
 ┌─────────────┐     ┌─────────────┐
-│UpgradeNode  │     │    Task     │
+│PackageStore │     │PackageTemplate│
 │             │     │             │
 │ id (PK)     │     │ id (PK)     │
-│ name        │     │ title (JSONB)│
-│ description (JSONB)│ description (JSONB)│
-│ maxLevel    │     │ reward      │
-│ basePrice   │     │ condition (JSONB)│
-│ effectPerLevel│   │ icon        │
-│ priceMultiplier│  │ active      │
-│ currency    │     │             │
-│ category    │     │             │
-│ icon        │     │             │
-│ stability   │     │             │
-│ instability │     │             │
-│ modifiers (JSONB) │             │
-│ conditions (JSONB)│             │
-│ children (ARRAY)  │             │
-│ weight      │     │             │
-│ active      │     │             │
+│ userId (FK) │     │ name        │
+│ amount      │     │ description │
+│ resource    │     │ amount      │
+│ price       │     │ resource    │
+│ currency    │     │ price       │
+│ status      │     │ currency    │
+│ isUsed      │     │ status      │
+│ isLocked    │     │             │
 └─────────────┘     └─────────────┘
 
-┌─────────────┐
-│ GameEvent   │
-│             │
-│ id (PK)     │
-│ name        │
-│ description (JSONB)│
-│ type        │
-│ triggerConfig (JSONB)│
-│ effect (JSONB)│
-│ frequency (JSONB)│
-│ conditions (JSONB)│
-│ active      │
-└─────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│UpgradeNode  │     │TaskTemplate │     │EventTemplate│
+│             │     │             │     │             │
+│ id (PK)     │     │ id (PK)     │     │ id (PK)     │
+│ name        │     │ title (JSONB)│    │ name        │
+│ description (JSONB)│ description (JSONB)│ description (JSONB)│
+│ maxLevel    │     │ reward      │     │ type        │
+│ basePrice   │     │ condition (JSONB)│ │ triggerConfig (JSONB)│
+│ effectPerLevel│   │ icon        │     │ effect (JSONB)│
+│ priceMultiplier│  │ active      │     │ frequency (JSONB)│
+│ currency    │     │             │     │ conditions (JSONB)│
+│ category    │     │             │     │ active      │
+│ icon        │     │             │     │             │
+│ stability   │     │             │     │             │
+│ instability │     │             │     │             │
+│ modifiers (JSONB) │             │     │             │
+│ conditions (JSONB)│             │     │             │
+│ children (ARRAY)  │             │     │             │
+│ weight      │     │             │     │             │
+│ active      │     │             │     │             │
+└─────────────┘     └─────────────┘     └─────────────┘
 
 ┌─────────────┐
 │MarketCommission│
@@ -171,29 +162,100 @@
 -   `hasMany(MarketTransaction, { as: 'sellerTransactions', foreignKey: 'sellerId' })` - транзакции как продавец
 -   `hasMany(PaymentTransaction, { as: 'sentPayments', foreignKey: 'fromAccount' })` - отправленные платежи
 -   `hasMany(PaymentTransaction, { as: 'receivedPayments', foreignKey: 'toAccount' })` - полученные платежи
+-   `hasMany(PackageStore)` - один пользователь может иметь много пакетов
 
 ### UserState
 
-Состояние пользователя в игре. Все игровые параметры, прогресс, события, задачи и апгрейды теперь централизованно хранятся в JSONB-полях этой модели.
+Состояние пользователя в игре. Все игровые параметры, прогресс, события, задачи и апгрейды централизованно хранятся в JSONB-полях этой модели.
 
-**Основные поля:**
-
--   `state` — основные игровые параметры (totalStars, stardustCount и др.)
--   `chaosLevel`, `stabilityLevel`, `entropyVelocity` — глобальные показатели
--   `taskProgress`, `upgradeTree`, `stateHistory` — прогресс и история
--   `activeEvents`, `eventHistory`, `eventMultipliers`, `eventCooldowns`, `eventPreferences` — состояние событий
--   `userTasks`, `completedTasks`, `activeTasks`, `taskMultipliers` — состояние задач
--   `userUpgrades`, `completedUpgrades`, `activeUpgrades`, `upgradeMultipliers` — состояние апгрейдов
-
-**Все игровые состояния пользователя (события, задачи, апгрейды) теперь хранятся только в UserState.**
+```javascript
+{
+  id: {
+    type: DataTypes.BIGINT,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.BIGINT,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    unique: true
+  },
+  stardust: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  darkMatter: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  tgStars: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  chaosLevel: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0.0
+  },
+  stabilityLevel: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0.0
+  },
+  tasks: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      active: [],
+      completed: [],
+      progress: {}
+    }
+  },
+  events: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      active: [],
+      history: [],
+      cooldowns: {},
+      multipliers: {}
+    }
+  },
+  upgrades: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      active: [],
+      completed: [],
+      levels: {}
+    }
+  },
+  settings: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      notifications: true,
+      language: 'en',
+      theme: 'dark'
+    }
+  },
+  lockedResources: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      stardust: 0,
+      darkMatter: 0,
+      tgStars: 0
+    }
+  }
+}
+```
 
 **Индексы:**
 
--   `userstate_totalstars_idx` — индекс по totalStars в JSONB
 -   `userstate_user_id_idx` — индекс по userId
--   `userstate_last_event_check_idx` — индекс по lastEventCheck
--   `userstate_last_task_check_idx` — индекс по lastTaskCheck
--   `userstate_last_upgrade_check_idx` — индекс по lastUpgradeCheck
+-   `userstate_stardust_idx` — индекс по полю stardust
+-   `userstate_dark_matter_idx` — индекс по полю darkMatter
+-   `userstate_tg_stars_idx` — индекс по полю tgStars
+-   `userstate_tasks_gin_idx` — GIN индекс по JSONB полю tasks
+-   `userstate_events_gin_idx` — GIN индекс по JSONB полю events
+-   `userstate_upgrades_gin_idx` — GIN индекс по JSONB полю upgrades
 
 **Связи:**
 
@@ -220,6 +282,10 @@
   refreshToken: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  expiresAt: {
+    type: DataTypes.DATE,
+    allowNull: false
   }
 }
 ```
@@ -228,6 +294,7 @@
 
 -   `token_refresh_token_idx` - индекс по refreshToken
 -   `token_user_id_idx` - индекс по userId
+-   `token_expires_at_idx` - индекс по expiresAt
 
 **Связи:**
 
@@ -332,7 +399,7 @@
     defaultValue: 1.0
   },
   currency: {
-    type: DataTypes.ENUM('stardust', 'darkmetter'),
+    type: DataTypes.ENUM('stardust', 'darkMatter'),
     defaultValue: 'stardust'
   },
   category: {
@@ -378,7 +445,7 @@
 }
 ```
 
-### Task
+### TaskTemplate
 
 Глобальный шаблон задачи. Не связан с User напрямую. Все пользовательские задачи и их прогресс хранятся в UserState.
 
@@ -415,9 +482,9 @@
 }
 ```
 
-### GameEvent
+### EventTemplate
 
-Модель игровых событий.
+Модель шаблонов игровых событий. Не связана с User напрямую. Все пользовательские события хранятся в UserState.
 
 ```javascript
 {
@@ -464,316 +531,59 @@
 }
 ```
 
-## JSONB структуры
+### PackageTemplate
 
-### UserState.state
-
-```json
-{
-	"totalStars": 1000,
-	"stardustCount": 150,
-	"darkMatterCount": 25,
-	"ownedGalaxiesCount": 3,
-	"ownedNodesCount": 5
-}
-```
-
-### UserState.taskProgress
-
-```json
-{
-	"completedTasks": ["task_1", "task_2"],
-	"currentWeight": 15,
-	"unlockedNodes": ["node_1", "node_2"]
-}
-```
-
-### UserState.upgradeTree
-
-```json
-{
-	"activeNodes": ["upgrade_1", "upgrade_2"],
-	"completedNodes": ["upgrade_3"],
-	"nodeStates": {
-		"upgrade_1": {
-			"level": 2,
-			"progress": 0.5,
-			"completed": false
-		}
-	},
-	"treeStructure": {
-		"upgrade_1": {
-			"children": ["upgrade_3", "upgrade_4"],
-			"requirements": ["upgrade_2"]
-		}
-	},
-	"totalProgress": 25,
-	"lastNodeUpdate": "2024-01-01T12:00:00.000Z"
-}
-```
-
-### UserState.stateHistory
-
-```json
-{
-	"entries": [
-		{
-			"timestamp": "2024-01-01T12:00:00.000Z",
-			"type": "state_change",
-			"category": "production",
-			"description": "Звезды произведены",
-			"changes": {
-				"totalStars": {
-					"oldValue": 1000,
-					"newValue": 1100
-				}
-			},
-			"metadata": {
-				"source": "automatic",
-				"trigger": "production_tick",
-				"relatedId": null
-			}
-		}
-	],
-	"lastUpdate": "2024-01-01T12:00:00.000Z",
-	"version": "1.0"
-}
-```
-
-### Galaxy.galaxyProperties
-
-```json
-{
-	"type": "spiral",
-	"color": "blue",
-	"size": "medium",
-	"features": {
-		"blackHole": true,
-		"nebula": false,
-		"asteroidBelt": true
-	},
-	"coordinates": {
-		"x": 100,
-		"y": 200,
-		"z": 50
-	}
-}
-```
-
-### UpgradeNode.modifiers
-
-```json
-{
-	"productionBonus": 0.1,
-	"costReduction": 0.05,
-	"unlockBonus": 0.2,
-	"specialEffects": {
-		"chaosReduction": 0.1,
-		"stabilityBoost": 0.15
-	}
-}
-```
-
-### UpgradeNode.conditions
-
-```json
-{
-	"minStars": 100,
-	"minStardust": 50,
-	"requiredUpgrades": ["upgrade_2", "upgrade_3"],
-	"maxChaosLevel": 0.5,
-	"minStabilityLevel": 0.3
-}
-```
-
-### Task.condition
-
-```json
-{
-	"type": "production",
-	"target": "totalStars",
-	"operator": ">=",
-	"value": 100,
-	"timeLimit": 86400000,
-	"bonusConditions": {
-		"withinTime": {
-			"bonus": 1.5,
-			"time": 3600000
-		}
-	}
-}
-```
-
-### GameEvent.triggerConfig
-
-```json
-{
-	"interval": "1h",
-	"chancePerHour": 0.1,
-	"condition": {
-		"metric": "chaosLevel",
-		"op": ">",
-		"value": 50
-	},
-	"after": "eventId",
-	"action": "burn-core",
-	"start": "2025-06-01",
-	"end": "2025-06-30",
-	"at": "2025-07-01T00:00:00Z"
-}
-```
-
-### GameEvent.effect
-
-```json
-{
-	"type": "multiplier",
-	"target": "production",
-	"value": 2.0,
-	"duration": 3600000,
-	"stackable": false,
-	"conditions": {
-		"maxStacks": 1,
-		"minInterval": 1800000
-	}
-}
-```
-
-## Индексы и оптимизация
-
-### Основные индексы
-
-1. **Первичные ключи** - автоматически создаются для всех моделей
-2. **Внешние ключи** - индексы для связей между таблицами
-3. **Уникальные поля** - seed для галактик, refreshToken для токенов
-4. **JSONB индексы** - для быстрого поиска по JSONB полям
-
-### Специальные индексы
-
-```sql
--- Индекс по totalStars в JSONB
-CREATE INDEX userstate_totalstars_idx ON userstates
-USING GIN ((state->'totalStars'));
-
--- Индекс по датам проверки
-CREATE INDEX userstate_last_event_check_idx ON userstates (lastEventCheck);
-CREATE INDEX userstate_last_task_check_idx ON userstates (lastTaskCheck);
-CREATE INDEX userstate_last_upgrade_check_idx ON userstates (lastUpgradeCheck);
-```
-
-### Оптимизация запросов
-
-1. **Использование JSONB операторов** для эффективного поиска
-2. **Партиционирование** для больших таблиц (если потребуется)
-3. **Кэширование** часто используемых данных
-4. **Оптимизация JOIN** запросов
-
-## Миграции
-
-### Создание таблиц
-
-```sql
--- Создание таблицы пользователей
-CREATE TABLE users (
-  id BIGINT PRIMARY KEY DEFAULT 0,
-  username VARCHAR(255),
-  referral BIGINT DEFAULT 0,
-  role ENUM('USER', 'ADMIN', 'SYSTEM') DEFAULT 'USER',
-  blocked BOOLEAN DEFAULT false,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Создание индекса по referral
-CREATE INDEX user_referral_idx ON users (referral);
-```
-
-### Обновление схемы
-
-```sql
--- Добавление нового поля
-ALTER TABLE userstates ADD COLUMN new_field JSONB DEFAULT '{}';
-
--- Создание нового индекса
-CREATE INDEX userstate_new_field_idx ON userstates USING GIN (new_field);
-```
-
-## Валидация данных
-
-### Уровни валидации
-
-1. **Sequelize уровень** - валидация типов и ограничений
-2. **Бизнес-логика уровень** - валидация в сервисах
-3. **API уровень** - валидация входящих данных
-
-### Примеры валидации
-
-```javascript
-// Sequelize валидация
-{
-  totalStars: {
-    type: DataTypes.INTEGER,
-    validate: {
-      min: 0,
-      max: 999999999
-    }
-  },
-  chaosLevel: {
-    type: DataTypes.FLOAT,
-    validate: {
-      min: 0.0,
-      max: 1.0
-    }
-  }
-}
-
-// JSONB валидация
-{
-  state: {
-    type: DataTypes.JSONB,
-    validate: {
-      isValidState(value) {
-        if (!value.totalStars || value.totalStars < 0) {
-          throw new Error('Invalid state structure');
-        }
-      }
-    }
-  }
-}
-```
-
-## Резервное копирование
-
-### Стратегия бэкапов
-
-1. **Полные бэкапы** - ежедневно
-2. **Инкрементальные бэкапы** - каждый час
-3. **WAL архивирование** - непрерывно
-4. **Тестирование восстановления** - еженедельно
-
-### Команды для бэкапа
-
-```bash
-# Полный бэкап
-pg_dump -h localhost -U postgres -d nebulahunt > backup.sql
-
-# Бэкап только схемы
-pg_dump -h localhost -U postgres -d nebulahunt --schema-only > schema.sql
-
-# Бэкап только данных
-pg_dump -h localhost -U postgres -d nebulahunt --data-only > data.sql
-```
-
-### Artifact
-
-Модель артефактов пользователя.
+Модель шаблонов пакетов.
 
 ```javascript
 {
   id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.STRING(50),
+    primaryKey: true
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.JSONB,
+    defaultValue: {
+      en: '',
+      ru: ''
+    }
+  },
+  amount: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  resource: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars'),
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  currency: {
+    type: DataTypes.ENUM('tgStars', 'usd', 'ton'),
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'DELETED'),
+    defaultValue: 'ACTIVE'
+  }
+}
+```
+
+### PackageStore
+
+Модель пакетов пользователя.
+
+```javascript
+{
+  id: {
+    type: DataTypes.STRING(100),
+    primaryKey: true
   },
   userId: {
     type: DataTypes.BIGINT,
@@ -782,350 +592,175 @@ pg_dump -h localhost -U postgres -d nebulahunt --data-only > data.sql
       key: 'id'
     }
   },
-  seed: {
-    type: DataTypes.STRING,
-    unique: true,
-    allowNull: false
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.TEXT
-  },
-  rarity: {
-    type: DataTypes.ENUM('common', 'rare', 'epic', 'legendary'),
-    allowNull: false
-  },
-  image: {
-    type: DataTypes.STRING
-  },
-  effects: {
-    type: DataTypes.JSONB,
-    defaultValue: {}
-  },
-  tradable: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  }
-}
-```
-
-**Индексы:**
-
--   `artifact_seed_idx` - уникальный индекс по seed
--   `artifact_user_id_idx` - индекс по userId
--   `artifact_rarity_idx` - индекс по rarity
--   `artifact_tradable_idx` - индекс по tradable
-
-**Связи:**
-
--   `belongsTo(User)` - артефакт принадлежит пользователю
-
-### MarketOffer
-
-Модель оферт на маркете.
-
-```javascript
-{
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  sellerId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  itemType: {
-    type: DataTypes.ENUM('artifact', 'galaxy', 'package'),
-    allowNull: false
-  },
-  itemId: {
-    type: DataTypes.BIGINT,
-    allowNull: false
-  },
-  price: {
-    type: DataTypes.DECIMAL(20, 2),
-    allowNull: false
-  },
-  currency: {
-    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
-    allowNull: false
-  },
-  offerType: {
-    type: DataTypes.ENUM('P2P', 'SYSTEM'),
-    defaultValue: 'P2P'
-  },
-  status: {
-    type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED'),
-    defaultValue: 'ACTIVE'
-  },
-  expiresAt: {
-    type: DataTypes.DATE
-  },
-  cancelledAt: {
-    type: DataTypes.DATE
-  },
-  cancelReason: {
-    type: DataTypes.STRING
-  }
-}
-```
-
-**Индексы:**
-
--   `marketoffer_seller_id_idx` - индекс по sellerId
--   `marketoffer_item_type_idx` - индекс по itemType
--   `marketoffer_status_idx` - индекс по status
--   `marketoffer_offer_type_idx` - индекс по offerType
-
-**Связи:**
-
--   `belongsTo(User, { as: 'seller' })` - оферта принадлежит продавцу
--   `hasMany(MarketTransaction)` - оферта может иметь много транзакций
-
-### MarketTransaction
-
-Модель транзакций на маркете.
-
-```javascript
-{
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  offerId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'marketoffers',
-      key: 'id'
-    }
-  },
-  buyerId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  sellerId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  status: {
-    type: DataTypes.ENUM('PENDING', 'COMPLETED', 'CANCELLED'),
-    defaultValue: 'PENDING'
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  completedAt: {
-    type: DataTypes.DATE
-  }
-}
-```
-
-**Индексы:**
-
--   `markettransaction_offer_id_idx` - индекс по offerId
--   `markettransaction_buyer_id_idx` - индекс по buyerId
--   `markettransaction_seller_id_idx` - индекс по sellerId
--   `markettransaction_status_idx` - индекс по status
-
-**Связи:**
-
--   `belongsTo(MarketOffer)` - транзакция принадлежит оферте
--   `belongsTo(User, { as: 'buyer' })` - транзакция принадлежит покупателю
--   `belongsTo(User, { as: 'seller' })` - транзакция принадлежит продавцу
--   `hasMany(PaymentTransaction)` - транзакция может иметь много платежей
-
-### PaymentTransaction
-
-Модель платежных транзакций.
-
-```javascript
-{
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  marketTransactionId: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'markettransactions',
-      key: 'id'
-    }
-  },
-  fromAccount: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  toAccount: {
-    type: DataTypes.BIGINT,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  },
-  amount: {
-    type: DataTypes.DECIMAL(20, 2),
-    allowNull: false
-  },
-  currency: {
-    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
-    allowNull: false
-  },
-  txType: {
-    type: DataTypes.ENUM('BUYER_TO_CONTRACT', 'CONTRACT_TO_SELLER', 'CONTRACT_TO_BUYER', 'FEE'),
-    allowNull: false
-  },
-  status: {
-    type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
-    defaultValue: 'PENDING'
-  },
-  blockchainTxId: {
-    type: DataTypes.STRING
-  },
-  confirmedAt: {
-    type: DataTypes.DATE
-  }
-}
-```
-
-**Индексы:**
-
--   `paymenttransaction_market_transaction_id_idx` - индекс по marketTransactionId
--   `paymenttransaction_from_account_idx` - индекс по fromAccount
--   `paymenttransaction_to_account_idx` - индекс по toAccount
--   `paymenttransaction_status_idx` - индекс по status
--   `paymenttransaction_tx_type_idx` - индекс по txType
-
-**Связи:**
-
--   `belongsTo(MarketTransaction)` - платеж принадлежит транзакции
--   `belongsTo(User, { as: 'fromUser' })` - платеж отправлен от пользователя
--   `belongsTo(User, { as: 'toUser' })` - платеж получен пользователем
-
-### PackageStore
-
-Модель пакетов для продажи.
-
-```javascript
-{
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.TEXT
-  },
   amount: {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  currencyGame: {
-    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+  resource: {
+    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars'),
     allowNull: false
   },
   price: {
-    type: DataTypes.DECIMAL(20, 2),
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   currency: {
-    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
+    type: DataTypes.ENUM('tgStars', 'usd', 'ton'),
     allowNull: false
   },
-  active: {
+  status: {
+    type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'DELETED'),
+    defaultValue: 'ACTIVE'
+  },
+  isUsed: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: false
+  },
+  isLocked: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }
 ```
 
 **Индексы:**
 
--   `packagestore_active_idx` - индекс по active
--   `packagestore_currency_game_idx` - индекс по currencyGame
+-   `packagestore_user_id_idx` - индекс по userId
+-   `packagestore_status_idx` - индекс по status
+-   `packagestore_is_used_idx` - индекс по isUsed
+-   `packagestore_is_locked_idx` - индекс по isLocked
 
 **Связи:**
 
--   Нет прямых связей с другими моделями
+-   `belongsTo(User)` - пакет принадлежит пользователю
 
-### MarketCommission
+## JSONB структуры
 
-Модель комиссий маркета. Автоматически инициализируется при запуске сервера из конфигурации.
+### UserState.tasks
 
-```javascript
+```json
 {
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  currency: {
-    type: DataTypes.ENUM('stardust', 'darkMatter', 'tgStars', 'tonToken'),
-    allowNull: false,
-    unique: true
-  },
-  rate: {
-    type: DataTypes.DECIMAL(5, 4),
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  }
+	"active": ["task_id_1", "task_id_2"],
+	"completed": ["task_id_3", "task_id_4"],
+	"progress": {
+		"task_id_1": {
+			"currentValue": 5,
+			"targetValue": 10,
+			"startedAt": "2025-07-15T12:00:00Z"
+		},
+		"task_id_2": {
+			"currentValue": 2,
+			"targetValue": 5,
+			"startedAt": "2025-07-16T14:30:00Z"
+		}
+	}
 }
 ```
 
-**Индексы:**
+### UserState.events
 
--   `marketcommission_currency_idx` - уникальный индекс по currency
--   `marketcommission_active_idx` - индекс по active
-
-**Автоматическая инициализация:**
-
-Комиссии загружаются из `config/market.config.js` при запуске сервера:
-
-```javascript
-// config/market.config.js
-module.exports = {
-	commission: {
-		stardust: 0.05, // 5%
-		darkMatter: 0.07, // 7%
-		tgStars: 0.03, // 3%
-		tonToken: 0.1, // 10%
+```json
+{
+	"active": ["event_id_1"],
+	"history": [
+		{
+			"id": "event_id_2",
+			"startedAt": "2025-07-10T08:00:00Z",
+			"endedAt": "2025-07-10T12:00:00Z",
+			"outcome": "success"
+		}
+	],
+	"cooldowns": {
+		"event_id_3": "2025-07-20T00:00:00Z"
 	},
-};
+	"multipliers": {
+		"production": 1.5,
+		"stardustGain": 1.2
+	}
+}
 ```
 
-**Связи:**
+### UserState.upgrades
 
--   Нет прямых связей с другими моделями
+```json
+{
+	"active": ["upgrade_id_1", "upgrade_id_2"],
+	"completed": ["upgrade_id_3"],
+	"levels": {
+		"upgrade_id_1": 3,
+		"upgrade_id_2": 1,
+		"upgrade_id_3": 5
+	}
+}
+```
+
+### UserState.settings
+
+```json
+{
+	"notifications": true,
+	"language": "en",
+	"theme": "dark",
+	"soundEnabled": true,
+	"eventPreferences": {
+		"randomEvents": true,
+		"periodicEvents": true
+	}
+}
+```
+
+### UserState.lockedResources
+
+```json
+{
+	"stardust": 50,
+	"darkMatter": 10,
+	"tgStars": 0,
+	"locks": [
+		{
+			"id": "market_offer_1",
+			"type": "marketOffer",
+			"resources": {
+				"stardust": 50
+			},
+			"expiresAt": "2025-07-20T00:00:00Z"
+		},
+		{
+			"id": "upgrade_purchase_1",
+			"type": "upgrade",
+			"resources": {
+				"darkMatter": 10
+			},
+			"expiresAt": "2025-07-18T00:00:00Z"
+		}
+	]
+}
+```
 
 ---
 
-Эта структура данных обеспечивает гибкость, производительность и масштабируемость для игры Nebulahunt, позволяя эффективно хранить и обрабатывать сложные игровые данные.
+## Связи между моделями
+
+```
+User
+ ├── UserState (1:1)
+ ├── Token (1:n)
+ ├── Galaxy (1:n)
+ ├── Artifact (1:n)
+ ├── MarketOffer (1:n)
+ └── PackageStore (1:n)
+
+MarketOffer
+ ├── MarketTransaction (1:n)
+ └── PaymentTransaction (через MarketTransaction)
+```
+
+## Примечания
+
+1. **Централизованное хранение данных пользователя** - Все игровые данные пользователя (задачи, события, апгрейды) хранятся в JSONB полях таблицы UserState. Это упрощает структуру базы данных и повышает производительность.
+
+2. **Шаблоны и экземпляры** - TaskTemplate, EventTemplate, UpgradeNode и PackageTemplate являются шаблонами, которые используются для создания экземпляров в UserState.
+
+3. **Индексы JSONB полей** - Для оптимизации запросов к JSONB полям используются GIN индексы, что позволяет эффективно искать по содержимому этих полей.
+
+4. **Транзакционная безопасность** - Все операции с игровыми данными выполняются в транзакциях для обеспечения целостности данных.

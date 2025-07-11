@@ -16,6 +16,30 @@ class UserStateController {
 		}
 	}
 
+	async getUserResources(req, res, next) {
+		try {
+			const id = req.initdata.id;
+			const resources = await userStateService.getUserResources(id);
+			return res.json(resources);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async claimDailyBonus(req, res, next) {
+		try {
+			const id = req.initdata.id;
+			const result = await userStateService.claimDailyBonus(id);
+			logger.info('Daily bonus claimed', {
+				userId: id,
+				bonus: result.bonus,
+			});
+			return res.json(result);
+		} catch (e) {
+			next(e);
+		}
+	}
+
 	async updateUserState(req, res, next) {
 		try {
 			const id = req.initdata.id;
