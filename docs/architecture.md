@@ -169,7 +169,6 @@ TaskTemplate
 EventTemplate
 UpgradeNode
 PackageTemplate
-└─ PackageStore
 ```
 
 ## Схема базы данных
@@ -180,6 +179,9 @@ PackageTemplate
 
 -   **users** - Информация о пользователях
 -   **userstates** - Состояние пользователя с JSONB полями для хранения игровых данных
+-   **userevents** - Состояние событий игрока
+-   **usertasks** - Состояние задач игрока
+-   **userupgrade** - Состояние апгрейтов игрока
 -   **tokens** - Токены авторизации
 
 ### Игровые таблицы

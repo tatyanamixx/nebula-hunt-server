@@ -110,3 +110,9 @@
 {"level":30,"time":1752297507752,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
 {"level":30,"time":1752297507755,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
 {"level":30,"time":1752297507756,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752300000097,"pid":9672,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752300000097,"pid":9672,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752300000108,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752300000108,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752300000154,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752300000154,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
