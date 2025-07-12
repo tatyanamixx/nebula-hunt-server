@@ -6,7 +6,7 @@ const Sequelize = require('sequelize');
 const process = require('process');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+const config = require(__dirname + '/../config/database.js')[env];
 const db = {};
 
 // Общие настройки безопасности для всех окружений
@@ -66,11 +66,19 @@ fs.readdirSync(__dirname)
 	})
 	.forEach((file) => {
 		try {
-			const model = require(path.join(__dirname, file))(
-				sequelize,
-				Sequelize.DataTypes
-			);
-			db[model.name] = model;
+			const modelModule = require(path.join(__dirname, file));
+
+			// Проверяем, является ли модуль функцией или объектом
+			if (typeof modelModule === 'function') {
+				// Если это функция (старый формат)
+				const model = modelModule(sequelize, Sequelize.DataTypes);
+				db[model.name] = model;
+			} else if (typeof modelModule === 'object') {
+				// Если это объект (новый формат)
+				Object.keys(modelModule).forEach((modelName) => {
+					db[modelName] = modelModule[modelName];
+				});
+			}
 		} catch (error) {
 			console.error(`Error loading model from file ${file}:`, error);
 		}

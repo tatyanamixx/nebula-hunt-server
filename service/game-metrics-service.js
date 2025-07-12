@@ -3,10 +3,9 @@
  */
 const { User, UserState, PaymentTransaction } = require('../models/models');
 const { Op } = require('sequelize');
-const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
 const sequelize = require('../db'); // Added missing import for sequelize
 
-class MetricsService {
+class GameMetricsService {
 	// Retention: D1, D3, D7
 	async getRetention({ from, to }) {
 		const t = await sequelize.transaction();
@@ -34,20 +33,20 @@ class MetricsService {
 				const regDate = new Date(user.createdAt);
 				// D1
 				if (
-					state.lastLoginDate &&
-					(new Date(state.lastLoginDate) - regDate) / 86400000 >= 1
+					state.updatedAt &&
+					(new Date(state.updatedAt) - regDate) / 86400000 >= 1
 				)
 					result.D1++;
 				// D3
 				if (
-					state.lastLoginDate &&
-					(new Date(state.lastLoginDate) - regDate) / 86400000 >= 3
+					state.updatedAt &&
+					(new Date(state.updatedAt) - regDate) / 86400000 >= 3
 				)
 					result.D3++;
 				// D7
 				if (
-					state.lastLoginDate &&
-					(new Date(state.lastLoginDate) - regDate) / 86400000 >= 7
+					state.updatedAt &&
+					(new Date(state.updatedAt) - regDate) / 86400000 >= 7
 				)
 					result.D7++;
 			}
@@ -223,23 +222,28 @@ class MetricsService {
 			const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 			const [dau, wau, mau] = await Promise.all([
 				UserState.count({
-					where: { lastLoginDate: { [Op.gte]: since24h } },
+					where: { updatedAt: { [Op.gte]: since24h } },
 					transaction: t,
 				}),
 				UserState.count({
-					where: { lastLoginDate: { [Op.gte]: since7d } },
+					where: { updatedAt: { [Op.gte]: since7d } },
 					transaction: t,
 				}),
 				UserState.count({
-					where: { lastLoginDate: { [Op.gte]: since30d } },
+					where: { updatedAt: { [Op.gte]: since30d } },
 					transaction: t,
 				}),
 			]);
-			prometheusMetrics.activeUsersDAU.set(dau);
-			prometheusMetrics.activeUsersWAU.set(wau);
-			prometheusMetrics.activeUsersMAU.set(mau);
+
+			const result = {
+				DAU: dau,
+				WAU: wau,
+				MAU: mau,
+				timestamp: now,
+			};
 
 			await t.commit();
+			return result;
 		} catch (err) {
 			await t.rollback();
 			throw new Error(
@@ -249,4 +253,4 @@ class MetricsService {
 	}
 }
 
-module.exports = new MetricsService();
+module.exports = new GameMetricsService();

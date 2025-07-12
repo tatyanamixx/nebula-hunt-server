@@ -131,7 +131,7 @@ jest.mock('../../service/package-store-service', () => ({
 	]),
 }));
 
-jest.mock('../../middlewares/prometheus-middleware', () => ({
+jest.mock('../../service/prometheus-service', () => ({
 	prometheusMetrics: {
 		userRegistrationCounter: { inc: jest.fn() },
 	},

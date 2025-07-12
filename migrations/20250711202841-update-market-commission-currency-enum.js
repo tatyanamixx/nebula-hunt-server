@@ -4,13 +4,32 @@
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		// Update the enum for marketcommissions.currency to include stardust and darkMatter
-		await queryInterface.sequelize.query(`
-      ALTER TYPE "enum_marketcommissions_currency" ADD VALUE 'stardust';
-    `);
+		// Check if values already exist before adding them
+		try {
+			await queryInterface.sequelize.query(`
+        ALTER TYPE "enum_marketcommissions_currency" ADD VALUE 'stardust';
+      `);
+		} catch (error) {
+			if (error.message.includes('already exists')) {
+				console.log('stardust enum value already exists, skipping...');
+			} else {
+				throw error;
+			}
+		}
 
-		await queryInterface.sequelize.query(`
-      ALTER TYPE "enum_marketcommissions_currency" ADD VALUE 'darkMatter';
-    `);
+		try {
+			await queryInterface.sequelize.query(`
+        ALTER TYPE "enum_marketcommissions_currency" ADD VALUE 'darkMatter';
+      `);
+		} catch (error) {
+			if (error.message.includes('already exists')) {
+				console.log(
+					'darkMatter enum value already exists, skipping...'
+				);
+			} else {
+				throw error;
+			}
+		}
 	},
 
 	async down(queryInterface, Sequelize) {

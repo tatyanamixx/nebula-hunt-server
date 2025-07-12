@@ -47,11 +47,9 @@ const start = async () => {
 			updateActiveUsers().catch(console.error);
 		}, 10 * 60 * 1000);
 
-		const {
-			prometheusMetrics,
-		} = require('./middlewares/prometheus-middleware');
+		const prometheusService = require('./service/prometheus-service');
 		setInterval(() => {
-			prometheusMetrics.updateDbConnections(sequelize);
+			prometheusService.updateDatabaseMetrics();
 		}, 10000);
 	} catch (e) {
 		loggerService.error('Failed to start server:', { error: e.message });

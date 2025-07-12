@@ -45,17 +45,17 @@ const UserState = sequelize.define('userstate', {
 	lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
 	lockedStardust: {
 		type: DataTypes.INTEGER,
-		allowNull: false,
+		allowNull: true,
 		defaultValue: 0,
 	},
 	lockedDarkMatter: {
 		type: DataTypes.INTEGER,
-		allowNull: false,
+		allowNull: true,
 		defaultValue: 0,
 	},
 	lockedTgStars: {
 		type: DataTypes.INTEGER,
-		allowNull: false,
+		allowNull: true,
 		defaultValue: 0,
 	},
 });
@@ -280,6 +280,7 @@ const Galaxy = sequelize.define(
 	'galaxy',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
 		starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
 		starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
 		price: { type: DataTypes.INTEGER, defaultValue: 100 },

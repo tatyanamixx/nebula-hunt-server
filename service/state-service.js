@@ -19,54 +19,18 @@ const eventService = require('./event-service');
 const packageStoreService = require('./package-store-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
-const { LEADERBOARD_LIMIT } = require('../config/constants');
+const {
+	LEADERBOARD_LIMIT,
+	DAILY_BONUS_STARDUST,
+} = require('../config/constants');
 
 class UserStateService {
 	async updateStreak(userState) {
+		// Streak functionality is not implemented in current database schema
+		// This method is a placeholder for future implementation
+		// For now, we'll use updatedAt as a proxy for last login
 		const now = new Date();
-		const today = new Date(now);
-
-		const lastLogin = userState.lastLoginDate
-			? new Date(userState.lastLoginDate)
-			: null;
-
-		// If this is the first login ever
-		if (!lastLogin) {
-			userState.lastLoginDate = today;
-			userState.currentStreak = 1;
-			userState.maxStreak = 1;
-			userState.streakUpdatedAt = now;
-			return;
-		}
-
-		// If already updated today, skip
-		if (
-			userState.streakUpdatedAt &&
-			new Date(userState.streakUpdatedAt).toDateString() ===
-				today.toDateString()
-		) {
-			return;
-		}
-
-		// Calculate the difference in days
-		const diffDays = Math.floor(
-			(today - lastLogin) / (1000 * 60 * 60 * 24)
-		);
-
-		if (diffDays === 1) {
-			// Consecutive day
-			userState.currentStreak += 1;
-			userState.maxStreak = Math.max(
-				userState.currentStreak,
-				userState.maxStreak
-			);
-		} else if (diffDays > 1) {
-			// Streak broken
-			userState.currentStreak = 1;
-		}
-
-		userState.lastLoginDate = today;
-		userState.streakUpdatedAt = now;
+		userState.updatedAt = now;
 	}
 
 	async getUserState(userId) {
@@ -155,6 +119,26 @@ class UserStateService {
 					count: userPackages.length,
 				};
 
+				// Add placeholder values for fields that don't exist in current schema
+				userStateObj.currentStreak = 0;
+				userStateObj.maxStreak = 0;
+				userStateObj.chaosLevel = 0.0;
+				userStateObj.stabilityLevel = 0.0;
+				userStateObj.entropyVelocity = 0.0;
+				userStateObj.taskProgress = {
+					completedTasks: [],
+					currentWeight: 0,
+					unlockedNodes: [],
+				};
+				userStateObj.upgradeTree = {
+					activeNodes: [],
+					completedNodes: [],
+					nodeStates: {},
+					treeStructure: {},
+					totalProgress: 0,
+					lastNodeUpdate: new Date(),
+				};
+
 				await t.commit();
 				return userStateObj;
 			}
@@ -176,27 +160,13 @@ class UserStateService {
 				where: { userId: userId },
 				defaults: {
 					userId: userId,
-					state: userState.state,
-					lastLoginDate: userState.lastLoginDate,
-					currentStreak: userState.currentStreak,
-					maxStreak: userState.maxStreak,
-					streakUpdatedAt: userState.streakUpdatedAt,
-					chaosLevel: userState.chaosLevel || 0.0,
-					stabilityLevel: userState.stabilityLevel || 0.0,
-					entropyVelocity: userState.entropyVelocity || 0.0,
-					taskProgress: userState.taskProgress || {
-						completedTasks: [],
-						currentWeight: 0,
-						unlockedNodes: [],
-					},
-					upgradeTree: userState.upgradeTree || {
-						activeNodes: [],
-						completedNodes: [],
-						nodeStates: {},
-						treeStructure: {},
-						totalProgress: 0,
-						lastNodeUpdate: new Date(),
-					},
+					stardust: userState.stardust || 0,
+					darkMatter: userState.darkMatter || 0,
+					tgStars: userState.tgStars || 0,
+					lockedStardust: userState.lockedStardust || 0,
+					lockedDarkMatter: userState.lockedDarkMatter || 0,
+					lockedTgStars: userState.lockedTgStars || 0,
+					lastDailyBonus: userState.lastDailyBonus || null,
 				},
 				transaction: transaction,
 			});
@@ -549,7 +519,7 @@ class UserStateService {
 			}
 
 			// Calculate bonus based on streak
-			const baseBonus = 100; // Base stardust bonus
+			const baseBonus = DAILY_BONUS_STARDUST; // Base stardust bonus
 			const streakMultiplier = Math.min(userState.currentStreak || 1, 7); // Max 7x multiplier
 			const bonusAmount = baseBonus * streakMultiplier;
 

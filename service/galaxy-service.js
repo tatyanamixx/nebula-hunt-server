@@ -6,6 +6,7 @@ const loggerService = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const { Op } = require('sequelize');
 const sequelize = require('../db');
+const { GALAXY_BASE_PRICE } = require('../config/constants');
 
 class GalaxyService {
 	async getUserGalaxies(id) {
@@ -146,7 +147,7 @@ class GalaxyService {
 					userId: userId,
 					starMin: galaxyData.starMin || 100,
 					starCurrent: galaxyData.starCurrent || 100,
-					price: galaxyData.price || 100,
+					price: galaxyData.price || GALAXY_BASE_PRICE,
 					seed: galaxyData.seed || '',
 					particleCount: galaxyData.particleCount || 100,
 					onParticleCountChange:
@@ -259,7 +260,7 @@ class GalaxyService {
 							userId: userId,
 							starMin: galaxyData.starMin || 100,
 							starCurrent: galaxyData.starCurrent || 100,
-							price: galaxyData.price || 100,
+							price: galaxyData.price || GALAXY_BASE_PRICE,
 							seed: galaxyData.seed || '',
 							particleCount: galaxyData.particleCount || 100,
 							onParticleCountChange:
@@ -303,7 +304,7 @@ class GalaxyService {
 					userId: SYSTEM_USER_ID,
 					starMin: galaxyData.starMin || 100,
 					starCurrent: galaxyData.starCurrent || 100,
-					price: galaxyData.price || 100,
+					price: galaxyData.price || GALAXY_BASE_PRICE,
 					seed: galaxyData.seed || '',
 					particleCount: galaxyData.particleCount || 100,
 					onParticleCountChange:

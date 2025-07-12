@@ -50,15 +50,43 @@ module.exports = {
 };
 ```
 
-#### Системный пользователь (`config/constants.js`)
+#### Системный пользователь и игровые настройки (`config/constants.js`)
 
 ```javascript
-const SYSTEM_USER_ID = process.env.SYSTEM_USER_ID || -1;
+// Системный пользователь
+const SYSTEM_USER_ID = -1;
+
+// Игровые настройки
+const DAILY_BONUS_STARDUST = 50;
+const DAILY_BONUS_DARK_MATTER = 5;
+const GALAXY_BASE_PRICE = 100;
+const ARTIFACT_DROP_RATE = 0.1;
+
+// Другие константы
+const LEADERBOARD_LIMIT = 100;
 ```
 
 **Переменные окружения:**
 
 -   `SYSTEM_USER_ID` - ID системного пользователя (по умолчанию: -1)
+
+**Игровые настройки (теперь в constants.js):**
+
+-   `DAILY_BONUS_STARDUST` - Базовая награда звездной пыли за ежедневный бонус (50)
+-   `DAILY_BONUS_DARK_MATTER` - Базовая награда темной материи за ежедневный бонус (5)
+-   `GALAXY_BASE_PRICE` - Базовая цена галактики (100)
+-   `ARTIFACT_DROP_RATE` - Шанс выпадения артефакта (0.1 = 10%)
+
+**Внешние сервисы (переменные окружения):**
+
+-   `TON_NETWORK` - Сеть TON (testnet/mainnet)
+-   `TON_API_KEY` - API ключ для доступа к TON API
+-   `TON_WALLET_ADDRESS` - Адрес кошелька для транзакций
+
+**Настройка по окружениям:**
+
+-   **Разработка/Тесты**: testnet с тестовыми ключами
+-   **Продакшен**: mainnet с реальными ключами
 
 ### Аутентификация
 
@@ -2147,6 +2175,7 @@ API использует rate limiting для защиты от злоупотр
 ### Метрики
 
 -   **Все метрики**: 30 запросов в минуту (TMA + JWT + rate limiting)
+-   **Prometheus метрики**: 60 запросов в минуту (без аутентификации)
 
 При превышении лимита возвращается ошибка 429 с заголовком `Retry-After`.
 
@@ -2462,9 +2491,135 @@ POST /api/package-templates/:id/offer
 	"currency": "tgStars",
 	"offerType": "SYSTEM",
 	"status": "ACTIVE",
-	"expiresAt": "2025-08-15T12:45:00.000Z",
+	"expiresAt": null,
 	"isItemLocked": false,
 	"createdAt": "2025-07-15T12:45:00.000Z",
 	"updatedAt": "2025-07-15T12:45:00.000Z"
 }
+```
+
+**Примечание:** Системные пакеты от игры (sellerId = SYSTEM_USER_ID, itemType = 'package') имеют следующие особенности:
+
+-   Не имеют даты истечения (`expiresAt: null`)
+-   Не блокируют ресурсы (`isItemLocked: false`)
+-   Не обрабатываются скриптом автоматической проверки истекших оферт
+-   Всегда доступны для покупки пользователями
+
+## Prometheus Метрики
+
+### Получение метрик
+
+**GET** `/api/metrics/metrics`
+
+Предоставляет метрики в формате Prometheus для мониторинга системы.
+
+**Ответ:**
+
+```
+# HELP game_user_registrations_total Total number of user registrations
+# TYPE game_user_registrations_total counter
+game_user_registrations_total 150
+
+# HELP game_purchases_total Total number of successful purchases
+# TYPE game_purchases_total counter
+game_purchases_total{currency="tonToken"} 45
+game_purchases_total{currency="tgStars"} 23
+
+# HELP game_active_users_dau Number of unique active users in the last 24h
+# TYPE game_active_users_dau gauge
+game_active_users_dau 89
+
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",route="/api/health",status="200"} 1250
+```
+
+### Проверка здоровья сервиса метрик
+
+**GET** `/api/metrics/health`
+
+Проверяет доступность и работоспособность сервиса метрик.
+
+**Ответ:**
+
+```json
+{
+	"success": true,
+	"status": "healthy",
+	"timestamp": "2025-07-15T12:00:00.000Z"
+}
+```
+
+### Принудительное обновление метрик
+
+**POST** `/api/metrics/update`
+
+Принудительно обновляет все метрики системы.
+
+**Ответ:**
+
+```json
+{
+	"success": true,
+	"message": "Metrics updated successfully",
+	"timestamp": "2025-07-15T12:00:00.000Z"
+}
+```
+
+### Доступные метрики
+
+#### Счетчики событий
+
+-   `game_user_registrations_total` - Общее количество регистраций пользователей
+-   `game_purchases_total` - Количество покупок по валютам
+-   `game_revenue_total` - Общий доход по валютам
+-   `game_errors_total` - Количество ошибок по типам
+-   `game_market_offers_total` - Количество созданных оферт по типам
+-   `game_market_deals_total` - Количество завершенных сделок по валютам
+
+#### HTTP метрики
+
+-   `http_requests_total` - Общее количество HTTP запросов
+-   `http_errors_total` - Количество HTTP ошибок
+-   `http_request_duration_seconds` - Время выполнения запросов
+-   `http_response_size_bytes` - Размер ответов
+
+#### Метрики активных пользователей
+
+-   `game_active_users_dau` - Активные пользователи за 24 часа
+-   `game_active_users_wau` - Активные пользователи за 7 дней
+-   `game_active_users_mau` - Активные пользователи за 30 дней
+
+#### Метрики базы данных
+
+-   `db_connections` - Количество активных соединений с БД
+
+#### Метрики игровой экономики
+
+-   `game_total_stardust` - Общее количество звездной пыли в экономике
+-   `game_total_dark_matter` - Общее количество темной материи в экономике
+-   `game_total_tg_stars` - Общее количество TG Stars в экономике
+-   `game_total_galaxies` - Общее количество галактик
+-   `game_owned_galaxies` - Количество принадлежащих галактик
+-   `game_total_artifacts` - Количество артефактов по редкости
+
+### Автоматическое обновление
+
+Метрики автоматически обновляются каждые 5 минут через cron-задачу.
+
+### Интеграция с Prometheus
+
+Для интеграции с Prometheus добавьте в конфигурацию:
+
+```yaml
+scrape_configs:
+    - job_name: 'nebulahunt'
+      static_configs:
+          - targets: ['localhost:5000']
+      metrics_path: '/api/metrics/metrics'
+      scrape_interval: 30s
+```
+
+```
+
 ```

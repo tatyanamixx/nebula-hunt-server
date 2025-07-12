@@ -25,6 +25,7 @@ show_help() {
   echo -e "  ${GREEN}redis-cli${NC}     Connect to Redis CLI"
   echo -e "  ${GREEN}shell${NC}         Open shell in app container"
   echo -e "  ${GREEN}build${NC}         Rebuild containers"
+  echo -e "  ${GREEN}seed${NC}          Run database seeders"
   echo -e "  ${GREEN}clean${NC}         Remove all containers and volumes"
   echo -e "  ${GREEN}help${NC}          Show this help message"
 }
@@ -43,7 +44,7 @@ start_prod() {
   docker-compose up -d
   echo -e "${GREEN}Production environment started${NC}"
   echo -e "Application: http://localhost:5000"
-  echo -e "pgAdmin: http://localhost:8080"
+  echo -e "Dbeaver: http://localhost:8080"
 }
 
 # Stop production environment
@@ -59,7 +60,7 @@ start_dev() {
   docker-compose -f docker-compose.dev.yml up -d
   echo -e "${GREEN}Development environment started${NC}"
   echo -e "Application: http://localhost:5000"
-  echo -e "pgAdmin: http://localhost:8080"
+  echo -e "Dbeaver: http://localhost:8080"
 }
 
 # Stop development environment
@@ -120,6 +121,13 @@ rebuild() {
   echo -e "${GREEN}Containers rebuilt${NC}"
 }
 
+# Run seeders
+run_seeders() {
+  echo -e "${BLUE}Running database seeders...${NC}"
+  docker-compose exec app npx sequelize-cli db:seed:all
+  echo -e "${GREEN}Seeders completed${NC}"
+}
+
 # Clean up containers and volumes
 clean() {
   echo -e "${YELLOW}Warning: This will remove all containers and volumes. Continue? (y/n)${NC}"
@@ -175,6 +183,9 @@ case "$1" in
     ;;
   build)
     rebuild
+    ;;
+  seed)
+    run_seeders
     ;;
   clean)
     clean

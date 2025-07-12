@@ -21,7 +21,7 @@ const {
 	blockBlacklistedIPs,
 	detectSuspiciousIP,
 } = require('./middlewares/ip-security-middleware');
-const { prometheusMetrics } = require('./middlewares/prometheus-middleware');
+const prometheusService = require('./service/prometheus-service');
 
 const app = express();
 
@@ -52,21 +52,37 @@ app.use(express.static(path.resolve(__dirname, 'static')));
 app.use('/api', router);
 
 // Запуск скрипта для обработки истекших оферт по расписанию
-const marketService = require('./service/market-service');
-const CronJob = require('cron').CronJob;
+// Отключаем cron jobs в тестовом окружении
+if (process.env.NODE_ENV !== 'test') {
+	const marketService = require('./service/market-service');
+	const CronJob = require('cron').CronJob;
 
-// Запускаем задачу по расписанию (каждый час)
-const expiredOffersJob = new CronJob('0 * * * *', async function () {
-	try {
-		const processedCount = await marketService.processExpiredOffers();
-		logger.info(`Обработано ${processedCount} истекших оферт`);
-	} catch (error) {
-		logger.error(`Ошибка при обработке истекших оферт: ${error.message}`);
-	}
-});
+	// Запускаем задачу по расписанию (каждый час)
+	const expiredOffersJob = new CronJob('0 * * * *', async function () {
+		try {
+			const processedCount = await marketService.processExpiredOffers();
+			logger.info(`Processed ${processedCount} expired offers`);
+		} catch (error) {
+			logger.error(`Error processing expired offers: ${error.message}`);
+		}
+	});
 
-// Запускаем задачу
-expiredOffersJob.start();
+	// Запускаем задачу
+	expiredOffersJob.start();
+
+	// Запуск периодического обновления Prometheus метрик (каждые 5 минут)
+	const metricsUpdateJob = new CronJob('*/5 * * * *', async function () {
+		try {
+			await prometheusService.updateAllMetrics();
+			logger.debug('Prometheus metrics updated successfully');
+		} catch (error) {
+			logger.error(`Error updating Prometheus metrics: ${error.message}`);
+		}
+	});
+
+	// Запускаем задачу обновления метрик
+	metricsUpdateJob.start();
+}
 
 // Swagger setup
 const swaggerDefinition = {
@@ -92,7 +108,7 @@ const options = {
 const specs = swaggerJSDoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
-app.use(prometheusMetrics.prometheusHttpMiddleware);
+app.use(prometheusService.httpMiddleware.bind(prometheusService));
 
 // Healthcheck endpoint
 app.get('/health', (req, res) => res.status(200).send('OK'));

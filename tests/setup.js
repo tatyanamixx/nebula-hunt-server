@@ -16,7 +16,6 @@ const { Sequelize } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
-const { execSync } = require('child_process');
 
 // Загружаем переменные окружения из .env файла
 dotenv.config();
@@ -24,15 +23,27 @@ dotenv.config();
 console.log('Database connection established successfully.');
 
 // Создаем экземпляр Sequelize для тестовой базы данных
+// Используем PostgreSQL для тестов, чтобы поддерживать все типы данных
 const sequelize = new Sequelize({
-	dialect: 'sqlite',
-	storage: ':memory:',
+	dialect: 'postgres',
+	host: process.env.DB_HOST || 'localhost',
+	port: process.env.DB_PORT || 5432,
+	username: process.env.DB_USER || 'postgres',
+	password: process.env.DB_PASSWORD || 'password',
+	database: process.env.DB_NAME || 'nebulahunt_test',
 	logging: false,
+	// Дополнительные настройки для тестов
+	pool: {
+		max: 5,
+		min: 0,
+		acquire: 30000,
+		idle: 10000,
+	},
 });
 
 /**
  * Функция для выполнения миграций
- * Выполняет миграции для создания схемы базы данных в памяти
+ * Выполняет миграции для создания схемы базы данных
  * Обрабатывает ошибки, связанные с дублирующимися ключами
  */
 async function runMigrations() {
@@ -61,7 +72,9 @@ async function runMigrations() {
 				// Игнорируем ошибки о дублирующихся ключах/таблицах
 				if (
 					!error.message.includes('already exists') &&
-					!error.message.includes('duplicate key')
+					!error.message.includes('duplicate key') &&
+					!error.message.includes('relation') &&
+					!error.message.includes('does not exist')
 				) {
 					throw error;
 				}

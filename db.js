@@ -5,6 +5,13 @@ const { Sequelize } = require('sequelize');
 
 if (process.env.NODE_ENV === 'production') {
 	// В продакшене — только переменные окружения
+	console.log('[DB] Production config:', {
+		DB_NAME: process.env.DB_NAME,
+		DB_USER: process.env.DB_USER,
+		DB_HOST: process.env.DB_HOST,
+		DB_PORT: process.env.DB_PORT,
+		DIALECT: 'postgres',
+	});
 	module.exports = new Sequelize(
 		process.env.DB_NAME,
 		process.env.DB_USER,
@@ -17,9 +24,16 @@ if (process.env.NODE_ENV === 'production') {
 		}
 	);
 } else {
-	// В тестах и разработке — из config/config.json
+	// В тестах и разработке — из config/database.js
 	const env = process.env.NODE_ENV || 'development';
-	const config = require('./config/config.json')[env];
+	const config = require('./config/database.js')[env];
+	console.log(`[DB] ${env} config:`, {
+		DB_NAME: config.database,
+		DB_USER: config.username,
+		DB_HOST: config.host,
+		DB_PORT: config.port,
+		DIALECT: config.dialect,
+	});
 	module.exports = new Sequelize(
 		config.database,
 		config.username,

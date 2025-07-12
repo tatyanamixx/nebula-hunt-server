@@ -2,7 +2,7 @@
  * created by Tatyana Mikhniukevich on 04.07.2025
  */
 const Router = require('express').Router;
-const metricsController = require('../controllers/game-metrics-controller');
+const gameMetricsController = require('../controllers/game-metrics-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
@@ -20,7 +20,7 @@ router.get(
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	metricsController.retention
+	gameMetricsController.retention
 );
 /**
  * @swagger
@@ -39,7 +39,7 @@ router.get(
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	metricsController.arpu
+	gameMetricsController.arpu
 );
 /**
  * @swagger
@@ -58,7 +58,7 @@ router.get(
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	metricsController.ltv
+	gameMetricsController.ltv
 );
 /**
  * @swagger
@@ -77,7 +77,7 @@ router.get(
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	metricsController.kfactor
+	gameMetricsController.kfactor
 );
 /**
  * @swagger
@@ -96,7 +96,7 @@ router.get(
 	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	metricsController.conversion
+	gameMetricsController.conversion
 );
 /**
  * @swagger

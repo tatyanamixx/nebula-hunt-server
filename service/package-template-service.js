@@ -64,7 +64,7 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Шаблон пакета не найден');
+				throw new ApiError(404, 'Package template not found');
 			}
 
 			await t.commit();
@@ -122,7 +122,7 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Шаблон пакета не найден');
+				throw new ApiError(404, 'Package template not found');
 			}
 
 			// Обновляем данные
@@ -157,7 +157,7 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Шаблон пакета не найден');
+				throw new ApiError(404, 'Package template not found');
 			}
 
 			await template.update({ status }, { transaction: t });
@@ -190,19 +190,19 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Шаблон пакета не найден');
+				throw new ApiError(404, 'Package template not found');
 			}
 
 			// Проверяем, что шаблон активен
 			if (template.status !== 'ACTIVE') {
 				await t.rollback();
-				throw new ApiError(400, 'Шаблон пакета неактивен');
+				throw new ApiError(400, 'Package template is inactive');
 			}
 
 			// Проверяем, что срок действия не истек
 			if (template.validUntil && template.validUntil < new Date()) {
 				await t.rollback();
-				throw new ApiError(400, 'Срок действия шаблона пакета истек');
+				throw new ApiError(400, 'Package template has expired');
 			}
 
 			// Создаем оферту от имени системного пользователя
@@ -247,7 +247,7 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Шаблон пакета не найден');
+				throw new ApiError(404, 'Package template not found');
 			}
 
 			// Генерируем уникальный ID для пакета

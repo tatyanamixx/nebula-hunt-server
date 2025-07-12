@@ -55,17 +55,21 @@ class MarketService {
 			}
 
 			// Устанавливаем срок действия оферты в зависимости от типа предмета
-			const expirationDays =
-				offers.expirationDays[itemType] ||
-				offers.expirationDays.default;
-			const expiresAt = new Date();
-			expiresAt.setDate(expiresAt.getDate() + expirationDays);
+			// Для системных пакетов (от игры) не устанавливаем дату истечения
+			let expiresAt = null;
+			let isItemLocked = true;
 
-			// Определяем флаг блокировки
-			// Для системных пакетов (от игры) не блокируем
-			const isItemLocked = !(
-				sellerId === SYSTEM_USER_ID && itemType === 'package'
-			);
+			if (sellerId === SYSTEM_USER_ID && itemType === 'package') {
+				// Системные пакеты от игры не имеют даты истечения и не блокируются
+				isItemLocked = false;
+			} else {
+				// Для остальных оферт устанавливаем дату истечения
+				const expirationDays =
+					offers.expirationDays[itemType] ||
+					offers.expirationDays.default;
+				expiresAt = new Date();
+				expiresAt.setDate(expiresAt.getDate() + expirationDays);
+			}
 
 			// Создаем оферту
 			const offer = await MarketOffer.create(
@@ -141,7 +145,7 @@ class MarketService {
 				);
 				break;
 			default:
-				throw new ApiError(400, 'Неизвестный тип предмета');
+				throw new ApiError(400, 'Unknown item type');
 		}
 	}
 
@@ -155,7 +159,7 @@ class MarketService {
 		const galaxy = await Galaxy.findOne({
 			where: {
 				id: galaxyId,
-				ownerId: userId,
+				userId: userId,
 			},
 			transaction,
 		});
@@ -178,7 +182,7 @@ class MarketService {
 		const artifact = await Artifact.findOne({
 			where: {
 				id: artifactId,
-				ownerId: userId,
+				userId: userId,
 			},
 			transaction,
 		});
@@ -202,7 +206,7 @@ class MarketService {
 		const amount = parseInt(amountStr, 10);
 
 		if (isNaN(amount) || amount <= 0) {
-			throw new ApiError(400, 'Некорректное количество ресурса');
+			throw new ApiError(400, 'Invalid resource amount');
 		}
 
 		const userState = await UserState.findOne({
@@ -211,7 +215,7 @@ class MarketService {
 		});
 
 		if (!userState) {
-			throw new ApiError(404, 'Состояние пользователя не найдено');
+			throw new ApiError(404, 'User state not found');
 		}
 
 		// Проверяем наличие достаточного количества ресурсов
@@ -232,7 +236,7 @@ class MarketService {
 				}
 				break;
 			default:
-				throw new ApiError(400, 'Неизвестный тип ресурса');
+				throw new ApiError(400, 'Unknown resource type');
 		}
 	}
 
@@ -260,7 +264,7 @@ class MarketService {
 		if (!packageStore) {
 			throw new ApiError(
 				403,
-				'У вас нет этого пакета или он уже использован'
+				'You do not have this package or it has already been used'
 			);
 		}
 	}
@@ -488,20 +492,20 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId, { transaction });
 
 			if (!offer) {
-				throw new ApiError(404, 'Оферта не найдена');
+				throw new ApiError(404, 'Offer not found');
 			}
 
 			// Проверяем, что пользователь является продавцом или администратором
 			if (offer.sellerId !== userId && userId !== SYSTEM_USER_ID) {
-				throw new ApiError(403, 'У вас нет прав на отмену этой оферты');
+				throw new ApiError(
+					403,
+					'You do not have permission to cancel this offer'
+				);
 			}
 
 			// Проверяем, что оферта активна
 			if (offer.status !== 'ACTIVE') {
-				throw new ApiError(
-					400,
-					'Можно отменить только активные оферты'
-				);
+				throw new ApiError(400, 'Only active offers can be cancelled');
 			}
 
 			// Разблокируем ресурс или объект
@@ -537,20 +541,17 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId, { transaction });
 
 			if (!offer) {
-				throw new ApiError(404, 'Оферта не найдена');
+				throw new ApiError(404, 'Offer not found');
 			}
 
 			// Проверяем, что оферта активна
 			if (offer.status !== 'ACTIVE') {
-				throw new ApiError(400, 'Можно купить только активные оферты');
+				throw new ApiError(400, 'Only active offers can be purchased');
 			}
 
 			// Проверяем, что покупатель не является продавцом
 			if (offer.sellerId === buyerId) {
-				throw new ApiError(
-					400,
-					'Вы не можете купить свою собственную оферту'
-				);
+				throw new ApiError(400, 'You cannot buy your own offer');
 			}
 
 			// Создаем рыночную транзакцию
@@ -615,31 +616,31 @@ class MarketService {
 		});
 
 		if (!buyerState) {
-			throw new ApiError(404, 'Состояние покупателя не найдено');
+			throw new ApiError(404, 'Buyer state not found');
 		}
 
 		// Проверяем достаточно ли средств у покупателя
 		switch (currency) {
 			case 'stardust':
 				if (buyerState.stardust < price) {
-					throw new ApiError(400, 'Недостаточно звездной пыли');
+					throw new ApiError(400, 'Insufficient stardust');
 				}
 				break;
 			case 'darkMatter':
 				if (buyerState.darkMatter < price) {
-					throw new ApiError(400, 'Недостаточно темной материи');
+					throw new ApiError(400, 'Insufficient dark matter');
 				}
 				break;
 			case 'tgStars':
 				if (buyerState.tgStars < price) {
-					throw new ApiError(400, 'Недостаточно звезд');
+					throw new ApiError(400, 'Insufficient stars');
 				}
 				break;
 			case 'tonToken':
 				// Для TON токенов проверка происходит на стороне клиента
 				break;
 			default:
-				throw new ApiError(400, 'Неизвестная валюта');
+				throw new ApiError(400, 'Unknown currency');
 		}
 
 		// Если это не TON, списываем средства у покупателя
@@ -794,7 +795,7 @@ class MarketService {
 			case 'galaxy':
 				await Galaxy.update(
 					{
-						ownerId: buyerId,
+						userId: buyerId,
 					},
 					{
 						where: { id: itemId },
@@ -805,7 +806,7 @@ class MarketService {
 			case 'artifact':
 				await Artifact.update(
 					{
-						ownerId: buyerId,
+						userId: buyerId,
 					},
 					{
 						where: { id: itemId },
@@ -954,11 +955,17 @@ class MarketService {
 
 		try {
 			// Находим все истекшие активные оферты
+			// Исключаем системные пакеты от игры (они не имеют даты истечения)
 			const expiredOffers = await MarketOffer.findAll({
 				where: {
 					status: 'ACTIVE',
 					expiresAt: {
 						[Op.lt]: new Date(),
+					},
+					// Исключаем системные пакеты от игры
+					[Op.not]: {
+						sellerId: SYSTEM_USER_ID,
+						itemType: 'package',
 					},
 				},
 				transaction,
@@ -979,7 +986,7 @@ class MarketService {
 				);
 
 				logger.info(
-					`Оферта #${offer.id} автоматически закрыта по истечению срока`
+					`Offer #${offer.id} automatically closed due to expiration`
 				);
 			}
 
@@ -987,9 +994,7 @@ class MarketService {
 			return expiredOffers.length;
 		} catch (error) {
 			await transaction.rollback();
-			logger.error(
-				`Ошибка при обработке истекших оферт: ${error.message}`
-			);
+			logger.error(`Error processing expired offers: ${error.message}`);
 			throw error;
 		}
 	}
@@ -1837,19 +1842,19 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId);
 
 			if (!offer) {
-				throw ApiError.BadRequest('Оферта не найдена');
+				throw ApiError.BadRequest('Offer not found');
 			}
 
 			// Проверяем статус оферты
 			if (offer.status !== 'ACTIVE') {
-				throw ApiError.BadRequest('Оферта недоступна для покупки');
+				throw ApiError.BadRequest(
+					'Offer is not available for purchase'
+				);
 			}
 
 			// Проверяем, что покупатель не является продавцом
 			if (offer.sellerId === buyerId) {
-				throw ApiError.BadRequest(
-					'Нельзя купить свою собственную оферту'
-				);
+				throw ApiError.BadRequest('You cannot buy your own offer');
 			}
 
 			// Получаем состояние покупателя
@@ -1858,7 +1863,7 @@ class MarketService {
 			});
 
 			if (!buyerState) {
-				throw ApiError.BadRequest('Состояние покупателя не найдено');
+				throw ApiError.BadRequest('Buyer state not found');
 			}
 
 			// Проверяем, что у покупателя достаточно валюты
@@ -1868,12 +1873,12 @@ class MarketService {
 				offer.currency === 'tgStars' &&
 				buyerState.tgStars < totalPrice
 			) {
-				throw ApiError.BadRequest('Недостаточно TG Stars для покупки');
+				throw ApiError.BadRequest('Insufficient TG Stars for purchase');
 			} else if (
 				offer.currency === 'tonToken' &&
 				buyerState.tonToken < totalPrice
 			) {
-				throw ApiError.BadRequest('Недостаточно TON для покупки');
+				throw ApiError.BadRequest('Insufficient TON for purchase');
 			}
 
 			// Если это системная оферта с пакетом, обрабатываем особым образом
@@ -1882,7 +1887,7 @@ class MarketService {
 				const template = await PackageTemplate.findByPk(offer.itemId);
 
 				if (!template) {
-					throw ApiError.BadRequest('Шаблон пакета не найден');
+					throw ApiError.BadRequest('Package template not found');
 				}
 
 				// Создаем пакет для пользователя
@@ -1930,7 +1935,10 @@ class MarketService {
 
 				await transaction.commit();
 
-				return { success: true, message: 'Пакет успешно куплен' };
+				return {
+					success: true,
+					message: 'Package successfully purchased',
+				};
 			}
 
 			// Обычная оферта - стандартная обработка
@@ -1973,7 +1981,7 @@ class MarketService {
 
 			await transaction.commit();
 
-			return { success: true, message: 'Оферта успешно куплена' };
+			return { success: true, message: 'Offer successfully purchased' };
 		} catch (e) {
 			await transaction.rollback();
 			throw e;

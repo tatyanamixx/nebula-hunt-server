@@ -3,6 +3,9 @@
 /**
  * Скрипт для автоматической проверки и обработки истекших оферт
  * Запускать через cron каждый час
+ *
+ * Примечание: Системные пакеты от игры не имеют даты истечения
+ * и не обрабатываются этим скриптом
  */
 
 const marketService = require('../service/market-service');
@@ -11,26 +14,26 @@ const { offers } = require('../config/market.config');
 
 async function checkExpiredOffers() {
 	try {
-		logger.info('Запуск проверки истекших оферт');
+		logger.info('Starting expired offers check');
 
-		// Обрабатываем истекшие оферты
+		// Process expired offers
 		const count = await marketService.processExpiredOffers();
 
 		logger.info(
-			`Проверка истекших оферт завершена. Обработано ${count} оферт.`
+			`Expired offers check completed. Processed ${count} offers.`
 		);
 
 		return { success: true, count };
 	} catch (error) {
-		logger.error(`Ошибка при проверке истекших оферт: ${error.message}`);
+		logger.error(`Error checking expired offers: ${error.message}`);
 		throw error;
 	}
 }
 
-// Экспортируем функцию для тестирования
+// Export function for testing
 module.exports = checkExpiredOffers;
 
-// Если скрипт запущен напрямую (не через require), выполняем проверку
+// If script is run directly (not through require), execute the check
 if (require.main === module) {
 	checkExpiredOffers()
 		.then(() => process.exit(0))

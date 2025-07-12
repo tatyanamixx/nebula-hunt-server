@@ -55,17 +55,14 @@ services:
         networks:
             - nebulahunt-network-dev
 
-    pgadmin:
-        image: dpage/pgadmin4
-        container_name: nebulahunt-pgadmin-dev
+    dbeaver:
+        image: dbeaver/cloudbeaver:latest
+        container_name: nebulahunt-dbeaver-dev
         restart: unless-stopped
         ports:
-            - '8080:80'
-        environment:
-            - PGADMIN_DEFAULT_EMAIL=admin@nebulahunt.com
-            - PGADMIN_DEFAULT_PASSWORD=admin
+            - '8080:8978'
         volumes:
-            - pgadmin-data-dev:/var/lib/pgadmin
+            - dbeaver-data-dev:/opt/cloudbeaver/workspace
         depends_on:
             - postgres
         networks:
@@ -73,7 +70,7 @@ services:
 
 volumes:
     postgres-data-dev:
-    pgadmin-data-dev:
+    dbeaver-data-dev:
 
 networks:
     nebulahunt-network-dev:

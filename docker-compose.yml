@@ -66,17 +66,14 @@ services:
             timeout: 5s
             retries: 5
 
-    pgadmin:
-        image: dpage/pgadmin4
-        container_name: nebulahunt-pgadmin
+    dbeaver:
+        image: dbeaver/cloudbeaver:latest
+        container_name: nebulahunt-dbeaver
         restart: unless-stopped
         ports:
-            - '8080:80'
-        environment:
-            - PGADMIN_DEFAULT_EMAIL=admin@nebulahunt.com
-            - PGADMIN_DEFAULT_PASSWORD=admin
+            - '8080:8978'
         volumes:
-            - pgadmin-data:/var/lib/pgadmin
+            - dbeaver-data:/opt/cloudbeaver/workspace
         depends_on:
             - postgres
         networks:
@@ -85,7 +82,7 @@ services:
 volumes:
     postgres-data:
     redis-data:
-    pgadmin-data:
+    dbeaver-data:
 
 networks:
     nebulahunt-network:

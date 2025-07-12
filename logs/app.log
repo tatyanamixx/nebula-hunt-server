@@ -91,3 +91,22 @@
 {"level":30,"time":1752265955315,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
 {"level":30,"time":1752265955318,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
 {"level":30,"time":1752265955320,"pid":22688,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752296021756,"pid":8800,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752296021759,"pid":8800,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752296021761,"pid":8800,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752296100096,"pid":8800,"hostname":"DESKTOP-SL6FQDI","msg":"Error updating active users metrics: column userstate.lastLoginDate does not exist"}
+{"level":50,"time":1752296100100,"pid":8800,"hostname":"DESKTOP-SL6FQDI","msg":"Error updating economy metrics: column galaxy.ownerId does not exist"}
+{"level":30,"time":1752296340625,"pid":23020,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752296340628,"pid":23020,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752296340629,"pid":23020,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":50,"time":1752296400074,"pid":23020,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":50,"time":1752296400074,"pid":23020,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":30,"time":1752296856069,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752296856072,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752296856074,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752296960206,"pid":9672,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752296960209,"pid":9672,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752296960211,"pid":9672,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}
+{"level":30,"time":1752297507752,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"MarketCommission table initialized"}
+{"level":30,"time":1752297507755,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"System user initialized"}
+{"level":30,"time":1752297507756,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Server started on port 5000"}

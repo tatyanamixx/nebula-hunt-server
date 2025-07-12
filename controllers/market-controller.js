@@ -2,7 +2,7 @@
  * created by Tatyana Mikhniukevich on 04.07.2025
  */
 const marketService = require('../service/market-service');
-const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
+const prometheusService = require('../service/prometheus-service');
 const { User } = require('../models/models'); // Правильный импорт модели User
 const { SYSTEM_USER_ID } = require('../config/constants');
 
@@ -29,7 +29,7 @@ class MarketController {
 			});
 			res.json(offer);
 		} catch (e) {
-			prometheusMetrics.errorCounter.inc({ type: '4xx' });
+			prometheusService.incrementError('4xx');
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -44,7 +44,7 @@ class MarketController {
 			});
 			res.json(result);
 		} catch (e) {
-			prometheusMetrics.errorCounter.inc({ type: '4xx' });
+			prometheusService.incrementError('4xx');
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -58,7 +58,7 @@ class MarketController {
 			});
 			res.json(result);
 		} catch (e) {
-			prometheusMetrics.errorCounter.inc({ type: '4xx' });
+			prometheusService.incrementError('4xx');
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -71,7 +71,7 @@ class MarketController {
 			);
 			res.json(transactions);
 		} catch (e) {
-			prometheusMetrics.errorCounter.inc({ type: '5xx' });
+			prometheusService.incrementError('5xx');
 			res.status(500).json({ error: e.message });
 		}
 	}
@@ -436,7 +436,7 @@ class MarketController {
 		try {
 			// Проверяем, что запрос от администратора
 			if (req.initdata.id !== SYSTEM_USER_ID && !req.initdata.isAdmin) {
-				return res.status(403).json({ error: 'Доступ запрещен' });
+				return res.status(403).json({ error: 'Access denied' });
 			}
 
 			const count = await marketService.processExpiredOffers();
@@ -444,7 +444,7 @@ class MarketController {
 			res.json({
 				success: true,
 				processedOffers: count,
-				message: `Обработано ${count} истекших оферт`,
+				message: `Processed ${count} expired offers`,
 			});
 		} catch (e) {
 			next(e);

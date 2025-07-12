@@ -14,6 +14,7 @@ const eventRouter = require('./event-router');
 const upgradeRouter = require('./upgrade-router');
 const marketRouter = require('./market-router');
 const gameMetricsRouter = require('./game-metrics-router');
+const prometheusRouter = require('./prometheus-router');
 const adminRouter = require('./admin-router');
 const taskTemplateRouter = require('./task-template-router');
 const eventTemplateRouter = require('./event-template-router');
@@ -38,5 +39,6 @@ router.use('/event-templates', eventTemplateRouter);
 router.use('/upgrade-templates', upgradeTemplateRouter);
 router.use('/package-templates', packageTemplateRouter);
 router.use('/game-metrics', gameMetricsRouter);
+router.use('/metrics', prometheusRouter);
 
 module.exports = router;

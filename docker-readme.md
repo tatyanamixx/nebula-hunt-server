@@ -81,7 +81,7 @@ This will start:
 -   The Nebulahunt server application
 -   PostgreSQL database
 -   Redis cache
--   pgAdmin (database management interface)
+-   Dbeaver (database management interface)
 
 To stop the application:
 
@@ -138,9 +138,8 @@ This will:
 ## Accessing Services
 
 -   **Application**: http://localhost:5000
--   **pgAdmin**: http://localhost:5050
-    -   Email: admin@nebulahunt.com
-    -   Password: admin (or as configured in .env)
+-   **Dbeaver**: http://localhost:8080
+    -   Access the web interface to connect to your database
 
 ## Environment Variables
 
@@ -172,9 +171,8 @@ JWT_REFRESH_SECRET=your_secure_refresh_secret
 # Redis
 REDIS_PASSWORD=secure_redis_password
 
-# pgAdmin
-PGADMIN_EMAIL=admin@nebulahunt.com
-PGADMIN_PASSWORD=secure_admin_password
+# Dbeaver is configured automatically
+# No credentials needed in environment variables
 ```
 
 ## Docker Commands
@@ -235,14 +233,15 @@ docker-compose exec app npx sequelize-cli db:migrate:undo
 docker-compose exec app npx sequelize-cli db:migrate:undo:all
 ```
 
-### Access pgAdmin
+### Access Dbeaver
 
-1. Open http://localhost:5050 in your browser
-2. Log in with the email and password from your environment variables
-3. Add a new server:
-    - Name: Nebulahunt
-    - Host: postgres
+1. Open http://localhost:8080 in your browser
+2. Follow the initial setup wizard if it's your first time
+3. Add a new connection:
+    - Connection type: PostgreSQL
+    - Server Host: postgres
     - Port: 5432
+    - Database: nebulahunt
     - Username: postgres
     - Password: (from DB_PASSWORD in .env)
 

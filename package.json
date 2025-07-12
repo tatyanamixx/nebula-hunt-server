@@ -5,14 +5,23 @@
 	"scripts": {
 		"start": "cross-env NODE_ENV=production node index.js",
 		"dev": "cross-env NODE_ENV=development nodemon index.js",
+		"dev:test": "dotenv -e .env.test -- cross-env NODE_ENV=test nodemon index.js",
+		"dev:prod": "dotenv -e .env.production -- cross-env NODE_ENV=production nodemon index.js",
 		"test": "cross-env NODE_ENV=test jest --detectOpenHandles",
 		"test:unit": "cross-env NODE_ENV=test RUN_MIGRATIONS=false jest --detectOpenHandles",
-		"test:integration": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --detectOpenHandles",
+		"test:integration": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --config=jest.integration.config.js --detectOpenHandles",
+		"test:integration:api": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --config=jest.integration.config.js --testPathPatterns=api --detectOpenHandles",
+		"test:integration:service": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --config=jest.integration.config.js --testPathPatterns=service --detectOpenHandles",
+		"test:integration:database": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --config=jest.integration.config.js --testPathPatterns=database --detectOpenHandles",
+		"test:integration:external": "cross-env NODE_ENV=test RUN_MIGRATIONS=true jest --config=jest.integration.config.js --testPathPatterns=external --detectOpenHandles",
 		"test:coverage": "cross-env NODE_ENV=test jest --coverage --detectOpenHandles",
 		"migrate": "sequelize-cli db:migrate",
+		"migrate:test": "dotenv -e .env.test -- sequelize-cli db:migrate",
+		"migrate:prod": "dotenv -e .env.production -- sequelize-cli db:migrate",
 		"migrate:undo": "sequelize-cli db:migrate:undo",
 		"migrate:undo:all": "sequelize-cli db:migrate:undo:all",
 		"seed": "sequelize-cli db:seed:all",
+		"seed:test": "dotenv -e .env.test -- sequelize-cli db:seed:all",
 		"seed:undo": "sequelize-cli db:seed:undo:all"
 	},
 	"keywords": [],
@@ -49,6 +58,7 @@
 		"xss-clean": "^0.1.4"
 	},
 	"devDependencies": {
+		"axios": "^1.10.0",
 		"cross-env": "^7.0.3",
 		"dotenv-cli": "^8.0.0",
 		"jest": "^30.0.4",

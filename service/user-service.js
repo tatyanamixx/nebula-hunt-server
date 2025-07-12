@@ -15,7 +15,7 @@ const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op, where } = require('sequelize');
 const artifactService = require('./artifact-service');
-const { prometheusMetrics } = require('../middlewares/prometheus-middleware');
+const prometheusService = require('./prometheus-service');
 const marketService = require('./market-service');
 const packageStoreService = require('./package-store-service');
 
@@ -125,7 +125,7 @@ class UserService {
 			});
 
 			if (created) {
-				prometheusMetrics.userRegistrationCounter.inc();
+				prometheusService.incrementUserRegistration();
 			}
 
 			// Создаём DTO пользователя для токенов
@@ -241,7 +241,6 @@ class UserService {
 					stateService.getUserState(userDto.id),
 					galaxyService.getUserGalaxies(userDto.id),
 					artifactService.getUserArtifacts(userDto.id),
-			
 				]);
 
 			// 3. Проверяем и инициализируем state, если его нет
