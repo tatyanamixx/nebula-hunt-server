@@ -8,8 +8,8 @@ const ApiError = require('../exceptions/api-error');
 const { parse, validate } = require('@telegram-apps/init-data-node');
 const logger = require('../service/logger-service');
 
-// Используем единую переменную для токена бота
-const botToken = process.env.TG_BOT_API_KEY || process.env.BOT_TOKEN;
+// Используем переменную для токена бота
+const botToken = process.env.BOT_TOKEN;
 
 module.exports = function telegramAuthMiddleware(req, res, next) {
 	try {

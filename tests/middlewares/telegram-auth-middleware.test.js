@@ -10,7 +10,7 @@ describe('TelegramAuthMiddleware', () => {
 		const next = jest.fn();
 
 		// Установите реальный токен бота
-		//process.env.TG_BOT_API_KEY = 'ваш_бот_токен';
+		//process.env.BOT_TOKEN = 'ваш_бот_токен';
 
 		await telegramAuthMiddleware(req, res, next);
 

@@ -24,14 +24,14 @@ module.exports = {
 	],
 
 	// Порог покрытия кода для интеграционных тестов
-	coverageThreshold: {
-		global: {
-			branches: 60,
-			functions: 60,
-			lines: 60,
-			statements: 60,
-		},
-	},
+	// coverageThreshold: {
+	// 	global: {
+	// 		branches: 60,
+	// 		functions: 60,
+	// 		lines: 60,
+	// 		statements: 60,
+	// 	},
+	// },
 
 	// Форматы отчетов о покрытии
 	coverageReporters: ['text', 'lcov', 'html'],

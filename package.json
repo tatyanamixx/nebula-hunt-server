@@ -22,7 +22,11 @@
 		"migrate:undo:all": "sequelize-cli db:migrate:undo:all",
 		"seed": "sequelize-cli db:seed:all",
 		"seed:test": "dotenv -e .env.test -- sequelize-cli db:seed:all",
-		"seed:undo": "sequelize-cli db:seed:undo:all"
+		"seed:undo": "sequelize-cli db:seed:undo:all",
+		"security:check": "node scripts/check-env-security.js",
+		"security:check:dev": "NODE_ENV=development node scripts/check-env-security.js",
+		"security:check:prod": "NODE_ENV=production node scripts/check-env-security.js",
+		"setup:env": "node scripts/setup-env.js"
 	},
 	"keywords": [],
 	"author": "",
