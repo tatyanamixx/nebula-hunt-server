@@ -13,7 +13,7 @@ const development = {
 			messageFormat: '{msg} {req.method} {req.url}',
 		},
 	},
-	level: 'debug',
+	level: 'info', // Изменено с 'debug' на 'info' для уменьшения количества логов
 	// Redact sensitive information
 	redact: ['req.headers.authorization', 'req.headers.cookie'],
 };

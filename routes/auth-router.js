@@ -35,18 +35,20 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
  *               referral:
  *                 type: string
- *             required:
- *               - email
- *               - password
+ *                 description: Referral code (number, bigint, or numeric string)
+ *               userState:
+ *                 type: object
+ *                 description: Initial user state
+ *               galaxies:
+ *                 type: array
+ *                 description: Initial galaxies data
  *     responses:
  *       201:
- *         description: User registered
+ *         description: User registered successfully
+ *       400:
+ *         description: Bad request - invalid referral format
  */
 
 router.post(
@@ -62,22 +64,15 @@ router.post(
  *     summary: Login user
  *     tags: [Auth]
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *             required:
- *               - email
- *               - password
+ *             description: No body parameters required - authentication is handled via Telegram WebApp initData
  *     responses:
  *       200:
- *         description: User logged in
+ *         description: User logged in successfully
  */
 
 router.post(

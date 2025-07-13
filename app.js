@@ -1,8 +1,5 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const pino = require('pino');
-const pinoHttp = require('pino-http');
-const config = require('./config/logger.config');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 const path = require('path');
@@ -21,16 +18,14 @@ const {
 	blockBlacklistedIPs,
 	detectSuspiciousIP,
 } = require('./middlewares/ip-security-middleware');
+const customLoggingMiddleware = require('./middlewares/custom-logging-middleware');
 const prometheusService = require('./service/prometheus-service');
 
 const app = express();
 
 // Security middlewares
-// Initialize request logger with base Pino instance
-const httpLogger = pinoHttp({
-	logger: pino(config),
-});
-app.use(httpLogger);
+// Используем собственный middleware для логирования вместо pino-http
+app.use(customLoggingMiddleware);
 
 // Security middlewares
 app.use(blockBlacklistedIPs); // IP blacklisting should be first
@@ -94,7 +89,7 @@ const swaggerDefinition = {
 	},
 	servers: [
 		{
-			url: 'http://localhost:3000',
+			url: 'http://localhost:5000',
 			description: 'Development server',
 		},
 	],

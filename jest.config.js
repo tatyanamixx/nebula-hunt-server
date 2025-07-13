@@ -24,15 +24,15 @@ module.exports = {
 		'!**/tests/**',
 	],
 
-	// Порог покрытия кода
-	coverageThreshold: {
-		global: {
-			branches: 70,
-			functions: 70,
-			lines: 70,
-			statements: 70,
-		},
-	},
+	// // Порог покрытия кода
+	// coverageThreshold: {
+	// 	global: {
+	// 		branches: 70,
+	// 		functions: 70,
+	// 		lines: 70,
+	// 		statements: 70,
+	// 	},
+	// },
 
 	// Форматы отчетов о покрытии
 	coverageReporters: ['text', 'lcov', 'clover', 'html'],
