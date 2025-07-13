@@ -2,7 +2,7 @@
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
 const { User, Galaxy } = require('../models/models');
-const loggerService = require('./logger-service');
+const logger = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const { Op } = require('sequelize');
 const sequelize = require('../db');
@@ -138,7 +138,7 @@ class GalaxyService {
 			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
 				throw ApiError.BadRequest('Invalid galaxy data structure');
 			}
-			loggerService.info(userId, galaxyData);
+			logger.debug(userId, galaxyData);
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
 					seed: galaxyData.seed,
@@ -159,7 +159,7 @@ class GalaxyService {
 			});
 
 			if (!created) {
-				loggerService.info(userId, 'galaxy already exists');
+				logger.info(userId, 'galaxy already exists');
 				// await t.rollback();
 				// throw ApiError.BadRequest('Galaxy already exists');
 			}

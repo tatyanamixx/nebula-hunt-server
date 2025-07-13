@@ -5,7 +5,7 @@ const { UpgradeNode, UserUpgrade, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
-
+const logger = require('./logger-service');
 class UpgradeService {
 	/**
 	 * Initialize the upgrade tree for a new user
@@ -15,44 +15,47 @@ class UpgradeService {
 	 */
 	async initializeUserUpgradeTree(userId, t) {
 		try {
+			const userUpgrades = [];
+			logger.debug('initializeUserUpgradeTree', userId);
 			// Get all root upgrade nodes (those without parent requirements)
 			const rootNodes = await UpgradeNode.findAll({
 				where: {
 					active: true,
-					[Op.or]: [
-						{ '$conditions.parents$': null },
-						{ '$conditions.parents$': [] },
-						{ $conditions$: {} },
-					],
+					// [Op.or]: [
+					// 	{ '$conditions.parents$': null },
+					// 	{ '$conditions.parents$': [] },
+					// 	{ $conditions$: {} },
+					// ],
 				},
 				transaction: t,
 			});
-
+			logger.debug('rootNodes', rootNodes);
 			// Create initial user upgrades for root nodes
-			const userUpgrades = [];
-			for (const node of rootNodes) {
-				const userUpgrade = await UserUpgrade.create(
-					{
-						userId,
-						nodeId: node.id,
-						level: 0,
-						progress: 0,
-						targetProgress: 100,
-						completed: false,
-						stability: node.stability || 0,
-						instability: node.instability || 0,
-						progressHistory: [
-							{
-								timestamp: Date.now(),
-								progress: 0,
-								level: 0,
-							},
-						],
-						lastProgressUpdate: new Date(),
-					},
-					{ transaction: t }
-				);
-				userUpgrades.push(userUpgrade);
+			if (rootNodes.length > 0) {
+				for (const node of rootNodes) {
+					const userUpgrade = await UserUpgrade.create(
+						{
+							userId,
+							nodeId: node.id,
+							level: 0,
+							progress: 0,
+							targetProgress: 100,
+							completed: false,
+							stability: node.stability || 0,
+							instability: node.instability || 0,
+							progressHistory: [
+								{
+									timestamp: Date.now(),
+									progress: 0,
+									level: 0,
+								},
+							],
+							lastProgressUpdate: new Date(),
+						},
+						{ transaction: t }
+					);
+					userUpgrades.push(userUpgrade);
+				}
 			}
 
 			return userUpgrades;

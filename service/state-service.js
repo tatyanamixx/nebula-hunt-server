@@ -11,7 +11,7 @@ const {
 	UserEventSetting,
 	PackageStore,
 } = require('../models/models');
-const loggerService = require('./logger-service');
+const logger = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
 const upgradeService = require('./upgrade-service');
 const taskService = require('./task-service');
@@ -154,7 +154,7 @@ class UserStateService {
 	async createUserState(userId, userState, transaction) {
 		try {
 			await this.updateStreak(userState);
-
+			logger.debug('createUserState', userId, userState);
 			// Create new state for new user
 			const stateNew = await UserState.findOrCreate({
 				where: { userId: userId },
@@ -170,14 +170,6 @@ class UserStateService {
 				},
 				transaction: transaction,
 			});
-
-			// Initialize related data for the new user
-			await Promise.all([
-				upgradeService.initializeUserUpgradeTree(userId, transaction),
-				taskService.initializeUserTasks(userId, transaction),
-				eventService.initializeUserEvents(userId, transaction),
-				packageStoreService.initializePackageStore(userId, transaction),
-			]);
 
 			return stateNew;
 		} catch (err) {

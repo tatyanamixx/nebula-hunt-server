@@ -48,7 +48,7 @@ class PackageStoreService {
 							isUsed: false,
 							isLocked: false,
 						},
-						{ transaction }
+						{ transaction: t }
 					);
 				}
 				return;

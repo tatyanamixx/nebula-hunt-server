@@ -31,9 +31,9 @@ module.exports = {
 				},
 				{
 					id: 555666777,
-					username: 'system_user',
+					username: 'user2',
 					referral: 0,
-					role: 'SYSTEM',
+					role: 'USER',
 					blocked: false,
 					google2faSecret: null,
 					tonWallet: null,

@@ -6,7 +6,7 @@ const { User, UserState } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const stateService = require('./state-service');
-const loggerService = require('./logger-service');
+const logger = require('./logger-service');
 const eventService = require('./event-service');
 const upgradeService = require('./upgrade-service');
 const taskService = require('./task-service');
@@ -38,8 +38,6 @@ class UserService {
 				return existingSystemUser;
 			}
 
-			loggerService.info('SYSTEM_USER_ID', SYSTEM_USER_ID);
-
 			// Create system user
 			const systemUser = await User.create(
 				{
@@ -52,7 +50,7 @@ class UserService {
 				{ transaction: t }
 			);
 
-			loggerService.info('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
+			logger.debug('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
 			// Create UserState for SYSTEM user (for contract balance)
 			await UserState.create(
 				{
@@ -97,7 +95,8 @@ class UserService {
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
 	async registration(id, username, referral, reqUserState, galaxies) {
-		const t = await sequelize.transaction();
+		// Первая транзакция - создаем только пользователя
+		const t1 = await sequelize.transaction();
 		try {
 			// Валидация входных данных
 			if (!id || !username) {
@@ -111,7 +110,7 @@ class UserService {
 				referral = BigInt(referral);
 			}
 
-			// 1. Создаём пользователя
+			// 1. Создаём только пользователя
 			const [user, created] = await User.findOrCreate({
 				where: { id },
 				defaults: {
@@ -121,7 +120,7 @@ class UserService {
 					role: 'USER',
 					blocked: false,
 				},
-				transaction: t,
+				transaction: t1,
 			});
 
 			if (created) {
@@ -131,81 +130,116 @@ class UserService {
 			// Создаём DTO пользователя для токенов
 			const userDto = new UserDto(user);
 
-			// 2. Инициализируем состояние пользователя
-			const initialState = {
-				state: {
-					totalStars: 0,
-					stardustCount: 0,
-					darkMatterCount: 0,
-					tgStarsCount: 0,
-					tokenTonsCount: 0,
-					ownedGalaxiesCount: 0,
-					ownedNodesCount: 0,
-					ownedTasksCount: 0,
-					ownedUpgradesCount: 0,
-					ownedEventsCount: 0,
-					...(reqUserState?.state || {}),
-				},
-				...(reqUserState || {}),
-			};
+			// Фиксируем первую транзакцию - пользователь создан
+			await t1.commit();
 
-			const userState = await stateService.createUserState(
-				user.id,
-				initialState,
-				t
-			);
+			// Вторая транзакция - создаем все остальное
+			const t2 = await sequelize.transaction();
+			try {
+				// 2. Инициализируем состояние пользователя
+				const initialState = {
+					state: {
+						totalStars: 0,
+						stardustCount: 0,
+						darkMatterCount: 0,
+						tgStarsCount: 0,
+						tokenTonsCount: 0,
+						ownedGalaxiesCount: 0,
+						ownedNodesCount: 0,
+						ownedTasksCount: 0,
+						ownedUpgradesCount: 0,
+						ownedEventsCount: 0,
+						...(reqUserState?.state || {}),
+					},
+					...(reqUserState || {}),
+				};
 
-			// 3. Создаём галактики для пользователя, если данные предоставлены
-			const userGalaxies = [];
-			if (Array.isArray(galaxies) && galaxies.length > 0) {
-				for (const galaxyData of galaxies) {
-					const newGalaxy = await galaxyService.createGalaxy(
-						user.id,
-						galaxyData,
-						t
-					);
-					userGalaxies.push(newGalaxy);
+				const [userState, created] = await UserState.findOrCreate({
+					where: { userId: user.id },
+					defaults: {
+						state: reqUserState,
+					},
+					transaction: t2,
+				});
+
+				// 3. Генерируем JWT токены
+				const tokens = tokenService.generateTokens({ ...userDto });
+				await tokenService.saveToken(user.id, tokens.refreshToken, t2);
+
+				logger.debug('userState', galaxies);
+				// 4. Создаём галактики для пользователя, если данные предоставлены
+				const userGalaxies = [];
+				if (Array.isArray(galaxies) && galaxies.length > 0) {
+					for (const galaxyData of galaxies) {
+						const newGalaxy = await galaxyService.createUserGalaxy(
+							user.id,
+							galaxyData,
+							t2
+						);
+						userGalaxies.push(newGalaxy);
+					}
+
+					// Обновляем счётчик галактик
+					if (!userState.state) userState.state = {};
+					userState.state.ownedGalaxiesCount = userGalaxies.length;
+					await userState.save({ transaction: t2 });
 				}
 
-				// Обновляем счётчик галактик
-				if (!userState.state) userState.state = {};
-				userState.state.ownedGalaxiesCount = userGalaxies.length;
-				await userState.save({ transaction: t });
+				// 5. Инициализируем дерево апгрейдов
+				await upgradeService.initializeUserUpgradeTree(user.id, t2);
+
+				// 6. Инициализируем события пользователя
+				await eventService.initializeUserEvents(user.id, t2);
+
+				// 7. Инициализируем список задач пользователя
+				await taskService.initializeUserTasks(user.id, t2);
+
+				// 8. Получаем системные пакеты услуг
+				await packageStoreService.initializePackageStore(user.id, t2);
+
+				// Фиксируем вторую транзакцию
+				await t2.commit();
+
+				// Возвращаем результат
+				return {
+					...tokens,
+					user: userDto,
+					userState,
+					userGalaxies,
+					packageOffers: [], // Будет заполнено позже при необходимости
+				};
+			} catch (err) {
+				// Откатываем вторую транзакцию в случае ошибки
+				if (!t2.finished) await t2.rollback();
+
+				// Логируем ошибку, но не прерываем регистрацию
+				logger.error(
+					`Failed to create related data for user ${user.id}: ${err.message}`,
+					{
+						userId: user.id,
+						error: err.stack,
+					}
+				);
+
+				// Возвращаем результат без связанных данных
+				// Пользователь уже создан, связанные данные можно создать позже
+				const tokens = tokenService.generateTokens({ ...userDto });
+				await tokenService.saveToken(user.id, tokens.refreshToken);
+
+				return {
+					...tokens,
+					user: userDto,
+					userState: null,
+					userGalaxies: [],
+					packageOffers: [],
+				};
 			}
-
-			// 4. Инициализируем дерево апгрейдов
-			await upgradeService.initializeUserUpgradeTree(user.id, t);
-
-			// 5. Инициализируем события пользователя
-			await eventService.initializeUserEvents(user.id, t);
-
-			// 6. Инициализируем список задач пользователя
-			await taskService.initializeUserTasks(user.id, t);
-
-			// 7. Получаем системные пакеты услуг
-			await packageStoreService.initializePackageStore(user.id, t);
-
-			// 8. Генерируем JWT токены
-			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(user.id, tokens.refreshToken, t);
-
-			// Фиксируем транзакцию
-			await t.commit();
-
-			// Возвращаем результат (без дублирования данных)
-			return {
-				...tokens,
-				user: userDto,
-				userState,
-				userGalaxies,
-				packageOffers,
-			};
 		} catch (err) {
-			// Откатываем транзакцию в случае ошибки
-			if (!t.finished) await t.rollback();
+			// Откатываем первую транзакцию в случае ошибки
+			if (!t1.finished) await t1.rollback();
 
 			// Логируем ошибку
-			loggerService.error(`Registration failed: ${err.message}`, {
+			logger.error(`Registration failed: ${err.message}`, {
 				userId: id,
 				error: err.stack,
 			});
@@ -308,7 +342,7 @@ class UserService {
 			if (!t.finished) await t.rollback();
 
 			// Логируем ошибку
-			loggerService.error(`Login failed: ${err.message}`, {
+			logger.error(`Login failed: ${err.message}`, {
 				userId: id,
 				error: err.stack,
 			});
@@ -389,9 +423,7 @@ class UserService {
 			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
 
 			// Логируем успешное обновление токена
-			loggerService.info(
-				`Token refreshed successfully for user ${userDto.id}`
-			);
+			logger.info(`Token refreshed successfully for user ${userDto.id}`);
 
 			// Фиксируем транзакцию
 			await t.commit();
@@ -405,7 +437,7 @@ class UserService {
 			if (!t.finished) await t.rollback();
 
 			// Логируем ошибку
-			loggerService.error(`Token refresh failed: ${err.message}`, {
+			logger.error(`Token refresh failed: ${err.message}`, {
 				error: err.stack,
 			});
 
@@ -453,9 +485,7 @@ class UserService {
 			});
 
 			// Логируем количество найденных друзей
-			loggerService.info(
-				`Found ${friends.length} friends for user ${id}`
-			);
+			logger.info(`Found ${friends.length} friends for user ${id}`);
 
 			// Фиксируем транзакцию
 			await t.commit();
@@ -469,7 +499,7 @@ class UserService {
 			if (!t.finished) await t.rollback();
 
 			// Логируем ошибку
-			loggerService.error(`Failed to get friends: ${err.message}`, {
+			logger.error(`Failed to get friends: ${err.message}`, {
 				userId: id,
 				error: err.stack,
 			});
