@@ -26,7 +26,12 @@
 		"security:check": "node scripts/check-env-security.js",
 		"security:check:dev": "NODE_ENV=development node scripts/check-env-security.js",
 		"security:check:prod": "NODE_ENV=production node scripts/check-env-security.js",
-		"setup:env": "node scripts/setup-env.js"
+		"setup:env": "node scripts/setup-env.js",
+		"decode:initdata": "node scripts/decode-telegram-initdata.js",
+		"log:debug": "node scripts/set-log-level.js debug",
+		"log:info": "node scripts/set-log-level.js info",
+		"log:error": "node scripts/set-log-level.js error",
+		"log:current": "node scripts/set-log-level.js --current"
 	},
 	"keywords": [],
 	"author": "",

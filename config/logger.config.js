@@ -13,7 +13,7 @@ const development = {
 			messageFormat: '{msg} {req.method} {req.url}',
 		},
 	},
-	level: 'info', // Изменено с 'debug' на 'info' для уменьшения количества логов
+	level: process.env.LOG_LEVEL || 'debug', // Уровень из переменной окружения или debug по умолчанию
 	// Redact sensitive information
 	redact: ['req.headers.authorization', 'req.headers.cookie'],
 };
@@ -26,7 +26,7 @@ const production = {
 			mkdir: true,
 		},
 	},
-	level: 'info',
+	level: process.env.LOG_LEVEL || 'info', // Уровень из переменной окружения или info по умолчанию
 	redact: ['req.headers.authorization', 'req.headers.cookie'],
 };
 
