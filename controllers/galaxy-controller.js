@@ -70,13 +70,14 @@ class GalaxyController {
 		}
 	}
 
-	async updateUserGalaxy(req, res, next) {
+	async transferStarsToUserGalaxy(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const galaxyData = req.body;
-			const galaxy = await galaxyService.updateUserGalaxy(
+			const { galaxyData, offer }	 = req.body;
+			const galaxy = await galaxyService.transferStarsToUser(
 				userId,
-				galaxyData
+				galaxyData,
+				offer
 			);
 			return res.json(galaxy);
 		} catch (e) {

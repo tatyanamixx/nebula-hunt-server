@@ -118,18 +118,19 @@ router.post(
  *         description: Galaxy updated successfully
  */
 router.post(
-	'/createGalaxy',
+	'/create',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
 	galaxyController.createGalaxyWithOffer
 );
-router.put(
-	'/addStars',
+
+router.post(
+	'/transferstars',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
-	galaxyController.addStarsToUserGalaxy
+	galaxyController.transferStarsToUserGalaxy
 );
 
 /**

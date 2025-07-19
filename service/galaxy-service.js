@@ -179,7 +179,7 @@ class GalaxyService {
 	}
 
 	// save new param for galaxy
-	async updateGalaxyOwner(galaxyData, userId, transaction) {
+	async updateGalaxyOwner(galaxyData, userId) {
 		const t = transaction || (await sequelize.transaction());
 		const externalTransaction = !!transaction;
 
@@ -222,7 +222,7 @@ class GalaxyService {
 	 * @param {number} buyerId - ID покупателя
 	 * @param {Object} offerData - данные оферты (price, currency, expiresAt)
 	 */
-	async createGalaxyWithOffer(userId, galaxyData, offer, transaction) {
+	async createGalaxyWithOffer(userId, galaxyData, offer) {
 		const t = transaction || (await sequelize.transaction());
 		const externalTransaction = !!transaction;
 
@@ -249,28 +249,28 @@ class GalaxyService {
 			if (!created) {
 				throw ApiError.BadRequest('Galaxy already exists');
 			} else {
+				await galaxy.save({ transaction });
+				await t.commit();
 				logger.debug('galaxy created');
 			}
 
 			const offerData = {
+				sellerId: SYSTEM_USER_ID,
 				buyerId: userId,
 				price: offer.price,
 				currency: offer.currency,
 				itemId: galaxy.id,
 				itemType: 'galaxy',
-				amount: 1,
-				stars: galaxy.starCurrent,
+				amount: galaxy.starCurrent,
+				resource: 'stars',
+				offerType: 'SYSTEM',
+				status: offer.price === 0 ? 'COMPLETED' : 'PENDING',
 			};
 
 			const { offerOut, marketTransaction, payment, transferStars } =
-				await marketService.registerGalaxyOffer(
-					offerData,
-					transaction
-				);
+				await marketService.registerGalaxyOffer(offerData);
 
-			if (!externalTransaction) {
-				await t.commit();
-			}
+			
 			return {
 				galaxy,
 				offerOut,
@@ -289,7 +289,7 @@ class GalaxyService {
 		}
 	}
 
-	async deleteGalaxy(galaxyId, transaction) {
+	async deleteGalaxy(userId,seed) {
 		const t = transaction || (await sequelize.transaction());
 		const externalTransaction = !!transaction;
 
@@ -329,44 +329,40 @@ class GalaxyService {
 		}
 	}
 
-	async transferStarsToUser(userId, offerData, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+	async transferStarsToUser(userId, galaxyData, offer) {
+		const t = await sequelize.transaction();
 
 		try {
 			// Проверяем, что галактика принадлежит пользователю
 			const galaxy = await Galaxy.findOne({
-				where: { seed: offerData.seed },
-				transaction,
+				where: { seed: offer.seed },
+				transaction: t,
 			});
 			if (!galaxy) {
 				throw ApiError.BadRequest('Galaxy not found');
 			}
 
-			const user = await User.findOne({
-				where: { id: userId },
-				transaction,
-			});
+			// const user = await User.findOne({
+			// 	where: { id: userId },
+			// 	transaction: t,
+			// });
 
 			// Validate stars value
 			if (galaxy.starCurrent < 0) {
 				throw ApiError.BadRequest('Stars cannot be negative');
 			}
-
-			galaxy.starCurrent += offerData.stars;
-			galaxy.particleCount = offerData.particleCount;
-			galaxy.onParticleCountChange = offerData.onParticleCountChange;
-			galaxy.galaxyProperties = offerData.galaxyProperties;
-			await galaxy.save({ transaction });
-
+			
 			const offerData = {
+				sellerId: SYSTEM_USER_ID,
 				buyerId: userId,
-				sellerId: userId,
-				price: offerData.price,
-				currency: offerData.currency,
+				price: offer.price,
+				currency: offer.currency,
 				itemId: galaxy.id,
 				itemType: 'galaxy',
-				amount: offerData.stars,
+				amount: offer.amount,
+				resource: offer.resource,
+				offerType: 'SY',
+				status:  'COMPLETED' 
 			};
 			// Регистрируем передачу звезд через marketService
 			const result = await marketService.registerStarsTransfer(
@@ -374,6 +370,12 @@ class GalaxyService {
 				{ transaction }
 			);
 
+			galaxy.starCurrent += offerData.amount;
+			galaxy.particleCount = galaxyData.particleCount;
+			galaxy.onParticleCountChange = galaxyData.onParticleCountChange;
+			galaxy.galaxyProperties = galaxyData.galaxyProperties;
+			await galaxy.save({ transaction });
+			
 			if (!externalTransaction) {
 				await t.commit();
 			}

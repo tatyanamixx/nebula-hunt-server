@@ -670,7 +670,7 @@ const PaymentTransaction = sequelize.define(
 		marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
 		fromAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
 		toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
-		amountOrPrice: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		priceOrAmount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 		currencyOrResource: {
 			type: DataTypes.ENUM('tgStars', 'tonToken', 'stars', 'stardust', 'darkMatter'),
 			allowNull: false,

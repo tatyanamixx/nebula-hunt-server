@@ -691,6 +691,9 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async deductCurrency(userId, currency, amount, transaction) {
+		if (userId === SYSTEM_USER_ID) {
+			return;
+		}
 		const userState = await UserState.findOne({
 			where: { userId },
 			transaction,
@@ -720,6 +723,20 @@ class MarketService {
 					},
 					{ transaction }
 				);
+			case 'tonToken':
+				await userState.update(
+					{
+						tonToken: userState.tonToken - amount,
+					},
+					{ transaction }
+				);
+			case 'stars':
+				await userState.update(
+					{
+						stars: userState.stars - amount,
+					},
+					{ transaction }
+				);
 				break;
 		}
 	}
@@ -732,18 +749,13 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async addCurrency(userId, currency, amount, transaction) {
+		if (userId === SYSTEM_USER_ID) {
+			return;
+		}
 		const userState = await UserState.findOne({
 			where: { userId },
 			transaction,
 		});
-
-		if (!userState) {
-			// If this is the system user, do nothing
-			if (userId === SYSTEM_USER_ID) {
-				return;
-			}
-			throw new ApiError(404, 'User state not found');
-		}
 
 		switch (currency) {
 			case 'stardust':
@@ -766,6 +778,22 @@ class MarketService {
 				await userState.update(
 					{
 						tgStars: userState.tgStars + amount,
+					},
+					{ transaction }
+				);
+				break;
+			case 'stars':
+				await userState.update(
+					{
+						stars: userState.stars + amount,
+					},
+					{ transaction }
+				);
+				break;
+			case 'tonToken':
+				await userState.update(
+					{
+						tonToken: userState.tonToken + amount,
 					},
 					{ transaction }
 				);
@@ -2025,153 +2053,218 @@ class MarketService {
 			throw ApiError.Internal(`Failed to get offer: ${error.message}`);
 		}
 	}
+	/**
+	 * Register a galaxy offer
+	 * @param {Object} offer - Offer data
+	 * @returns {Promise<Object>} - Market offer
+	 */
+	async registerGalaxyOffer(offer) {
+		const t1 = await sequelize.transaction();
 
-	async registerGalaxyOffer(offerData, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
 		try {
-			const offer = await MarketOffer.create(
+			const txOffer = await MarketOffer.create(
 				{
-					buyerId: offerData.buyerId,
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
+					buyerId: offer.buyerId,
+					sellerId: offer.sellerId,
 					isItemLocked: true,
 					expiresAt: null,
-					price: offerData.price,
-					currency: offerData.currency,
-					offerType: 'SYSTEM',
-					amount: offerData.stars,
-					itemType: offerData.itemType,
-					itemId: offerData.itemId,
+					price: offer.price,
+					currency: offer.currency,
+					offerType: offer.offerType,
+					amount: offer.amount,
+					resource: offer.resource,
+					itemType: offer.itemType,
+					itemId: offer.itemId,
+					status: offer.status,
 				},
-				{ transaction }
+				{ t1 }
 			);
-
-			await offer.save({ transaction });
+			await txOffer.save({ t1 });
+			await t1.commit();
 			logger.debug('offer created');
-
-			const marketTransaction = await MarketTransaction.create(
+		} catch (error) {
+			await t1.rollback();
+			throw error;
+		}
+		try {
+			const t2 = await sequelize.transaction();
+			const txMarket = await MarketTransaction.create(
 				{
-					offerId: offer.id,
-					buyerId: offerData.buyerId,
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
+					offerId: txOffer.id,
+					buyerId: offer.buyerId,
+					sellerId: offer.sellerId,
+					status: offer.price === 0 ? 'COMPLETED' : 'PENDING',
 				},
-				{ transaction }
+				{ t2 }
 			);
+			await txMarket.save({ t2 });
+			await t2.commit();
 			logger.debug('marketTransaction created');
+		} catch (error) {
+			await t2.rollback();
+			throw error;
+		}
+		try {
+			// transfer money from buyer to contract
+			const t3 = await sequelize.transaction();
 			const payment = await PaymentTransaction.create(
 				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: offerData.buyerId,
-					toAccount: SYSTEM_USER_ID,
-					amount: offerData.price,
-					currency: offerData.currency,
+					marketTransactionId: txMarket.id,
+					fromAccount: offer.buyerId,
+					toAccount: offer.sellerId,
+					priceOrAmount: offer.price,
+					currencyOrResource: offer.currency,
 					txType: 'BUYER_TO_CONTRACT',
-					status: 'CONFIRMED',
+					status: offerData.price === 0 ? 'CONFIRMED' : 'PENDING',
 				},
-				{ transaction }
+				{ t3 }
 			);
+			await payment.save({ t3 });
+
 			logger.debug('payment created');
+			// transfer stars from contract to buyer
 			const transferStars = await PaymentTransaction.create(
 				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: SYSTEM_USER_ID,
+					marketTransactionId: txMarket.id,
+					fromAccount: offerData.sellerAmount,
 					toAccount: offerData.buyerId,
-					amount: offerData.stars,
-					currency: 'stars',
-					txType: 'STARS_TRANSFER',
-					status: 'CONFIRMED',
+					priceOrAmount: offerData.amount,
+					currencyOrResource: offerData.resource,
+					txType: 'GALAXY_RESOURCE',
+					status: offerData.price === 0 ? 'CONFIRMED' : 'PENDING',
 				},
-				{ transaction }
+				{ t3 }
 			);
+			await transferStars.save({ t3 });
+
+			if (offerData.price === 0) {
+				await this.addCurrency(
+					offerData.buyerId,
+					offerData.resource,
+					offerData.amount,
+					t3
+				);
+			}
+
+			await t3.commit();
 			logger.debug('transferStars created');
 		} catch (error) {
 			logger.error('Error in registerGalaxyOffer', error);
-			if (!externalTransaction) {
-				await t.rollback();
-			}
+			await t3.rollback();
 			throw error;
 		}
-		if (!externalTransaction) {
-			await t.commit();
-			logger.debug('transaction committed');
-		}
-		return { offer, marketTransaction, payment, transferStars };
-	}
 
-	async registerStarsTransfer(offerData, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+		logger.debug('transaction committed');
+		return {
+			offerData,
+			txOffer,
+			txMarket,
+			payment,
+			transferStars,
+		};
+	}
+	/**
+	 * Register a stars transfer
+	 * @param {Object} offer - Offer data
+	 * @returns {Promise<Object>} - Market offer
+	 */
+	async registerStarsTransfer(offer) {
+		const t1 = await sequelize.transaction();
 		try {
-			const offer = await MarketOffer.create(
+			const offerData = await MarketOffer.create(
 				{
-					buyerId: offerData.buyerId,
-					sellerId: offerData.buyerId,
-					status: 'COMPLETED',
+					buyerId: offer.buyerId,
+					sellerId: offer.buyerId,
+					status: offer.status,
 					isItemLocked: true,
 					expiresAt: null,
-					price: offerData.price,
-					currency: offerData.currency,
-					offerType: 'PERSONAL',
-					amount: offerData.amount,
-					itemType: offerData.itemType,
-					itemId: offerData.itemId,
+					price: offer.price,
+					currency: offer.currency,
+					offerType: offer.offerType,
+					amount: offer.amount,
+					itemType: offer.itemType,
+					itemId: offer.itemId,
 				},
-				{ transaction }
+				{ t1 }
 			);
 
-			await offer.save({ transaction });
+			await offerData.save({ t1 });
 			logger.debug('offer created');
+		} catch (error) {
+			await t1.rollback();
+			throw error;
+		}
+		try {
+			const t2 = await sequelize.transaction();
 
-			const marketTransaction = await MarketTransaction.create(
+			const txMarket = await MarketTransaction.create(
 				{
-					offerId: offer.id,
-					buyerId: offerData.buyerId,
-					sellerId: offerData.sellerId,
-					status: 'COMPLETED',
+					offerId: offerData.id,
+					buyerId: offer.buyerId,
+					sellerId: offer.sellerId,
+					status: offer.status,
 				},
-				{ transaction }
+				{ t2 }
 			);
+			await txMarket.save({ t2 });
+			await t2.commit();
 			logger.debug('marketTransaction created');
+		} catch (error) {
+			await t2.rollback();
+			throw error;
+		}
+		try {
+			const t3 = await sequelize.transaction();
 			const payment = await PaymentTransaction.create(
 				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: offerData.buyerId,
-					toAccount: offerData.sellerId,
-					amount: offerData.price,
-					currency: offerData.currency,
-					txType: 'RESOURCE_TRANSFER',
+					marketTransactionId: txMarket.id,
+					fromAccount: offer.buyerId,
+					toAccount: offer.sellerId,
+					priceOrAmount: offer.price,
+					currencyOrResource: offer.currency,
+					txType: 'STARDUST_TRANSFER',
 					status: 'CONFIRMED',
 				},
-				{ transaction }
+				{ t3 }
 			);
+			await payment.save({ t3 });
 			logger.debug('payment created');
 			const transferStars = await PaymentTransaction.create(
 				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: offerData.sellerId,
-					toAccount: offerData.buyerId,
-					amount: offerData.amount,
-					currency: 'stars',
+					marketTransactionId: txMarket.id,
+					fromAccount: offer.sellerId,
+					toAccount: offer.buyerId,
+					priceOrAmount: offer.amount,
+					currencyOrResource: offer.resource,
 					txType: 'STARS_TRANSFER',
 					status: 'CONFIRMED',
 				},
-				{ transaction }
+				{ t3 }
+			);
+			await transferStars.save({ t3 });
+			await t3.commit();
+			await this.addCurrency(
+				offer.buyerId,
+				offer.resource,
+				offer.amount,
+				t3
+			);
+			await this.deductCurrency(
+				offer.buyerId,
+				offer.currency,
+				offer.price,
+				t3
 			);
 			logger.debug('transferStars created');
 		} catch (error) {
 			logger.error('Error in registerStarsTransfer', error);
-			if (!externalTransaction) {
-				await t.rollback();
-			}
+			await t3.rollback();
 			throw error;
 		}
-		if (!externalTransaction) {
-			await t.commit();
-			logger.debug('transaction committed');
-		}
-		return { offer, marketTransaction, payment, transferStars };
+		await t3.commit();
+		logger.debug('transaction committed');
+
+		return { offerData, txMarket, payment, transferStars };
 	}
 }
 
