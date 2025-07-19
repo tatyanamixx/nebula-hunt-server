@@ -531,7 +531,7 @@ async deleteGalaxy(galaxyId, userId) {
 
 ### UpgradeService
 
-Сервис для работы с апгрейдами. Все пользовательские апгрейды и прогресс хранятся в UserState (userUpgrades, completedUpgrades, activeUpgrades, upgradeTree, upgradeMultipliers). UpgradeNode — глобальный шаблон.
+Сервис для работы с апгрейдами. Все пользовательские апгрейды и прогресс хранятся в UserState (userUpgrades, completedUpgrades, activeUpgrades, upgradeTree, upgradeMultipliers). UpgradeNodeTemplate — глобальный шаблон.
 
 **Назначение**: Система апгрейдов и дерева прогрессии.
 
@@ -551,12 +551,12 @@ async initializeUserUpgradeTree(userId, transaction) {
 }
 ```
 
-#### `activateUserUpgradeNodes(userId, transaction)`
+#### `activateUserUpgradeNodeTemplates(userId, transaction)`
 
 Активация новых доступных апгрейдов.
 
 ```javascript
-async activateUserUpgradeNodes(userId, transaction) {
+async activateUserUpgradeNodeTemplates(userId, transaction) {
   // Проверка условий для новых апгрейдов
   // Активация подходящих узлов
   // Обновление дерева
@@ -903,7 +903,7 @@ TokenService
 ├── StateService.getUserState()
 ├── GalaxyService.getUserGalaxies()
 ├── EventService.checkAndTriggerEvents()
-├── UpgradeService.activateUserUpgradeNodes()
+├── UpgradeService.activateUserUpgradeNodeTemplates()
 └── TokenService.generateTokens()
 ```
 

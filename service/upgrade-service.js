@@ -1,7 +1,7 @@
 /**
  * created by Claude on 15.07.2025
  */
-const { UpgradeNode, UserUpgrade, UserState } = require('../models/models');
+const { UpgradeNodeTemplate, UserUpgrade, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
@@ -18,7 +18,7 @@ class UpgradeService {
 			const userUpgrades = [];
 			logger.debug('initializeUserUpgradeTree', userId);
 			// Get all root upgrade nodes (those without parent requirements)
-			const rootNodes = await UpgradeNode.findAll({
+			const rootNodes = await UpgradeNodeTemplate.findAll({
 				where: {
 					active: true,
 					// [Op.or]: [
@@ -87,7 +87,7 @@ class UpgradeService {
 			});
 
 			// Get all active upgrade nodes
-			const upgradeNodes = await UpgradeNode.findAll({
+			const upgradeNodes = await UpgradeNodeTemplate.findAll({
 				where: { active: true },
 				transaction: t,
 			});
@@ -174,7 +174,7 @@ class UpgradeService {
 				where: { userId },
 				include: [
 					{
-						model: UpgradeNode,
+						model: UpgradeNodeTemplate,
 						attributes: [
 							'id',
 							'name',
@@ -209,21 +209,28 @@ class UpgradeService {
 	/**
 	 * Get a specific upgrade for a user
 	 * @param {number} userId - User ID
-	 * @param {string} upgradeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @returns {Promise<Object>} User upgrade
 	 */
-	async getUserUpgrade(userId, upgradeId) {
+	async getUserUpgrade(userId, slug) {
 		try {
+			const upgradeNode = await UpgradeNodeTemplate.findOne({
+				where: { slug },
+			});
+			if (!upgradeNode) {
+				throw ApiError.NotFound('Upgrade node not found');
+			}
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeId,
+					nodeId: upgradeNode.id,
 				},
 				include: [
 					{
-						model: UpgradeNode,
+						model: UpgradeNodeTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'name',
 							'description',
 							'maxLevel',
@@ -268,7 +275,7 @@ class UpgradeService {
 	async getAvailableUpgrades(userId) {
 		try {
 			// Get all active upgrade nodes
-			const upgradeNodes = await UpgradeNode.findAll({
+			const upgradeNodes = await UpgradeNodeTemplate.findAll({
 				where: {
 					active: true,
 				},
@@ -362,15 +369,16 @@ class UpgradeService {
 	/**
 	 * Purchase an upgrade for a user
 	 * @param {number} userId - User ID
-	 * @param {string} upgradeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @returns {Promise<Object>} Updated user upgrade
 	 */
-	async purchaseUpgrade(userId, upgradeId) {
+	async purchaseUpgrade(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
 			// Get the upgrade node
-			const upgradeNode = await UpgradeNode.findByPk(upgradeId, {
+			const upgradeNode = await UpgradeNodeTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -388,7 +396,7 @@ class UpgradeService {
 			let userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeId,
+					nodeId: upgradeNode.id,
 				},
 				transaction: t,
 			});
@@ -437,7 +445,7 @@ class UpgradeService {
 				userUpgrade = await UserUpgrade.create(
 					{
 						userId,
-						nodeId: upgradeId,
+						nodeId: upgradeNode.id,
 						level: 1,
 						progress: 0,
 						targetProgress: 100,
@@ -516,23 +524,29 @@ class UpgradeService {
 	/**
 	 * Update progress for a user upgrade
 	 * @param {number} userId - User ID
-	 * @param {string} upgradeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @param {number} progress - New progress value
 	 * @returns {Promise<Object>} Updated user upgrade
 	 */
-	async updateUpgradeProgress(userId, upgradeId, progress) {
+	async updateUpgradeProgress(userId, slug, progress) {
 		const t = await sequelize.transaction();
 
 		try {
+			const upgradeNode = await UpgradeNodeTemplate.findOne({
+				where: { slug },
+			});
+			if (!upgradeNode) {
+				throw ApiError.NotFound('Upgrade node not found');
+			}
 			// Get the user upgrade
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeId,
+					nodeId: upgradeNode.id,
 				},
 				include: [
 					{
-						model: UpgradeNode,
+						model: UpgradeNodeTemplate,
 					},
 				],
 				transaction: t,

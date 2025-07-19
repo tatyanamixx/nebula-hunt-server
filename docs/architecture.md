@@ -130,7 +130,7 @@ Nebulahunt Server построен на основе многослойной а
 │  ├─ MarketCommission                                        │
 │  ├─ PackageStore                                            │
 │  ├─ PackageTemplate                                         │
-│  ├─ UpgradeNode                                             │
+│  ├─ UpgradeNodeTemplate                                             │
 │  ├─ TaskTemplate                                            │
 │  ├─ EventTemplate                                           │
 │  └─ Token                                                   │
@@ -167,7 +167,7 @@ MarketOffer
 ```
 TaskTemplate
 EventTemplate
-UpgradeNode
+UpgradeNodeTemplate
 PackageTemplate
 ```
 
@@ -191,7 +191,7 @@ PackageTemplate
 
 ### Таблицы шаблонов
 
--   **upgradenodes** - Шаблоны апгрейдов
+-   **UpgradeNodeTemplates** - Шаблоны апгрейдов
 -   **tasktemplates** - Шаблоны заданий
 -   **eventtemplates** - Шаблоны событий
 
@@ -512,4 +512,4 @@ Database → Model Layer → Service Layer → Controller → Response
 
 **UserState** — основная модель для хранения состояния пользователя. Все игровые параметры, события, задачи и апгрейды пользователя централизованно хранятся в JSONB-полях этой таблицы.
 
-**UpgradeNode**, **TaskTemplate** и **EventTemplate** — глобальные шаблоны (справочники), не имеют прямой связи с User. Прогресс и состояние пользователя по задачам, событиям и апгрейдам хранятся в UserState.
+**UpgradeNodeTemplate**, **TaskTemplate** и **EventTemplate** — глобальные шаблоны (справочники), не имеют прямой связи с User. Прогресс и состояние пользователя по задачам, событиям и апгрейдам хранятся в UserState.

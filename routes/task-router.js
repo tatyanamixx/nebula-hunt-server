@@ -53,7 +53,7 @@ router.get(
 
 // Get a specific task for the user
 router.get(
-	'/:taskId',
+	'/:slug',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
@@ -62,7 +62,7 @@ router.get(
 
 // Update progress for a user task
 router.put(
-	'/:taskId/progress',
+	'/:slug/progress',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
@@ -71,11 +71,19 @@ router.put(
 
 // Complete a task for the user
 router.post(
-	'/:taskId/complete',
+	'/:slug/complete',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
 	taskController.completeTask
+);
+
+router.post(
+	'/initialize',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	taskController.initializeUserTasks
 );
 
 module.exports = router;

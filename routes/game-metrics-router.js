@@ -3,7 +3,6 @@
  */
 const Router = require('express').Router;
 const gameMetricsController = require('../controllers/game-metrics-controller');
-const authMiddleware = require('../middlewares/auth-middleware');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
@@ -17,7 +16,6 @@ const router = Router();
  */
 router.get(
 	'/retention',
-	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.retention
@@ -36,7 +34,6 @@ router.get(
  */
 router.get(
 	'/arpu',
-	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.arpu
@@ -55,7 +52,6 @@ router.get(
  */
 router.get(
 	'/ltv',
-	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.ltv
@@ -74,7 +70,6 @@ router.get(
  */
 router.get(
 	'/kfactor',
-	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.kfactor
@@ -93,7 +88,6 @@ router.get(
  */
 router.get(
 	'/conversion',
-	authMiddleware,
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.conversion
@@ -110,5 +104,22 @@ router.get(
  *       200:
  *         description: Conversion metrics
  */
-
+router.get(
+	'/update-active-users',
+	adminMiddleware,
+	rateLimitMiddleware(30, 60),
+	gameMetricsController.updateActiveUsers
+);
+/**
+ * @swagger
+ * /game-metrics/update-active-users:
+ *   get:
+ *     summary: Update active users
+ *     tags: [Metrics]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active users updated
+ */
 module.exports = router;

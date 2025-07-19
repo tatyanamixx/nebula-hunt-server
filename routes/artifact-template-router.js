@@ -3,56 +3,48 @@
  */
 const Router = require('express');
 const router = new Router();
-const eventTemplateController = require('../controllers/event-template-controller');
+const artifactTemplateController = require('../controllers/artifact-template-controller');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
-// Get all event templates
+// Get all artifact templates
 router.get(
 	'/',
 	adminMiddleware,
 	rateLimitMiddleware(60, 60),
-	eventTemplateController.getAllEventTemplates
+	artifactTemplateController.getAllArtifactTemplates
 );
 
-// Get a specific event template
+// Get a specific artifact template
 router.get(
 	'/:slug',
 	adminMiddleware,
 	rateLimitMiddleware(60, 60),
-	eventTemplateController.getEventTemplate
+	artifactTemplateController.getArtifactTemplateBySlug
 );
 
-// Create a new event template
+// Create a new artifact template
 router.post(
 	'/',
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	eventTemplateController.createEventTemplates
+	artifactTemplateController.createArtifactTemplates
 );
 
-// Update an event template
+// Update an artifact template
 router.put(
 	'/:slug',
 	adminMiddleware,
 	rateLimitMiddleware(30, 60),
-	eventTemplateController.updateEventTemplate
+	artifactTemplateController.updateArtifactTemplate
 );
 
-// Delete an event template
+// Delete an artifact template
 router.delete(
 	'/:slug',
 	adminMiddleware,
 	rateLimitMiddleware(10, 60),
-	eventTemplateController.deleteEventTemplate
-);
-
-// Toggle an event template status
-router.put(
-	'/:slug/toggle',
-	adminMiddleware,
-	rateLimitMiddleware(30, 60),
-	eventTemplateController.toggleEventTemplateStatus
+	artifactTemplateController.deleteArtifactTemplate
 );
 
 module.exports = router;

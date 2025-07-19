@@ -25,10 +25,10 @@ const packageStoreService = require('./package-store-service');
 
 class MarketService {
 	/**
-	 * Создание оферты с блокировкой ресурса или объекта
-	 * @param {Object} offerData Данные оферты
-	 * @param {Object} options Дополнительные опции
-	 * @returns {Promise<Object>} Созданная оферта
+	 * Create an offer with resource or object locking
+	 * @param {Object} offerData Offer data
+	 * @param {Object} options Additional options
+	 * @returns {Promise<Object>} Created offer
 	 */
 	async createOffer(offerData, options = {}) {
 		const transaction = await sequelize.transaction();
@@ -37,8 +37,8 @@ class MarketService {
 			const { sellerId, itemType, itemId, price, currency, offerType } =
 				offerData;
 
-			// Проверяем, что объект или ресурс не заблокирован другой офертой
-			// Для системных пакетов (от игры) пропускаем проверку
+			// Check that the object or resource is not locked by another offer
+			// For system packages (from the game) skip the check
 			if (!(sellerId === SYSTEM_USER_ID && itemType === 'package')) {
 				await this.checkItemAvailability(
 					sellerId,
@@ -48,22 +48,22 @@ class MarketService {
 				);
 			}
 
-			// Блокируем ресурс или объект (в зависимости от типа)
-			// Для системных пакетов (от игры) пропускаем блокировку
+			// Lock the resource or object (depending on the type)
+			// For system packages (from the game) skip the lock
 			if (!(sellerId === SYSTEM_USER_ID && itemType === 'package')) {
 				await this.lockItem(sellerId, itemType, itemId, transaction);
 			}
 
-			// Устанавливаем срок действия оферты в зависимости от типа предмета
-			// Для системных пакетов (от игры) не устанавливаем дату истечения
+			// Set the expiration date of the offer depending on the item type
+			// For system packages (from the game) do not set the expiration date
 			let expiresAt = null;
 			let isItemLocked = true;
 
 			if (sellerId === SYSTEM_USER_ID && itemType === 'package') {
-				// Системные пакеты от игры не имеют даты истечения и не блокируются
+				// System packages from the game do not have an expiration date and are not locked
 				isItemLocked = false;
 			} else {
-				// Для остальных оферт устанавливаем дату истечения
+				// For other offers set the expiration date
 				const expirationDays =
 					offers.expirationDays[itemType] ||
 					offers.expirationDays.default;
@@ -71,7 +71,7 @@ class MarketService {
 				expiresAt.setDate(expiresAt.getDate() + expirationDays);
 			}
 
-			// Создаем оферту
+			// Create an offer
 			const offer = await MarketOffer.create(
 				{
 					sellerId,
@@ -95,14 +95,14 @@ class MarketService {
 	}
 
 	/**
-	 * Проверка доступности ресурса или объекта для создания оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} itemType Тип предмета
-	 * @param {string} itemId ID предмета
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Check the availability of a resource or object for creating an offer
+	 * @param {number} userId User ID
+	 * @param {string} itemType Item type
+	 * @param {string} itemId Item ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkItemAvailability(userId, itemType, itemId, transaction) {
-		// Проверяем, есть ли уже активная оферта на этот предмет
+		// Check if there is an active offer for this item
 		const existingOffer = await MarketOffer.findOne({
 			where: {
 				sellerId: userId,
@@ -115,13 +115,10 @@ class MarketService {
 		});
 
 		if (existingOffer) {
-			throw new ApiError(
-				400,
-				`Этот ${itemType} уже выставлен на продажу`
-			);
+			throw new ApiError(400, `This ${itemType} is already on sale`);
 		}
 
-		// Проверяем владение предметом в зависимости от типа
+		// Check the ownership of the item depending on the type
 		switch (itemType) {
 			case 'galaxy':
 				await this.checkGalaxyOwnership(userId, itemId, transaction);
@@ -137,7 +134,7 @@ class MarketService {
 				);
 				break;
 			case 'package':
-				// Для пакетов отдельная логика проверки
+				// For packages, a separate check logic
 				await this.checkPackageAvailability(
 					userId,
 					itemId,
@@ -150,10 +147,10 @@ class MarketService {
 	}
 
 	/**
-	 * Проверка владения галактикой
-	 * @param {number} userId ID пользователя
-	 * @param {string} galaxyId ID галактики
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Check the ownership of a galaxy
+	 * @param {number} userId User ID
+	 * @param {string} galaxyId Galaxy ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkGalaxyOwnership(userId, galaxyId, transaction) {
 		const galaxy = await Galaxy.findOne({
@@ -165,18 +162,15 @@ class MarketService {
 		});
 
 		if (!galaxy) {
-			throw new ApiError(
-				403,
-				'Вы не являетесь владельцем этой галактики'
-			);
+			throw new ApiError(403, 'You are not the owner of this galaxy');
 		}
 	}
 
 	/**
-	 * Проверка владения артефактом
-	 * @param {number} userId ID пользователя
-	 * @param {string} artifactId ID артефакта
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Check the ownership of an artifact
+	 * @param {number} userId User ID
+	 * @param {string} artifactId Artifact ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkArtifactOwnership(userId, artifactId, transaction) {
 		const artifact = await Artifact.findOne({
@@ -188,18 +182,15 @@ class MarketService {
 		});
 
 		if (!artifact) {
-			throw new ApiError(
-				403,
-				'Вы не являетесь владельцем этого артефакта'
-			);
+			throw new ApiError(403, 'You are not the owner of this artifact');
 		}
 	}
 
 	/**
-	 * Проверка наличия ресурсов
-	 * @param {number} userId ID пользователя
-	 * @param {string} resourceInfo Информация о ресурсе в формате "тип_количество"
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Check the availability of resources
+	 * @param {number} userId User ID
+	 * @param {string} resourceInfo Resource information in the format "type_amount"
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkResourceAvailability(userId, resourceInfo, transaction) {
 		const [resourceType, amountStr] = resourceInfo.split('_');
@@ -222,17 +213,17 @@ class MarketService {
 		switch (resourceType) {
 			case 'stardust':
 				if (userState.stardust < amount) {
-					throw new ApiError(400, 'Недостаточно звездной пыли');
+					throw new ApiError(400, 'Not enough stardust');
 				}
 				break;
 			case 'darkMatter':
 				if (userState.darkMatter < amount) {
-					throw new ApiError(400, 'Недостаточно темной материи');
+					throw new ApiError(400, 'Not enough dark matter');
 				}
 				break;
 			case 'tgStars':
 				if (userState.tgStars < amount) {
-					throw new ApiError(400, 'Недостаточно звезд');
+					throw new ApiError(400, 'Not enough tg stars');
 				}
 				break;
 			default:
@@ -241,13 +232,13 @@ class MarketService {
 	}
 
 	/**
-	 * Проверка наличия пакета
-	 * @param {number} userId ID пользователя
-	 * @param {string} packageId ID пакета
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Check the availability of a package
+	 * @param {number} userId User ID
+	 * @param {string} packageId Package ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkPackageAvailability(userId, packageId, transaction) {
-		// Если продавец - системный пользователь (игра), пропускаем проверку
+		// If the seller is the system user (game), skip the check
 		if (userId === SYSTEM_USER_ID) {
 			return;
 		}
@@ -270,11 +261,11 @@ class MarketService {
 	}
 
 	/**
-	 * Блокировка ресурса или объекта при создании оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} itemType Тип предмета
-	 * @param {string} itemId ID предмета
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Lock a resource or object when creating an offer
+	 * @param {number} userId User ID
+	 * @param {string} itemType Item type
+	 * @param {string} itemId Item ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async lockItem(userId, itemType, itemId, transaction) {
 		if (itemType === 'resource') {
@@ -282,14 +273,14 @@ class MarketService {
 		} else if (itemType === 'package') {
 			await this.lockPackage(userId, itemId, transaction);
 		}
-		// Для галактик и артефактов достаточно флага isItemLocked в оферте
+		// For galaxies and artifacts, only the isItemLocked flag in the offer is enough
 	}
 
 	/**
-	 * Блокировка ресурса при создании оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} resourceInfo Информация о ресурсе в формате "тип_количество"
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Lock a resource when creating an offer
+	 * @param {number} userId User ID
+	 * @param {string} resourceInfo Resource information in the format "type_amount"
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async lockResource(userId, resourceInfo, transaction) {
 		const [resourceType, amountStr] = resourceInfo.split('_');
@@ -300,7 +291,7 @@ class MarketService {
 			transaction,
 		});
 
-		// Блокируем ресурсы, уменьшая доступное количество
+		// Lock resources, reducing the available amount
 		switch (resourceType) {
 			case 'stardust':
 				await userState.update(
@@ -335,13 +326,13 @@ class MarketService {
 	}
 
 	/**
-	 * Блокировка пакета при создании оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} packageId ID пакета
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Lock a package when creating an offer
+	 * @param {number} userId User ID
+	 * @param {string} packageId Package ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async lockPackage(userId, packageId, transaction) {
-		// Если продавец - системный пользователь (игра), не блокируем пакет
+		// If the seller is the system user (game), do not lock the package
 		if (userId === SYSTEM_USER_ID) {
 			return;
 		}
@@ -362,14 +353,14 @@ class MarketService {
 	}
 
 	/**
-	 * Разблокировка ресурса или объекта при отмене или истечении срока оферты
-	 * @param {Object} offer Оферта
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Unlock a resource or object when cancelling or expiring an offer
+	 * @param {Object} offer Offer
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async unlockItem(offer, transaction) {
 		const { sellerId, itemType, itemId, isItemLocked } = offer;
 
-		// Если предмет не заблокирован, ничего не делаем
+		// If the item is not locked, do nothing
 		if (!isItemLocked) {
 			return;
 		}
@@ -380,7 +371,7 @@ class MarketService {
 			await this.unlockPackage(sellerId, itemId, transaction);
 		}
 
-		// Обновляем флаг блокировки в оферте
+		// Update the isItemLocked flag in the offer
 		await offer.update(
 			{
 				isItemLocked: false,
@@ -390,10 +381,10 @@ class MarketService {
 	}
 
 	/**
-	 * Разблокировка ресурса при отмене или истечении срока оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} resourceInfo Информация о ресурсе в формате "тип_количество"
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Unlock a resource when cancelling or expiring an offer
+	 * @param {number} userId User ID
+	 * @param {string} resourceInfo Resource information in the format "type_amount"
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async unlockResource(userId, resourceInfo, transaction) {
 		const [resourceType, amountStr] = resourceInfo.split('_');
@@ -406,12 +397,12 @@ class MarketService {
 
 		if (!userState) {
 			logger.error(
-				`Не удалось найти состояние пользователя ${userId} при разблокировке ресурса`
+				`Failed to find the user state ${userId} when unlocking the resource`
 			);
 			return;
 		}
 
-		// Разблокируем ресурсы, возвращая их в доступное количество
+		// Unlock resources, returning them to the available amount
 		switch (resourceType) {
 			case 'stardust':
 				await userState.update(
@@ -453,13 +444,13 @@ class MarketService {
 	}
 
 	/**
-	 * Разблокировка пакета при отмене или истечении срока оферты
-	 * @param {number} userId ID пользователя
-	 * @param {string} packageId ID пакета
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Unlock a package when cancelling or expiring an offer
+	 * @param {number} userId User ID
+	 * @param {string} packageId Package ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async unlockPackage(userId, packageId, transaction) {
-		// Если продавец - системный пользователь (игра), не разблокируем пакет
+		// If the seller is the system user (game), do not unlock the package
 		if (userId === SYSTEM_USER_ID) {
 			return;
 		}
@@ -480,10 +471,10 @@ class MarketService {
 	}
 
 	/**
-	 * Отмена оферты и разблокировка ресурсов или объекта
-	 * @param {number} offerId ID оферты
-	 * @param {number} userId ID пользователя (для проверки прав)
-	 * @returns {Promise<Object>} Обновленная оферта
+	 * Cancel an offer and unlock a resource or object
+	 * @param {number} offerId Offer ID
+	 * @param {number} userId User ID (for checking permissions)
+	 * @returns {Promise<Object>} Updated offer
 	 */
 	async cancelOffer(offerId, userId) {
 		const transaction = await sequelize.transaction();
@@ -495,7 +486,7 @@ class MarketService {
 				throw new ApiError(404, 'Offer not found');
 			}
 
-			// Проверяем, что пользователь является продавцом или администратором
+			// Check that the user is the seller or an administrator
 			if (offer.sellerId !== userId && userId !== SYSTEM_USER_ID) {
 				throw new ApiError(
 					403,
@@ -503,15 +494,15 @@ class MarketService {
 				);
 			}
 
-			// Проверяем, что оферта активна
+			// Check that the offer is active
 			if (offer.status !== 'ACTIVE') {
 				throw new ApiError(400, 'Only active offers can be cancelled');
 			}
 
-			// Разблокируем ресурс или объект
+			// Unlock the resource or object
 			await this.unlockItem(offer, transaction);
 
-			// Обновляем статус оферты
+			// Update the status of the offer
 			await offer.update(
 				{
 					status: 'CANCELLED',
@@ -529,10 +520,10 @@ class MarketService {
 	}
 
 	/**
-	 * Завершение оферты при покупке
-	 * @param {number} offerId ID оферты
-	 * @param {number} buyerId ID покупателя
-	 * @returns {Promise<Object>} Информация о транзакции
+	 * Complete an offer when buying
+	 * @param {number} offerId Offer ID
+	 * @param {number} buyerId Buyer ID
+	 * @returns {Promise<Object>} Information about the transaction
 	 */
 	async completeOffer(offerId, buyerId) {
 		const transaction = await sequelize.transaction();
@@ -544,17 +535,17 @@ class MarketService {
 				throw new ApiError(404, 'Offer not found');
 			}
 
-			// Проверяем, что оферта активна
+			// Check that the offer is active
 			if (offer.status !== 'ACTIVE') {
 				throw new ApiError(400, 'Only active offers can be purchased');
 			}
 
-			// Проверяем, что покупатель не является продавцом
+			// Check that the buyer is not the seller
 			if (offer.sellerId === buyerId) {
 				throw new ApiError(400, 'You cannot buy your own offer');
 			}
 
-			// Создаем рыночную транзакцию
+			// Create a market transaction
 			const marketTransaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,
@@ -566,7 +557,7 @@ class MarketService {
 				{ transaction }
 			);
 
-			// Обрабатываем платеж
+			// Process the payment
 			const paymentTransaction = await this.processPayment(
 				offer,
 				buyerId,
@@ -574,10 +565,10 @@ class MarketService {
 				transaction
 			);
 
-			// Передаем право собственности на предмет
+			// Transfer ownership of the item
 			await this.transferItemOwnership(offer, buyerId, transaction);
 
-			// Обновляем статус оферты
+			// Update the status of the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -599,17 +590,17 @@ class MarketService {
 	}
 
 	/**
-	 * Обработка платежа при покупке
-	 * @param {Object} offer Оферта
-	 * @param {number} buyerId ID покупателя
-	 * @param {number} marketTransactionId ID рыночной транзакции
+	 * Process the payment when buying
+	 * @param {Object} offer Offer
+	 * @param {number} buyerId Buyer ID
+	 * @param {number} marketTransactionId Market transaction ID
 	 * @param {Transaction} transaction Транзакция Sequelize
-	 * @returns {Promise<Object>} Информация о платеже
+	 * @returns {Promise<Object>} Information about the payment
 	 */
 	async processPayment(offer, buyerId, marketTransactionId, transaction) {
 		const { sellerId, price, currency } = offer;
 
-		// Проверяем наличие средств у покупателя
+		// Check that the buyer has enough funds
 		const buyerState = await UserState.findOne({
 			where: { userId: buyerId },
 			transaction,
@@ -619,7 +610,7 @@ class MarketService {
 			throw new ApiError(404, 'Buyer state not found');
 		}
 
-		// Проверяем достаточно ли средств у покупателя
+		// Check that the buyer has enough funds
 		switch (currency) {
 			case 'stardust':
 				if (buyerState.stardust < price) {
@@ -637,23 +628,23 @@ class MarketService {
 				}
 				break;
 			case 'tonToken':
-				// Для TON токенов проверка происходит на стороне клиента
+				// For TON tokens, the check is done on the client side
 				break;
 			default:
 				throw new ApiError(400, 'Unknown currency');
 		}
 
-		// Если это не TON, списываем средства у покупателя
+		// If this is not TON, deduct the funds from the buyer
 		if (currency !== 'tonToken') {
 			await this.deductCurrency(buyerId, currency, price, transaction);
 		}
 
-		// Рассчитываем комиссию
+		// Calculate the commission
 		const commissionRate = commission[currency] || 0;
 		const commissionAmount = price * commissionRate;
 		const sellerAmount = price - commissionAmount;
 
-		// Создаем запись о комиссии
+		// Create a record about the commission
 		if (commissionAmount > 0) {
 			await MarketCommission.create(
 				{
@@ -666,7 +657,7 @@ class MarketService {
 			);
 		}
 
-		// Если это не TON, зачисляем средства продавцу
+		// If this is not TON, add the funds to the seller
 		if (currency !== 'tonToken') {
 			await this.addCurrency(
 				sellerId,
@@ -676,7 +667,7 @@ class MarketService {
 			);
 		}
 
-		// Создаем платежную транзакцию
+		// Create a payment transaction
 		return await PaymentTransaction.create(
 			{
 				marketTransactionId,
@@ -693,11 +684,11 @@ class MarketService {
 	}
 
 	/**
-	 * Списание валюты у пользователя
-	 * @param {number} userId ID пользователя
-	 * @param {string} currency Тип валюты
-	 * @param {number} amount Сумма
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Deduct currency from the user
+	 * @param {number} userId User ID
+	 * @param {string} currency Currency type
+	 * @param {number} amount Amount
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async deductCurrency(userId, currency, amount, transaction) {
 		const userState = await UserState.findOne({
@@ -734,11 +725,11 @@ class MarketService {
 	}
 
 	/**
-	 * Зачисление валюты пользователю
-	 * @param {number} userId ID пользователя
-	 * @param {string} currency Тип валюты
-	 * @param {number} amount Сумма
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Add currency to the user
+	 * @param {number} userId User ID
+	 * @param {string} currency Currency type
+	 * @param {number} amount Amount
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async addCurrency(userId, currency, amount, transaction) {
 		const userState = await UserState.findOne({
@@ -747,11 +738,11 @@ class MarketService {
 		});
 
 		if (!userState) {
-			// Если это системный пользователь, ничего не делаем
+			// If this is the system user, do nothing
 			if (userId === SYSTEM_USER_ID) {
 				return;
 			}
-			throw new ApiError(404, 'Состояние пользователя не найдено');
+			throw new ApiError(404, 'User state not found');
 		}
 
 		switch (currency) {
@@ -783,10 +774,10 @@ class MarketService {
 	}
 
 	/**
-	 * Передача права собственности на предмет
-	 * @param {Object} offer Оферта
-	 * @param {number} buyerId ID покупателя
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Transfer ownership of an item
+	 * @param {Object} offer Offer
+	 * @param {number} buyerId Buyer ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async transferItemOwnership(offer, buyerId, transaction) {
 		const { sellerId, itemType, itemId } = offer;
@@ -818,16 +809,16 @@ class MarketService {
 				await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'package':
-				// Для системных пакетов (от игры) создаем новую запись для покупателя
+				// For system packages (from the game), create a new record for the buyer
 				if (sellerId === SYSTEM_USER_ID) {
 					const packageData = await PackageStore.findByPk(itemId, {
 						transaction,
 					});
 					if (packageData) {
-						// Создаем новую запись пакета для покупателя
+						// Create a new record for the buyer
 						await PackageStore.create(
 							{
-								id: `${itemId}_${buyerId}_${Date.now()}`, // Генерируем уникальный ID
+								id: `${itemId}_${buyerId}_${Date.now()}`, // Generate a unique ID
 								userId: buyerId,
 								amount: packageData.amount,
 								resource: packageData.resource,
@@ -841,7 +832,7 @@ class MarketService {
 						);
 					}
 				} else {
-					// Для обычных пользовательских пакетов просто передаем владение
+					// For ordinary user packages, simply transfer ownership
 					await PackageStore.update(
 						{
 							userId: buyerId,
@@ -858,10 +849,10 @@ class MarketService {
 	}
 
 	/**
-	 * Передача ресурса от продавца покупателю
-	 * @param {Object} offer Оферта
-	 * @param {number} buyerId ID покупателя
-	 * @param {Transaction} transaction Транзакция Sequelize
+	 * Transfer a resource from the seller to the buyer
+	 * @param {Object} offer Offer
+	 * @param {number} buyerId Buyer ID
+	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async transferResource(offer, buyerId, transaction) {
 		const [resourceType, amountStr] = offer.itemId.split('_');
@@ -872,7 +863,7 @@ class MarketService {
 			transaction,
 		});
 
-		// Зачисляем ресурс покупателю
+		// Add the resource to the buyer
 		switch (resourceType) {
 			case 'stardust':
 				await buyerState.update(
@@ -900,8 +891,8 @@ class MarketService {
 				break;
 		}
 
-		// Для продавца ресурс уже был списан при создании оферты
-		// Нужно только уменьшить количество заблокированных ресурсов
+		// For the seller, the resource was already deducted when the offer was created
+		// We only need to reduce the number of locked resources
 		const sellerState = await UserState.findOne({
 			where: { userId: offer.sellerId },
 			transaction,
@@ -947,22 +938,22 @@ class MarketService {
 	}
 
 	/**
-	 * Проверка и обработка истекших оферт
-	 * @returns {Promise<number>} Количество обработанных оферт
+	 * Check and process expired offers
+	 * @returns {Promise<number>} Number of processed offers
 	 */
 	async processExpiredOffers() {
 		const transaction = await sequelize.transaction();
 
 		try {
-			// Находим все истекшие активные оферты
-			// Исключаем системные пакеты от игры (они не имеют даты истечения)
+			// Find all expired active offers
+			// Exclude system packages from the game (they do not have an expiration date)
 			const expiredOffers = await MarketOffer.findAll({
 				where: {
 					status: 'ACTIVE',
 					expiresAt: {
 						[Op.lt]: new Date(),
 					},
-					// Исключаем системные пакеты от игры
+					// Exclude system packages from the game
 					[Op.not]: {
 						sellerId: SYSTEM_USER_ID,
 						itemType: 'package',
@@ -971,12 +962,12 @@ class MarketService {
 				transaction,
 			});
 
-			// Обрабатываем каждую истекшую оферту
+			// Process each expired offer
 			for (const offer of expiredOffers) {
-				// Разблокируем ресурс или объект
+				// Unlock the resource or object
 				await this.unlockItem(offer, transaction);
 
-				// Обновляем статус оферты
+				// Update the status of the offer
 				await offer.update(
 					{
 						status: 'EXPIRED',
@@ -1000,44 +991,44 @@ class MarketService {
 	}
 
 	/**
-	 * Регистрация передачи ресурса за апгрейд
+	 * Register the transfer of a resource for an upgrade
 	 * @param {Object} params { userId, nodeId, amount, resource }
-	 * @returns {Promise<Object>} Результат операции
+	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerUpgradePayment({ userId, nodeId, amount, resource }) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Создаем оферту от системы для передачи ресурса
+			// Create an offer from the system to transfer the resource
 			const offerData = {
-				sellerId: userId, // Пользователь "продает" ресурс системе
+				sellerId: userId, // The user "sells" the resource to the system
 				itemType: 'resource',
 				itemId: `${resource}_${amount}`,
-				price: 0, // Бесплатно, т.к. это обмен ресурса на апгрейд
-				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				price: 0, // Free, because this is an exchange of resources for an upgrade
+				currency: 'tonToken', // The currency is not important, because the price is 0
 				offerType: 'SYSTEM',
 			};
 
-			// Проверяем наличие ресурса
+			// Check that the resource is available
 			await this.checkResourceAvailability(
 				userId,
 				{ type: resource, amount },
 				t
 			);
 
-			// Блокируем ресурс
+			// Lock the resource
 			await this.lockResource(userId, { type: resource, amount }, t);
 
-			// Создаем оферту
+			// Create an offer
 			const offer = await MarketOffer.create(offerData, {
 				transaction: t,
 			});
 
-			// Создаем транзакцию
+			// Create a transaction
 			const marketTransaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,
-					buyerId: SYSTEM_USER_ID, // Система "покупает" ресурс
+					buyerId: SYSTEM_USER_ID, // The system "buys" the resource
 					sellerId: userId,
 					status: 'COMPLETED',
 					completedAt: new Date(),
@@ -1045,14 +1036,14 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Создаем запись о транзакции
+			// Create a record about the transaction
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: marketTransaction.id,
 					fromAccount: userId,
 					toAccount: SYSTEM_USER_ID,
 					amount,
-					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					currency: 'tonToken', // The currency is not important, because the price is 0
 					txType: 'UPGRADE_RESOURCE',
 					status: 'CONFIRMED',
 					confirmedAt: new Date(),
@@ -1060,10 +1051,10 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Разблокируем и передаем ресурс системе
+			// Unlock and transfer the resource to the system
 			await this.transferResource(offer, SYSTEM_USER_ID, t);
 
-			// Завершаем оферту
+			// Complete the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -1075,7 +1066,7 @@ class MarketService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Ресурс передан системе за апгрейд',
+				message: 'Resource transferred to the system for an upgrade',
 				nodeId,
 				resource,
 				amount,
@@ -1091,34 +1082,34 @@ class MarketService {
 	}
 
 	/**
-	 * Регистрация передачи ресурса за выполнение задачи
+	 * Register the transfer of a resource for a task
 	 * @param {Object} params { userId, taskId, amount, resource }
-	 * @returns {Promise<Object>} Результат операции
+	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerTaskReward({ userId, taskId, amount, resource }) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Создаем оферту от системы для передачи ресурса
+			// Create an offer from the system to transfer the resource
 			const offerData = {
-				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
 				itemType: 'resource',
 				itemId: `${resource}_${amount}`,
-				price: 0, // Бесплатно, т.к. это награда за задачу
-				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				price: 0, // Free, because this is a reward for a task
+				currency: 'tonToken', // The currency is not important, because the price is 0
 				offerType: 'SYSTEM',
 			};
 
-			// Создаем оферту
+			// Create an offer
 			const offer = await MarketOffer.create(offerData, {
 				transaction: t,
 			});
 
-			// Создаем транзакцию
+			// Create a transaction
 			const marketTransaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,
-					buyerId: userId, // Пользователь "покупает" ресурс
+					buyerId: userId, // The user "buys" the resource
 					sellerId: SYSTEM_USER_ID,
 					status: 'COMPLETED',
 					completedAt: new Date(),
@@ -1126,14 +1117,14 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Создаем запись о транзакции
+			// Create a record about the transaction
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: marketTransaction.id,
 					fromAccount: SYSTEM_USER_ID,
 					toAccount: userId,
 					amount,
-					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					currency: 'tonToken', // The currency is not important, because the price is 0
 					txType: 'TASK_RESOURCE',
 					status: 'CONFIRMED',
 					confirmedAt: new Date(),
@@ -1141,10 +1132,10 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Передаем ресурс пользователю
+			// Transfer the resource to the user
 			await this.transferResource(offer, userId, t);
 
-			// Завершаем оферту
+			// Complete the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -1156,7 +1147,8 @@ class MarketService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Ресурс передан пользователю за выполнение задачи',
+				message:
+					'Resource transferred to the user for completing a task',
 				taskId,
 				resource,
 				amount,
@@ -1172,34 +1164,34 @@ class MarketService {
 	}
 
 	/**
-	 * Регистрация передачи ресурса за событие
+	 * Register the transfer of a resource for an event
 	 * @param {Object} params { userId, eventId, amount, resource }
-	 * @returns {Promise<Object>} Результат операции
+	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerEventReward({ userId, eventId, amount, resource }) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Создаем оферту от системы для передачи ресурса
+			// Create an offer from the system to transfer the resource
 			const offerData = {
-				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
 				itemType: 'resource',
 				itemId: `${resource}_${amount}`,
-				price: 0, // Бесплатно, т.к. это награда за событие
-				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				price: 0, // Free, because this is a reward for an event
+				currency: 'tonToken', // The currency is not important, because the price is 0
 				offerType: 'SYSTEM',
 			};
 
-			// Создаем оферту
+			// Create an offer
 			const offer = await MarketOffer.create(offerData, {
 				transaction: t,
 			});
 
-			// Создаем транзакцию
+			// Create a transaction
 			const marketTransaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,
-					buyerId: userId, // Пользователь "покупает" ресурс
+					buyerId: userId, // The user "buys" the resource
 					sellerId: SYSTEM_USER_ID,
 					status: 'COMPLETED',
 					completedAt: new Date(),
@@ -1207,14 +1199,14 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Создаем запись о транзакции
+			// Create a record about the transaction
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: marketTransaction.id,
 					fromAccount: SYSTEM_USER_ID,
 					toAccount: userId,
 					amount,
-					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					currency: 'tonToken', // The currency is not important, because the price is 0
 					txType: 'EVENT_RESOURCE',
 					status: 'CONFIRMED',
 					confirmedAt: new Date(),
@@ -1222,10 +1214,10 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Передаем ресурс пользователю
+			// Transfer the resource to the user
 			await this.transferResource(offer, userId, t);
 
-			// Завершаем оферту
+			// Complete the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -1237,7 +1229,7 @@ class MarketService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Ресурс передан пользователю за событие',
+				message: 'Resource transferred to the user for an event',
 				eventId,
 				resource,
 				amount,
@@ -1253,34 +1245,34 @@ class MarketService {
 	}
 
 	/**
-	 * Регистрация передачи ресурса за фарминг
+	 * Register the transfer of a resource for farming
 	 * @param {Object} params { userId, amount, resource, source }
-	 * @returns {Promise<Object>} Результат операции
+	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerFarmingReward({ userId, amount, resource, source }) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Создаем оферту от системы для передачи ресурса
+			// Create an offer from the system to transfer the resource
 			const offerData = {
-				sellerId: SYSTEM_USER_ID, // Система "продает" ресурс пользователю
+				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
 				itemType: 'resource',
 				itemId: `${resource}_${amount}`,
-				price: 0, // Бесплатно, т.к. это награда за фарминг
-				currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+				price: 0, // Free, because this is a reward for farming
+				currency: 'tonToken', // The currency is not important, because the price is 0
 				offerType: 'SYSTEM',
 			};
 
-			// Создаем оферту
+			// Create an offer
 			const offer = await MarketOffer.create(offerData, {
 				transaction: t,
 			});
 
-			// Создаем транзакцию
+			// Create a transaction
 			const marketTransaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,
-					buyerId: userId, // Пользователь "покупает" ресурс
+					buyerId: userId, // The user "buys" the resource
 					sellerId: SYSTEM_USER_ID,
 					status: 'COMPLETED',
 					completedAt: new Date(),
@@ -1288,14 +1280,14 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Создаем запись о транзакции
+			// Create a record about the transaction
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: marketTransaction.id,
 					fromAccount: SYSTEM_USER_ID,
 					toAccount: userId,
 					amount,
-					currency: 'tonToken', // Валюта не имеет значения, т.к. цена 0
+					currency: 'tonToken', // The currency is not important, because the price is 0
 					txType: 'FARMING_RESOURCE',
 					status: 'CONFIRMED',
 					confirmedAt: new Date(),
@@ -1303,10 +1295,10 @@ class MarketService {
 				{ transaction: t }
 			);
 
-			// Передаем ресурс пользователю
+			// Transfer the resource to the user
 			await this.transferResource(offer, userId, t);
 
-			// Завершаем оферту
+			// Complete the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -1318,7 +1310,7 @@ class MarketService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Ресурс передан пользователю за фарминг',
+				message: 'Resource transferred to the user for farming',
 				source,
 				resource,
 				amount,
@@ -1334,26 +1326,25 @@ class MarketService {
 	}
 
 	/**
-	 * Создание оферты на продажу ресурса
-	 * @param {number} userId ID пользователя
-	 * @param {string} resourceType Тип ресурса
-	 * @param {number} amount Количество
-	 * @param {string} price Цена
-	 * @param {string} currency Валюта
-	 * @returns {Promise<Object>} Созданная оферта
+	 * Create an offer to sell a resource
+	 * @param {number} userId User ID
+	 * @param {string} resourceType Resource type
+	 * @param {string} price Price
+	 * @param {string} currency Currency
+	 * @returns {Promise<Object>} Created offer
 	 */
 	async createResourceOffer(userId, resourceType, amount, price, currency) {
-		// Проверяем, что для P2P используется только TON
+		// Check that for P2P only TON is used
 		if (currency !== 'tonToken') {
 			throw ApiError.BadRequest(
-				'Для P2P транзакций можно использовать только TON'
+				'For P2P transactions, only TON can be used'
 			);
 		}
 
-		// Формируем itemId в формате "тип_количество"
+		// Form the itemId in the format "type_amount"
 		const itemId = `${resourceType}_${amount}`;
 
-		// Создаем оферту с блокировкой ресурса
+		// Create an offer with a locked resource
 		return await this.createOffer({
 			sellerId: userId,
 			itemType: 'resource',
@@ -1365,16 +1356,16 @@ class MarketService {
 	}
 
 	/**
-	 * Выставление инвойса (создание сделки и платежа)
+	 * Create an invoice (create a transaction and a payment)
 	 * @param {Object} params { offerId, buyerId }
 	 */
 	async createInvoice({ offerId, buyerId }) {
-		// Получаем оферту
+		// Get the offer
 		const offer = await MarketOffer.findByPk(offerId);
 		if (!offer || offer.status !== 'ACTIVE')
 			throw new Error('Offer not found or not active');
 
-		// Создаем сделку
+		// Create a transaction
 		const transaction = await MarketTransaction.create({
 			offerId: offer.id,
 			buyerId,
@@ -1382,7 +1373,7 @@ class MarketService {
 			status: 'PENDING',
 		});
 
-		// Создаем платеж: покупатель -> контракт/система
+		// Create a payment: buyer -> contract/system
 		const payment = await PaymentTransaction.create({
 			marketTransactionId: transaction.id,
 			fromAccount: buyerId,
@@ -1397,11 +1388,11 @@ class MarketService {
 	}
 
 	/**
-	 * Проведение сделки: проверка оплаты, смена владельца артефакта, завершение сделки, обновление балансов
+	 * Process a deal: check the payment, change the owner of the artifact, complete the deal, update the balances
 	 * @param {Object} params { transactionId, blockchainTxId }
 	 */
 	async processDeal({ transactionId, blockchainTxId }) {
-		// Транзакция БД для атомарности
+		// Database transaction for atomicity
 		return await sequelize.transaction(async (t) => {
 			const transaction = await MarketTransaction.findByPk(
 				transactionId,
@@ -1418,7 +1409,7 @@ class MarketService {
 			if (!offer || offer.status !== 'ACTIVE')
 				throw new Error('Offer not found or not active');
 
-			// Находим платеж и подтверждаем его
+			// Find the payment and confirm it
 			const payment = await PaymentTransaction.findOne({
 				where: {
 					marketTransactionId: transaction.id,
@@ -1430,13 +1421,13 @@ class MarketService {
 			if (payment.status !== 'PENDING')
 				throw new Error('Payment already processed');
 
-			// Подтверждаем платеж
+			// Confirm the payment
 			payment.status = 'CONFIRMED';
 			payment.blockchainTxId = blockchainTxId;
 			payment.confirmedAt = new Date();
 			await payment.save({ transaction: t });
 
-			// --- МУЛЬТИВАЛЮТНОЕ ОБНОВЛЕНИЕ БАЛАНСОВ ---
+			// --- MULTI-CURRENCY UPDATE BALANCES ---
 			const currencyMap = {
 				stardust: 'stardustCount',
 				darkMatter: 'darkMatterCount',
@@ -1448,7 +1439,7 @@ class MarketService {
 
 			const price = Number(offer.price);
 
-			// Получаем состояние SYSTEM (контракт) - зачисляются средства на контракт
+			// Get the state of SYSTEM (contract) - funds are credited to the contract
 			const systemState = await UserState.findOne({
 				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
@@ -1457,11 +1448,11 @@ class MarketService {
 			if (typeof systemState.state[balanceField] !== 'number')
 				systemState.state[balanceField] = 0;
 
-			// Зачисляем средства на контракт
+			// Credit funds to the contract
 			systemState.state[balanceField] += price;
 			await systemState.save({ transaction: t });
 
-			// Получаем состояние покупателя
+			// Get the state of the buyer
 			const buyerState = await UserState.findOne({
 				where: { userId: transaction.buyerId },
 				transaction: t,
@@ -1469,13 +1460,13 @@ class MarketService {
 			if (!buyerState) throw new Error('Buyer state not found');
 
 			if (offer.itemType === 'package') {
-				// Логика для пакетов
+				// Logic for packages
 				const pkg = await PackageStore.findByPk(offer.itemId, {
 					transaction: t,
 				});
 				if (!pkg) throw new Error('Package not found');
 
-				// Начисляем игровую валюту покупателю
+				// Add game currency to the buyer
 				const gameField = currencyMap[pkg.resource];
 				if (!gameField) throw new Error('Unknown game currency');
 				if (typeof buyerState.state[gameField] !== 'number')
@@ -1484,7 +1475,7 @@ class MarketService {
 
 				await buyerState.save({ transaction: t });
 
-				// Создаем транзакцию контракт -> покупатель (игровая валюта)
+				// Create a transaction contract -> buyer (game currency)
 				await PaymentTransaction.create(
 					{
 						marketTransactionId: transaction.id,
@@ -1498,20 +1489,20 @@ class MarketService {
 					{ transaction: t }
 				);
 
-				// Завершаем сделку (оферта остается активной для SYSTEM пакетов)
+				// Complete the deal (the offer remains active for SYSTEM packages)
 				transaction.status = 'COMPLETED';
 				transaction.completedAt = new Date();
 				await transaction.save({ transaction: t });
 
 				return { transaction, offer, package: pkg };
 			} else {
-				// Логика для обычных сделок (артефакты, галактики)
+				// Logic for normal deals (artifacts, galaxies)
 				const commissionRate = await getCommissionRate(offer.currency);
 				const commission =
 					Math.floor(price * commissionRate * 100) / 100;
 				const sellerAmount = price - commission;
 
-				// Переводим артефакт новому владельцу
+				// Transfer the artifact to the new owner
 				if (offer.itemType === 'artifact') {
 					const artifact = await Artifact.findByPk(offer.itemId, {
 						transaction: t,
@@ -1521,7 +1512,7 @@ class MarketService {
 					await artifact.save({ transaction: t });
 				}
 
-				// Переводим галактику новому владельцу
+				// Transfer the galaxy to the new owner
 				if (offer.itemType === 'galaxy') {
 					const galaxy = await Galaxy.findByPk(offer.itemId, {
 						transaction: t,
@@ -1531,14 +1522,14 @@ class MarketService {
 					await galaxy.save({ transaction: t });
 				}
 
-				// Завершаем сделку и оферту
+				// Complete the deal and the offer
 				transaction.status = 'COMPLETED';
 				transaction.completedAt = new Date();
 				await transaction.save({ transaction: t });
 				offer.status = 'COMPLETED';
 				await offer.save({ transaction: t });
 
-				// Переводим с контракта продавцу (с учетом комиссии)
+				// Transfer the contract to the seller (with the commission)
 				const sellerState = await UserState.findOne({
 					where: { userId: transaction.sellerId },
 					transaction: t,
@@ -1547,17 +1538,17 @@ class MarketService {
 				if (typeof sellerState.state[balanceField] !== 'number')
 					sellerState.state[balanceField] = 0;
 
-				// Списываем с контракта сумму продавцу
+				// Deduct the amount from the contract from the seller
 				systemState.state[balanceField] -= sellerAmount;
-				// Зачисляем продавцу
+				// Credit the seller
 				sellerState.state[balanceField] += sellerAmount;
 
 				await systemState.save({ transaction: t });
 				await sellerState.save({ transaction: t });
 
-				// Комиссия остается на контракте (systemState)
+				// The commission remains on the contract (systemState)
 
-				// Создаем платеж контракт -> продавец
+				// Create a transaction contract -> seller
 				await PaymentTransaction.create(
 					{
 						marketTransactionId: transaction.id,
@@ -1571,7 +1562,7 @@ class MarketService {
 					{ transaction: t }
 				);
 
-				// Создаем платеж комиссии
+				// Create a transaction for the commission
 				await PaymentTransaction.create(
 					{
 						marketTransactionId: transaction.id,
@@ -1600,14 +1591,17 @@ class MarketService {
 	}
 
 	/**
-	 * Получить все активные оферты
+	 * Get all active offers
 	 */
-	async getAllOffers() {
+	async getAllOffers(userId) {
 		const t = await sequelize.transaction();
 
 		try {
 			const offers = await MarketOffer.findAll({
-				where: { status: 'ACTIVE' },
+				where: {
+					status: 'ACTIVE',
+					sellerId: { [Op.ne]: userId },
+				},
 				transaction: t,
 			});
 
@@ -1620,7 +1614,7 @@ class MarketService {
 	}
 
 	/**
-	 * Получить все сделки пользователя (как покупатель или продавец)
+	 * Get all transactions of the user (as a buyer or seller)
 	 * @param {number} userId
 	 */
 	async getUserTransactions(userId) {
@@ -1667,15 +1661,15 @@ class MarketService {
 	}
 
 	/**
-	 * Получение системных предложений пакетов и инициализация пакетов пользователя
-	 * @param {number} userId - ID пользователя (опционально)
-	 * @returns {Promise<Array>} - Список системных предложений пакетов
+	 * Get system package offers and initialize the user's packages
+	 * @param {number} userId - User ID (optional)
+	 * @returns {Promise<Array>} - List of system package offers
 	 */
 	async getPackageOffers(userId = null) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Получаем системные предложения пакетов
+			// Get system package offers
 			const offers = await MarketOffer.findAll({
 				where: {
 					itemType: 'package',
@@ -1685,7 +1679,7 @@ class MarketService {
 				transaction: t,
 			});
 
-			// Если указан ID пользователя, инициализируем пакеты на основе активных шаблонов
+			// If the user ID is specified, initialize the packages based on active templates
 			if (userId) {
 				await packageStoreService.initializePackageStore(userId, t);
 			}
@@ -1708,13 +1702,13 @@ class MarketService {
 		const t = await sequelize.transaction();
 
 		try {
-			// Проверяем и ограничиваем лимит
+			// Check and limit the limit
 			limit = Math.min(limit, pagination.maxLimit);
 
-			// Вычисляем смещение для пагинации
+			// Calculate the offset for pagination
 			const offset = (page - 1) * limit;
 
-			// Формируем условия запроса
+			// Form the conditions of the request
 			const where = {
 				itemType: 'artifact',
 			};
@@ -1722,7 +1716,7 @@ class MarketService {
 			if (status) {
 				where.status = status;
 			} else {
-				// По умолчанию показываем только активные оферты
+				// By default, only active offers are shown
 				where.status = 'ACTIVE';
 			}
 
@@ -1730,7 +1724,7 @@ class MarketService {
 				where.currency = currency;
 			}
 
-			// Получаем оферты с пагинацией
+			// Get offers with pagination
 			const offers = await MarketOffer.findAll({
 				where,
 				limit,
@@ -1746,13 +1740,13 @@ class MarketService {
 				transaction: t,
 			});
 
-			// Если указан фильтр по редкости, получаем артефакты и фильтруем
+			// If the filter by rarity is specified, get the artifacts and filter
 			let filteredOffers = offers;
 			if (rarity) {
-				// Получаем ID артефактов из оферт
+				// Get the artifact IDs from the offers
 				const artifactIds = offers.map((offer) => offer.itemId);
 
-				// Получаем артефакты с указанной редкостью
+				// Get the artifacts with the specified rarity
 				const artifacts = await Artifact.findAll({
 					where: {
 						id: { [Op.in]: artifactIds },
@@ -1761,17 +1755,17 @@ class MarketService {
 					transaction: t,
 				});
 
-				// Фильтруем оферты по найденным артефактам
+				// Filter the offers by the found artifacts
 				const artifactIdSet = new Set(artifacts.map((a) => a.id));
 				filteredOffers = offers.filter((offer) =>
 					artifactIdSet.has(offer.itemId)
 				);
 			}
 
-			// Получаем общее количество оферт после фильтрации
+			// Get the total number of offers after filtering
 			const count = filteredOffers.length;
 
-			// Вычисляем общее количество страниц
+			// Calculate the total number of pages
 			const totalPages = Math.ceil(count / limit);
 
 			const result = {
@@ -1793,7 +1787,7 @@ class MarketService {
 	}
 
 	/**
-	 * Получение списка P2P оферт с пагинацией
+	 * Get a list of P2P offers with pagination
 	 * @param {Object} params { page, limit, status, currency, itemType }
 	 */
 	async getP2POffers({
@@ -1814,7 +1808,7 @@ class MarketService {
 	}
 
 	/**
-	 * Получение списка системных оферт с пагинацией
+	 * Get a list of system offers with pagination
 	 * @param {Object} params { page, limit, status, currency, itemType }
 	 */
 	async getSystemOffers({
@@ -1838,26 +1832,26 @@ class MarketService {
 		const transaction = await sequelize.transaction();
 
 		try {
-			// Получаем оферту
+			// Get the offer
 			const offer = await MarketOffer.findByPk(offerId);
 
 			if (!offer) {
 				throw ApiError.BadRequest('Offer not found');
 			}
 
-			// Проверяем статус оферты
+			// Check the status of the offer
 			if (offer.status !== 'ACTIVE') {
 				throw ApiError.BadRequest(
 					'Offer is not available for purchase'
 				);
 			}
 
-			// Проверяем, что покупатель не является продавцом
+			// Check that the buyer is not the seller
 			if (offer.sellerId === buyerId) {
 				throw ApiError.BadRequest('You cannot buy your own offer');
 			}
 
-			// Получаем состояние покупателя
+			// Get the state of the buyer
 			const buyerState = await UserState.findOne({
 				where: { userId: buyerId },
 			});
@@ -1866,7 +1860,7 @@ class MarketService {
 				throw ApiError.BadRequest('Buyer state not found');
 			}
 
-			// Проверяем, что у покупателя достаточно валюты
+			// Check that the buyer has enough currency
 			const totalPrice = Number(offer.price) * amount;
 
 			if (
@@ -1881,16 +1875,16 @@ class MarketService {
 				throw ApiError.BadRequest('Insufficient TON for purchase');
 			}
 
-			// Если это системная оферта с пакетом, обрабатываем особым образом
+			// If this is a system offer with a package, process it specially
 			if (offer.offerType === 'SYSTEM' && offer.itemType === 'package') {
-				// Получаем шаблон пакета
+				// Get the package template
 				const template = await PackageTemplate.findByPk(offer.itemId);
 
 				if (!template) {
 					throw ApiError.BadRequest('Package template not found');
 				}
 
-				// Создаем пакет для пользователя
+				// Create a package for the user
 				const packageId = `${template.id}_${buyerId}_${Date.now()}`;
 
 				await PackageStore.create(
@@ -1908,7 +1902,7 @@ class MarketService {
 					{ transaction }
 				);
 
-				// Списываем валюту у покупателя
+				// Deduct the currency from the buyer
 				if (offer.currency === 'tgStars') {
 					buyerState.tgStars -= totalPrice;
 				} else if (offer.currency === 'tonToken') {
@@ -1917,7 +1911,7 @@ class MarketService {
 
 				await buyerState.save({ transaction });
 
-				// Создаем транзакцию
+				// Create a transaction
 				await MarketTransaction.create(
 					{
 						offerId,
@@ -1927,7 +1921,7 @@ class MarketService {
 						amount,
 						currency: offer.currency,
 						itemType: offer.itemType,
-						itemId: packageId, // Используем ID нового пакета
+						itemId: packageId, // Use the ID of the new package
 						status: 'COMPLETED',
 					},
 					{ transaction }
@@ -1941,8 +1935,8 @@ class MarketService {
 				};
 			}
 
-			// Обычная оферта - стандартная обработка
-			// Списываем валюту у покупателя
+			// Normal offer - standard processing
+			// Deduct the currency from the buyer
 			if (offer.currency === 'tgStars') {
 				buyerState.tgStars -= totalPrice;
 			} else if (offer.currency === 'tonToken') {
@@ -1951,10 +1945,10 @@ class MarketService {
 
 			await buyerState.save({ transaction });
 
-			// Передаем право собственности на предмет
+			// Transfer the ownership of the item
 			await this.transferItemOwnership(offer, buyerId, transaction);
 
-			// Создаем транзакцию
+			// Create a transaction
 			await MarketTransaction.create(
 				{
 					offerId,
@@ -1970,7 +1964,7 @@ class MarketService {
 				{ transaction }
 			);
 
-			// Обновляем статус оферты
+			// Update the status of the offer
 			await offer.update(
 				{
 					status: 'COMPLETED',
@@ -2030,6 +2024,154 @@ class MarketService {
 			}
 			throw ApiError.Internal(`Failed to get offer: ${error.message}`);
 		}
+	}
+
+	async registerGalaxyOffer(offerData, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const externalTransaction = !!transaction;
+		try {
+			const offer = await MarketOffer.create(
+				{
+					buyerId: offerData.buyerId,
+					sellerId: SYSTEM_USER_ID,
+					status: 'COMPLETED',
+					isItemLocked: true,
+					expiresAt: null,
+					price: offerData.price,
+					currency: offerData.currency,
+					offerType: 'SYSTEM',
+					amount: offerData.stars,
+					itemType: offerData.itemType,
+					itemId: offerData.itemId,
+				},
+				{ transaction }
+			);
+
+			await offer.save({ transaction });
+			logger.debug('offer created');
+
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: offerData.buyerId,
+					sellerId: SYSTEM_USER_ID,
+					status: 'COMPLETED',
+				},
+				{ transaction }
+			);
+			logger.debug('marketTransaction created');
+			const payment = await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: offerData.buyerId,
+					toAccount: SYSTEM_USER_ID,
+					amount: offerData.price,
+					currency: offerData.currency,
+					txType: 'BUYER_TO_CONTRACT',
+					status: 'CONFIRMED',
+				},
+				{ transaction }
+			);
+			logger.debug('payment created');
+			const transferStars = await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: SYSTEM_USER_ID,
+					toAccount: offerData.buyerId,
+					amount: offerData.stars,
+					currency: 'stars',
+					txType: 'STARS_TRANSFER',
+					status: 'CONFIRMED',
+				},
+				{ transaction }
+			);
+			logger.debug('transferStars created');
+		} catch (error) {
+			logger.error('Error in registerGalaxyOffer', error);
+			if (!externalTransaction) {
+				await t.rollback();
+			}
+			throw error;
+		}
+		if (!externalTransaction) {
+			await t.commit();
+			logger.debug('transaction committed');
+		}
+		return { offer, marketTransaction, payment, transferStars };
+	}
+
+	async registerStarsTransfer(offerData, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const externalTransaction = !!transaction;
+		try {
+			const offer = await MarketOffer.create(
+				{
+					buyerId: offerData.buyerId,
+					sellerId: offerData.buyerId,
+					status: 'COMPLETED',
+					isItemLocked: true,
+					expiresAt: null,
+					price: offerData.price,
+					currency: offerData.currency,
+					offerType: 'PERSONAL',
+					amount: offerData.amount,
+					itemType: offerData.itemType,
+					itemId: offerData.itemId,
+				},
+				{ transaction }
+			);
+
+			await offer.save({ transaction });
+			logger.debug('offer created');
+
+			const marketTransaction = await MarketTransaction.create(
+				{
+					offerId: offer.id,
+					buyerId: offerData.buyerId,
+					sellerId: offerData.sellerId,
+					status: 'COMPLETED',
+				},
+				{ transaction }
+			);
+			logger.debug('marketTransaction created');
+			const payment = await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: offerData.buyerId,
+					toAccount: offerData.sellerId,
+					amount: offerData.price,
+					currency: offerData.currency,
+					txType: 'RESOURCE_TRANSFER',
+					status: 'CONFIRMED',
+				},
+				{ transaction }
+			);
+			logger.debug('payment created');
+			const transferStars = await PaymentTransaction.create(
+				{
+					marketTransactionId: marketTransaction.id,
+					fromAccount: offerData.sellerId,
+					toAccount: offerData.buyerId,
+					amount: offerData.amount,
+					currency: 'stars',
+					txType: 'STARS_TRANSFER',
+					status: 'CONFIRMED',
+				},
+				{ transaction }
+			);
+			logger.debug('transferStars created');
+		} catch (error) {
+			logger.error('Error in registerStarsTransfer', error);
+			if (!externalTransaction) {
+				await t.rollback();
+			}
+			throw error;
+		}
+		if (!externalTransaction) {
+			await t.commit();
+			logger.debug('transaction committed');
+		}
+		return { offer, marketTransaction, payment, transferStars };
 	}
 }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Скрипт для создания файлов окружения
- * Копирует примеры файлов и помогает настроить переменные
+ * Script to create environment files
+ * Copies example files and helps to set up variables
  * Created by Claude on 15.07.2025
  */
 
@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Цвета для консоли
+// Colors for console
 const colors = {
 	reset: '\x1b[0m',
 	bright: '\x1b[1m',
@@ -32,51 +32,51 @@ function generateSecureSecret(length = 64) {
 
 function copyEnvFile(source, destination) {
 	if (fs.existsSync(destination)) {
-		log(`⚠️  Файл ${destination} уже существует. Пропускаем.`, 'yellow');
+		log(`⚠️  File ${destination} already exists. Skipping.`, 'yellow');
 		return false;
 	}
 
 	try {
 		fs.copyFileSync(source, destination);
-		log(`✅ Создан файл: ${destination}`, 'green');
+		log(`✅ Created file: ${destination}`, 'green');
 		return true;
 	} catch (error) {
-		log(`❌ Ошибка при создании ${destination}: ${error.message}`, 'red');
+		log(`❌ Error creating ${destination}: ${error.message}`, 'red');
 		return false;
 	}
 }
 
 function updateEnvFile(filePath, updates) {
 	if (!fs.existsSync(filePath)) {
-		log(`❌ Файл ${filePath} не найден`, 'red');
+		log(`❌ File ${filePath} not found`, 'red');
 		return false;
 	}
 
 	try {
 		let content = fs.readFileSync(filePath, 'utf8');
 
-		// Применяем обновления
+		// Apply updates
 		Object.entries(updates).forEach(([key, value]) => {
 			const regex = new RegExp(`^${key}=.*$`, 'm');
 			if (regex.test(content)) {
 				content = content.replace(regex, `${key}=${value}`);
 			} else {
-				// Добавляем в конец файла
+				// Add to the end of the file
 				content += `\n${key}=${value}`;
 			}
 		});
 
 		fs.writeFileSync(filePath, content);
-		log(`✅ Обновлен файл: ${filePath}`, 'green');
+		log(`✅ Updated file: ${filePath}`, 'green');
 		return true;
 	} catch (error) {
-		log(`❌ Ошибка при обновлении ${filePath}: ${error.message}`, 'red');
+		log(`❌ Error updating ${filePath}: ${error.message}`, 'red');
 		return false;
 	}
 }
 
 function main() {
-	log('🚀 Настройка файлов окружения Nebulahunt Server', 'bright');
+	log('🚀 Setting up environment files for Nebulahunt Server', 'bright');
 	log('=' * 60, 'cyan');
 
 	const envFiles = [
@@ -88,7 +88,7 @@ function main() {
 
 	let createdCount = 0;
 
-	// Копируем файлы
+	// Copy files
 	envFiles.forEach(({ source, dest }) => {
 		if (copyEnvFile(source, dest)) {
 			createdCount++;
@@ -96,26 +96,23 @@ function main() {
 	});
 
 	if (createdCount === 0) {
-		log('\n⚠️  Все файлы окружения уже существуют.', 'yellow');
-		log(
-			'Для обновления секретов используйте: npm run security:check',
-			'cyan'
-		);
+		log('\n⚠️  All environment files already exist.', 'yellow');
+		log('To update secrets, use: npm run security:check', 'cyan');
 		return;
 	}
 
-	log(`\n✅ Создано файлов: ${createdCount}`, 'green');
+	log(`\n✅ Created files: ${createdCount}`, 'green');
 
-	// Генерируем безопасные секреты
+	// Generate secure secrets
 	const secureSecrets = {
 		JWT_ACCESS_SECRET: generateSecureSecret(64),
 		JWT_REFRESH_SECRET: generateSecureSecret(64),
 		ADMIN_INIT_SECRET: generateSecureSecret(32),
 	};
 
-	log('\n🔐 Генерируем безопасные секреты...', 'cyan');
+	log('\n🔐 Generating secure secrets...', 'cyan');
 
-	// Обновляем основные файлы с секретами
+	// Update main files with secrets
 	const filesToUpdate = ['.env', '.env.development', '.env.test'];
 
 	filesToUpdate.forEach((file) => {
@@ -124,18 +121,18 @@ function main() {
 		}
 	});
 
-	log('\n📋 Следующие шаги:', 'bright');
-	log('1. Отредактируйте созданные файлы .env*', 'cyan');
-	log('2. Установите реальные значения для:', 'cyan');
-	log('   - BOT_TOKEN (токен Telegram бота)', 'yellow');
-	log('   - DB_PASSWORD_* (пароли базы данных)', 'yellow');
-	log('   - TON_API_KEY (ключ TON API)', 'yellow');
-	log('   - REDIS_PASSWORD (пароль Redis)', 'yellow');
-	log('3. Проверьте безопасность: npm run security:check', 'cyan');
-	log('4. Запустите приложение: npm run dev', 'cyan');
+	log('\n📋 Next steps:', 'bright');
+	log('1. Edit created .env* files', 'cyan');
+	log('2. Set real values for:', 'cyan');
+	log('   - BOT_TOKEN (Telegram bot token)', 'yellow');
+	log('   - DB_PASSWORD_* (database passwords)', 'yellow');
+	log('   - TON_API_KEY (TON API key)', 'yellow');
+	log('   - REDIS_PASSWORD (Redis password)', 'yellow');
+	log('3. Check security: npm run security:check', 'cyan');
+	log('4. Start the application: npm run dev', 'cyan');
 
-	log('\n⚠️  ВАЖНО: Никогда не коммитьте файлы .env* в git!', 'red');
-	log('Они уже добавлены в .gitignore', 'green');
+	log('\n⚠️  IMPORTANT: Never commit .env* files to git!', 'red');
+	log('They are already added to .gitignore', 'green');
 }
 
 if (require.main === module) {

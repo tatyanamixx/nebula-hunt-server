@@ -15,14 +15,7 @@ class PackageTemplateController {
 	 */
 	async getAllPackageTemplates(req, res, next) {
 		try {
-			const { category, sortBy, sortDir } = req.query;
-
-			const templates = await packageTemplateService.getAllTemplates({
-				category,
-				sortBy,
-				sortDir,
-			});
-
+			const templates = await packageTemplateService.getAllTemplates();
 			res.json(templates);
 		} catch (e) {
 			next(e);
@@ -37,10 +30,10 @@ class PackageTemplateController {
 	 */
 	async getPackageTemplate(req, res, next) {
 		try {
-			const { packageId } = req.params;
+			const { slug } = req.params;
 
-			const template = await packageTemplateService.getTemplateById(
-				packageId
+			const template = await packageTemplateService.getTemplateBySlug(
+				slug
 			);
 
 			res.json(template);
@@ -55,11 +48,11 @@ class PackageTemplateController {
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function
 	 */
-	async createPackageTemplate(req, res, next) {
+	async createPackageTemplates(req, res, next) {
 		try {
 			const templateData = req.body;
 
-			const template = await packageTemplateService.createTemplate(
+			const templates = await packageTemplateService.createTemplates(
 				templateData
 			);
 
@@ -77,11 +70,9 @@ class PackageTemplateController {
 	 */
 	async updatePackageTemplate(req, res, next) {
 		try {
-			const { packageId } = req.params;
 			const templateData = req.body;
 
 			const template = await packageTemplateService.updateTemplate(
-				packageId,
 				templateData
 			);
 
@@ -99,11 +90,9 @@ class PackageTemplateController {
 	 */
 	async deletePackageTemplate(req, res, next) {
 		try {
-			const { packageId } = req.params;
+			const { slug } = req.params;
 
-			const result = await packageTemplateService.deleteTemplate(
-				packageId
-			);
+			const result = await packageTemplateService.deleteTemplate(slug);
 
 			res.json(result);
 		} catch (e) {
@@ -117,34 +106,12 @@ class PackageTemplateController {
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function
 	 */
-	async activatePackageTemplate(req, res, next) {
+	async togglePackageTemplateStatus(req, res, next) {
 		try {
-			const { packageId } = req.params;
+			const { slug } = req.params;
 
-			const template = await packageTemplateService.changeTemplateStatus(
-				packageId,
-				'ACTIVE'
-			);
-
-			res.json(template);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	/**
-	 * Deactivate a package template
-	 * @param {Object} req - Request object
-	 * @param {Object} res - Response object
-	 * @param {Function} next - Next middleware function
-	 */
-	async deactivatePackageTemplate(req, res, next) {
-		try {
-			const { packageId } = req.params;
-
-			const template = await packageTemplateService.changeTemplateStatus(
-				packageId,
-				'INACTIVE'
+			const template = await packageTemplateService.toggleTemplateStatus(
+				slug
 			);
 
 			res.json(template);

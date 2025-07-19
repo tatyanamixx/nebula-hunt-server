@@ -14,7 +14,7 @@ router.get(
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
-	eventController.getUserEvents
+	eventController.getAllUserEvents
 );
 
 // Get all active events for the user
@@ -23,7 +23,7 @@ router.get(
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
-	eventController.getActiveEvents
+	eventController.getActiveUserEvents
 );
 
 // Check and trigger events for the user

@@ -27,71 +27,53 @@ class PackageStoreService {
 				transaction: t,
 			});
 
+			const initializedPackages = [];
 			if (!activeTemplates || activeTemplates.length === 0) {
-				// If no active templates, create default welcome package if user doesn't have any
-				const existingPackages = await PackageStore.findOne({
-					where: { userId },
-					transaction: t,
-				});
-
-				if (!existingPackages) {
-					// Create default welcome package for new user
-					await PackageStore.create(
-						{
-							id: `welcome_${userId}_${Date.now()}`,
-							userId,
-							amount: 100,
-							resource: 'stardust',
-							price: 0,
-							currency: 'tgStars',
-							status: 'ACTIVE',
-							isUsed: false,
-							isLocked: false,
-						},
-						{ transaction: t }
-					);
+				for (const template of activeTemplates) {
+					const existingPackage = await PackageStore.findOne({
+						where: { userId, templateId: template.id },
+						transaction: t,
+					});
+					if (!existingPackage) {
+						// If no active templates, create default welcome package if user doesn't have any
+						const packagenew = await PackageStore.create(
+							{
+								templateId: template.id,
+								userId,
+								amount: template.amount,
+								resource: template.resource,
+								price: template.price,
+								currency: template.currency,
+								status: 'ACTIVE',
+								isUsed: false,
+								isLocked: false,
+							},
+							{ transaction: t }
+						);
+						initializedPackages.push({
+							...packagenew.toJSON(),
+							package: template.toJSON(),
+						});
+					}
+					await t.commit();
+					return initializedPackages;
 				}
-				return;
 			}
-
 			// Get user's existing packages
 			const existingPackages = await PackageStore.findAll({
 				where: { userId },
 				transaction: t,
 			});
-
-			// Create a map of template IDs that the user already has
-			const existingTemplateMap = new Map();
-			existingPackages.forEach((pkg) => {
-				// Extract template ID from package ID if it follows the pattern templateId_userId_timestamp
-				const parts = pkg.id.split('_');
-				if (parts.length >= 3) {
-					const templateId = parts[0];
-					existingTemplateMap.set(templateId, pkg);
-				}
-			});
-
-			// Create packages for templates that the user doesn't have
-			for (const template of activeTemplates) {
-				if (!existingTemplateMap.has(template.id)) {
-					// Create new package from template
-					await PackageStore.create(
-						{
-							id: `${template.id}_${userId}_${Date.now()}`,
-							userId,
-							amount: template.amount,
-							resource: template.resource,
-							price: template.price,
-							currency: template.currency,
-							status: 'ACTIVE',
-							isUsed: false,
-							isLocked: false,
-						},
-						{ transaction: t }
-					);
-				}
+			for (const pck of existingPackages) {
+				initializedPackages.push({
+					...pck.toJSON(),
+					package: pck.packageTemplate.toJSON(),
+				});
 			}
+			await t.commit();
+			return initializedPackages;
 		} catch (error) {
+			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to initialize package store: ${error.message}`
 			);
@@ -128,17 +110,24 @@ class PackageStoreService {
 
 	/**
 	 * Get user package by ID
-	 * @param {string} packageId - Package ID
+	 * @param {string} slug - Package ID
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Object>} - Package
 	 */
-	async getUserPackageById(packageId, userId) {
+	async getUserPackageById(slug, userId) {
 		const t = await sequelize.transaction();
 
 		try {
+			const packageTemplate = await PackageTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!packageTemplate) {
+				throw ApiError.NotFound('Package template not found');
+			}
 			const packageItem = await PackageStore.findOne({
 				where: {
-					id: packageId,
+					templateId: packageTemplate.id,
 					userId,
 				},
 				transaction: t,
@@ -166,18 +155,25 @@ class PackageStoreService {
 
 	/**
 	 * Use a package to add resources to user state
-	 * @param {string} packageId - Package ID
+	 * @param {string} slug - Package ID
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Object>} - Updated user state and package
 	 */
-	async usePackage(packageId, userId) {
+	async usePackage(slug, userId) {
 		const t = await sequelize.transaction();
 
 		try {
+			const packageTemplate = await PackageTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!packageTemplate) {
+				throw ApiError.NotFound('Package template not found');
+			}
 			// Find the package
 			const packageItem = await PackageStore.findOne({
 				where: {
-					id: packageId,
+					templateId: packageTemplate.id,
 					userId,
 					status: 'ACTIVE',
 					isUsed: false,

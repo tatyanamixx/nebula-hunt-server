@@ -21,7 +21,7 @@ class TaskTemplateService {
 			for (const task of tasks) {
 				// Validate task data
 				if (
-					!task.id ||
+					!task.slug ||
 					!task.title ||
 					!task.description ||
 					!task.reward ||
@@ -33,11 +33,20 @@ class TaskTemplateService {
 						'Invalid task template data structure'
 					);
 				}
-
+				const ts = await TaskTemplate.findOne({
+					where: { slug: task.slug },
+					transaction: t,
+				});
+				if (ts) {
+					await ts.update(task, { transaction: t });
+					createdTasks.push(ts);
+					continue;
+				}
+				if (!ts) {
 				// Create task with levels included
 				const newTask = await TaskTemplate.create(
 					{
-						id: task.id,
+						slug: task.slug,
 						title: task.title,
 						description: task.description,
 						reward: task.reward,
@@ -47,8 +56,10 @@ class TaskTemplateService {
 					},
 					{ transaction: t }
 				);
-
-				createdTasks.push(newTask);
+				if (newTask) {
+					createdTasks.push(newTask);
+				}
+				}
 			}
 
 			await t.commit();
@@ -66,17 +77,11 @@ class TaskTemplateService {
 	 * @param {Object} filter - Optional filter parameters
 	 * @returns {Promise<Array>} - List of task templates
 	 */
-	async getAllTaskTemplates(filter = {}) {
+	async getTaskTemplates() {
 		try {
-			const whereClause = {};
-
-			if (filter.active !== undefined) {
-				whereClause.active = filter.active;
-			}
 
 			const tasks = await TaskTemplate.findAll({
-				where: whereClause,
-				order: [['id', 'ASC']],
+				order: [['sortOrder', 'ASC']],
 			});
 
 			return tasks;
@@ -89,12 +94,14 @@ class TaskTemplateService {
 
 	/**
 	 * Get task template by ID
-	 * @param {string} taskId - Task template ID
+	 * @param {string} slug - Task template ID
 	 * @returns {Promise<Object>} - Task template
 	 */
-	async getTaskTemplateById(taskId) {
+	async getTaskTemplateBySlug(slug) {
 		try {
-			const task = await TaskTemplate.findByPk(taskId);
+			const task = await TaskTemplate.findOne({
+				where: { slug },
+			});
 
 			if (!task) {
 				throw ApiError.BadRequest('Task template not found');
@@ -110,15 +117,16 @@ class TaskTemplateService {
 
 	/**
 	 * Update task template
-	 * @param {string} taskId - Task template ID
+	 * @param {string} slug - Task template ID
 	 * @param {Object} taskData - Task template data to update
 	 * @returns {Promise<Object>} - Updated task template
 	 */
-	async updateTaskTemplate(taskId, taskData) {
+	async updateTaskTemplate(taskData) {
 		const t = await sequelize.transaction();
 
 		try {
-			const task = await TaskTemplate.findByPk(taskId, {
+			const task = await TaskTemplate.findOne({
+				where: { slug: taskData.slug },
 				transaction: t,
 			});
 
@@ -141,14 +149,15 @@ class TaskTemplateService {
 
 	/**
 	 * Delete task template
-	 * @param {string} taskId - Task template ID
+	 * @param {string} slug - Task template ID
 	 * @returns {Promise<Object>} - Result of deletion
 	 */
-	async deleteTaskTemplate(taskId) {
+	async deleteTaskTemplate(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const task = await TaskTemplate.findByPk(taskId, {
+			const task = await TaskTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -162,7 +171,7 @@ class TaskTemplateService {
 			await t.commit();
 			return {
 				success: true,
-				message: `Task template ${taskId} deleted successfully`,
+				message: `Task template ${slug} deleted successfully`,
 			};
 		} catch (err) {
 			await t.rollback();
@@ -174,15 +183,16 @@ class TaskTemplateService {
 
 	/**
 	 * Activate or deactivate task template
-	 * @param {string} taskId - Task template ID
+	 * @param {string} slug - Task template ID
 	 * @param {boolean} active - Active status
 	 * @returns {Promise<Object>} - Updated task template
 	 */
-	async setTaskTemplateStatus(taskId, active) {
+	async toggleTaskTemplateStatus(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const task = await TaskTemplate.findByPk(taskId, {
+			const task = await TaskTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -191,7 +201,7 @@ class TaskTemplateService {
 				throw ApiError.BadRequest('Task template not found');
 			}
 
-			task.active = active;
+			task.active = !task.active;
 			await task.save({ transaction: t });
 
 			await t.commit();

@@ -15,7 +15,6 @@ class TaskService {
 	 */
 	async initializeUserTasks(userId, transaction) {
 		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
 
 		try {
 			// Get all active tasks
@@ -27,9 +26,7 @@ class TaskService {
 			});
 
 			if (tasks.length === 0) {
-				if (!externalTransaction) {
-					await t.commit();
-				}
+				await t.commit();
 				return {
 					tasks: [],
 				};
@@ -38,91 +35,15 @@ class TaskService {
 			// Create entries for all active tasks
 			const initializedTasks = [];
 			for (const task of tasks) {
-				const userTask = await UserTask.create(
-					{
+				let userTask = await UserTask.findOne({
+					where: {
 						userId,
-						taskId: task.id,
-						progress: 0,
-						targetProgress: task.condition?.targetProgress || 100,
-						completed: false,
-						reward: 0,
-						progressHistory: [],
-						lastProgressUpdate: new Date(),
-						active: true,
+						slug: task.slug,
 					},
-					{ transaction: t }
-				);
-
-				initializedTasks.push({
-					...userTask.toJSON(),
-					task: task.toJSON(),
+					transaction: t,
 				});
-			}
-
-			// Update counter in UserState
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				userState.state.ownedTasksCount = 0;
-				await userState.save({ transaction: t });
-			}
-
-			if (!externalTransaction) {
-				await t.commit();
-			}
-
-			return {
-				tasks: initializedTasks,
-			};
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to initialize user tasks: ${err.message}`
-			);
-		}
-	}
-
-	async activateUserTasks(userId) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Получаем все активные задачи
-			const tasks = await TaskTemplate.findAll({
-				where: {
-					active: true,
-				},
-				transaction: t,
-			});
-
-			if (tasks.length === 0) {
-				await t.commit();
-				return {
-					reward: { task: 0 },
-					tasks: [],
-				};
-			}
-
-			// Получаем существующие задачи пользователя
-			const existingUserTasks = await UserTask.findAll({
-				where: { userId },
-				attributes: ['taskId'],
-				transaction: t,
-			});
-
-			const existingTaskIds = new Set(
-				existingUserTasks.map((task) => task.taskId)
-			);
-
-			// Создаем записи для новых задач
-			const newTasks = [];
-			for (const task of tasks) {
-				if (!existingTaskIds.has(task.id)) {
-					const userTask = await UserTask.create(
+				if (!userTask) {
+					userTask = await UserTask.create(
 						{
 							userId,
 							taskId: task.id,
@@ -138,14 +59,15 @@ class TaskService {
 						{ transaction: t }
 					);
 
-					newTasks.push({
+					initializedTasks.push({
 						...userTask.toJSON(),
+						slug: task.slug,
 						task: task.toJSON(),
 					});
 				}
 			}
 
-			// Обновляем счетчик в UserState
+			// Update counter in UserState
 			const userState = await UserState.findOne({
 				where: { userId },
 				transaction: t,
@@ -172,9 +94,6 @@ class TaskService {
 				await userState.save({ transaction: t });
 			}
 
-			await t.commit();
-
-			// Calculate total reward
 			const totalReward = await UserTask.sum('reward', {
 				where: {
 					userId,
@@ -182,19 +101,22 @@ class TaskService {
 				},
 			});
 
+			await t.commit();
+
 			return {
+				tasks: initializedTasks,
 				reward: {
 					task: totalReward || 0,
 				},
-				tasks: newTasks,
 			};
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(
-				`Failed to activate user tasks: ${err.message}`
+				`Failed to initialize user tasks: ${err.message}`
 			);
 		}
 	}
+
 
 	async getUserTasks(userId) {
 		const t = await sequelize.transaction();
@@ -208,6 +130,7 @@ class TaskService {
 						model: TaskTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'title',
 							'description',
 							'reward',
@@ -222,6 +145,7 @@ class TaskService {
 
 			const result = userTasks.map((userTask) => ({
 				id: userTask.id,
+				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
 				progress: userTask.progress,
@@ -243,15 +167,24 @@ class TaskService {
 		}
 	}
 
-	async updateTaskProgress(userId, taskId, progress) {
+	async updateTaskProgress(userId, slug, progress) {
 		const t = await sequelize.transaction();
 
 		try {
+			const task = await TaskTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!task) {
+				throw ApiError.NotFound('Task not found');
+			}
 			// Находим задачу пользователя
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId,
+					taskId: task.id,
+					active: true,
+					completed: false,
 				},
 				include: [
 					{
@@ -337,6 +270,7 @@ class TaskService {
 						model: TaskTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'title',
 							'description',
 							'reward',
@@ -351,8 +285,10 @@ class TaskService {
 
 			const result = activeTasks.map((userTask) => ({
 				id: userTask.id,
+				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
+				slug: userTask.tasktemplate.slug,
 				progress: userTask.progress,
 				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
@@ -388,6 +324,7 @@ class TaskService {
 						model: TaskTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'title',
 							'description',
 							'reward',
@@ -402,8 +339,10 @@ class TaskService {
 
 			const result = completedTasks.map((userTask) => ({
 				id: userTask.id,
+				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
+				slug: userTask.tasktemplate.slug,
 				progress: userTask.progress,
 				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
@@ -448,20 +387,30 @@ class TaskService {
 		}
 	}
 
-	async getUserTask(userId, taskId) {
+	async getUserTask(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
+			const task = await TaskTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!task) {
+				throw ApiError.NotFound('Task not found');
+			}
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId,
+					taskId: task.id,
+					active: true,
+					completed: false,
 				},
 				include: [
 					{
 						model: TaskTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'title',
 							'description',
 							'reward',
@@ -481,8 +430,10 @@ class TaskService {
 
 			const result = {
 				id: userTask.id,
+				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
+				slug: userTask.tasktemplate.slug,
 				progress: userTask.progress,
 				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
@@ -500,15 +451,24 @@ class TaskService {
 		}
 	}
 
-	async completeTask(userId, taskId) {
+	async completeTask(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
 			// Find the user task
+			const task = await TaskTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!task) {
+				throw ApiError.NotFound('Task not found');
+			}
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId,
+					taskId: task.id,
+					active: true,
+					completed: false,
 				},
 				transaction: t,
 			});
@@ -521,7 +481,12 @@ class TaskService {
 			// Check if task is already completed
 			if (userTask.completed) {
 				await t.rollback();
-				return userTask;
+				return {
+					userTask,
+					slug: userTask.tasktemplate.slug,
+					reward: userTask.reward,
+					rewardType: userTask.rewardType,
+				};
 			}
 
 			// Check if task has enough progress
@@ -533,13 +498,6 @@ class TaskService {
 			}
 
 			// Get the task to determine reward
-			const task = await TaskTemplate.findByPk(taskId, {
-				transaction: t,
-			});
-			if (!task) {
-				await t.rollback();
-				throw ApiError.BadRequest('Task not found');
-			}
 
 			// Mark task as completed
 			userTask.completed = true;
@@ -552,7 +510,7 @@ class TaskService {
 			// Регистрируем награду через marketService
 			await marketService.registerTaskReward({
 				userId,
-				taskId,
+				taskId: task.id,
 				amount: reward,
 				currency: rewardType,
 			});
@@ -574,6 +532,7 @@ class TaskService {
 			await t.commit();
 			return {
 				task: userTask,
+				slug: userTask.tasktemplate.slug,
 				reward: task.reward,
 				rewardType: rewardType,
 			};
@@ -583,12 +542,21 @@ class TaskService {
 		}
 	}
 
-	async getTaskProgress(userId, taskId) {
+	async getTaskProgress(userId, slug) {
 		try {
+			const task = await TaskTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!task) {
+				throw ApiError.NotFound('Task not found');
+			}
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId,
+					taskId: task.id,
+					active: true,
+					completed: false,
 				},
 			});
 
@@ -597,7 +565,8 @@ class TaskService {
 			}
 
 			return {
-				taskId,
+				taskId: task.id,
+				slug: userTask.tasktemplate.slug,
 				progress: userTask.progress,
 				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,

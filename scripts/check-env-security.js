@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Скрипт для проверки безопасности переменных окружения
- * Проверяет наличие всех необходимых переменных и их безопасность
+ * Script to check the security of environment variables
+ * Checks for the presence of all required variables and their security
  * Created by Claude on 15.07.2025
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Список критически важных переменных
+// List of critical variables
 const CRITICAL_VARS = [
 	'JWT_ACCESS_SECRET',
 	'JWT_REFRESH_SECRET',
@@ -17,7 +17,7 @@ const CRITICAL_VARS = [
 	'ADMIN_INIT_SECRET',
 ];
 
-// Список переменных с небезопасными значениями по умолчанию
+// List of variables with unsafe default values
 const UNSAFE_DEFAULTS = {
 	JWT_ACCESS_SECRET: ['dev_access_secret_key', 'test_access_secret_key'],
 	JWT_REFRESH_SECRET: ['dev_refresh_secret_key', 'test_refresh_secret_key'],
@@ -28,22 +28,22 @@ const UNSAFE_DEFAULTS = {
 	DB_PASSWORD_TEST: ['09160130'],
 };
 
-// Список всех переменных окружения из кода
+// List of all environment variables from the code
 const ALL_ENV_VARS = [
-	// Основные настройки
+	// Main settings
 	'NODE_ENV',
 	'PORT',
 	'LOG_LEVEL',
 	'LOG_FILE_PATH',
 
-	// База данных - общие
+	// Database - common
 	'DB_HOST',
 	'DB_PORT',
 	'DB_NAME',
 	'DB_USER',
 	'DB_PASSWORD',
 
-	// База данных - development
+	// Database - development
 	'DB_HOST_DEV',
 	'DB_PORT_DEV',
 	'DB_NAME_DEV',
@@ -51,21 +51,21 @@ const ALL_ENV_VARS = [
 	'DB_PASSWORD_DEV',
 	'DB_LOGGING',
 
-	// База данных - test
+	// Database - test
 	'DB_HOST_TEST',
 	'DB_PORT_TEST',
 	'DB_NAME_TEST',
 	'DB_USER_TEST',
 	'DB_PASSWORD_TEST',
 
-	// База данных - production
+	// Database - production
 	'DB_HOST_PROD',
 	'DB_PORT_PROD',
 	'DB_NAME_PROD',
 	'DB_USER_PROD',
 	'DB_PASSWORD_PROD',
 
-	// SSL настройки
+	// SSL settings
 	'DB_SSL',
 	'DB_SSL_CA_PATH',
 	'DB_SSL_CERT_PATH',
@@ -87,7 +87,7 @@ const ALL_ENV_VARS = [
 	'BOT_TOKEN',
 	'TELEGRAM_WEBHOOK_URL',
 
-	// Безопасность
+	// Security
 	'ADMIN_IDS',
 	'SYSTEM_USER_ID',
 	'ADMIN_INIT_SECRET',
@@ -100,24 +100,24 @@ const ALL_ENV_VARS = [
 	'ADMIN_WHITELISTED_IPS',
 	'ADMIN_IP_RESTRICTION',
 
-	// Мониторинг
+	// Monitoring
 	'PROMETHEUS_PORT',
 	'METRICS_ENABLED',
 
-	// Внешние сервисы
+	// External services
 	'TON_NETWORK',
 	'TON_API_KEY',
 	'TON_WALLET_ADDRESS',
 
-	// Миграции
+	// Migrations
 	'RUN_MIGRATIONS',
 ];
 
 function checkEnvFile(envPath) {
-	console.log(`\n🔍 Проверка файла: ${envPath}`);
+	console.log(`\n🔍 Checking file: ${envPath}`);
 
 	if (!fs.existsSync(envPath)) {
-		console.log(`❌ Файл не найден: ${envPath}`);
+		console.log(`❌ File not found: ${envPath}`);
 		return { exists: false, issues: [] };
 	}
 
@@ -126,63 +126,63 @@ function checkEnvFile(envPath) {
 	const issues = [];
 	const foundVars = new Set();
 
-	// Проверяем каждую строку
+	// Check each line
 	lines.forEach((line, index) => {
 		const trimmedLine = line.trim();
 
-		// Пропускаем комментарии и пустые строки
+		// Skip comments and empty lines
 		if (trimmedLine.startsWith('#') || trimmedLine === '') {
 			return;
 		}
 
-		// Парсим переменную
+		// Parse variable
 		const match = trimmedLine.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
 		if (match) {
 			const [, varName, value] = match;
 			foundVars.add(varName);
 
-			// Проверяем критические переменные
+			// Check critical variables
 			if (CRITICAL_VARS.includes(varName)) {
 				if (!value || value === '') {
-					issues.push(`🚨 КРИТИЧНО: ${varName} не установлена`);
+					issues.push(`🚨 CRITICAL: ${varName} not set`);
 				} else if (
 					UNSAFE_DEFAULTS[varName] &&
 					UNSAFE_DEFAULTS[varName].includes(value)
 				) {
 					issues.push(
-						`⚠️  НЕБЕЗОПАСНО: ${varName} использует значение по умолчанию: ${value}`
+						`⚠️  UNSAFE: ${varName} uses default value: ${value}`
 					);
 				}
 			}
 
-			// Проверяем небезопасные значения по умолчанию
+			// Check unsafe default values
 			if (
 				UNSAFE_DEFAULTS[varName] &&
 				UNSAFE_DEFAULTS[varName].includes(value)
 			) {
 				issues.push(
-					`⚠️  НЕБЕЗОПАСНО: ${varName} использует значение по умолчанию: ${value}`
+					`⚠️  UNSAFE: ${varName} uses default value: ${value}`
 				);
 			}
 
-			// Проверяем production окружение
+			// Check production environment
 			if (process.env.NODE_ENV === 'production') {
 				if (
 					varName.includes('PASSWORD') &&
 					(value === 'postgres' || value === 'password')
 				) {
 					issues.push(
-						`🚨 КРИТИЧНО: ${varName} использует небезопасный пароль в production`
+						`🚨 CRITICAL: ${varName} uses unsafe password in production`
 					);
 				}
 			}
 		}
 	});
 
-	// Проверяем отсутствующие критические переменные
+	// Check for missing critical variables
 	CRITICAL_VARS.forEach((varName) => {
 		if (!foundVars.has(varName)) {
-			issues.push(`❌ ОТСУТСТВУЕТ: ${varName} не определена`);
+			issues.push(`❌ MISSING: ${varName} not defined`);
 		}
 	});
 
@@ -190,7 +190,7 @@ function checkEnvFile(envPath) {
 }
 
 function main() {
-	console.log('🔒 Проверка безопасности переменных окружения\n');
+	console.log('🔒 Checking environment variables security\n');
 
 	const envFiles = [
 		'.env',
@@ -208,12 +208,12 @@ function main() {
 
 		if (result.exists) {
 			if (result.issues.length === 0) {
-				console.log('✅ Безопасность в порядке');
+				console.log('✅ Security in order');
 			} else {
 				result.issues.forEach((issue) => {
 					console.log(issue);
 					totalIssues++;
-					if (issue.includes('🚨 КРИТИЧНО')) {
+					if (issue.includes('🚨 CRITICAL')) {
 						hasCriticalIssues = true;
 					}
 				});
@@ -221,20 +221,20 @@ function main() {
 		}
 	});
 
-	console.log('\n📊 Результаты проверки:');
-	console.log(`- Всего проблем: ${totalIssues}`);
+	console.log('\n📊 Check results:');
+	console.log(`- Total issues: ${totalIssues}`);
 
 	if (hasCriticalIssues) {
-		console.log('\n🚨 ОБНАРУЖЕНЫ КРИТИЧЕСКИЕ ПРОБЛЕМЫ БЕЗОПАСНОСТИ!');
-		console.log('Немедленно исправьте их перед деплоем в production.');
+		console.log('\n🚨 CRITICAL SECURITY ISSUES FOUND!');
+		console.log('Fix them before deploying to production.');
 		process.exit(1);
 	} else if (totalIssues > 0) {
 		console.log(
-			'\n⚠️  Обнаружены проблемы безопасности. Рекомендуется исправить.'
+			'\n⚠️  Security issues found. It is recommended to fix them.'
 		);
 		process.exit(1);
 	} else {
-		console.log('\n✅ Все проверки пройдены успешно!');
+		console.log('\n✅ All checks passed successfully!');
 	}
 }
 

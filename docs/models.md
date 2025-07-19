@@ -84,7 +84,7 @@
 └─────────────┘     └─────────────┘
 
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│UpgradeNode  │     │TaskTemplate │     │EventTemplate│
+│UpgradeNodeTemplate  │     │TaskTemplate │     │EventTemplate│
 │             │     │             │     │             │
 │ id (PK)     │     │ id (PK)     │     │ id (PK)     │
 │ name        │     │ title (JSONB)│    │ name        │
@@ -361,7 +361,7 @@
 
 -   `belongsTo(User)` - галактика принадлежит пользователю
 
-### UpgradeNode
+### UpgradeNodeTemplate
 
 Глобальный шаблон апгрейда. Не связан с User напрямую. Все пользовательские апгрейды хранятся в UserState.
 
@@ -759,7 +759,7 @@ MarketOffer
 
 1. **Централизованное хранение данных пользователя** - Все игровые данные пользователя (задачи, события, апгрейды) хранятся в JSONB полях таблицы UserState. Это упрощает структуру базы данных и повышает производительность.
 
-2. **Шаблоны и экземпляры** - TaskTemplate, EventTemplate, UpgradeNode и PackageTemplate являются шаблонами, которые используются для создания экземпляров в UserState.
+2. **Шаблоны и экземпляры** - TaskTemplate, EventTemplate, UpgradeNodeTemplate и PackageTemplate являются шаблонами, которые используются для создания экземпляров в UserState.
 
 3. **Индексы JSONB полей** - Для оптимизации запросов к JSONB полям используются GIN индексы, что позволяет эффективно искать по содержимому этих полей.
 

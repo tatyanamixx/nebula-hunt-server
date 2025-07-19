@@ -157,7 +157,7 @@ class UserService {
 				const [userState, created] = await UserState.findOrCreate({
 					where: { userId: user.id },
 					defaults: {
-						state: reqUserState,
+						state: initialState,
 					},
 					transaction: t2,
 				});
@@ -166,14 +166,19 @@ class UserService {
 				const tokens = tokenService.generateTokens({ ...userDto });
 				await tokenService.saveToken(user.id, tokens.refreshToken, t2);
 
-				logger.debug('userState', galaxies);
 				// 4. Создаём галактики для пользователя, если данные предоставлены
 				const userGalaxies = [];
 				if (Array.isArray(galaxies) && galaxies.length > 0) {
 					for (const galaxyData of galaxies) {
-						const newGalaxy = await galaxyService.createUserGalaxy(
-							user.id,
+						const offer = {
+							buyerId: user.id,
+							price: galaxyData.price || GALAXY_BASE_PRICE,
+							currency: 'stars',
+							stars: galaxyData.starCurrent || 100,
+						};
+						const newGalaxy = await galaxyService.createGalaxyWithOfferFromSystem(
 							galaxyData,
+							offer,
 							t2
 						);
 						userGalaxies.push(newGalaxy);
@@ -206,7 +211,10 @@ class UserService {
 					user: userDto,
 					userState,
 					userGalaxies,
-					packageOffers: [], // Будет заполнено позже при необходимости
+					// userTasks: [],
+					// userUpgrades: [],
+					// userEvents: [],
+					// packageOffers: [], // Будет заполнено позже при необходимости
 				};
 			} catch (err) {
 				// Откатываем вторую транзакцию в случае ошибки
@@ -231,7 +239,10 @@ class UserService {
 					user: userDto,
 					userState: null,
 					userGalaxies: [],
-					packageOffers: [],
+					// userTasks: [],
+					// userUpgrades: [],
+					// userEvents: [],
+					// packageOffers: [],
 				};
 			}
 		} catch (err) {
@@ -270,12 +281,11 @@ class UserService {
 			const userDto = new UserDto(user);
 
 			// 2. Получаем состояние пользователя, галактики и артефакты
-			const [userState, userGalaxies, userArtifacts, packageOffers] =
-				await Promise.all([
-					stateService.getUserState(userDto.id),
-					galaxyService.getUserGalaxies(userDto.id),
-					artifactService.getUserArtifacts(userDto.id),
-				]);
+			const [userState, userGalaxies, userArtifacts] = await Promise.all([
+				stateService.getUserState(userDto.id),
+				galaxyService.getUserGalaxies(userDto.id),
+				artifactService.getUserArtifacts(userDto.id),
+			]);
 
 			// 3. Проверяем и инициализируем state, если его нет
 			if (!userState.state) {
@@ -295,7 +305,9 @@ class UserService {
 			}
 
 			// 4. Обновляем и инициализируем события пользователя
-			await eventService.checkAndTriggerEvents(userDto.id);
+			const userEvents = await eventService.checkAndTriggerEvents(
+				userDto.id
+			);
 
 			// 5. Проверяем и инициализируем дерево апгрейдов
 			if (!userState.upgrades || userState.upgrades.items.length === 0) {
@@ -307,19 +319,10 @@ class UserService {
 			}
 
 			// 6. Проверяем и инициализируем задачи пользователя
-			if (!userState.tasks || userState.tasks.items.length === 0) {
-				// Если задачи не инициализированы - инициализируем
-				await taskService.initializeUserTasks(userDto.id, t);
-			}
+			await taskService.initializeUserTasks(userDto.id, t);
 
 			// 7. Проверяем и инициализируем пакеты пользователя
-			if (
-				!userState.packages ||
-				userState.packages.available.length === 0
-			) {
-				// Если пакеты не инициализированы - инициализируем
-				await packageStoreService.initializePackageStore(userDto.id, t);
-			}
+			await packageStoreService.initializePackageStore(userDto.id, t);
 
 			// 8. Генерируем и сохраняем новые токены
 			const tokens = tokenService.generateTokens({ ...userDto });
@@ -335,7 +338,10 @@ class UserService {
 				userState,
 				userGalaxies,
 				userArtifacts,
-				packageOffers,
+				// userEvents,
+				// packageOffers: packageOffers || [],
+				// userTasks: [],
+				// userUpgrades: [],
 			};
 		} catch (err) {
 			// Откатываем транзакцию в случае ошибки

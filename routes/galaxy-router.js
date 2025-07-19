@@ -90,7 +90,7 @@ router.post(
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(10, 60),
-	galaxyController.createUserGalaxy
+	galaxyController.createGalaxyWithOfferFromSystem
 );
 
 /**
@@ -117,12 +117,19 @@ router.post(
  *       200:
  *         description: Galaxy updated successfully
  */
-router.put(
-	'/:galaxyId',
+router.post(
+	'/createGalaxy',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
-	galaxyController.updateUserGalaxy
+	galaxyController.createGalaxyWithOffer
+);
+router.put(
+	'/addStars',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(30, 60),
+	galaxyController.addStarsToUserGalaxy
 );
 
 /**

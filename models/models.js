@@ -7,19 +7,16 @@ const { DataTypes } = require('sequelize');
 const User = sequelize.define(
 	'user',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, defaultValue: 0 },
+		id: { type: DataTypes.BIGINT, primaryKey: true },
 		username: { type: DataTypes.STRING },
 		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
 		role: {
-			type: DataTypes.ENUM('USER', 'ADMIN', 'SYSTEM'),
+			type: DataTypes.ENUM('USER', 'SYSTEM'),
 			defaultValue: 'USER',
 		},
+
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
-		google2faSecret: {
-			type: DataTypes.STRING,
-			allowNull: true,
-			comment: 'Google 2FA secret (base32)',
-		},
+
 		tonWallet: {
 			type: DataTypes.STRING,
 			allowNull: true,
@@ -65,6 +62,8 @@ const UserUpgrade = sequelize.define(
 	'userupgrade',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
+		upgradeNodeTemplateId: { type: DataTypes.BIGINT, allowNull: false },
 		level: { type: DataTypes.INTEGER, defaultValue: 0 },
 		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
 		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
@@ -87,8 +86,8 @@ const UserUpgrade = sequelize.define(
 				name: 'userupgrades_user_id_idx',
 			},
 			{
-				fields: ['nodeId'],
-				name: 'userupgrades_node_id_idx',
+				fields: ['upgradeNodeTemplateId'],
+				name: 'userupgrades_upgrade_node_id_idx',
 			},
 			{
 				fields: ['userId', 'nodeId'],
@@ -108,6 +107,8 @@ const UserTask = sequelize.define(
 	'usertask',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
+		taskTemplateId: { type: DataTypes.BIGINT, allowNull: false },
 		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
 		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -130,12 +131,12 @@ const UserTask = sequelize.define(
 				name: 'usertasks_user_id_idx',
 			},
 			{
-				fields: ['taskId'],
-				name: 'usertasks_task_id_idx',
+				fields: ['taskTemplateId'],
+				name: 'usertasks_task_template_id_idx',
 			},
 			{
-				fields: ['userId', 'taskId'],
-				name: 'usertasks_user_task_idx',
+				fields: ['userId', 'taskTemplateId'],
+				name: 'usertasks_user_task_template_idx',
 				unique: true,
 			},
 			{
@@ -155,6 +156,8 @@ const UserEvent = sequelize.define(
 	'userevent',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
+		eventTemplateId: { type: DataTypes.BIGINT, allowNull: false },
 		status: {
 			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED', 'CANCELLED'),
 			defaultValue: 'ACTIVE',
@@ -183,8 +186,8 @@ const UserEvent = sequelize.define(
 				name: 'userevents_user_id_idx',
 			},
 			{
-				fields: ['eventId'],
-				name: 'userevents_event_id_idx',
+				fields: ['eventTemplateId'],
+				name: 'userevents_event_template_id_idx',
 			},
 			{
 				fields: ['status'],
@@ -207,6 +210,7 @@ const UserEventSetting = sequelize.define(
 	'usereventsetting',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
 		eventMultipliers: {
 			type: DataTypes.JSONB,
 			defaultValue: {
@@ -263,6 +267,7 @@ const Token = sequelize.define(
 	'token',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
 		refreshToken: { type: DataTypes.STRING, allowNull: false },
 	},
 	{
@@ -306,8 +311,17 @@ const Galaxy = sequelize.define(
 
 const Artifact = sequelize.define('artifact', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	seed: { type: DataTypes.STRING, unique: true },
+	userId: { type: DataTypes.BIGINT, allowNull: false },
+	artifactTemplateId: { type: DataTypes.BIGINT, allowNull: false },
 	name: { type: DataTypes.STRING, allowNull: false },
+
+	tradable: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+const ArtifactTemplate = sequelize.define('artifacttemplate', {
+	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+	slug: { type: DataTypes.STRING, unique: true, allowNull: false },
+	name: { type: DataTypes.STRING },
 	description: { type: DataTypes.TEXT },
 	rarity: {
 		type: DataTypes.ENUM('COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'),
@@ -319,140 +333,190 @@ const Artifact = sequelize.define('artifact', {
 		defaultValue: {},
 		comment: 'Например: { chaos: 0.1, stability: -0.2 }',
 	},
-	tradable: { type: DataTypes.BOOLEAN, defaultValue: true },
-});
+	limited: { type: DataTypes.BOOLEAN, defaultValue: false },
+	limitedCount: { type: DataTypes.INTEGER, defaultValue: 0 },
+	limitedDuration: { type: DataTypes.INTEGER, defaultValue: 0 },
+	limitedDurationType: {
+		type: DataTypes.ENUM('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'),
+		defaultValue: 'HOUR',
+	},
+	limitedDurationValue: { type: DataTypes.INTEGER, defaultValue: 0 },
 
-const UpgradeNode = sequelize.define('upgradenode', {
-	id: { type: DataTypes.STRING(50), primaryKey: true, unique: true },
-	name: { type: DataTypes.STRING },
-	description: {
-		type: DataTypes.JSONB,
-		defaultValue: {
-			en: '',
-			ru: '',
+	indexes: [
+		{
+			fields: ['slug'],
+			name: 'artifacttemplate_slug_idx',
 		},
-		comment: 'Localized upgrade node descriptions',
-	},
-	maxLevel: { type: DataTypes.INTEGER, defaultValue: 0 },
-	basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
-	effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
-	priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
-	resource: {
-		type: DataTypes.ENUM('stardust', 'darkmetter', 'stars'),
-		defaultValue: 'stardust',
-	},
-	category: {
-		type: DataTypes.ENUM(
-			'production',
-			'economy',
-			'special',
-			'chance',
-			'storage',
-			'multiplier'
-		),
-		defaultValue: 'production',
-	},
-	icon: { type: DataTypes.STRING(3), defaultValue: '' },
-	stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	modifiers: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Additional modifiers and effects of the upgrade',
-	},
-	active: { type: DataTypes.BOOLEAN, defaultValue: true },
-	conditions: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Conditions required to unlock or purchase the upgrade',
-	},
-	delayedUntil: {
-		type: DataTypes.DATE,
-		allowNull: true,
-		comment: 'Timestamp until which the upgrade is delayed',
-	},
-	children: {
-		type: DataTypes.ARRAY(DataTypes.STRING),
-		defaultValue: [],
-		comment: 'Array of node names that are unlocked by this upgrade',
-	},
-	weight: {
-		type: DataTypes.INTEGER,
-		defaultValue: 1,
-		comment: 'Weight/difficulty of the upgrade node',
-	},
-});
-
-const TaskTemplate = sequelize.define('tasktemplate', {
-	id: {
-		type: DataTypes.STRING,
-		primaryKey: true,
-	},
-	title: {
-		type: DataTypes.JSONB,
-		allowNull: false,
-		comment: 'Localized task descriptions',
-	},
-	description: {
-		type: DataTypes.JSONB,
-		allowNull: false,
-	},
-	reward: {
-		type: DataTypes.INTEGER,
-		allowNull: false,
-	},
-	condition: {
-		type: DataTypes.JSONB,
-		allowNull: false,
-		comment: 'Condition for the task to be completed',
-	},
-	icon: {
-		type: DataTypes.STRING,
-		allowNull: false,
-	},
-	active: {
-		type: DataTypes.BOOLEAN,
-		defaultValue: true,
-	},
-});
-
-const EventTemplate = sequelize.define('eventtemplate', {
-	id: { type: DataTypes.STRING(20), primaryKey: true, unique: true },
-	name: { type: DataTypes.STRING, allowNull: false },
-	description: {
-		type: DataTypes.JSONB,
-		defaultValue: {
-			en: '',
-			ru: '',
+		{
+			fields: ['rarity'],
+			name: 'artifacttemplate_rarity_idx',
 		},
-		comment: 'Localized event descriptions',
+		{
+			fields: ['limited'],
+			name: 'artifacttemplate_limited_idx',
+		},
+	],
+});
+
+const UpgradeNodeTemplate = sequelize.define(
+	'upgradenodetemplate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
+		name: { type: DataTypes.STRING },
+		description: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				en: '',
+				ru: '',
+			},
+			comment: 'Localized upgrade node descriptions',
+		},
+		maxLevel: { type: DataTypes.INTEGER, defaultValue: 0 },
+		basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
+		effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
+		priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
+		resource: {
+			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
+			defaultValue: 'stardust',
+		},
+		category: {
+			type: DataTypes.ENUM(
+				'production',
+				'economy',
+				'special',
+				'chance',
+				'storage',
+				'multiplier'
+			),
+			defaultValue: 'production',
+		},
+		icon: { type: DataTypes.STRING(3), defaultValue: '' },
+		stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		modifiers: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Additional modifiers and effects of the upgrade',
+		},
+		active: { type: DataTypes.BOOLEAN, defaultValue: true },
+		conditions: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Conditions required to unlock or purchase the upgrade',
+		},
+		delayedUntil: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Timestamp until which the upgrade is delayed',
+		},
+		children: {
+			type: DataTypes.ARRAY(DataTypes.STRING),
+			defaultValue: [],
+			comment: 'Array of node names that are unlocked by this upgrade',
+		},
+		weight: {
+			type: DataTypes.INTEGER,
+			defaultValue: 1,
+			comment: 'Weight/difficulty of the upgrade node',
+		},
 	},
-	type: {
-		type: DataTypes.ENUM(
-			'RANDOM',
-			'PERIODIC',
-			'ONE_TIME',
-			'CONDITIONAL',
-			'CHAINED',
-			'TRIGGERED_BY_ACTION',
-			'GLOBAL_TIMED',
-			'LIMITED_REPEATABLE',
-			'SEASONAL',
-			'PASSIVE',
-			'RESOURCE_BASED',
-			'UPGRADE_DEPENDENT',
-			'TASK_DEPENDENT',
-			'MARKET_DEPENDENT',
-			'MULTIPLAYER',
-			'PROGRESSIVE',
-			'TIERED'
-		),
-		allowNull: false,
+	{
+		indexes: [
+			{
+				fields: ['slug'],
+				name: 'upgradenodetemplate_slug_idx',
+			},
+		],
+	}
+);
+
+const TaskTemplate = sequelize.define(
+	'tasktemplate',
+	{
+		id: {
+			type: DataTypes.BIGINT,
+			primaryKey: true,
+			autoIncrement: true,
+		},
+		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
+		title: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			comment: 'Localized task descriptions',
+		},
+		description: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+		},
+		reward: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+		},
+		condition: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			comment: 'Condition for the task to be completed',
+		},
+		icon: {
+			type: DataTypes.STRING,
+			allowNull: false,
+		},
+		active: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: true,
+		},
 	},
-	triggerConfig: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: `Dynamic trigger logic depending on type:
+	{
+		indexes: [
+			{
+				fields: ['slug'],
+				name: 'tasktemplate_slug_idx',
+			},
+		],
+	}
+);
+
+const EventTemplate = sequelize.define(
+	'eventtemplate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
+		name: { type: DataTypes.STRING, allowNull: false },
+		description: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				en: '',
+				ru: '',
+			},
+			comment: 'Localized event descriptions',
+		},
+		type: {
+			type: DataTypes.ENUM(
+				'RANDOM',
+				'PERIODIC',
+				'ONE_TIME',
+				'CONDITIONAL',
+				'CHAINED',
+				'TRIGGERED_BY_ACTION',
+				'GLOBAL_TIMED',
+				'LIMITED_REPEATABLE',
+				'SEASONAL',
+				'PASSIVE',
+				'RESOURCE_BASED',
+				'UPGRADE_DEPENDENT',
+				'TASK_DEPENDENT',
+				'MARKET_DEPENDENT',
+				'MULTIPLAYER',
+				'PROGRESSIVE',
+				'TIERED'
+			),
+			allowNull: false,
+		},
+		triggerConfig: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: `Dynamic trigger logic depending on type:
 - PERIODIC: { interval: '1h' }
 - RANDOM: { chancePerHour: 0.1 }
 - CONDITIONAL: { condition: { metric: 'chaosLevel', op: '>', value: 50 } }
@@ -467,110 +531,181 @@ const EventTemplate = sequelize.define('eventtemplate', {
 - MULTIPLAYER: { minPlayers: 2, maxPlayers: 5, duration: '2h' }
 - PROGRESSIVE: { stages: [{ threshold: 100, reward: 10 }, { threshold: 200, reward: 20 }] }
 - TIERED: { tier: 1, requirements: { resources: { stardust: 1000 }, upgrades: ['upgrade_id'] } }`,
+		},
+		effect: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			comment: 'Effect configuration (multiplier, duration, etc)',
+		},
+		frequency: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Frequency settings for RANDOM and PERIODIC events',
+		},
+		conditions: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Conditions that must be met for the event to trigger',
+		},
+		active: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: true,
+		},
 	},
-	effect: {
-		type: DataTypes.JSONB,
-		allowNull: false,
-		comment: 'Effect configuration (multiplier, duration, etc)',
-	},
-	frequency: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Frequency settings for RANDOM and PERIODIC events',
-	},
-	conditions: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Conditions that must be met for the event to trigger',
-	},
-	active: {
-		type: DataTypes.BOOLEAN,
-		defaultValue: true,
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['slug'],
+				name: 'eventtemplate_slug_idx',
+			},
+		],
+	}
+);
 
 // --- MARKET MODELS ---
 
-const MarketOffer = sequelize.define('marketoffer', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	sellerId: { type: DataTypes.BIGINT, allowNull: false },
-	itemType: {
-		type: DataTypes.ENUM('artifact', 'galaxy', 'resource', 'package'),
-		allowNull: false,
+const MarketOffer = sequelize.define(
+	'marketoffer',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		sellerId: { type: DataTypes.BIGINT, allowNull: false },
+		itemType: {
+			type: DataTypes.ENUM('artifact', 'galaxy', 'task', 'package', 'event', 'upgrade'),
+			allowNull: false,
+		},
+		itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
+		amount: { type: DataTypes.INTEGER, allowNull: false },
+		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		currency: {
+			type: DataTypes.ENUM(
+				'tgStars',
+				'tonToken',
+				'stars',
+				'stardust',
+				'darkMatter'
+			),
+			allowNull: false,
+		},
+		status: {
+			type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED', 'EXPIRED'),
+			defaultValue: 'ACTIVE',
+		},
+		offerType: {
+			type: DataTypes.ENUM('SYSTEM', 'P2P', 'PERSONAL'),
+			allowNull: false,
+			defaultValue: 'SYSTEM',
+		},
+		createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+		expiresAt: { type: DataTypes.DATE, allowNull: true },
+		isItemLocked: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: true,
+		}, // Флаг блокировки ресурса или объекта
 	},
-	itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
-	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-	currency: {
-		type: DataTypes.ENUM('tgStars', 'tonToken'),
-		allowNull: false,
-	},
-	status: {
-		type: DataTypes.ENUM('ACTIVE', 'COMPLETED', 'CANCELLED', 'EXPIRED'),
-		defaultValue: 'ACTIVE',
-	},
-	offerType: {
-		type: DataTypes.ENUM('SYSTEM', 'P2P'),
-		allowNull: false,
-		defaultValue: 'SYSTEM',
-	},
-	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-	expiresAt: { type: DataTypes.DATE, allowNull: true },
-	isItemLocked: {
-		type: DataTypes.BOOLEAN,
-		allowNull: false,
-		defaultValue: true,
-	}, // Флаг блокировки ресурса или объекта
-});
+	{
+		indexes: [
+			{
+				fields: ['sellerId'],
+				name: 'marketoffer_seller_id_idx',
+			},
+			{
+				fields: ['status'],
+				name: 'marketoffer_status_idx',
+			},
+			{
+				fields: ['itemType'],
+				name: 'marketoffer_item_type_idx',
+			},
+		],
+	}
+);
 
-const MarketTransaction = sequelize.define('markettransaction', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	offerId: { type: DataTypes.BIGINT, allowNull: false },
-	buyerId: { type: DataTypes.BIGINT, allowNull: false },
-	sellerId: { type: DataTypes.BIGINT, allowNull: false },
-	status: {
-		type: DataTypes.ENUM('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'),
-		defaultValue: 'PENDING',
+const MarketTransaction = sequelize.define(
+	'markettransaction',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		offerId: { type: DataTypes.BIGINT, allowNull: false },
+		buyerId: { type: DataTypes.BIGINT, allowNull: false },
+		sellerId: { type: DataTypes.BIGINT, allowNull: false },
+		status: {
+			type: DataTypes.ENUM('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'),
+			defaultValue: 'PENDING',
+		},
+		createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+		completedAt: { type: DataTypes.DATE, allowNull: true },
 	},
-	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-	completedAt: { type: DataTypes.DATE, allowNull: true },
-});
+	{
+		indexes: [
+			{
+				fields: ['offerId'],
+				name: 'markettransaction_offer_id_idx',
+			},
+			{
+				fields: ['buyerId'],
+				name: 'markettransaction_buyer_id_idx',
+			},
+			{
+				fields: ['sellerId'],
+				name: 'markettransaction_seller_id_idx',
+			},
+			{
+				fields: ['status'],
+				name: 'markettransaction_status_idx',
+			},
+		],
+	}
+);
 
-const PaymentTransaction = sequelize.define('paymenttransaction', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
-	fromAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
-	toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
-	amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-	currency: {
-		type: DataTypes.ENUM('tgStars', 'tonToken'),
-		allowNull: false,
+const PaymentTransaction = sequelize.define(
+	'paymenttransaction',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
+		fromAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
+		toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
+		amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		currency: {
+			type: DataTypes.ENUM('tgStars', 'tonToken'),
+			allowNull: false,
+		},
+		txType: {
+			type: DataTypes.ENUM(
+				'BUYER_TO_CONTRACT',
+				'CONTRACT_TO_SELLER',
+				'FEE',
+				'RESOURCE_TRANSFER',
+				'UPGRADE_RESOURCE',
+				'TASK_RESOURCE',
+				'EVENT_RESOURCE',
+				'FARMING_RESOURCE',
+				'GALAXY_RESOURCE',
+				'ARTIFACT_RESOURCE',
+				'STARS_TRANSFER'
+			),
+			allowNull: false,
+		},
+		blockchainTxId: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: 'ID транзакции в блокчейне',
+		},
+		status: {
+			type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
+			defaultValue: 'PENDING',
+		},
+		createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+		confirmedAt: { type: DataTypes.DATE, allowNull: true },
 	},
-	txType: {
-		type: DataTypes.ENUM(
-			'BUYER_TO_CONTRACT',
-			'CONTRACT_TO_SELLER',
-			'FEE',
-			'RESOURCE_TRANSFER',
-			'UPGRADE_RESOURCE',
-			'TASK_RESOURCE',
-			'EVENT_RESOURCE',
-			'FARMING_RESOURCE',
-			'GALAXY_RESOURCE'
-		),
-		allowNull: false,
-	},
-	blockchainTxId: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		comment: 'ID транзакции в блокчейне',
-	},
-	status: {
-		type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
-		defaultValue: 'PENDING',
-	},
-	createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-	confirmedAt: { type: DataTypes.DATE, allowNull: true },
-});
+	{
+		indexes: [
+			{
+				fields: ['marketTransactionId'],
+				name: 'paymenttransaction_market_transaction_id_idx',
+			},
+		],
+	}
+);
 
 const MarketCommission = sequelize.define(
 	'marketcommission',
@@ -587,40 +722,63 @@ const MarketCommission = sequelize.define(
 	{ tableName: 'marketcommissions' }
 );
 
-const PackageStore = sequelize.define('packagestore', {
-	id: { type: DataTypes.STRING, primaryKey: true },
-	userId: { type: DataTypes.BIGINT, allowNull: false },
-	amount: { type: DataTypes.INTEGER, allowNull: false },
-	resource: {
-		type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
-		allowNull: false,
+const PackageStore = sequelize.define(
+	'packagestore',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
+		packageTemplateId: { type: DataTypes.BIGINT, allowNull: false },
+		amount: { type: DataTypes.INTEGER, allowNull: false },
+		resource: {
+			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
+			allowNull: false,
+		},
+		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		currency: {
+			type: DataTypes.ENUM(
+				'tgStars',
+				'tonToken',
+				'stars',
+				'stardust',
+				'darkMatter'
+			),
+			allowNull: false,
+		},
+		status: {
+			type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+			defaultValue: 'ACTIVE',
+			allowNull: false,
+		},
+		isUsed: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			allowNull: false,
+		},
+		isLocked: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			allowNull: false,
+		},
 	},
-	price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-	currency: {
-		type: DataTypes.ENUM('tgStars', 'tonToken'),
-		allowNull: false,
-	},
-	status: {
-		type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
-		defaultValue: 'ACTIVE',
-		allowNull: false,
-	},
-	isUsed: {
-		type: DataTypes.BOOLEAN,
-		defaultValue: false,
-		allowNull: false,
-	},
-	isLocked: {
-		type: DataTypes.BOOLEAN,
-		defaultValue: false,
-		allowNull: false,
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'packagestore_user_id_idx',
+			},
+			{
+				fields: ['packageTemplateId'],
+				name: 'packagestore_package_template_id_idx',
+			},
+		],
+	}
+);
 
 const PackageTemplate = sequelize.define(
 	'packagetemplate',
 	{
-		id: { type: DataTypes.STRING, primaryKey: true },
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
 		name: { type: DataTypes.STRING, allowNull: false },
 		description: { type: DataTypes.TEXT, allowNull: true },
 		amount: { type: DataTypes.INTEGER, allowNull: false },
@@ -630,13 +788,18 @@ const PackageTemplate = sequelize.define(
 		},
 		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 		currency: {
-			type: DataTypes.ENUM('tgStars', 'tonToken'),
+			type: DataTypes.ENUM(
+				'tgStars',
+				'tonToken',
+				'stars',
+				'stardust',
+				'darkMatter'
+			),
 			allowNull: false,
 		},
 		status: {
-			type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
-			defaultValue: 'ACTIVE',
-			allowNull: false,
+			type: DataTypes.BOOLEAN,
+			defaultValue: true,
 		},
 		imageUrl: { type: DataTypes.STRING, allowNull: true },
 		sortOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
@@ -646,6 +809,10 @@ const PackageTemplate = sequelize.define(
 	},
 	{
 		indexes: [
+			{
+				fields: ['slug'],
+				name: 'packagetemplate_slug_idx',
+			},
 			{
 				fields: ['status'],
 				name: 'packagetemplate_status_idx',
@@ -662,21 +829,75 @@ const PackageTemplate = sequelize.define(
 	}
 );
 
+const Admin = sequelize.define(
+	'admin',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, defaultValue: 0 },
+		email: { type: DataTypes.STRING, unique: true, allowNull: false },
+		google_id: { type: DataTypes.STRING, unique: true, allowNull: true },
+		google2faSecret: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: 'Google 2FA secret (base32)',
+		},
+		role: {
+			type: DataTypes.ENUM('ADMIN', 'SUPERVISOR'),
+			defaultValue: 'SUPERVISOR',
+		},
+		is_superadmin: { type: DataTypes.BOOLEAN, defaultValue: false },
+		is_2fa_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
+		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
+	},
+	{
+		indexes: [{ fields: ['email'] }, { fields: ['google_id'] }],
+	}
+);
+const AdminToken = sequelize.define(
+	'admin_token',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		adminId: { type: DataTypes.BIGINT, allowNull: false },
+		refreshToken: { type: DataTypes.STRING, allowNull: false },
+	},
+	{
+		indexes: [
+			{ fields: ['refreshToken'] },
+			{
+				fields: ['adminId'],
+				name: 'admin_token_admin_id_idx',
+			},
+		],
+	}
+);
+const AdminInvite = sequelize.define(
+	'admin_invite',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		adminId: { type: DataTypes.BIGINT, allowNull: false },
+		email: { type: DataTypes.STRING, allowNull: false },
+		token: { type: DataTypes.STRING, allowNull: false },
+		usedAt: { type: DataTypes.DATE, allowNull: true },
+	},
+	{
+		indexes: [{ fields: ['email'] }, { fields: ['adminId'] }],
+	}
+);
+
 User.hasOne(UserState);
-UserState.belongsTo(User);
+UserState.belongsTo(User, { foreignKey: 'userId' });
 
 User.hasOne(Token);
-Token.belongsTo(User);
+Token.belongsTo(User, { foreignKey: 'userId' });
 
 User.hasMany(Galaxy);
-Galaxy.belongsTo(User);
+Galaxy.belongsTo(User, { foreignKey: 'userId' });
 
-Artifact.belongsTo(User);
+Artifact.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(Artifact);
 
 // --- MARKET RELATIONS ---
 User.hasMany(MarketOffer);
-MarketOffer.belongsTo(User);
+MarketOffer.belongsTo(User, { foreignKey: 'sellerId' });
 
 User.hasMany(MarketTransaction, { as: 'buyer', foreignKey: 'buyerId' });
 User.hasMany(MarketTransaction, { as: 'seller', foreignKey: 'sellerId' });
@@ -707,44 +928,68 @@ PackageStore.belongsTo(User, { foreignKey: 'userId' });
 
 // Связи для новых моделей
 User.hasMany(UserUpgrade);
-UserUpgrade.belongsTo(User);
+UserUpgrade.belongsTo(User, { foreignKey: 'userId' });
 
-UpgradeNode.hasMany(UserUpgrade);
-UserUpgrade.belongsTo(UpgradeNode, { foreignKey: 'nodeId' });
+UpgradeNodeTemplate.hasMany(UserUpgrade);
+UserUpgrade.belongsTo(UpgradeNodeTemplate, { foreignKey: 'nodeId' });
 
 User.hasMany(UserTask);
-UserTask.belongsTo(User);
+UserTask.belongsTo(User, { foreignKey: 'userId' });
 
 TaskTemplate.hasMany(UserTask);
 UserTask.belongsTo(TaskTemplate, { foreignKey: 'taskId' });
 
 User.hasMany(UserEvent);
-UserEvent.belongsTo(User);
+UserEvent.belongsTo(User, { foreignKey: 'userId' });
 
 EventTemplate.hasMany(UserEvent);
 UserEvent.belongsTo(EventTemplate, { foreignKey: 'eventId' });
 
 User.hasOne(UserEventSetting);
-UserEventSetting.belongsTo(User);
+UserEventSetting.belongsTo(User, { foreignKey: 'userId' });
+
+Admin.hasOne(AdminToken);
+AdminToken.belongsTo(Admin, { foreignKey: 'adminId' });
+
+Admin.hasMany(AdminInvite);
+AdminInvite.belongsTo(Admin, { foreignKey: 'adminId' });
+
+ArtifactTemplate.hasMany(Artifact);
+Artifact.belongsTo(ArtifactTemplate, { foreignKey: 'templateId' });
 
 module.exports = {
+	// ADMIN
+	Admin,
+	AdminToken,
+	AdminInvite,
+
+	// USER
 	User,
 	UserState,
 	Token,
+
+	// GALAXY
 	Galaxy,
+
 	Artifact,
-	UpgradeNode,
-	TaskTemplate,
-	EventTemplate,
+	ArtifactTemplate,
+
+	// MARKET
 	MarketOffer,
 	MarketTransaction,
 	PaymentTransaction,
 	MarketCommission,
+
+	// UPGRADES
 	PackageStore,
-	// Новые модели
 	UserUpgrade,
 	UserTask,
 	UserEvent,
 	UserEventSetting,
+
+	// TEMPLATES
+	UpgradeNodeTemplate,
+	TaskTemplate,
+	EventTemplate,
 	PackageTemplate,
 };

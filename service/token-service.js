@@ -2,7 +2,7 @@
  * created by Tatyana Mikhniukevich on 04.05.2025
  */
 const jwt = require('jsonwebtoken');
-const { Token } = require('../models/models');
+const { Token, AdminToken } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 
@@ -116,6 +116,89 @@ class TokenService {
 
 		try {
 			const tokenData = await Token.findOne({
+				where: { refreshToken: refreshToken },
+				transaction: t,
+			});
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return tokenData;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to find token: ${err.message}`);
+		}
+	}
+
+	async saveAdminToken(adminId, refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
+
+		try {
+			const tokenData = await AdminToken.findOne({
+				where: { adminId: adminId },
+				transaction: t,
+			});
+
+			if (tokenData) {
+				tokenData.refreshToken = refreshToken;
+				await tokenData.save({ transaction: t });
+				if (shouldCommit) {
+					await t.commit();
+				}
+				return tokenData;
+			}
+
+			const token = await AdminToken.create(
+				{
+					adminId: adminId,
+					refreshToken,
+				},
+				{ transaction: t }
+			);
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return token;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to save token: ${err.message}`);
+		}
+	}
+
+	async removeAdminToken(refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
+
+		try {
+			const tokenData = await AdminToken.destroy({
+				where: { refreshToken: refreshToken },
+				transaction: t,
+			});
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return tokenData;
+		} catch (err) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw ApiError.Internal(`Failed to remove token: ${err.message}`);
+		}
+	}
+
+	async findAdminToken(refreshToken, transaction = null) {
+		const shouldCommit = !transaction;
+		const t = transaction || (await sequelize.transaction());
+
+		try {
+			const tokenData = await AdminToken.findOne({
 				where: { refreshToken: refreshToken },
 				transaction: t,
 			});

@@ -57,6 +57,17 @@ class GameMetricsController {
 			res.status(500).json({ error: e.message });
 		}
 	}
+
+	async updateActiveUsers(req, res) {
+		try {
+			const result = await gameMetricsService.updateActiveUsers();
+			res.json(result);
+		} catch (e) {
+			res.status(500).json({ error: e.message });
+		}
+	}
+
+	
 }
 
 module.exports = new GameMetricsController();

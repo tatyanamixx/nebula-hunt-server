@@ -1,7 +1,7 @@
 /**
  * created by Tatyana Mikhniukevich on 28.05.2025
  */
-const { User } = require('../models/models');
+const { Admin } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const tokenService = require('./token-service');
@@ -9,74 +9,25 @@ const speakeasy = require('speakeasy');
 const logger = require('../service/logger-service');
 
 class AdminService {
-	async getAllUsers() {
+	
+	async findAdminByEmail(email) {
 		const t = await sequelize.transaction();
 
 		try {
-			const users = await User.findAll({
-				attributes: ['id', 'username', 'role', 'blocked', 'referral'],
-				transaction: t,
-			});
-
+		if (!email) {
+			throw ApiError.BadRequest('Email is required');
+		}
+			const admin = await Admin.findOne({ where: { email }, transaction: t });
 			await t.commit();
-			return users;
+			return admin;
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(`Failed to get users: ${err.message}`);
+			throw ApiError.Internal(`Failed to find admin by email: ${err.message}`);
 		}
-	}
-
-	async blockUser(userId) {
-		const t = await sequelize.transaction();
-
-		try {
-			const user = await User.findByPk(userId, { transaction: t });
-			if (!user) {
-				throw ApiError.BadRequest('User not found');
-			}
-
-			user.blocked = true;
-			await user.save({ transaction: t });
-
-			await t.commit();
-			return user;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to block user: ${err.message}`);
-		}
-	}
-
-	async unblockUser(userId) {
-		const t = await sequelize.transaction();
-
-		try {
-			const user = await User.findByPk(userId, { transaction: t });
-			if (!user) {
-				throw ApiError.BadRequest('User not found');
-			}
-
-			user.blocked = false;
-			await user.save({ transaction: t });
-
-			await t.commit();
-			return user;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to unblock user: ${err.message}`);
-		}
-	}
-
-	async findAdminByTelegramId(id) {
-		const admin = await User.findOne({ where: { id, role: 'ADMIN' } });
-		return admin; // Возвращаем null или объект пользователя
 	}
 
 	async removeAdminToken(refreshToken) {
 		await tokenService.removeToken(refreshToken);
-	}
-
-	async findUserByTelegramId(id) {
-		return await User.findOne({ where: { id } });
 	}
 
 	/**
@@ -89,17 +40,17 @@ class AdminService {
 		// Генерируем JWT-токены для админа
 		const payload = {
 			id: admin.id,
-			username: admin.username,
+			email: admin.email,
 			role: admin.role,
 		};
 		const tokens = tokenService.generateTokens(payload);
 
 		// Сохраняем refresh токен
-		await tokenService.saveToken(admin.id, tokens.refreshToken);
+		await tokenService.saveAdminToken(admin.id, tokens.refreshToken);
 
 		return {
 			message,
-			username: admin.username,
+			email: admin.email,
 			id: admin.id,
 			role: admin.role,
 			accessToken: tokens.accessToken,
@@ -108,22 +59,20 @@ class AdminService {
 	}
 
 	/**
-	 * Авторизация админа через Telegram WebApp
-	 * @param {string} id - Telegram ID пользователя
-	 * @param {string} username - Имя пользователя из Telegram
+	 * Авторизация админа через email
+	 * @param {string} email - Email пользователя
 	 * @returns {Object} - Данные админа и токены
 	 */
-	async loginAdmin(id, username) {
-		if (!id || !username) {
-			throw ApiError.BadRequest('Telegram user id and username required');
+	async loginAdmin(email) {
+		if (!email) {
+			throw ApiError.BadRequest('Email is required');
 		}
 
 		// Проверяем, что пользователь существует и имеет роль ADMIN
-		const admin = await this.findAdminByTelegramId(id);
+		const admin = await this.findAdminByEmail(email);
 		if (!admin) {
 			logger.warn('Admin login failed: user not found or not admin', {
-				id,
-				username,
+				email,
 			});
 			throw ApiError.Forbidden('Access denied');
 		}
@@ -131,15 +80,14 @@ class AdminService {
 		// Проверяем, что аккаунт не заблокирован
 		if (admin.blocked) {
 			logger.warn('Admin login failed: account blocked', {
-				id,
-				username,
+				email,
 			});
 			throw ApiError.Forbidden('Account is blocked');
 		}
 
 		logger.info('Admin login successful', {
 			id: admin.id,
-			username: admin.username,
+			email: admin.email,
 		});
 
 		return await this.generateAdminTokensAndResponse(
@@ -154,7 +102,7 @@ class AdminService {
 	 * @param {string} secretKey - Секретный ключ для инициализации админа
 	 * @returns {Object} - Данные инициализированного админа
 	 */
-	async initAdmin(telegramId, secretKey) {
+	async initAdmin(email, secretKey) {
 		const EXPECTED_SECRET = process.env.ADMIN_INIT_SECRET || 'supersecret';
 
 		// Проверяем секретный ключ

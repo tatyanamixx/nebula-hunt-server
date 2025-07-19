@@ -12,7 +12,7 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async createUpgradeTemplate(req, res, next) {
+	async createUpgradeTemplates(req, res, next) {
 		try {
 			const nodeData = req.body;
 			if (!nodeData) {
@@ -21,7 +21,7 @@ class UpgradeTemplateController {
 				);
 			}
 
-			const result = await upgradeTemplateService.createUpgradeNode(
+			const result = await upgradeTemplateService.createUpgradeNodeTemplates(
 				nodeData
 			);
 			return res.json(result);
@@ -37,21 +37,15 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async updateUpgradeTemplate(req, res, next) {
+	async updateUpgradeNodeTemplate(req, res, next) {
 		try {
-			const { upgradeId } = req.params;
 			const nodeData = req.body;
-
-			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
-			}
 
 			if (!nodeData) {
 				return next(ApiError.BadRequest('Node data is required'));
 			}
 
-			const node = await upgradeTemplateService.updateUpgradeNode(
-				upgradeId,
+			const node = await upgradeTemplateService.updateUpgradeNodeTemplate(
 				nodeData
 			);
 			return res.json(node);
@@ -67,16 +61,12 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async deleteUpgradeTemplate(req, res, next) {
+	async deleteUpgradeNodeTemplate(req, res, next) {
 		try {
-			const { upgradeId } = req.params;
+			const { slug } = req.params;
 
-			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
-			}
-
-			const result = await upgradeTemplateService.deleteUpgradeNode(
-				upgradeId
+			const result = await upgradeTemplateService.deleteUpgradeNodeTemplate(
+				slug
 			);
 			return res.json(result);
 		} catch (e) {
@@ -91,9 +81,9 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async getAllUpgradeTemplates(req, res, next) {
+	async getAllUpgradeNodeTemplates(req, res, next) {
 		try {
-			const nodes = await upgradeTemplateService.getAllUpgradeNodes();
+			const nodes = await upgradeTemplateService.getAllUpgradeNodeTemplates();
 			return res.json(nodes);
 		} catch (e) {
 			next(e);
@@ -107,15 +97,11 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async getUpgradeTemplate(req, res, next) {
+	async getUpgradeNodeTemplate(req, res, next) {
 		try {
-			const { upgradeId } = req.params;
+			const { slug } = req.params;
 
-			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
-			}
-
-			const node = await upgradeTemplateService.getUpgradeNode(upgradeId);
+			const node = await upgradeTemplateService.getUpgradeNodeTemplate(slug);
 			return res.json(node);
 		} catch (e) {
 			next(e);
@@ -129,17 +115,12 @@ class UpgradeTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async activateUpgradeTemplate(req, res, next) {
+	async toggleUpgradeNodeTemplateActive(req, res, next) {
 		try {
-			const { upgradeId } = req.params;
+			const { slug } = req.params;
 
-			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
-			}
-
-			const node = await upgradeTemplateService.setUpgradeNodeStatus(
-				upgradeId,
-				true
+			const node = await upgradeTemplateService.toggleUpgradeNodeTemplateActive(
+				slug
 			);
 			return res.json(node);
 		} catch (e) {
@@ -147,26 +128,10 @@ class UpgradeTemplateController {
 		}
 	}
 
-	/**
-	 * Deactivate an upgrade template
-	 * @param {Object} req - Request object
-	 * @param {Object} res - Response object
-	 * @param {Function} next - Next middleware function
-	 * @returns {Promise<void>}
-	 */
-	async deactivateUpgradeTemplate(req, res, next) {
+	async getUpgradeNodeTemplatesStats(req, res, next) {
 		try {
-			const { upgradeId } = req.params;
-
-			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
-			}
-
-			const node = await upgradeTemplateService.setUpgradeNodeStatus(
-				upgradeId,
-				false
-			);
-			return res.json(node);
+			const stats = await upgradeTemplateService.getUpgradeNodeTemplatesStats();
+			return res.json(stats);
 		} catch (e) {
 			next(e);
 		}

@@ -12,10 +12,10 @@ class EventController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async getActiveEvents(req, res, next) {
+	async getActiveUserEvents(req, res, next) {
 		try {
 			const userId = req.user.id;
-			const events = await eventService.getActiveEvents(userId);
+			const events = await eventService.getActiveUserEvents(userId);
 			return res.json(events);
 		} catch (e) {
 			next(e);
@@ -29,10 +29,10 @@ class EventController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async getUserEvents(req, res, next) {
+	async getAllUserEvents(req, res, next) {
 		try {
 			const userId = req.user.id;
-			const events = await eventService.getUserEvents(userId);
+			const events = await eventService.getAllUserEvents(userId);
 			return res.json(events);
 		} catch (e) {
 			next(e);

@@ -35,14 +35,14 @@ function updateLoggerConfig(level) {
 		// Обновляем уровень для development
 		content = content.replace(
 			/level:\s*['"`][^'"`]*['"`],\s*\/\/.*debug.*/,
-			`level: '${level}', // Уровень ${level} для разработки`
+			`level: '${level}', // Level ${level} for development`
 		);
 
 		fs.writeFileSync(configPath, content);
-		log(`✅ Обновлен config/logger.config.js: уровень ${level}`, 'green');
+		log(`✅ Updated config/logger.config.js: level ${level}`, 'green');
 		return true;
 	} catch (error) {
-		log(`❌ Ошибка обновления config: ${error.message}`, 'red');
+		log(`❌ Error updating config: ${error.message}`, 'red');
 		return false;
 	}
 }
@@ -67,20 +67,17 @@ function updateEnvFiles(level) {
 						`LOG_LEVEL=${level}`
 					);
 					fs.writeFileSync(envPath, content);
-					log(`✅ Обновлен ${envFile}: LOG_LEVEL=${level}`, 'green');
+					log(`✅ Updated ${envFile}: LOG_LEVEL=${level}`, 'green');
 					updatedCount++;
 				} else {
 					// Добавляем LOG_LEVEL если его нет
 					content += `\nLOG_LEVEL=${level}`;
 					fs.writeFileSync(envPath, content);
-					log(
-						`✅ Добавлен в ${envFile}: LOG_LEVEL=${level}`,
-						'green'
-					);
+					log(`✅ Added to ${envFile}: LOG_LEVEL=${level}`, 'green');
 					updatedCount++;
 				}
 			} catch (error) {
-				log(`❌ Ошибка обновления ${envFile}: ${error.message}`, 'red');
+				log(`❌ Error updating ${envFile}: ${error.message}`, 'red');
 			}
 		}
 	});
@@ -96,19 +93,19 @@ function showCurrentLevel() {
 		const match = content.match(/level:\s*['"`]([^'"`]*)['"`]/);
 
 		if (match) {
-			log(`📊 Текущий уровень логирования: ${match[1]}`, 'cyan');
+			log(`📊 Current log level: ${match[1]}`, 'cyan');
 		} else {
-			log('❌ Не удалось определить текущий уровень', 'red');
+			log('❌ Failed to determine current log level', 'red');
 		}
 	} catch (error) {
-		log(`❌ Ошибка чтения конфига: ${error.message}`, 'red');
+		log(`❌ Error reading config: ${error.message}`, 'red');
 	}
 }
 
 function main() {
 	const args = process.argv.slice(2);
 
-	log('🔧 Управление уровнем логирования', 'bright');
+	log('🔧 Managing log level', 'bright');
 	log('=' * 50, 'cyan');
 
 	if (args.length === 0) {
@@ -116,7 +113,7 @@ function main() {
 		log('  node scripts/set-log-level.js <level>', 'cyan');
 		log('  node scripts/set-log-level.js --current', 'cyan');
 
-		log('\n📋 Доступные уровни:', 'bright');
+		log('\n📋 Available levels:', 'bright');
 		LOG_LEVELS.forEach((level) => {
 			log(`  - ${level}`, 'yellow');
 		});
@@ -137,12 +134,12 @@ function main() {
 	const level = args[0].toLowerCase();
 
 	if (!LOG_LEVELS.includes(level)) {
-		log(`❌ Неверный уровень: ${level}`, 'red');
-		log(`Доступные уровни: ${LOG_LEVELS.join(', ')}`, 'yellow');
+		log(`❌ Invalid level: ${level}`, 'red');
+		log(`Available levels: ${LOG_LEVELS.join(', ')}`, 'yellow');
 		process.exit(1);
 	}
 
-	log(`🔧 Устанавливаем уровень логирования: ${level}`, 'bright');
+	log(`🔧 Setting log level: ${level}`, 'bright');
 
 	// Обновляем конфигурацию
 	const configUpdated = updateLoggerConfig(level);
@@ -151,10 +148,10 @@ function main() {
 	const envFilesUpdated = updateEnvFiles(level);
 
 	if (configUpdated && envFilesUpdated > 0) {
-		log(`\n✅ Уровень логирования успешно установлен: ${level}`, 'green');
-		log('🔄 Перезапустите сервер для применения изменений', 'yellow');
+		log(`\n✅ Log level successfully set: ${level}`, 'green');
+		log('🔄 Restart the server to apply changes', 'yellow');
 	} else {
-		log('\n⚠️  Изменения применены частично', 'yellow');
+		log('\n⚠️  Changes applied partially', 'yellow');
 	}
 }
 

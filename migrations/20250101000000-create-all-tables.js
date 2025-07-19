@@ -3,6 +3,101 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
+		// Create Admin table
+		await queryInterface.createTable('admins', {
+			id: {
+				type: Sequelize.BIGINT,
+				primaryKey: true,
+				autoIncrement: true,
+			},
+			email: {
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+			google_id: {
+				type: Sequelize.STRING,
+				allowNull: true,
+			},
+			google2faSecret: {
+				type: Sequelize.STRING,
+				allowNull: true,
+			},
+			role: {
+				type: Sequelize.ENUM('ADMIN', 'SUPERVISOR'),
+				defaultValue: 'SUPERVISOR',
+			},
+			is_superadmin: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+			},
+			is_2fa_enabled: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+			},
+			blocked: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+			},
+			createdAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+			updatedAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+		});
+
+		// Create AdminToken table
+		await queryInterface.createTable('admin_tokens', {
+			id: {
+				type: Sequelize.BIGINT,
+				primaryKey: true,
+				autoIncrement: true,
+			},
+			adminId: {
+				type: Sequelize.BIGINT,
+				allowNull: false,
+			},
+			refreshToken: {
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+		});
+
+		// Create AdminInvite table
+		await queryInterface.createTable('admin_invites', {
+			id: {
+				type: Sequelize.BIGINT,
+				primaryKey: true,
+				autoIncrement: true,
+			},
+			adminId: {
+				type: Sequelize.BIGINT,
+				allowNull: false,
+			},
+			email: {
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+			token: {
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+			usedAt: {
+				type: Sequelize.DATE,
+				allowNull: true,
+			},
+			createdAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+			updatedAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+		});
+
 		// Create User table
 		await queryInterface.createTable('users', {
 			id: {
@@ -18,17 +113,12 @@ module.exports = {
 				defaultValue: 0,
 			},
 			role: {
-				type: Sequelize.ENUM('USER', 'ADMIN', 'SYSTEM'),
+				type: Sequelize.ENUM('USER', 'SYSTEM'),
 				defaultValue: 'USER',
 			},
 			blocked: {
 				type: Sequelize.BOOLEAN,
 				defaultValue: false,
-			},
-			google2faSecret: {
-				type: Sequelize.STRING,
-				allowNull: true,
-				comment: 'Google 2FA secret (base32)',
 			},
 			tonWallet: {
 				type: Sequelize.STRING,
@@ -256,8 +346,45 @@ module.exports = {
 			},
 		});
 
-		// Create UpgradeNode table
-		await queryInterface.createTable('upgradenodes', {
+		// Create ArtifactTemplate table
+		await queryInterface.createTable('artifacttemplates', {
+			id: {
+				type: Sequelize.BIGINT,
+				primaryKey: true,
+				autoIncrement: true,
+			},
+			name: {
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+			description: {
+				type: Sequelize.TEXT,
+			},
+			rarity: {
+				type: Sequelize.ENUM(
+					'COMMON',
+					'UNCOMMON',
+					'RARE',
+					'EPIC',
+					'LEGENDARY'
+				),
+				defaultValue: 'COMMON',
+			},
+			image: {
+				type: Sequelize.STRING,
+			},
+			createdAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+			updatedAt: {
+				type: Sequelize.DATE,
+				allowNull: false,
+			},
+		});
+
+		// Create UpgradeNodeTemplate table
+		await queryInterface.createTable('UpgradeNodeTemplates', {
 			id: {
 				type: Sequelize.STRING(50),
 				primaryKey: true,
@@ -496,7 +623,7 @@ module.exports = {
 				type: Sequelize.STRING(50),
 				allowNull: false,
 				references: {
-					model: 'upgradenodes',
+					model: 'UpgradeNodeTemplates',
 					key: 'id',
 				},
 				onUpdate: 'CASCADE',
@@ -1116,8 +1243,25 @@ module.exports = {
 		});
 
 		// Create all indexes
-		await queryInterface.addIndex('users', ['referral'], {
-			name: 'user_referral_idx',
+		await queryInterface.addIndex('admin_invites', ['email'], {
+			name: 'admin_invite_email_idx',
+		});
+		await queryInterface.addIndex('admin_invites', ['adminId'], {
+			name: 'admin_invite_admin_id_idx',
+		});
+
+		await queryInterface.addIndex('admins', ['email'], {
+			name: 'admin_email_idx',
+		});
+		await queryInterface.addIndex('admins', ['google_id'], {
+			name: 'admin_google_id_idx',
+		});
+
+		await queryInterface.addIndex('adminTokens', ['adminId'], {
+			name: 'admin_token_admin_id_idx',
+		});
+		await queryInterface.addIndex('adminTokens', ['refreshToken'], {
+			name: 'admin_token_refresh_token_idx',
 		});
 
 		await queryInterface.addIndex('tokens', ['refreshToken']);
@@ -1243,6 +1387,18 @@ module.exports = {
 		await queryInterface.addIndex('packagetemplates', ['sortOrder'], {
 			name: 'packagetemplate_sort_order_idx',
 		});
+		await queryInterface.addIndex('artifacttemplates', ['rarity'], {
+			name: 'artifacttemplate_rarity_idx',
+		});
+		await queryInterface.addIndex('artifacttemplates', ['slug'], {
+			name: 'artifacttemplate_created_at_idx',
+		});
+		await queryInterface.addIndex('artifacttemplates', ['limited'], {
+			name: 'artifacttemplate_limited_idx',
+		});
+		await queryInterface.addIndex('eventtemplates', ['slug'], {
+			name: 'eventtemplate_slug_idx',
+		});
 	},
 
 	async down(queryInterface, Sequelize) {
@@ -1259,11 +1415,16 @@ module.exports = {
 		await queryInterface.dropTable('userupgrades');
 		await queryInterface.dropTable('eventtemplates');
 		await queryInterface.dropTable('tasktemplates');
-		await queryInterface.dropTable('upgradenodes');
+		await queryInterface.dropTable('upgradenodetemplates');
 		await queryInterface.dropTable('artifacts');
+		await queryInterface.dropTable('artifacttemplates');
 		await queryInterface.dropTable('galaxies');
 		await queryInterface.dropTable('tokens');
 		await queryInterface.dropTable('userstates');
 		await queryInterface.dropTable('users');
+		await queryInterface.dropTable('admin_invites');
+		await queryInterface.dropTable('admins');
+		await queryInterface.dropTable('adminTokens');
+
 	},
 };

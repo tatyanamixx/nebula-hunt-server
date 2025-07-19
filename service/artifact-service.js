@@ -1,33 +1,47 @@
 /**
  * created by Tatyana Mikhniukevich on 04.07.2025
  */
-const { Artifact, User } = require('../models/models');
+const {
+	Artifact,
+	ArtifactTemplate,
+	MarketOffer,
+	MarketTransaction,
+	PaymentTransaction,
+} = require('../models/models');
+const sequelize = require('../db');
+const { SYSTEM_USER_ID } = require('../config/constants');
 
 class ArtifactService {
 	/**
 	 * Добавить артефакт пользователю
-	 * @param {Object} params { userId, seed, name, description, rarity, image, effects, tradable }
+	 * @param {Object} params { userId, slug, tradable }
 	 */
-	async addArtifactToUser({
-		userId,
-		seed,
-		name,
-		description,
-		rarity,
-		image,
-		effects,
-		tradable = true,
-	}) {
-		return await Artifact.create({
-			userId,
-			seed,
-			name,
-			description,
-			rarity,
-			image,
-			effects,
-			tradable,
-		});
+	async addArtifactToUser({ userId, slug, tradable = true }) {
+		const t = await sequelize.transaction();
+		try {
+			const artifactTemplate = await ArtifactTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!artifactTemplate) {
+				throw new Error('Artifact template not found');
+			}
+			const artifact = await Artifact.create(
+				{
+					userId,
+					templateId: artifactTemplate.id,
+					tradable: tradable,
+					active: true,
+					completed: false,
+				},
+				{ transaction: t }
+			);
+			await t.commit();
+			return artifact;
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to add artifact to user: ${err.message}`);
+		}
 	}
 
 	/**
@@ -35,32 +49,50 @@ class ArtifactService {
 	 * @param {number} userId
 	 */
 	async getUserArtifacts(userId) {
-		return await Artifact.findAll({ where: { userId } });
+		const t = await sequelize.transaction();
+		try {
+			const artifacts = await Artifact.findAll({
+				where: { userId },
+				transaction: t,
+			});
+			await t.commit();
+			return artifacts;
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to get user artifacts: ${err.message}`);
+		}
 	}
 
 	/**
 	 * Получить артефакт по ID
-	 * @param {number|string} artifactId - ID артефакта
+	 * @param {number|string} slug - ID артефакта
 	 * @param {number} userId - ID пользователя для проверки владения
 	 * @returns {Promise<Object>} - артефакт
 	 */
-	async getArtifactById(artifactId, userId) {
-		const artifact = await Artifact.findOne({
-			where: { id: artifactId },
-		});
+	async getArtifactById(slug, userId) {
+		const t = await sequelize.transaction();
+		try {
+			const artifact = await Artifact.findOne({
+				where: { slug, userId },
+				transaction: t,
+			});
 
-		// Проверка владения артефактом (если не системный)
-		if (artifact && artifact.userId !== userId) {
-			// Проверяем, не является ли артефакт системным
-			const { SYSTEM_USER_ID } = require('../config/constants');
-			if (artifact.userId !== SYSTEM_USER_ID) {
-				throw new Error(
-					'You do not have permission to access this artifact'
-				);
+			// Проверка владения артефактом (если не системный)
+			if (artifact && artifact.userId !== userId) {
+				// Проверяем, не является ли артефакт системным
+				const { SYSTEM_USER_ID } = require('../config/constants');
+				if (artifact.userId !== SYSTEM_USER_ID) {
+					throw new Error(
+						'You do not have permission to access this artifact'
+					);
+				}
 			}
-		}
 
-		return artifact;
+			return artifact;
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to get artifact: ${err.message}`);
+		}
 	}
 
 	/**
@@ -130,64 +162,78 @@ class ArtifactService {
 
 	/**
 	 * Активировать артефакт
-	 * @param {number|string} artifactId - ID артефакта
+	 * @param {string} slug - ID артефакта
 	 * @param {number} userId - ID пользователя
 	 * @returns {Promise<Object>} - результат активации
 	 */
-	async activateArtifact(artifactId, userId) {
-		// Получаем артефакт
-		const artifact = await Artifact.findOne({
-			where: { id: artifactId },
-		});
+	async activateArtifact(slug, userId) {
+		const t = await sequelize.transaction();
+		try {
+			const artifact = await Artifact.findOne({
+				where: { slug, userId },
+				transaction: t,
+			});
 
-		if (!artifact) {
-			throw new Error('Artifact not found');
+			if (!artifact) {
+				throw new Error('Artifact not found');
+			}
+
+			if (artifact.userId !== userId) {
+				throw new Error('You can only activate artifacts that you own');
+			}
+
+			// Здесь должна быть логика активации артефакта
+			// Например, применение эффектов к состоянию пользователя
+
+			// Для примера просто возвращаем информацию об артефакте
+			return {
+				success: true,
+				message: `Artifact ${artifact.name} has been activated`,
+				effects: artifact.effects,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to activate artifact: ${err.message}`);
 		}
-
-		if (artifact.userId !== userId) {
-			throw new Error('You can only activate artifacts that you own');
-		}
-
-		// Здесь должна быть логика активации артефакта
-		// Например, применение эффектов к состоянию пользователя
-
-		// Для примера просто возвращаем информацию об артефакте
-		return {
-			success: true,
-			message: `Artifact ${artifact.name} has been activated`,
-			effects: artifact.effects,
-		};
 	}
 
 	/**
 	 * Деактивировать артефакт
-	 * @param {number|string} artifactId - ID артефакта
+	 * @param {string} slug - ID артефакта
 	 * @param {number} userId - ID пользователя
 	 * @returns {Promise<Object>} - результат деактивации
 	 */
-	async deactivateArtifact(artifactId, userId) {
-		// Получаем артефакт
-		const artifact = await Artifact.findOne({
-			where: { id: artifactId },
-		});
+	async deactivateArtifact(slug, userId) {
+		const t = await sequelize.transaction();
+		try {
+			const artifact = await Artifact.findOne({
+				where: { slug, userId },
+				transaction: t,
+			});
 
-		if (!artifact) {
-			throw new Error('Artifact not found');
+			if (!artifact) {
+				throw new Error('Artifact not found');
+			}
+
+			if (artifact.userId !== userId) {
+				throw new Error(
+					'You can only deactivate artifacts that you own'
+				);
+			}
+
+			// Здесь должна быть логика деактивации артефакта
+			// Например, удаление эффектов из состояния пользователя
+
+			// Для примера просто возвращаем информацию об артефакте
+			return {
+				success: true,
+				message: `Artifact ${artifact.name} has been deactivated`,
+				effects: artifact.effects,
+			};
+		} catch (err) {
+			await t.rollback();
+			throw new Error(`Failed to deactivate artifact: ${err.message}`);
 		}
-
-		if (artifact.userId !== userId) {
-			throw new Error('You can only deactivate artifacts that you own');
-		}
-
-		// Здесь должна быть логика деактивации артефакта
-		// Например, удаление эффектов из состояния пользователя
-
-		// Для примера просто возвращаем информацию об артефакте
-		return {
-			success: true,
-			message: `Artifact ${artifact.name} has been deactivated`,
-			effects: artifact.effects,
-		};
 	}
 
 	/**
@@ -197,28 +243,30 @@ class ArtifactService {
 	 * @param {Object} offerData - данные оферты (price, currency, expiresAt)
 	 */
 	async createSystemArtifactWithOffer(artifactData, buyerId, offerData) {
-		const t = await require('../db').transaction();
+		const t = await sequelize.transaction();
 
 		try {
-			const { SYSTEM_USER_ID } = require('../config/constants');
+			const artifactTemplate = await ArtifactTemplate.findOne({
+				where: { slug: artifactData.slug },
+				transaction: t,
+			});
+			if (!artifactTemplate) {
+				throw new Error('Artifact template not found');
+			}
 
 			// 1. Создаем артефакт от имени SYSTEM
 			const artifact = await Artifact.create(
 				{
 					userId: SYSTEM_USER_ID,
-					seed: artifactData.seed,
-					name: artifactData.name,
-					description: artifactData.description,
-					rarity: artifactData.rarity,
-					image: artifactData.image,
-					effects: artifactData.effects,
+					templateId: artifactTemplate.id,
 					tradable: artifactData.tradable !== false, // по умолчанию true
+					active: true,
+					completed: false,
 				},
 				{ transaction: t }
 			);
 
 			// 2. Создаем оферту на продажу артефакта
-			const { MarketOffer } = require('../models/models');
 			const offer = await MarketOffer.create(
 				{
 					sellerId: SYSTEM_USER_ID,
@@ -234,10 +282,6 @@ class ArtifactService {
 			);
 
 			// 3. Создаем инвойс для покупателя
-			const {
-				MarketTransaction,
-				PaymentTransaction,
-			} = require('../models/models');
 			const transaction = await MarketTransaction.create(
 				{
 					offerId: offer.id,

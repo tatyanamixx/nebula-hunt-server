@@ -48,8 +48,8 @@ class TaskController {
 	async getUserTask(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { taskId } = req.params;
-			const task = await taskService.getUserTask(userId, taskId);
+			const { slug } = req.params;
+			const task = await taskService.getUserTask(userId, slug);
 			return res.json(task);
 		} catch (err) {
 			next(err);
@@ -59,9 +59,9 @@ class TaskController {
 	async updateTaskProgress(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { taskId, progress } = req.body;
+			const { slug, progress } = req.body;
 
-			if (!taskId) {
+			if (!slug) {
 				return next(ApiError.BadRequest('Task ID is required'));
 			}
 
@@ -71,7 +71,7 @@ class TaskController {
 
 			const result = await taskService.updateTaskProgress(
 				userId,
-				taskId,
+				slug,
 				progress
 			);
 			return res.json(result);
@@ -83,13 +83,13 @@ class TaskController {
 	async completeTask(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { taskId } = req.params;
+			const { slug } = req.params;
 
-			if (!taskId) {
+			if (!slug) {
 				return next(ApiError.BadRequest('Task ID is required'));
 			}
 
-			const result = await taskService.completeTask(userId, taskId);
+			const result = await taskService.completeTask(userId, slug);
 			return res.json(result);
 		} catch (err) {
 			next(err);

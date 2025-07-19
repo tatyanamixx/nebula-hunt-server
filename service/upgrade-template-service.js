@@ -1,7 +1,7 @@
 /**
  * created by Claude on 15.07.2025
  */
-const { UpgradeNode } = require('../models/models');
+const { UpgradeNodeTemplate } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
@@ -12,14 +12,14 @@ class UpgradeTemplateService {
 	 * @param {Array} nodes - Array of upgrade node data
 	 * @returns {Promise<Array>} Created or updated upgrade nodes
 	 */
-	async createUpgradeNodes(nodes) {
+	async createUpgradeNodeTemplates(nodes) {
 		const t = await sequelize.transaction();
 
 		try {
 			const createdNodes = [];
 			for (const node of nodes) {
 				// Validate node data
-				if (!node.id || !node.name || !node.description) {
+				if (!node.slug || !node.name || !node.description) {
 					throw ApiError.BadRequest(
 						'Invalid upgrade node data structure'
 					);
@@ -33,7 +33,8 @@ class UpgradeTemplateService {
 				}
 
 				// Try to find existing node with the same ID
-				let existingNode = await UpgradeNode.findByPk(node.id, {
+				let existingNode = await UpgradeNodeTemplate.findOne({
+					where: { slug: node.slug },
 					transaction: t,
 				});
 
@@ -43,7 +44,7 @@ class UpgradeTemplateService {
 					createdNodes.push(existingNode);
 				} else {
 					// Create new node
-					const newNode = await UpgradeNode.create(node, {
+					const newNode = await UpgradeNodeTemplate.create(node, {
 						transaction: t,
 					});
 					createdNodes.push(newNode);
@@ -65,16 +66,19 @@ class UpgradeTemplateService {
 
 	/**
 	 * Update an upgrade template
-	 * @param {string} nodeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @param {Object} nodeData - Upgrade node data
 	 * @returns {Promise<Object>} Updated upgrade node
 	 */
-	async updateUpgradeNode(nodeId, nodeData) {
+	async updateUpgradeNodeTemplate(nodeData) {
 		const t = await sequelize.transaction();
 
 		try {
 			// Find the node by ID
-			const node = await UpgradeNode.findByPk(nodeId, { transaction: t });
+			const node = await UpgradeNodeTemplate.findOne({
+				where: { slug: nodeData.slug },
+				transaction: t,
+			});
 
 			if (!node) {
 				await t.rollback();
@@ -99,14 +103,17 @@ class UpgradeTemplateService {
 
 	/**
 	 * Delete an upgrade template
-	 * @param {string} nodeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @returns {Promise<Object>} Result of deletion
 	 */
-	async deleteUpgradeNode(nodeId) {
+	async deleteUpgradeNodeTemplate(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const node = await UpgradeNode.findByPk(nodeId, { transaction: t });
+			const node = await UpgradeNodeTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
 
 			if (!node) {
 				await t.rollback();
@@ -116,7 +123,7 @@ class UpgradeTemplateService {
 			await node.destroy({ transaction: t });
 
 			await t.commit();
-			return { message: 'Upgrade node deleted successfully', id: nodeId };
+			return { message: 'Upgrade node deleted successfully', slug: slug };
 		} catch (err) {
 			await t.rollback();
 			if (err instanceof ApiError) {
@@ -132,10 +139,10 @@ class UpgradeTemplateService {
 	 * Get all upgrade templates
 	 * @returns {Promise<Array>} All upgrade nodes
 	 */
-	async getAllUpgradeNodes() {
+	async getAllUpgradeNodeTemplates() {
 		try {
-			const nodes = await UpgradeNode.findAll({
-				order: [['id', 'ASC']],
+			const nodes = await UpgradeNodeTemplate.findAll({
+				order: [['slug', 'ASC']],
 			});
 			return nodes;
 		} catch (err) {
@@ -147,12 +154,14 @@ class UpgradeTemplateService {
 
 	/**
 	 * Get a specific upgrade template
-	 * @param {string} nodeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @returns {Promise<Object>} Upgrade node
 	 */
-	async getUpgradeNode(nodeId) {
+	async getUpgradeNodeTemplate(slug) {
 		try {
-			const node = await UpgradeNode.findByPk(nodeId);
+			const node = await UpgradeNodeTemplate.findOne({
+				where: { slug },
+			});
 
 			if (!node) {
 				throw ApiError.NotFound('Upgrade node not found');
@@ -171,14 +180,17 @@ class UpgradeTemplateService {
 
 	/**
 	 * Toggle upgrade template active status
-	 * @param {string} nodeId - Upgrade node ID
+	 * @param {string} slug - Upgrade node ID
 	 * @returns {Promise<Object>} Updated upgrade node
 	 */
-	async toggleUpgradeNodeActive(nodeId) {
+	async toggleUpgradeNodeTemplateActive(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const node = await UpgradeNode.findByPk(nodeId, { transaction: t });
+			const node = await UpgradeNodeTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
 
 			if (!node) {
 				await t.rollback();
@@ -205,16 +217,16 @@ class UpgradeTemplateService {
 	 * Get upgrade template statistics
 	 * @returns {Promise<Object>} Upgrade statistics
 	 */
-	async getUpgradeNodesStats() {
+	async getUpgradeNodeTemplatesStats() {
 		try {
-			const totalNodes = await UpgradeNode.count();
-			const activeNodes = await UpgradeNode.count({
+			const totalNodes = await UpgradeNodeTemplate.count();
+			const activeNodes = await UpgradeNodeTemplate.count({
 				where: { active: true },
 			});
 			const inactiveNodes = totalNodes - activeNodes;
 
 			// Count by category
-			const categories = await UpgradeNode.findAll({
+			const categories = await UpgradeNodeTemplate.findAll({
 				attributes: [
 					'category',
 					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
@@ -228,7 +240,7 @@ class UpgradeTemplateService {
 			});
 
 			// Count by resource
-			const resources = await UpgradeNode.findAll({
+			const resources = await UpgradeNodeTemplate.findAll({
 				attributes: [
 					'resource',
 					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
@@ -252,7 +264,7 @@ class UpgradeTemplateService {
 			throw ApiError.Internal(
 				`Failed to get upgrade nodes stats: ${err.message}`
 			);
-		}
+		}	
 	}
 }
 

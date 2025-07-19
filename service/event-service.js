@@ -21,6 +21,25 @@ class EventService {
 	 */
 	async initializeUserEvents(userId, t) {
 		try {
+			const availableEvents = await EventTemplate.findAll({
+				where: { active: true },
+				transaction: t,
+			});
+
+			for (const event of availableEvents) {
+				const userEvent = await UserEvent.findOrCreate({
+					where: { userId, eventId: event.id },
+					defaults: {
+						userId,
+						eventId: event.id,
+						status: 'ACTIVE',
+						triggeredAt: new Date(),
+						expiresAt: null,
+						effects: event.effect.multipliers || {},
+					},
+				});
+			}
+
 			// Create default event settings for the user
 			const userEventSettings = await UserEventSetting.create(
 				{
@@ -58,6 +77,9 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			const userEvents = await this.initializeUserEvents(userId, t);
+			logger.debug('userEvents', userEvents);
+			
 			const now = new Date();
 
 			// Get or create user event settings
@@ -370,7 +392,7 @@ class EventService {
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Array>} Active user events
 	 */
-	async getActiveEvents(userId) {
+	async getActiveUserEvents(userId) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -384,6 +406,7 @@ class EventService {
 						model: EventTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'name',
 							'description',
 							'type',
@@ -409,7 +432,7 @@ class EventService {
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Object>} User events
 	 */
-	async getUserEvents(userId) {
+	async getAllUserEvents(userId) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -429,6 +452,7 @@ class EventService {
 							model: EventTemplate,
 							attributes: [
 								'id',
+								'slug',
 								'name',
 								'description',
 								'type',
@@ -448,7 +472,7 @@ class EventService {
 					include: [
 						{
 							model: EventTemplate,
-							attributes: ['id', 'name', 'description', 'type'],
+							attributes: ['id', 'slug', 'name', 'description', 'type'],
 						},
 					],
 					transaction: t,
@@ -463,7 +487,7 @@ class EventService {
 					include: [
 						{
 							model: EventTemplate,
-							attributes: ['id', 'name', 'description', 'type'],
+							attributes: ['id', 'slug', 'name', 'description', 'type'],
 						},
 					],
 					transaction: t,
@@ -493,17 +517,18 @@ class EventService {
 	/**
 	 * Trigger a specific event for a user
 	 * @param {number} userId - User ID
-	 * @param {string} eventId - Event ID
+	 * @param {string} slug - Event ID
 	 * @returns {Promise<Object>} Triggered event
 	 */
-	async triggerEvent(userId, eventId) {
+	async triggerEvent(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
 			const now = new Date();
 
 			// Check if event exists
-			const event = await EventTemplate.findByPk(eventId, {
+			const event = await EventTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -516,7 +541,7 @@ class EventService {
 			const existingEvent = await UserEvent.findOne({
 				where: {
 					userId,
-					eventId,
+					eventId: event.id,
 					status: 'ACTIVE',
 				},
 				transaction: t,
@@ -562,7 +587,7 @@ class EventService {
 			const newEvent = await UserEvent.create(
 				{
 					userId,
-					eventId,
+					eventId: event.id,
 					status: 'ACTIVE',
 					triggeredAt: now,
 					expiresAt: expiresAt,
@@ -600,18 +625,25 @@ class EventService {
 	/**
 	 * Complete an event for a user
 	 * @param {number} userId - User ID
-	 * @param {string} eventId - Event ID
+	 * @param {string} slug - Event ID
 	 * @returns {Promise<Object>} Completed event
 	 */
-	async completeEvent(userId, eventId) {
+	async completeEvent(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
 			// Find the user event
+			const event = await EventTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!event) {
+				throw ApiError.NotFound('Event not found');
+			}
 			const userEvent = await UserEvent.findOne({
 				where: {
 					userId,
-					id: eventId,
+					eventId: event.id,
 					status: 'ACTIVE',
 				},
 				transaction: t,
@@ -621,11 +653,6 @@ class EventService {
 				await t.rollback();
 				throw ApiError.NotFound('Active event not found');
 			}
-
-			// Get event template
-			const event = await EventTemplate.findByPk(userEvent.eventId, {
-				transaction: t,
-			});
 
 			if (!event) {
 				await t.rollback();
@@ -714,18 +741,25 @@ class EventService {
 	/**
 	 * Cancel an event for a user
 	 * @param {number} userId - User ID
-	 * @param {string} eventId - Event ID
+	 * @param {string} slug - Event ID
 	 * @returns {Promise<Object>} Cancelled event
 	 */
-	async cancelEvent(userId, eventId) {
+	async cancelEvent(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
+			const event = await EventTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!event) {
+				throw ApiError.NotFound('Event not found');
+			}
 			// Find the user event
 			const userEvent = await UserEvent.findOne({
 				where: {
 					userId,
-					id: eventId,
+					eventId: event.id,
 					status: 'ACTIVE',
 				},
 				transaction: t,
@@ -776,27 +810,37 @@ class EventService {
 	/**
 	 * Get a specific event for a user
 	 * @param {number} userId - User ID
-	 * @param {string} eventId - Event ID
+	 * @param {string} slug - Event ID
 	 * @returns {Promise<Object>} User event
 	 */
-	async getUserEvent(userId, eventId) {
+	async getUserEvent(userId, slug) {
 		const t = await sequelize.transaction();
 
 		try {
+			const event = await EventTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+			if (!event) {
+				throw ApiError.NotFound('Event not found');
+			}
 			const userEvent = await UserEvent.findOne({
 				where: {
 					userId,
-					id: eventId,
+					eventId: event.id,
 				},
 				include: [
 					{
 						model: EventTemplate,
 						attributes: [
 							'id',
+							'slug',
 							'name',
 							'description',
 							'type',
 							'effect',
+							'triggerConfig',
+							'active',
 						],
 					},
 				],

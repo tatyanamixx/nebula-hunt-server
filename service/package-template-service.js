@@ -17,27 +17,12 @@ class PackageTemplateService {
 	 * @param {Object} params Параметры запроса (категория, сортировка и т.д.)
 	 * @returns {Promise<Array>} Массив шаблонов пакетов
 	 */
-	async getAllTemplates({ category, sortBy = 'sortOrder', sortDir = 'ASC' }) {
+	async getAllTemplates() {
 		const t = await sequelize.transaction();
 
 		try {
-			const where = { status: 'ACTIVE' };
-
-			if (category) {
-				where.category = category;
-			}
-
-			// Проверяем, что срок действия не истек
-			where.validUntil = {
-				[Op.or]: [
-					{ [Op.is]: null }, // Бессрочные шаблоны
-					{ [Op.gt]: new Date() }, // Срок действия не истек
-				],
-			};
-
 			const templates = await PackageTemplate.findAll({
-				where,
-				order: [[sortBy, sortDir]],
+				order: [['sortOrder', 'ASC']],
 				transaction: t,
 			});
 
@@ -50,15 +35,16 @@ class PackageTemplateService {
 	}
 
 	/**
-	 * Получение шаблона пакета по ID
-	 * @param {string} id ID шаблона
+	 * Получение шаблона пакета по slug
+	 * @param {string} slug ID шаблона
 	 * @returns {Promise<Object>} Шаблон пакета
 	 */
-	async getTemplateById(id) {
+	async getTemplateBySlug(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const template = await PackageTemplate.findByPk(id, {
+			const template = await PackageTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -82,41 +68,61 @@ class PackageTemplateService {
 	 * @param {Object} templateData Данные шаблона
 	 * @returns {Promise<Object>} Созданный шаблон
 	 */
-	async createTemplate(templateData) {
+	async createTemplates(templates) {
 		const t = await sequelize.transaction();
 
 		try {
-			// Генерируем ID, если не указан
-			if (!templateData.id) {
-				templateData.id = `pkg_${uuidv4().substring(0, 8)}`;
+			const createdTemplates = [];
+
+			for (const templateData of templates) {
+				// Try to find existing template with the same slug
+				let template = await PackageTemplate.findOne({
+					where: { slug: templateData.slug },
+					transaction: t,
+				});
+
+				if (template) {
+					await PackageTemplate.update(templateData, {
+						where: { id: template.id },
+						transaction: t,
+					});
+
+					template = await PackageTemplate.findOne({
+						where: { id: template.id },
+						transaction: t,
+					});
+					createdTemplates.push(template);
+					continue;
+				}
+
+				const newTemplate = await PackageTemplate.create(templateData, {
+					transaction: t,
+				});
+				createdTemplates.push(newTemplate);
 			}
 
-			const template = await PackageTemplate.create(templateData, {
-				transaction: t,
-			});
-
 			await t.commit();
-			return template;
+			return createdTemplates;
 		} catch (err) {
 			await t.rollback();
 			throw new ApiError(
 				500,
-				`Failed to create template: ${err.message}`
+				`Failed to create templates: ${err.message}`
 			);
 		}
 	}
 
 	/**
 	 * Обновление шаблона пакета
-	 * @param {string} id ID шаблона
 	 * @param {Object} templateData Новые данные шаблона
 	 * @returns {Promise<Object>} Обновленный шаблон
 	 */
-	async updateTemplate(id, templateData) {
+	async updateTemplate(templateData) {
 		const t = await sequelize.transaction();
 
 		try {
-			const template = await PackageTemplate.findByPk(id, {
+			const template = await PackageTemplate.findOne({
+				where: { slug: templateData.slug },
 				transaction: t,
 			});
 
@@ -142,16 +148,37 @@ class PackageTemplateService {
 	}
 
 	/**
+	 * Удаление шаблона пакета
+	 * @param {string} slug ID шаблона
+	 * @returns {Promise<Object>} Удаленный шаблон
+	 */
+	async deleteTemplate(slug) {
+		const t = await sequelize.transaction();
+		try {
+			await PackageTemplate.destroy({ where: { slug }, transaction: t });
+		} catch (err) {
+			await t.rollback();
+			throw err instanceof ApiError
+				? err
+				: new ApiError(
+						500,
+						`Failed to delete template: ${err.message}`
+				  );
+		}
+	}
+
+	/**
 	 * Изменение статуса шаблона пакета
-	 * @param {string} id ID шаблона
+	 * @param {string} slug ID шаблона
 	 * @param {string} status Новый статус (ACTIVE, INACTIVE)
 	 * @returns {Promise<Object>} Обновленный шаблон
 	 */
-	async changeTemplateStatus(id, status) {
+	async toggleTemplateStatus(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const template = await PackageTemplate.findByPk(id, {
+			const template = await PackageTemplate.findOne({
+				where: { slug: slug },
 				transaction: t,
 			});
 
@@ -160,7 +187,8 @@ class PackageTemplateService {
 				throw new ApiError(404, 'Package template not found');
 			}
 
-			await template.update({ status }, { transaction: t });
+			template.status = !template.status;
+			await template.save({ transaction: t });
 
 			await t.commit();
 			return template;
@@ -177,14 +205,15 @@ class PackageTemplateService {
 
 	/**
 	 * Создание оферты на основе шаблона пакета
-	 * @param {string} templateId ID шаблона
+	 * @param {string} slug ID шаблона
 	 * @returns {Promise<Object>} Созданная оферта
 	 */
-	async createOfferFromTemplate(templateId) {
+	async createOfferFromTemplate(slug) {
 		const t = await sequelize.transaction();
 
 		try {
-			const template = await PackageTemplate.findByPk(templateId, {
+			const template = await PackageTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -194,7 +223,7 @@ class PackageTemplateService {
 			}
 
 			// Проверяем, что шаблон активен
-			if (template.status !== 'ACTIVE') {
+			if (!template.status) {
 				await t.rollback();
 				throw new ApiError(400, 'Package template is inactive');
 			}
@@ -233,15 +262,16 @@ class PackageTemplateService {
 
 	/**
 	 * Создание пакета для пользователя на основе шаблона
-	 * @param {string} templateId ID шаблона
+	 * @param {string} slug ID шаблона
 	 * @param {number} userId ID пользователя
 	 * @returns {Promise<Object>} Созданный пакет
 	 */
-	async createPackageFromTemplate(templateId, userId) {
+	async createPackageFromTemplate(slug, userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			const template = await PackageTemplate.findByPk(templateId, {
+			const template = await PackageTemplate.findOne({
+				where: { slug },
 				transaction: t,
 			});
 
@@ -250,13 +280,10 @@ class PackageTemplateService {
 				throw new ApiError(404, 'Package template not found');
 			}
 
-			// Генерируем уникальный ID для пакета
-			const packageId = `${template.id}_${userId}_${Date.now()}`;
-
 			// Создаем пакет для пользователя
 			const packageStore = await PackageStore.create(
 				{
-					id: packageId,
+					packageTemplateId: template.id,
 					userId,
 					amount: template.amount,
 					resource: template.resource,

@@ -200,7 +200,7 @@ const LEADERBOARD_LIMIT = 100;
       "particleCount": 100
     }
   ],
-  "upgradeNodes": []
+  "UpgradeNodeTemplates": []
 }
 ```
 
@@ -230,7 +230,7 @@ const LEADERBOARD_LIMIT = 100;
   "userState": { ... },
   "userGalaxies": [ ... ],
   "eventState": { ... },
-  "upgradeNodes": [ ... ]
+  "UpgradeNodeTemplates": [ ... ]
 }
 ```
 

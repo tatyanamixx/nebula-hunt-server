@@ -12,7 +12,7 @@ class EventTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async createEventTemplate(req, res, next) {
+	async createEventTemplates(req, res, next) {
 		try {
 			const eventData = req.body;
 			if (!eventData) {
@@ -38,17 +38,9 @@ class EventTemplateController {
 	 */
 	async updateEventTemplate(req, res, next) {
 		try {
-			const { eventId } = req.params;
 			const eventData = req.body;
 
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			const event = await eventTemplateService.updateEvent(
-				eventId,
-				eventData
-			);
+			const event = await eventTemplateService.updateEvent(eventData);
 			return res.json(event);
 		} catch (e) {
 			next(e);
@@ -80,13 +72,9 @@ class EventTemplateController {
 	 */
 	async getEventTemplate(req, res, next) {
 		try {
-			const { eventId } = req.params;
+			const { slug } = req.params;
 
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			const event = await eventTemplateService.getEvent(eventId);
+			const event = await eventTemplateService.getEventBySlug(slug);
 			return res.json(event);
 		} catch (e) {
 			next(e);
@@ -102,13 +90,9 @@ class EventTemplateController {
 	 */
 	async deleteEventTemplate(req, res, next) {
 		try {
-			const { eventId } = req.params;
+			const { slug } = req.params;
 
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			const result = await eventTemplateService.deleteEvent(eventId);
+			const result = await eventTemplateService.deleteEvent(slug);
 			return res.json(result);
 		} catch (e) {
 			next(e);
@@ -122,62 +106,17 @@ class EventTemplateController {
 	 * @param {Function} next - Next middleware function
 	 * @returns {Promise<void>}
 	 */
-	async activateEventTemplate(req, res, next) {
+	async toggleEventTemplateStatus(req, res, next) {
 		try {
-			const { eventId } = req.params;
+			const { slug } = req.params;	
 
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			// First get the current event to check its status
-			const event = await eventTemplateService.getEvent(eventId);
-
-			// Only toggle if it's not already active
-			if (!event.active) {
-				const updatedEvent =
-					await eventTemplateService.toggleEventActive(eventId);
-				return res.json(updatedEvent);
-			}
-
-			// If already active, just return the current event
+			const event = await eventTemplateService.toggleTemplateStatus(slug);
 			return res.json(event);
 		} catch (e) {
 			next(e);
 		}
 	}
 
-	/**
-	 * Deactivate an event template
-	 * @param {Object} req - Request object
-	 * @param {Object} res - Response object
-	 * @param {Function} next - Next middleware function
-	 * @returns {Promise<void>}
-	 */
-	async deactivateEventTemplate(req, res, next) {
-		try {
-			const { eventId } = req.params;
-
-			if (!eventId) {
-				return next(ApiError.BadRequest('Event ID is required'));
-			}
-
-			// First get the current event to check its status
-			const event = await eventTemplateService.getEvent(eventId);
-
-			// Only toggle if it's currently active
-			if (event.active) {
-				const updatedEvent =
-					await eventTemplateService.toggleEventActive(eventId);
-				return res.json(updatedEvent);
-			}
-
-			// If already inactive, just return the current event
-			return res.json(event);
-		} catch (e) {
-			next(e);
-		}
-	}
 }
 
 module.exports = new EventTemplateController();
