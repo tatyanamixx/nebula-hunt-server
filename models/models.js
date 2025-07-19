@@ -38,7 +38,9 @@ const UserState = sequelize.define('userstate', {
 	userId: { type: DataTypes.BIGINT, unique: true, allowNull: false },
 	stardust: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 	darkMatter: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+	stars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 	tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+	tonToken: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
 	lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
 	lockedStardust: {
 		type: DataTypes.INTEGER,
@@ -50,7 +52,7 @@ const UserState = sequelize.define('userstate', {
 		allowNull: true,
 		defaultValue: 0,
 	},
-	lockedTgStars: {
+	lockedStars: {
 		type: DataTypes.INTEGER,
 		allowNull: true,
 		defaultValue: 0,
@@ -573,8 +575,12 @@ const MarketOffer = sequelize.define(
 			type: DataTypes.ENUM('artifact', 'galaxy', 'task', 'package', 'event', 'upgrade'),
 			allowNull: false,
 		},
-		itemId: { type: DataTypes.STRING, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
+		itemId: { type: DataTypes.INTEGER, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
 		amount: { type: DataTypes.INTEGER, allowNull: false },
+		resource: {
+			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
+			allowNull: false,
+		},
 		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 		currency: {
 			type: DataTypes.ENUM(
@@ -664,9 +670,9 @@ const PaymentTransaction = sequelize.define(
 		marketTransactionId: { type: DataTypes.BIGINT, allowNull: false },
 		fromAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
 		toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
-		amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-		currency: {
-			type: DataTypes.ENUM('tgStars', 'tonToken'),
+		amountOrPrice: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
+		currencyOrResource: {
+			type: DataTypes.ENUM('tgStars', 'tonToken', 'stars', 'stardust', 'darkMatter'),
 			allowNull: false,
 		},
 		txType: {
@@ -681,7 +687,11 @@ const PaymentTransaction = sequelize.define(
 				'FARMING_RESOURCE',
 				'GALAXY_RESOURCE',
 				'ARTIFACT_RESOURCE',
-				'STARS_TRANSFER'
+				'STARS_TRANSFER',
+				'TON_TRANSFER',
+				'TG_STARS_TRANSFER',
+				'STARDUST_TRANSFER',
+				'DARK_MATTER_TRANSFER',
 			),
 			allowNull: false,
 		},
@@ -691,7 +701,7 @@ const PaymentTransaction = sequelize.define(
 			comment: 'ID транзакции в блокчейне',
 		},
 		status: {
-			type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED'),
+			type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'FAILED', 'CANCELLED'),
 			defaultValue: 'PENDING',
 		},
 		createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
