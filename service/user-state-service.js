@@ -1,22 +1,9 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const {
-	UserState,
-	User,
-	UpgradeNode,
-	UserUpgrade,
-	UserTask,
-	UserEvent,
-	UserEventSetting,
-	PackageStore,
-} = require('../models/models');
+const { UserState, User } = require('../models/models');
 const logger = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
-const upgradeService = require('./upgrade-service');
-const taskService = require('./task-service');
-const eventService = require('./event-service');
-const packageStoreService = require('./package-store-service');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const {
@@ -26,11 +13,62 @@ const {
 
 class UserStateService {
 	async updateStreak(userState) {
-		// Streak functionality is not implemented in current database schema
-		// This method is a placeholder for future implementation
-		// For now, we'll use updatedAt as a proxy for last login
 		const now = new Date();
+		// const today = new Date(
+		// 	now.getFullYear(),
+		// 	now.getMonth(),
+		// 	now.getDate()
+		// );
+
+		const today = new Date(now);
+
+		await this.updateStreak(userState);
+		const lastLogin = userState.lastLoginDate
+			? new Date(userState.lastLoginDate)
+			: null;
+
+		// If this is the first login ever
+		if (!lastLogin) {
+			userState.lastLoginDate = today;
+			userState.currentStreak = 1;
+			userState.maxStreak = 1;
+			userState.streakUpdatedAt = now;
+			return;
+		}
+
+		// If already updated today, skip
+		if (
+			userState.streakUpdatedAt &&
+			new Date(userState.streakUpdatedAt).toDateString() ===
+				today.toDateString()
+		) {
+			return;
+		}
+
+		// Calculate the difference in hours
+		const diffDays = Math.floor(
+			(today - lastLogin) / (1000 * 60 * 60 * 24)
+		);
+
+		if (diffDays === 1) {
+			// Consecutive day
+			userState.currentStreak += 1;
+			userState.maxStreak = Math.max(
+				userState.currentStreak,
+				userState.maxStreak
+			);
+		} else if (diffDays > 1) {
+			// Streak broken
+			userState.currentStreak = 1;
+		}
+
+		userState.lastLoginDate = today;
+		userState.streakUpdatedAt = now;
 		userState.updatedAt = now;
+		userState.stateHistory.push({
+			timestamp: now,
+			state: userState.toJSON(),
+		});
 	}
 
 	async getUserState(userId) {
@@ -48,99 +86,8 @@ class UserStateService {
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
 
-				// Get user upgrades, tasks, events, and packages
-				const [
-					userUpgrades,
-					userTasks,
-					userEvents,
-					userEventSettings,
-					userPackages,
-				] = await Promise.all([
-					UserUpgrade.findAll({
-						where: { userId },
-						transaction: t,
-					}),
-					UserTask.findAll({
-						where: { userId },
-						transaction: t,
-					}),
-					UserEvent.findAll({
-						where: {
-							userId,
-							status: 'ACTIVE',
-						},
-						transaction: t,
-					}),
-					UserEventSetting.findOne({
-						where: { userId },
-						transaction: t,
-					}),
-					PackageStore.findAll({
-						where: {
-							userId,
-							status: 'ACTIVE',
-							isUsed: false,
-						},
-						transaction: t,
-					}),
-				]);
-
-				// Convert to JSON for response
-				const userStateObj = userState.toJSON
-					? userState.toJSON()
-					: { ...userState };
-
-				// Add aggregated data from related tables
-				userStateObj.upgrades = {
-					items: userUpgrades,
-					completed: userUpgrades.filter(
-						(upgrade) => upgrade.completed
-					).length,
-					active: userUpgrades.filter((upgrade) => !upgrade.completed)
-						.length,
-				};
-
-				userStateObj.tasks = {
-					items: userTasks,
-					completed: userTasks.filter((task) => task.completed)
-						.length,
-					active: userTasks.filter(
-						(task) => task.active && !task.completed
-					).length,
-				};
-
-				userStateObj.events = {
-					active: userEvents,
-					settings: userEventSettings || {},
-				};
-
-				userStateObj.packages = {
-					available: userPackages,
-					count: userPackages.length,
-				};
-
-				// Add placeholder values for fields that don't exist in current schema
-				userStateObj.currentStreak = 0;
-				userStateObj.maxStreak = 0;
-				userStateObj.chaosLevel = 0.0;
-				userStateObj.stabilityLevel = 0.0;
-				userStateObj.entropyVelocity = 0.0;
-				userStateObj.taskProgress = {
-					completedTasks: [],
-					currentWeight: 0,
-					unlockedNodes: [],
-				};
-				userStateObj.upgradeTree = {
-					activeNodes: [],
-					completedNodes: [],
-					nodeStates: {},
-					treeStructure: {},
-					totalProgress: 0,
-					lastNodeUpdate: new Date(),
-				};
-
 				await t.commit();
-				return userStateObj;
+				return userState;
 			}
 
 			await t.commit();
@@ -152,6 +99,8 @@ class UserStateService {
 	}
 
 	async createUserState(userId, userState, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const externalTransaction = !!transaction;
 		try {
 			await this.updateStreak(userState);
 			logger.debug('createUserState', userId, userState);
@@ -167,20 +116,30 @@ class UserStateService {
 					lockedDarkMatter: userState.lockedDarkMatter || 0,
 					lockedTgStars: userState.lockedTgStars || 0,
 					lastDailyBonus: userState.lastDailyBonus || null,
+					lastLoginDate: userState.lastLoginDate || null,
+					currentStreak: userState.currentStreak || 0,
+					maxStreak: userState.maxStreak || 0,
+					streakUpdatedAt: userState.streakUpdatedAt || null,
+					stateHistory: userState.stateHistory || [],
 				},
-				transaction: transaction,
+				transaction: t,
 			});
 
+			await t.commit();
 			return stateNew;
 		} catch (err) {
+			if (!externalTransaction) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to create/update user state: ${err.message}`
 			);
 		}
 	}
 
-	async updateUserState(userId, userState) {
-		const t = await sequelize.transaction();
+	async updateUserState(userId, userState, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const externalTransaction = !!transaction;
 
 		try {
 			const stateData = await UserState.findOne({
@@ -203,34 +162,14 @@ class UserStateService {
 					userState.entropyVelocity !== undefined
 						? userState.entropyVelocity
 						: stateData.entropyVelocity;
+				stateData.stateHistory.push({
+					timestamp: new Date(),
+					state: stateData.toJSON(),
+				});
 
 				// Update streak information
 				await this.updateStreak(stateData);
 				await stateData.save({ transaction: t });
-
-				// Get user upgrades, tasks, and events for the response
-				const [userUpgrades, userTasks, userEvents, userEventSettings] =
-					await Promise.all([
-						UserUpgrade.findAll({
-							where: { userId },
-							transaction: t,
-						}),
-						UserTask.findAll({
-							where: { userId },
-							transaction: t,
-						}),
-						UserEvent.findAll({
-							where: {
-								userId,
-								status: 'ACTIVE',
-							},
-							transaction: t,
-						}),
-						UserEventSetting.findOne({
-							where: { userId },
-							transaction: t,
-						}),
-					]);
 
 				// Prepare response object
 				const responseObj = {
@@ -240,31 +179,9 @@ class UserStateService {
 						: { ...stateData },
 				};
 
-				// Add aggregated data from related tables
-				responseObj.userState.upgrades = {
-					items: userUpgrades,
-					completed: userUpgrades.filter(
-						(upgrade) => upgrade.completed
-					).length,
-					active: userUpgrades.filter((upgrade) => !upgrade.completed)
-						.length,
-				};
-
-				responseObj.userState.tasks = {
-					items: userTasks,
-					completed: userTasks.filter((task) => task.completed)
-						.length,
-					active: userTasks.filter(
-						(task) => task.active && !task.completed
-					).length,
-				};
-
-				responseObj.userState.events = {
-					active: userEvents,
-					settings: userEventSettings || {},
-				};
-
-				await t.commit();
+				if (!externalTransaction) {
+					await t.commit();
+				}
 				return responseObj;
 			}
 
@@ -276,33 +193,24 @@ class UserStateService {
 					chaosLevel: userState.chaosLevel || 0.0,
 					stabilityLevel: userState.stabilityLevel || 0.0,
 					entropyVelocity: userState.entropyVelocity || 0.0,
-					taskProgress: {
-						completedTasks: [],
-						currentWeight: 0,
-						unlockedNodes: [],
-					},
-					upgradeTree: {
-						activeNodes: [],
-						completedNodes: [],
-						nodeStates: {},
-						treeStructure: {},
-						totalProgress: 0,
-						lastNodeUpdate: new Date(),
-					},
+					lastLoginDate: userState.lastLoginDate || null,
+					currentStreak: userState.currentStreak || 0,
+					maxStreak: userState.maxStreak || 0,
+					streakUpdatedAt: userState.streakUpdatedAt || null,
+					stateHistory: userState.stateHistory || [],
 				},
 				{ transaction: t }
 			);
 
 			await this.updateStreak(stateNew);
 
-			// Initialize related data for the new user
-			await Promise.all([
-				upgradeService.initializeUserUpgradeTree(userId, t),
-				taskService.initializeUserTasks(userId, t),
-				eventService.initializeUserEvents(userId, t),
-			]);
-
+			stateNew.stateHistory.push({
+				timestamp: new Date(),
+				state: stateNew.toJSON(),
+			});
+			await stateNew.save({ transaction: t });
 			await t.commit();
+
 			return { userId, userState: stateNew };
 		} catch (err) {
 			await t.rollback();
@@ -422,17 +330,6 @@ class UserStateService {
 		}
 	}
 
-	async getUserUpgradeTree(userId) {
-		try {
-			// This method now delegates to the upgrade service
-			return await upgradeService.getUserUpgradeNodes(userId);
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get user upgrade tree: ${err.message}`
-			);
-		}
-	}
-
 	async getUserResources(userId) {
 		const t = await sequelize.transaction();
 
@@ -452,6 +349,9 @@ class UserStateService {
 				stardust: userState.stardust || 0,
 				darkMatter: userState.darkMatter || 0,
 				tgStars: userState.tgStars || 0,
+				stars: userState.stars || 0,
+				tonToken: userState.tonToken || 0,
+				lastDailyBonus: userState.lastDailyBonus || null,
 				lockedResources: {
 					stardust: userState.lockedStardust || 0,
 					darkMatter: userState.lockedDarkMatter || 0,
@@ -545,6 +445,53 @@ class UserStateService {
 			}
 			throw ApiError.Internal(
 				`Failed to claim daily bonus: ${err.message}`
+			);
+		}
+	}
+
+	async farming(userId, offers) {
+		const t = await sequelize.transaction();
+		const result = [];
+		try {
+			if (offers.length > 0) {
+				for (const offer of offers) {
+					const offerData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: userId,
+						price: offer.price,
+						currency: offer.currency,
+						itemId: 0,
+						itemType: 'farming',
+						amount: offer.amount,
+						resource: offer.resource,
+						offerType: 'SYSTEM',
+						status: 'PENDING',
+					};
+
+					const {
+						offerOut,
+						marketTransaction,
+						payment,
+						transferStars,
+					} = await marketService.registerFarmingReward(offerData);
+					result.push({
+						offerOut,
+						marketTransaction,
+						payment,
+						transferStars,
+					});
+				}
+			}
+
+			await t.commit();
+			return {
+				result,
+			};
+		} catch (err) {
+			await t.rollback();
+			logger.error('Error in createSystemGalaxyWithOffer', err);
+			throw ApiError.Internal(
+				`Failed to create system galaxy with offer: ${err.message}`
 			);
 		}
 	}

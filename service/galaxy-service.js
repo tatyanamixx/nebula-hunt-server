@@ -9,6 +9,7 @@ const sequelize = require('../db');
 const { GALAXY_BASE_PRICE } = require('../config/constants');
 const marketService = require('./market-service');
 const { SYSTEM_USER_ID } = require('../config/constants');
+const { GALAXY_LIMIT_FOR_USER } = require('../config/constants');
 
 class GalaxyService {
 	async getUserGalaxies(userId) {
@@ -60,7 +61,7 @@ class GalaxyService {
 			}
 
 			// Calculate pagination
-			const itemsPerPage = 20;
+			const itemsPerPage = GALAXY_LIMIT_FOR_USER;
 			const totalPages = Math.ceil(count / itemsPerPage);
 			const randomPage = Math.floor(Math.random() * totalPages);
 			const offset = randomPage * itemsPerPage;
@@ -104,16 +105,16 @@ class GalaxyService {
 	}
 
 	// one galaxy
-	async getGalaxy(userId, galaxyId) {
+	async getUserGalaxy(userId, seed) {
 		const t = await sequelize.transaction();
 
 		try {
-			const galaxy = await Galaxy.findByPk(galaxyId, {
-				where: { userId },
+			const galaxy = await Galaxy.findOne({
+				where: { userId, seed },
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'role', 'id'],
+						attributes: ['username', 'id'],
 					},
 				],
 				transaction: t,
@@ -132,89 +133,7 @@ class GalaxyService {
 		}
 	}
 
-	// save new param for galaxy
-	async updateUserGalaxy(userId, galaxyData, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
 
-		try {
-			const galaxy = await Galaxy.findOne({
-				where: { seed: galaxyData.seed },
-				transaction,
-			});
-			if (!galaxy) {
-				throw ApiError.BadRequest('Galaxy not found');
-			}
-
-			const user = await User.findOne({
-				where: { id: userId },
-				transaction,
-			});
-
-			// Validate stars value
-			if (galaxyData.starCurrent < 0) {
-				throw ApiError.BadRequest('Stars cannot be negative');
-			}
-			galaxy.starCurrent = galaxyData.starCurrent;
-			galaxy.price = galaxyData.price;
-
-			galaxy.starCurrent = galaxyData.starCurrent;
-			galaxy.particleCount = galaxyData.particleCount;
-			galaxy.onParticleCountChange = galaxyData.onParticleCountChange;
-			galaxy.galaxyProperties = galaxyData.galaxyProperties;
-			await galaxy.save({ transaction });
-
-			if (!externalTransaction) {
-				await t.commit();
-			}
-			return galaxy;
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to update galaxy stars: ${err.message}`
-			);
-		}
-	}
-
-	// save new param for galaxy
-	async updateGalaxyOwner(galaxyData, userId) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
-
-		try {
-			const galaxy = await Galaxy.findOne(galaxyData.seed, {
-				transaction,
-			});
-			if (!galaxy) {
-				throw ApiError.BadRequest('Galaxy not found');
-			}
-
-			const newUser = await User.findByPk(userId, {
-				transaction,
-			});
-			if (!newUser) {
-				throw ApiError.BadRequest('New owner not found');
-			}
-
-			const oldUserId = galaxy.userId;
-			galaxy.userId = newUser.id;
-			await galaxy.save({ transaction });
-
-			if (!externalTransaction) {
-				await t.commit();
-			}
-			return galaxy;
-		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
-			throw ApiError.Internal(
-				`Failed to update galaxy owner: ${err.message}`
-			);
-		}
-	}
 
 	/**
 	 * Создать галактику от имени SYSTEM и создать оферту с инвойсом
@@ -223,8 +142,7 @@ class GalaxyService {
 	 * @param {Object} offerData - данные оферты (price, currency, expiresAt)
 	 */
 	async createGalaxyWithOffer(userId, galaxyData, offer) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+		const t = await sequelize.transaction();
 
 		try {
 			// 1. Создаем галактику от имени SYSTEM
@@ -244,12 +162,12 @@ class GalaxyService {
 					galaxyProperties: galaxyData.galaxyProperties || {},
 					active: true,
 				},
-				transaction,
+				transaction: t,
 			});
 			if (!created) {
 				throw ApiError.BadRequest('Galaxy already exists');
 			} else {
-				await galaxy.save({ transaction });
+				await galaxy.save({ transaction: t });
 				await t.commit();
 				logger.debug('galaxy created');
 			}
@@ -264,13 +182,12 @@ class GalaxyService {
 				amount: galaxy.starCurrent,
 				resource: 'stars',
 				offerType: 'SYSTEM',
-				status: offer.price === 0 ? 'COMPLETED' : 'PENDING',
+				status: 'PENDING',
 			};
 
 			const { offerOut, marketTransaction, payment, transferStars } =
 				await marketService.registerGalaxyOffer(offerData);
 
-			
 			return {
 				galaxy,
 				offerOut,
@@ -279,49 +196,41 @@ class GalaxyService {
 				transferStars,
 			};
 		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-				logger.error('Error in createSystemGalaxyWithOffer', err);
-			}
+			await t.rollback();
+			logger.error('Error in createSystemGalaxyWithOffer', err);
 			throw ApiError.Internal(
 				`Failed to create system galaxy with offer: ${err.message}`
 			);
 		}
 	}
 
-	async deleteGalaxy(userId,seed) {
-		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+	async deleteGalaxy(userId, seed) {
+		const t = await sequelize.transaction();
 
 		try {
-			const galaxy = await Galaxy.findByPk(galaxyId, {
-				transaction,
+			const galaxy = await Galaxy.findOne({
+				where: { seed, userId },
+				transaction: t,
 			});
 
 			if (!galaxy) {
-				if (!externalTransaction) {
-					await t.rollback();
-				}
+				await t.rollback();
 				throw ApiError.NotFound(
 					'Galaxy not found or not owned by user'
 				);
 			}
 
 			// Hard delete
-			await galaxy.destroy({ transaction });
+			await galaxy.destroy({ transaction: t });
 
-			if (!externalTransaction) {
-				await t.commit();
-			}
+			await t.commit();
 			return {
 				success: true,
 				message: 'Galaxy deleted successfully',
-				galaxyId: galaxyId,
+				galaxyId: galaxy.id,
 			};
 		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
+			await t.rollback();
 			if (err instanceof ApiError) {
 				throw err;
 			}
@@ -351,7 +260,7 @@ class GalaxyService {
 			if (galaxy.starCurrent < 0) {
 				throw ApiError.BadRequest('Stars cannot be negative');
 			}
-			
+
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userId,
@@ -361,29 +270,22 @@ class GalaxyService {
 				itemType: 'galaxy',
 				amount: offer.amount,
 				resource: offer.resource,
-				offerType: 'SY',
-				status:  'COMPLETED' 
+				offerType: 'SYSTEM',
+				status: 'COMPLETED',
 			};
 			// Регистрируем передачу звезд через marketService
-			const result = await marketService.registerStarsTransfer(
-				offerData,
-				{ transaction }
-			);
+			const result = await marketService.registerStarsTransfer(offerData);
 
-			galaxy.starCurrent += offerData.amount;
+			galaxy.starCurrent = galaxyData.starCurrent;
 			galaxy.particleCount = galaxyData.particleCount;
 			galaxy.onParticleCountChange = galaxyData.onParticleCountChange;
-			galaxy.galaxyProperties = galaxyData.galaxyProperties;
-			await galaxy.save({ transaction });
-			
-			if (!externalTransaction) {
-				await t.commit();
-			}
+			galaxy.galaxyProperties = galaxyData.galaxyProperties || {};
+			await galaxy.save({ transaction: t });
+
+			await t.commit();
 			return result;
 		} catch (err) {
-			if (!externalTransaction) {
-				await t.rollback();
-			}
+			await t.rollback();
 			throw ApiError.Internal(
 				`Failed to transfer stars to user: ${err.message}`
 			);

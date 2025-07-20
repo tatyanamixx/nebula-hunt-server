@@ -5,7 +5,7 @@
 const { User, UserState } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
-const stateService = require('./state-service');
+const userStateService = require('./user-state-service');
 const logger = require('./logger-service');
 const eventService = require('./event-service');
 const upgradeService = require('./upgrade-service');
@@ -19,7 +19,7 @@ const prometheusService = require('./prometheus-service');
 const marketService = require('./market-service');
 const packageStoreService = require('./package-store-service');
 
-const { SYSTEM_USER_ID } = require('../config/constants');
+const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
 
 class UserService {
 	/**
@@ -42,7 +42,7 @@ class UserService {
 			const systemUser = await User.create(
 				{
 					id: SYSTEM_USER_ID,
-					username: 'SYSTEM',
+					username: SYSTEM_USER_USERNAME,
 					referral: 0,
 					role: 'SYSTEM',
 					blocked: false,
@@ -52,12 +52,9 @@ class UserService {
 
 			logger.debug('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
 			// Create UserState for SYSTEM user (for contract balance)
-			await UserState.create(
-				{
-					userId: SYSTEM_USER_ID,
-				},
-				{ transaction: t }
-			);
+			await UserState.findOrCreate({
+				userId: SYSTEM_USER_ID,
+			});
 
 			await t.commit();
 			return systemUser;
@@ -87,19 +84,19 @@ class UserService {
 
 	/**
 	 * Регистрация нового пользователя с инициализацией всех необходимых данных
-	 * @param {BigInt|string} id - Идентификатор пользователя
+	 * @param {BigInt|string} userId - Идентификатор пользователя
 	 * @param {string} username - Имя пользователя
 	 * @param {BigInt|string} referral - Идентификатор реферала
 	 * @param {Object} reqUserState - Начальное состояние пользователя
 	 * @param {Array} galaxies - Массив данных о галактиках пользователя
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async registration(id, username, referral, reqUserState, galaxies) {
+	async registration(userId, username, referral, reqUserState, galaxies) {
 		// Первая транзакция - создаем только пользователя
 		const t1 = await sequelize.transaction();
 		try {
 			// Валидация входных данных
-			if (!id || !username) {
+			if (!userId || !username) {
 				throw ApiError.BadRequest(
 					'Missing required user data (id or username)'
 				);
@@ -112,9 +109,9 @@ class UserService {
 
 			// 1. Создаём только пользователя
 			const [user, created] = await User.findOrCreate({
-				where: { id },
+				where: { id: userId },
 				defaults: {
-					id,
+					id: userId,
 					username,
 					referral,
 					role: 'USER',
@@ -139,7 +136,7 @@ class UserService {
 				// 2. Инициализируем состояние пользователя
 				const initialState = {
 					state: {
-						totalStars: 0,
+						stars: 0,
 						stardustCount: 0,
 						darkMatterCount: 0,
 						tgStarsCount: 0,
@@ -168,6 +165,7 @@ class UserService {
 
 				// 4. Создаём галактики для пользователя, если данные предоставлены
 				const userGalaxies = [];
+				let totalStars = 0;
 				if (Array.isArray(galaxies) && galaxies.length > 0) {
 					for (const galaxyData of galaxies) {
 						const offer = {
@@ -176,17 +174,20 @@ class UserService {
 							currency: 'stars',
 							stars: galaxyData.starCurrent || 100,
 						};
-						const newGalaxy = await galaxyService.createGalaxyWithOfferFromSystem(
-							galaxyData,
-							offer,
-							t2
-						);
+						const newGalaxy =
+							await galaxyService.createGalaxyWithOffer(
+								galaxyData,
+								offer,
+								t2
+							);
 						userGalaxies.push(newGalaxy);
+						totalStars += galaxyData.starCurrent || 100;
 					}
 
 					// Обновляем счётчик галактик
-					if (!userState.state) userState.state = {};
+
 					userState.state.ownedGalaxiesCount = userGalaxies.length;
+					userState.state.stars = totalStars;
 					await userState.save({ transaction: t2 });
 				}
 
@@ -251,7 +252,7 @@ class UserService {
 
 			// Логируем ошибку
 			logger.error(`Registration failed: ${err.message}`, {
-				userId: id,
+				userId: userId,
 				error: err.stack,
 			});
 
@@ -261,14 +262,14 @@ class UserService {
 
 	/**
 	 * Авторизация пользователя и получение всех связанных данных
-	 * @param {BigInt|string} id - Идентификатор пользователя
+	 * @param {BigInt|string} userId - Идентификатор пользователя
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async login(id) {
+	async login(userId) {
 		const t = await sequelize.transaction();
 		try {
 			// 1. Проверяем существование пользователя
-			const user = await User.findByPk(id, { transaction: t });
+			const user = await User.findByPk(userId, { transaction: t });
 
 			if (!user) {
 				throw ApiError.BadRequest('User not found');
@@ -290,7 +291,7 @@ class UserService {
 			// 3. Проверяем и инициализируем state, если его нет
 			if (!userState.state) {
 				userState.state = {
-					totalStars: 0,
+					stars: userGalaxies.currentStars,
 					stardustCount: 0,
 					darkMatterCount: 0,
 					tgStarsCount: 0,
@@ -349,7 +350,7 @@ class UserService {
 
 			// Логируем ошибку
 			logger.error(`Login failed: ${err.message}`, {
-				userId: id,
+				userId: userId,
 				error: err.stack,
 			});
 
@@ -457,21 +458,21 @@ class UserService {
 
 	/**
 	 * Получение списка друзей пользователя (пользователей, указавших данного пользователя как реферала)
-	 * @param {BigInt|string} id - Идентификатор пользователя
+	 * @param {BigInt|string} userId - Идентификатор пользователя
 	 * @returns {Promise<Object>} Список друзей и их количество
 	 */
-	async getFriends(id) {
+	async getFriends(userId) {
 		const t = await sequelize.transaction();
 
 		try {
 			// Проверяем наличие идентификатора пользователя
-			if (!id) {
+			if (!userId) {
 				await t.rollback();
 				throw ApiError.BadRequest('User ID is required');
 			}
 
 			// Проверяем существование пользователя
-			const user = await User.findByPk(id, { transaction: t });
+			const user = await User.findByPk(userId, { transaction: t });
 			if (!user) {
 				await t.rollback();
 				throw ApiError.BadRequest(`User with ID ${id} not found`);
@@ -479,7 +480,7 @@ class UserService {
 
 			// Получаем список друзей (пользователей, которые указали данного пользователя как реферала)
 			const friends = await User.findAll({
-				where: { referral: id },
+				where: { referral: userId },
 				attributes: ['id', 'username', 'referral', 'createdAt'],
 				include: [
 					{
@@ -491,7 +492,7 @@ class UserService {
 			});
 
 			// Логируем количество найденных друзей
-			logger.info(`Found ${friends.length} friends for user ${id}`);
+			logger.info(`Found ${friends.length} friends for user ${userId}`);
 
 			// Фиксируем транзакцию
 			await t.commit();
@@ -506,7 +507,7 @@ class UserService {
 
 			// Логируем ошибку
 			logger.error(`Failed to get friends: ${err.message}`, {
-				userId: id,
+				userId: userId,
 				error: err.stack,
 			});
 

@@ -29,7 +29,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  *         description: List of user galaxies
  */
 router.get(
-	'/',
+	'/galaxies',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
@@ -38,7 +38,7 @@ router.get(
 
 /**
  * @swagger
- * /galaxies/{galaxyId}:
+ * /galaxies/{seed}:
  *   get:
  *     summary: Get specific galaxy by ID
  *     tags: [Galaxy]
@@ -46,7 +46,7 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: galaxyId
+ *         name: seed
  *         required: true
  *         schema:
  *           type: string
@@ -55,16 +55,35 @@ router.get(
  *         description: Galaxy details
  */
 router.get(
-	'/:galaxyId',
+	'/:seed',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(60, 60),
-	galaxyController.getGalaxy
+	galaxyController.getUserGalaxy
 );
 
 /**
  * @swagger
- * /galaxies:
+ * /galaxies/show:
+ *   get:
+ *     summary: Get show galaxies
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of show galaxies
+ */
+router.get(
+	'/show',
+	telegramAuthMiddleware,
+	authMiddleware,
+	rateLimitMiddleware(60, 60),
+	galaxyController.getShowGalaxies
+);	
+/**
+ * @swagger
+ * /galaxies/create:
  *   post:
  *     summary: Create a new galaxy
  *     tags: [Galaxy]
@@ -86,16 +105,16 @@ router.get(
  *         description: Galaxy created successfully
  */
 router.post(
-	'/',
+	'/create',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(10, 60),
-	galaxyController.createGalaxyWithOfferFromSystem
+	galaxyController.createGalaxyWithOffer
 );
 
 /**
  * @swagger
- * /galaxies/{galaxyId}:
+ * /galaxies/transferstars:
  *   put:
  *     summary: Update a galaxy
  *     tags: [Galaxy]
@@ -103,7 +122,7 @@ router.post(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: galaxyId
+ *         name: seed
  *         required: true
  *         schema:
  *           type: string
@@ -118,20 +137,14 @@ router.post(
  *         description: Galaxy updated successfully
  */
 router.post(
-	'/create',
-	telegramAuthMiddleware,
-	authMiddleware,
-	rateLimitMiddleware(30, 60),
-	galaxyController.createGalaxyWithOffer
-);
-
-router.post(
 	'/transferstars',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(30, 60),
 	galaxyController.transferStarsToUserGalaxy
 );
+
+
 
 /**
  * @swagger
@@ -152,11 +165,11 @@ router.post(
  *         description: Galaxy deleted successfully
  */
 router.delete(
-	'/:galaxyId',
+	'/:seed',
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(10, 60),
-	galaxyController.deleteGalaxy
+	galaxyController.deleteUserGalaxy
 );
 
 module.exports = router;

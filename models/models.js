@@ -41,6 +41,29 @@ const UserState = sequelize.define('userstate', {
 	stars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 	tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 	tonToken: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+	lastLoginDate: {
+		type: DataTypes.DATEONLY,
+		allowNull: true,
+		comment: 'Date of the last login (YYYY-MM-DD)',
+	},
+	currentStreak: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
+		comment: 'Number of consecutive days logged in',
+	},
+	maxStreak: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
+		comment: 'Maximum streak achieved',
+	},
+	streakUpdatedAt: {
+		type: DataTypes.DATE,
+		allowNull: true,
+		comment: 'Timestamp of the last streak update',
+	},
+	chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+	stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+	entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 	lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
 	lockedStardust: {
 		type: DataTypes.INTEGER,
@@ -57,6 +80,11 @@ const UserState = sequelize.define('userstate', {
 		allowNull: true,
 		defaultValue: 0,
 	},
+	stateHistory: {
+		type: DataTypes.JSONB,
+		defaultValue: [],
+		comment: 'History of user state with timestamps',
+	},
 });
 
 // Новая модель для пользовательских апгрейдов
@@ -70,8 +98,6 @@ const UserUpgrade = sequelize.define(
 		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
 		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-		stability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		instability: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 		progressHistory: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
@@ -572,7 +598,15 @@ const MarketOffer = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		sellerId: { type: DataTypes.BIGINT, allowNull: false },
 		itemType: {
-			type: DataTypes.ENUM('artifact', 'galaxy', 'task', 'package', 'event', 'upgrade'),
+			type: DataTypes.ENUM(
+				'artifact',
+				'galaxy',
+				'task',
+				'package',
+				'event',
+				'upgrade',
+				'farming'
+			),
 			allowNull: false,
 		},
 		itemId: { type: DataTypes.INTEGER, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
@@ -672,7 +706,13 @@ const PaymentTransaction = sequelize.define(
 		toAccount: { type: DataTypes.BIGINT, allowNull: false }, // userId или 'system_wallet'
 		priceOrAmount: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
 		currencyOrResource: {
-			type: DataTypes.ENUM('tgStars', 'tonToken', 'stars', 'stardust', 'darkMatter'),
+			type: DataTypes.ENUM(
+				'tgStars',
+				'tonToken',
+				'stars',
+				'stardust',
+				'darkMatter'
+			),
 			allowNull: false,
 		},
 		txType: {
@@ -691,7 +731,7 @@ const PaymentTransaction = sequelize.define(
 				'TON_TRANSFER',
 				'TG_STARS_TRANSFER',
 				'STARDUST_TRANSFER',
-				'DARK_MATTER_TRANSFER',
+				'DARK_MATTER_TRANSFER'
 			),
 			allowNull: false,
 		},

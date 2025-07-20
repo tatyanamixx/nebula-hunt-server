@@ -5,7 +5,7 @@
 const Router = require('express').Router;
 const router = new Router();
 
-const authRouter = require('./auth-router');
+const authRouter = require('./user-auth-router');
 const userStateRouter = require('./user-state-router');
 const galaxyRouter = require('./galaxy-router');
 const artifactRouter = require('./artifact-router');

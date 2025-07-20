@@ -1,15 +1,15 @@
 /**
  * created by Tatyana Mikhniukevich on 29.05.2025
  */
-const userStateService = require('../service/state-service');
+const userStateService = require('../service/user-state-service');
 const ApiError = require('../exceptions/api-error');
 const logger = require('../service/logger-service');
 
 class UserStateController {
 	async getUserState(req, res, next) {
 		try {
-			const id = req.initdata.id;
-			const userState = await userStateService.getUserState(id);
+			const userId = req.initdata.id;
+			const userState = await userStateService.getUserState(userId);
 			return res.json(userState);
 		} catch (e) {
 			next(e);
@@ -18,8 +18,8 @@ class UserStateController {
 
 	async getUserResources(req, res, next) {
 		try {
-			const id = req.initdata.id;
-			const resources = await userStateService.getUserResources(id);
+			const userId = req.initdata.id;
+			const resources = await userStateService.getUserResources(userId);
 			return res.json(resources);
 		} catch (e) {
 			next(e);
@@ -28,10 +28,10 @@ class UserStateController {
 
 	async claimDailyBonus(req, res, next) {
 		try {
-			const id = req.initdata.id;
-			const result = await userStateService.claimDailyBonus(id);
+			const userId = req.initdata.id;
+			const result = await userStateService.claimDailyBonus(userId);
 			logger.info('Daily bonus claimed', {
-				userId: id,
+				userId: userId,
 				bonus: result.bonus,
 			});
 			return res.json(result);
@@ -42,14 +42,14 @@ class UserStateController {
 
 	async updateUserState(req, res, next) {
 		try {
-			const id = req.initdata.id;
+			const userId = req.initdata.id;
 			const userState = req.body;
 			const updatedState = await userStateService.updateUserState(
-				id,
+				userId,
 				userState
 			);
 			logger.info('User state updated', {
-				userId: id,
+				userId: userId,
 				newState: userState,
 			});
 			return res.json(updatedState);
@@ -60,9 +60,26 @@ class UserStateController {
 
 	async getLeaderboard(req, res, next) {
 		try {
-			const id = req.initdata.id;
-			const leaderboard = await userStateService.leaderboard(id);
+			const userId = req.initdata.id;
+			const leaderboard = await userStateService.leaderboard(userId);
 			return res.json(leaderboard);
+		} catch (e) {
+			next(e);
+		}
+	}
+
+	async farming(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const offers = req.body;
+			const result = await userStateService.farming(userId, offers);
+			logger.info({
+				message: 'Farming rewards registered',
+				userId: userId,
+				offers: offers,
+				result: result,
+			});
+			return res.json(result);
 		} catch (e) {
 			next(e);
 		}
