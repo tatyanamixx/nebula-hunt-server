@@ -77,13 +77,13 @@ describe('TokenService', () => {
 				1,
 				{ ...payload, id: 123 }, // id преобразован в число
 				'test-access-secret',
-				{ expiresIn: '30m' }
+				{ expiresIn: '15m' }
 			);
 			expect(jwt.sign).toHaveBeenNthCalledWith(
 				2,
 				{ id: 123, type: 'refresh', version: expect.any(Number) }, // refresh token payload
 				'test-refresh-secret',
-				{ expiresIn: '7d' }
+				{ expiresIn: '30d' }
 			);
 
 			// Проверяем результат
@@ -126,13 +126,13 @@ describe('TokenService', () => {
 				1,
 				{ ...payload, id: 123 }, // строковый ID преобразован в число
 				'test-access-secret',
-				{ expiresIn: '30m' }
+				{ expiresIn: '15m' }
 			);
 			expect(jwt.sign).toHaveBeenNthCalledWith(
 				2,
 				{ id: 123, type: 'refresh', version: expect.any(Number) },
 				'test-refresh-secret',
-				{ expiresIn: '7d' }
+				{ expiresIn: '30d' }
 			);
 
 			// Проверяем результат

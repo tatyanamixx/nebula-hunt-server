@@ -106,13 +106,13 @@ const jwt = require('jsonwebtoken');
 
 generateTokens(payload) {
   const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: '1h'
+    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m'
   });
 
   const refreshToken = jwt.sign(
     { id: payload.id, type: 'refresh' },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '30d' }
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d' }
   );
 
   return { accessToken, refreshToken };
@@ -265,8 +265,8 @@ module.exports = async function authMiddleware(req, res, next) {
 
 #### Безопасность токенов
 
--   **Короткий срок действия** - access token истекает через 30 минут
--   **Долгий срок действия** - refresh token истекает через 7 дней
+-   **Короткий срок действия** - access token истекает через 15 минут
+-   **Долгий срок действия** - refresh token истекает через 30 дней
 -   **Разные секреты** - отдельные секреты для access и refresh токенов
 -   **Хранение в БД** - refresh токены сохраняются в базе данных
 -   **Автоматическое обновление** - токены обновляются при каждом запросе

@@ -965,7 +965,7 @@ module.exports = {
 					'package',
 					'event',
 					'upgrade',
-					'farming'
+					'resource'
 				),
 				allowNull: false,
 			},
@@ -1145,10 +1145,10 @@ module.exports = {
 					'CONTRACT_TO_SELLER',
 					'FEE',
 					'RESOURCE_TRANSFER',
-					'UPGRADE_RESOURCE',
-					'TASK_RESOURCE',
-					'EVENT_RESOURCE',
-					'FARMING_RESOURCE',
+					'UPGRADE_REWARD',
+					'TASK_REWARD',
+					'EVENT_REWARD',
+					'FARMING_REWARD',
 					'GALAXY_RESOURCE',
 					'ARTIFACT_RESOURCE',
 					'STARS_TRANSFER',

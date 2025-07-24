@@ -6,7 +6,7 @@ module.exports = class UserDto {
 	role;
 
 	constructor(model) {
-		this.id = String(model.id);
+		this.id = model.id;
 		this.role = model.role;
 	}
 };

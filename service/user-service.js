@@ -18,6 +18,7 @@ const { Op, where } = require('sequelize');
 const artifactService = require('./artifact-service');
 const prometheusService = require('./prometheus-service');
 const marketService = require('./market-service');
+const gameService = require('./game-service');
 const packageStoreService = require('./package-store-service');
 
 const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
@@ -286,30 +287,18 @@ class UserService {
 			});
 
 			if (galaxy && !galaxyData) {
-				const offer = {
-					buyerId: user.id,
-					sellerId: SYSTEM_USER_ID,
-					amount: galaxy.starCurrent || 100,
-					resource: 'stars',
-					price: 0,
-					currency: 'tgStars',
-					offerType: 'SYSTEM',
-				};
-
-				logger.debug('Creating galaxy with offer', { offer });
-				const result = await galaxyService.createGalaxyWithOffer(
+				logger.debug('Creating galaxy as gift', { galaxy });
+				const result = await gameService.createGalaxyAsGift(
 					galaxy,
-					offer,
+					user.id,
 					transaction
 				);
 
 				logger.debug('Galaxy creation result', result);
-				createdGalaxy = result.createdGalaxy;
 				userGalaxy = result.galaxy;
 				userStateNew = result.userState;
 			}
 			logger.debug('registration after create galaxy', {
-				createdGalaxy,
 				userGalaxy,
 				userState: userStateNew,
 			});
@@ -342,7 +331,6 @@ class UserService {
 			const response = {
 				...tokens,
 				user: userDto,
-				createdGalaxy,
 				userState: userStateNew,
 				galaxy: userGalaxy,
 			};

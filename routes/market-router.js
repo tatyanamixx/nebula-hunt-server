@@ -31,8 +31,8 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/offers',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	marketController.getOffers
 );
 
@@ -57,8 +57,8 @@ router.get(
 router.get(
 	'/offers/:offerId',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	marketController.getOffer
 );
 
@@ -83,8 +83,8 @@ router.get(
 router.post(
 	'/offers',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(20, 60),
+	authMiddleware,
 	marketController.createOffer
 );
 
@@ -109,8 +109,8 @@ router.post(
 router.post(
 	'/offers/:offerId/cancel',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(30, 60),
+	authMiddleware,
 	marketController.cancelOffer
 );
 
@@ -135,8 +135,8 @@ router.post(
 router.post(
 	'/offers/:offerId/buy',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(20, 60),
+	authMiddleware,
 	marketController.buyOffer
 );
 
@@ -155,8 +155,8 @@ router.post(
 router.get(
 	'/transactions',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	marketController.getUserTransactions
 );
 

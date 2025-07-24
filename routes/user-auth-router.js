@@ -54,7 +54,7 @@ router.post(
 
 router.post(
 	'/login',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(30, 60), authMiddleware],
 	userController.login
 );
 
@@ -78,7 +78,7 @@ router.post(
 
 router.post(
 	'/logout',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(20, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(20, 60), authMiddleware],
 	userController.logout
 );
 
@@ -99,8 +99,8 @@ router.get(
 	'/refresh',
 	[
 		telegramAuthMiddleware,
-		refreshTokenMiddleware,
 		rateLimitMiddleware(30, 60),
+		refreshTokenMiddleware,
 	],
 	userController.refresh
 );
@@ -137,7 +137,7 @@ router.get(
 
 router.get(
 	'/friends',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(60, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(60, 60), authMiddleware],
 	userController.getFriends
 );
 

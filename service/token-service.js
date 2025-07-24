@@ -9,6 +9,15 @@ const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const logger = require('./logger-service');
 
+// JWT Token Configuration
+const JWT_CONFIG = {
+	ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+	REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+	ISSUER: process.env.JWT_ISSUER || 'nebulahunt-server',
+	ACCESS_AUDIENCE: process.env.JWT_ACCESS_AUDIENCE || 'nebulahunt-users',
+	REFRESH_AUDIENCE: process.env.JWT_REFRESH_AUDIENCE || 'nebulahunt-users',
+};
+
 class TokenService {
 	generateTokens(payload) {
 		try {
@@ -29,9 +38,9 @@ class TokenService {
 				{ ...payload, id: userId },
 				process.env.JWT_ACCESS_SECRET,
 				{
-					expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30m',
-					issuer: 'nebulahunt-server',
-					audience: 'nebulahunt-users',
+					expiresIn: JWT_CONFIG.ACCESS_EXPIRES_IN,
+					issuer: JWT_CONFIG.ISSUER,
+					audience: JWT_CONFIG.ACCESS_AUDIENCE,
 				}
 			);
 
@@ -43,18 +52,16 @@ class TokenService {
 				},
 				process.env.JWT_REFRESH_SECRET,
 				{
-					expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-					issuer: 'nebulahunt-server',
-					audience: 'nebulahunt-users',
+					expiresIn: JWT_CONFIG.REFRESH_EXPIRES_IN,
+					issuer: JWT_CONFIG.ISSUER,
+					audience: JWT_CONFIG.REFRESH_AUDIENCE,
 				}
 			);
 
 			logger.debug('Tokens generated successfully', {
 				userId: userId,
-				accessTokenExpiresIn:
-					process.env.JWT_ACCESS_EXPIRES_IN || '30m',
-				refreshTokenExpiresIn:
-					process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+				accessTokenExpiresIn: JWT_CONFIG.ACCESS_EXPIRES_IN,
+				refreshTokenExpiresIn: JWT_CONFIG.REFRESH_EXPIRES_IN,
 			});
 
 			return { accessToken, refreshToken };
@@ -78,8 +85,8 @@ class TokenService {
 			}
 
 			const userData = jwt.verify(token, process.env.JWT_ACCESS_SECRET, {
-				issuer: 'nebulahunt-server',
-				audience: 'nebulahunt-users',
+				issuer: JWT_CONFIG.ISSUER,
+				audience: JWT_CONFIG.ACCESS_AUDIENCE,
 			});
 
 			// Дополнительные проверки payload
@@ -131,8 +138,8 @@ class TokenService {
 			}
 
 			const userData = jwt.verify(token, process.env.JWT_REFRESH_SECRET, {
-				issuer: 'nebulahunt-server',
-				audience: 'nebulahunt-users',
+				issuer: JWT_CONFIG.ISSUER,
+				audience: JWT_CONFIG.REFRESH_AUDIENCE,
 			});
 
 			// Проверяем, что это refresh token

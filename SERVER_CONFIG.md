@@ -69,6 +69,9 @@ JWT_ACCESS_SECRET=dev_access_secret_key_change_in_production
 JWT_REFRESH_SECRET=dev_refresh_secret_key_change_in_production
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=30d
+JWT_ISSUER=nebulahunt-server
+JWT_ACCESS_AUDIENCE=nebulahunt-users
+JWT_REFRESH_AUDIENCE=nebulahunt-users
 
 # =============================================================================
 # TELEGRAM BOT
@@ -154,6 +157,9 @@ JWT_ACCESS_SECRET=your_very_secure_access_secret_key_64_chars_min
 JWT_REFRESH_SECRET=your_very_secure_refresh_secret_key_64_chars_min
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=30d
+JWT_ISSUER=nebulahunt-server
+JWT_ACCESS_AUDIENCE=nebulahunt-users
+JWT_REFRESH_AUDIENCE=nebulahunt-users
 
 # =============================================================================
 # TELEGRAM BOT

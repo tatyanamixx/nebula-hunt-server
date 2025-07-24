@@ -12,8 +12,8 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	upgradeController.getUserUpgrades
 );
 
@@ -21,8 +21,8 @@ router.get(
 router.get(
 	'/available',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	upgradeController.getAvailableUpgrades
 );
 
@@ -30,8 +30,8 @@ router.get(
 router.get(
 	'/stats',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	upgradeController.getUpgradeStats
 );
 
@@ -39,8 +39,8 @@ router.get(
 router.get(
 	'/:upgradeId',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	upgradeController.getUserUpgrade
 );
 
@@ -48,8 +48,8 @@ router.get(
 router.post(
 	'/purchase/:upgradeId',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(30, 60),
+	authMiddleware,
 	upgradeController.purchaseUpgrade
 );
 
@@ -57,8 +57,8 @@ router.post(
 router.put(
 	'/:upgradeId/progress',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(30, 60),
+	authMiddleware,
 	upgradeController.updateUpgradeProgress
 );
 
@@ -66,8 +66,8 @@ router.put(
 router.post(
 	'/reset',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(10, 60),
+	authMiddleware,
 	upgradeController.resetUpgrades
 );
 

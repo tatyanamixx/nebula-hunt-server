@@ -31,8 +31,8 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/galaxies',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	galaxyController.getUserGalaxies
 );
 
@@ -57,8 +57,8 @@ router.get(
 router.get(
 	'/:seed',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	galaxyController.getUserGalaxy
 );
 
@@ -77,10 +77,10 @@ router.get(
 router.get(
 	'/show',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(60, 60),
+	authMiddleware,
 	galaxyController.getShowGalaxies
-);	
+);
 /**
  * @swagger
  * /galaxies/create:
@@ -107,8 +107,8 @@ router.get(
 router.post(
 	'/create',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(10, 60),
+	authMiddleware,
 	galaxyController.createGalaxyWithOffer
 );
 
@@ -139,12 +139,10 @@ router.post(
 router.post(
 	'/transferstars',
 	telegramAuthMiddleware,
-	authMiddleware,
 	rateLimitMiddleware(30, 60),
+	authMiddleware,
 	galaxyController.transferStarsToUserGalaxy
 );
-
-
 
 /**
  * @swagger

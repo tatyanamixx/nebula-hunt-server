@@ -1,5 +1,7 @@
 /**
+ * Market Service for market operations
  * created by Tatyana Mikhniukevich on 04.07.2025
+ * updated by Claude on 15.07.2025 - extracted game mechanics to game-service.js
  */
 const {
 	User,
@@ -20,12 +22,7 @@ const { commission, pagination, offers } = require('../config/market.config');
 const { SYSTEM_USER_ID } = require('../config/constants');
 const logger = require('../service/logger-service');
 const userStateService = require('./user-state-service');
-//const packageTemplateService = require('./package-template-service');
-//const packageStoreService = require('./package-store-service');
-//const galaxyService = require('./galaxy-service');
-//const artifactService = require('./artifact-service');
-//const resourceService = require('./resource-service');
-//const packageService = require('./package-service');
+const gameService = require('./game-service');
 
 class MarketService {
 	/**
@@ -1039,89 +1036,12 @@ class MarketService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerUpgradePayment({ userId, nodeId, amount, resource }) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: userId, // The user "sells" the resource to the system
-				itemType: 'resource',
-				itemId: `${resource}_${amount}`,
-				price: 0, // Free, because this is an exchange of resources for an upgrade
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-			};
-
-			// Check that the resource is available
-			await this.checkResourceAvailability(
-				userId,
-				{ type: resource, amount },
-				t
-			);
-
-			// Lock the resource
-			await this.lockResource(userId, { type: resource, amount }, t);
-
-			// Create an offer
-			const offer = await MarketOffer.create(offerData, {
-				transaction: t,
-			});
-
-			// Create a transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
-					offerId: offer.id,
-					buyerId: SYSTEM_USER_ID, // The system "buys" the resource
-					sellerId: userId,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Create a record about the transaction
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: userId,
-					toAccount: SYSTEM_USER_ID,
-					amount,
-					currency: 'tonToken', // The currency is not important, because the price is 0
-					txType: 'UPGRADE_RESOURCE',
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Unlock and transfer the resource to the system
-			await this.transferResource(offer, SYSTEM_USER_ID, t);
-
-			// Complete the offer
-			await offer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Resource transferred to the system for an upgrade',
-				nodeId,
-				resource,
-				amount,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register upgrade payment: ${err.message}`
-				  );
-		}
+		return await gameService.registerUpgradePayment({
+			userId,
+			nodeId,
+			amount,
+			resource,
+		});
 	}
 
 	/**
@@ -1130,80 +1050,12 @@ class MarketService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerTaskReward({ userId, taskId, amount, resource }) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
-				itemType: 'resource',
-				itemId: `${resource}_${amount}`,
-				price: 0, // Free, because this is a reward for a task
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-			};
-
-			// Create an offer
-			const offer = await MarketOffer.create(offerData, {
-				transaction: t,
-			});
-
-			// Create a transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
-					offerId: offer.id,
-					buyerId: userId, // The user "buys" the resource
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Create a record about the transaction
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: userId,
-					amount,
-					currency: 'tonToken', // The currency is not important, because the price is 0
-					txType: 'TASK_RESOURCE',
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Transfer the resource to the user
-			await this.transferResource(offer, userId, t);
-
-			// Complete the offer
-			await offer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
-
-			await t.commit();
-			return {
-				success: true,
-				message:
-					'Resource transferred to the user for completing a task',
-				taskId,
-				resource,
-				amount,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register task reward: ${err.message}`
-				  );
-		}
+		return await gameService.registerTaskReward({
+			userId,
+			taskId,
+			amount,
+			resource,
+		});
 	}
 
 	/**
@@ -1212,79 +1064,12 @@ class MarketService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerEventReward({ userId, eventId, amount, resource }) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
-				itemType: 'resource',
-				itemId: `${resource}_${amount}`,
-				price: 0, // Free, because this is a reward for an event
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-			};
-
-			// Create an offer
-			const offer = await MarketOffer.create(offerData, {
-				transaction: t,
-			});
-
-			// Create a transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
-					offerId: offer.id,
-					buyerId: userId, // The user "buys" the resource
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Create a record about the transaction
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: userId,
-					amount,
-					currency: 'tonToken', // The currency is not important, because the price is 0
-					txType: 'EVENT_RESOURCE',
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Transfer the resource to the user
-			await this.transferResource(offer, userId, t);
-
-			// Complete the offer
-			await offer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Resource transferred to the user for an event',
-				eventId,
-				resource,
-				amount,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register event reward: ${err.message}`
-				  );
-		}
+		return await gameService.registerEventReward({
+			userId,
+			eventId,
+			amount,
+			resource,
+		});
 	}
 
 	/**
@@ -1293,119 +1078,7 @@ class MarketService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerFarmingReward(offerData) {
-		const t1 = await sequelize.transaction();
-		try {
-			// Create an offer from the system to transfer the resource
-			const txOffer = await MarketOffer.create(offerData, {
-				transaction: t1,
-			});
-			await txOffer.save({ transaction: t1 });
-			await t1.commit();
-		} catch (err) {
-			await t1.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		// Create a transaction
-		const t2 = await sequelize.transaction();
-		try {
-			const txMarket = await MarketTransaction.create(
-				{
-					offerId: txOffer.id,
-					buyerId: offerData.buyerId, // The user "buys" the resource
-					sellerId: offerData.sellerId,
-					status: 'PENDING',
-					completedAt: new Date(),
-				},
-				{ transaction: t2 }
-			);
-			await txMarket.save({ transaction: t2 });
-			await t2.commit();
-		} catch (err) {
-			await t2.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		const t3 = await sequelize.transaction();
-		try {
-			// Create a record about the transaction
-			const txPayment = await PaymentTransaction.create(
-				{
-					marketTransactionId: txMarket.id,
-					fromAccount: offerData.sellerId,
-					toAccount: offerData.buyerId,
-					priceOrAmount: offerData.amount,
-					currencyOrResource: offerData.resource,
-					txType: 'FARMING_RESOURCE',
-					status: 'PENDING',
-				},
-				{ transaction: t3 }
-			);
-			await txPayment.save({ transaction: t3 });
-			// Add the resource to the user
-			await this.addCurrency(
-				offerData.buyerId,
-				offerData.resource,
-				offerData.amount,
-				t3
-			);
-			await t3.commit();
-		} catch (err) {
-			await t3.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		const t4 = await sequelize.transaction();
-		try {
-			// Complete the offer
-			await txOffer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t4 }
-			);
-			await txOffer.save({ transaction: t4 });
-			await txMarket.update(
-				{
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txMarket.save({ transaction: t4 });
-			await txPayment.update(
-				{
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txPayment.save({ transaction: t4 });
-			await t4.commit();
-		} catch (err) {
-			await t4.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		await t4.commit();
-		return {
-			success: true,
-			message: 'Resource transferred to the user for farming',
-			offerData,
-		};
+		return await gameService.registerFarmingReward(offerData);
 	}
 
 	/**
@@ -1442,32 +1115,45 @@ class MarketService {
 	 * Create an invoice (create a transaction and a payment)
 	 * @param {Object} params { offerId, buyerId }
 	 */
-	async createInvoice({ offerId, buyerId }) {
+	async createInvoice(offer, buyerId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+		logger.debug('createInvoice');
 		// Get the offer
-		const offer = await MarketOffer.findByPk(offerId);
-		if (!offer || offer.status !== 'ACTIVE')
-			throw new Error('Offer not found or not active');
+		const transactionOffer = await MarketOffer.findByPk(offer.id, {
+			transaction: t,
+		});
+		if (!transactionOffer || transactionOffer.status !== 'ACTIVE') {
+			logger.error('Offer not found or not active');
+			throw ApiError.OfferNotFound();
+		}
 
 		// Create a transaction
-		const transaction = await MarketTransaction.create({
-			offerId: offer.id,
+		const transactionMarket = await MarketTransaction.create({
+			offerId: transactionOffer.id,
 			buyerId,
-			sellerId: offer.sellerId,
+			sellerId: transactionOffer.sellerId,
 			status: 'PENDING',
+			transaction: t,
 		});
 
 		// Create a payment: buyer -> contract/system
 		const payment = await PaymentTransaction.create({
-			marketTransactionId: transaction.id,
+			marketTransactionId: transactionMarket.id,
 			fromAccount: buyerId,
 			toAccount: SYSTEM_USER_ID,
-			amount: offer.price,
-			currency: offer.currency,
+			priceOrAmount: offer.price,
+			currencyOrResource: offer.currency,
 			txType: 'BUYER_TO_CONTRACT',
 			status: 'PENDING',
+			transaction: t,
 		});
 
-		return { transaction, payment };
+		if (shouldCommit && !t.finished) {
+			await t.commit();
+		}
+
+		return { transactionMarket, payment };
 	}
 
 	/**
@@ -2218,162 +1904,7 @@ class MarketService {
 	 * @returns {Promise<Object>} - Market offer
 	 */
 	async registerStarsTransfer(offer) {
-		const t1 = await sequelize.transaction();
-		try {
-			const offerData = await MarketOffer.create(
-				{
-					buyerId: offer.buyerId,
-					sellerId: offer.buyerId,
-					status: offer.status,
-					isItemLocked: true,
-					expiresAt: null,
-					price: offer.price,
-					currency: offer.currency,
-					offerType: offer.offerType,
-					amount: offer.amount,
-					itemType: offer.itemType,
-					itemId: offer.itemId,
-					completedAt: null,
-				},
-				{ t1 }
-			);
-
-			await offerData.save({ t1 });
-			logger.debug('offer created');
-		} catch (error) {
-			await t1.rollback();
-			throw error;
-		}
-		try {
-			const t2 = await sequelize.transaction();
-
-			const txMarket = await MarketTransaction.create(
-				{
-					offerId: offerData.id,
-					buyerId: offer.buyerId,
-					sellerId: offer.sellerId,
-					status: offer.status,
-					completedAt: null,
-				},
-				{ t2 }
-			);
-			await txMarket.save({ t2 });
-			await t2.commit();
-			logger.debug('marketTransaction created');
-		} catch (error) {
-			await t2.rollback();
-			throw error;
-		}
-		try {
-			const t3 = await sequelize.transaction();
-			const payment = await PaymentTransaction.create(
-				{
-					marketTransactionId: txMarket.id,
-					fromAccount: offer.buyerId,
-					toAccount: offer.sellerId,
-					priceOrAmount: offer.price,
-					currencyOrResource: offer.currency,
-					txType: 'RESOURCE_TRANSFER',
-					status: 'PENDING',
-					completedAt: null,
-				},
-				{ t3 }
-			);
-			await payment.save({ t3 });
-			logger.debug('payment created');
-			const transferStars = await PaymentTransaction.create(
-				{
-					marketTransactionId: txMarket.id,
-					fromAccount: offer.sellerId,
-					toAccount: offer.buyerId,
-					priceOrAmount: offer.amount,
-					currencyOrResource: offer.resource,
-					txType: 'RESOURCE_TRANSFER',
-					status: 'PENDING',
-					completedAt: null,
-				},
-				{ t3 }
-			);
-			await transferStars.save({ t3 });
-			await t3.commit();
-			// Add the resource to the user
-			await this.addCurrency(
-				offer.buyerId,
-				offer.resource,
-				offer.amount,
-				t3
-			);
-			// Deduct the currency from the seller
-			await this.deductCurrency(
-				offer.buyerId,
-				offer.currency,
-				offer.price,
-				t3
-			);
-			await t3.commit();
-			logger.debug('transferStars created');
-			await t3.commit();
-		} catch (error) {
-			logger.error('Error in registerStarsTransfer', error);
-			await t3.rollback();
-			throw error;
-		}
-		// Complete the offer
-		const t4 = await sequelize.transaction();
-		try {
-			await txOffer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txOffer.save({ transaction: t4 });
-			// Complete the market transaction
-			await txMarket.update(
-				{
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txMarket.save({ transaction: t4 });
-			// Complete the payment transaction
-			await payment.update(
-				{
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await payment.save({ transaction: t4 });
-			await t4.commit();
-			// Complete the transferStars transaction
-			await transferStars.update(
-				{
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await transferStars.save({ transaction: t4 });
-			await t4.commit();
-		} catch (err) {
-			await t4.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		logger.debug('transaction committed');
-
-		return {
-			success: true,
-			message: 'Resource transferred to the user for farming',
-			offerData,
-		};
+		return await gameService.registerStarsTransfer(offer);
 	}
 }
 

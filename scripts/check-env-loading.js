@@ -10,9 +10,7 @@ const envPath = path.join(__dirname, '..', '.env');
 const envExamplePath = path.join(__dirname, '..', 'env.example');
 
 console.log('📁 Environment files:');
-console.log(
-	`   .env: ${fs.existsSync(envPath) ? '✅ found' : '❌ not found'}`
-);
+console.log(`   .env: ${fs.existsSync(envPath) ? '✅ found' : '❌ not found'}`);
 console.log(
 	`   env.example: ${
 		fs.existsSync(envExamplePath) ? '✅ found' : '❌ not found'
@@ -52,9 +50,7 @@ const basicVars = ['NODE_ENV', 'PORT', 'LOG_LEVEL', 'LOG_FILE_PATH'];
 
 basicVars.forEach((varName) => {
 	const value = process.env[varName];
-	console.log(
-		`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`
-	);
+	console.log(`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`);
 });
 
 // Check database variables
@@ -70,9 +66,7 @@ const dbVars = [
 
 dbVars.forEach((varName) => {
 	const value = process.env[varName];
-	console.log(
-		`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`
-	);
+	console.log(`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`);
 });
 
 // Check environment-specific variables
@@ -87,9 +81,7 @@ const envSpecificVars = [
 
 envSpecificVars.forEach((varName) => {
 	const value = process.env[varName];
-	console.log(
-		`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`
-	);
+	console.log(`   ${varName}: ${value ? `✅ ${value}` : '❌ not set'}`);
 });
 
 // Check JWT variables
@@ -99,6 +91,9 @@ const jwtVars = [
 	'JWT_REFRESH_SECRET',
 	'JWT_ACCESS_EXPIRES_IN',
 	'JWT_REFRESH_EXPIRES_IN',
+	'JWT_ISSUER',
+	'JWT_ACCESS_AUDIENCE',
+	'JWT_REFRESH_AUDIENCE',
 ];
 
 jwtVars.forEach((varName) => {
@@ -174,9 +169,7 @@ const missingVars = [
 ].filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
-	console.log(
-		`3. Set the missing variables: ${missingVars.join(', ')}`
-	);
+	console.log(`3. Set the missing variables: ${missingVars.join(', ')}`);
 }
 
 console.log('\n🎉 Check completed!');
