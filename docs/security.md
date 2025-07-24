@@ -124,34 +124,226 @@ generateTokens(payload) {
 ```javascript
 validateAccessToken(token) {
   try {
-    return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-  } catch (error) {
-    throw ApiError.UnauthorizedError('Invalid access token');
+    if (!token || typeof token !== 'string') {
+      throw new Error('Token must be a non-empty string');
+    }
+
+    const userData = jwt.verify(token, process.env.JWT_ACCESS_SECRET, {
+      issuer: 'nebulahunt-server',
+      audience: 'nebulahunt-users',
+    });
+
+    // Дополнительные проверки payload
+    if (!userData || !userData.id || typeof userData.id !== 'number') {
+      throw new Error('Invalid token payload: missing or invalid user ID');
+    }
+
+    return userData;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw err;
+    }
+    if (err instanceof jwt.JsonWebTokenError) {
+      throw err;
+    }
+    throw err;
   }
 }
 
 validateRefreshToken(token) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-
-    if (decoded.type !== 'refresh') {
-      throw new Error('Invalid token type');
+    if (!token || typeof token !== 'string') {
+      throw new Error('Token must be a non-empty string');
     }
 
-    return decoded;
-  } catch (error) {
-    throw ApiError.UnauthorizedError('Invalid refresh token');
+    const userData = jwt.verify(token, process.env.JWT_REFRESH_SECRET, {
+      issuer: 'nebulahunt-server',
+      audience: 'nebulahunt-users',
+    });
+
+    // Проверяем, что это refresh token
+    if (!userData || userData.type !== 'refresh') {
+      throw new Error('Invalid token type: expected refresh token');
+    }
+
+    // Проверяем обязательные поля
+    if (!userData.id || typeof userData.id !== 'number') {
+      throw new Error('Invalid token payload: missing or invalid user ID');
+    }
+
+    return userData;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw err;
+    }
+    if (err instanceof jwt.JsonWebTokenError) {
+      throw err;
+    }
+    throw err;
   }
 }
 ```
 
+#### JWT Middleware
+
+Система использует улучшенный middleware для проверки JWT токенов:
+
+```javascript
+// middlewares/auth-middleware.js
+module.exports = async function authMiddleware(req, res, next) {
+	try {
+		// Проверяем наличие заголовка Authorization
+		const authorizationHeader = req.headers.authorization;
+		if (!authorizationHeader) {
+			return next(
+				ApiError.UnauthorizedError('JWT: Authorization header required')
+			);
+		}
+
+		// Парсим заголовок Authorization
+		const splitAuthHeader = authorizationHeader.split(' ');
+		const bearerIndex = splitAuthHeader.indexOf('Bearer');
+
+		if (bearerIndex < 0) {
+			return next(
+				ApiError.UnauthorizedError('JWT: Bearer scheme required')
+			);
+		}
+
+		const accessToken = splitAuthHeader[bearerIndex + 1];
+		if (!accessToken) {
+			return next(
+				ApiError.UnauthorizedError('JWT: Access token required')
+			);
+		}
+
+		// Валидируем access token
+		let userData;
+		try {
+			userData = tokenService.validateAccessToken(accessToken);
+		} catch (error) {
+			if (error instanceof jwt.TokenExpiredError) {
+				return next(ApiError.TokenExpiredError('JWT: Token expired'));
+			}
+			if (error instanceof jwt.JsonWebTokenError) {
+				return next(ApiError.UnauthorizedError('JWT: Invalid token'));
+			}
+			return next(
+				ApiError.UnauthorizedError('JWT: Token validation failed')
+			);
+		}
+
+		// Проверяем структуру payload
+		if (!userData.id || typeof userData.id !== 'number') {
+			return next(
+				ApiError.UnauthorizedError('JWT: Invalid token payload')
+			);
+		}
+
+		// Проверяем пользователя в базе данных
+		const user = await User.findOne({ where: { id: userData.id } });
+
+		if (!user) {
+			return next(ApiError.UnauthorizedError('JWT: User not found'));
+		}
+
+		// Проверяем блокировку пользователя
+		if (user.blocked) {
+			return next(ApiError.ForbiddenError('JWT: Account is blocked'));
+		}
+
+		// Добавляем данные пользователя в request
+		req.user = user;
+		req.userToken = userData;
+
+		next();
+	} catch (error) {
+		return next(ApiError.Internal('JWT: Authentication error'));
+	}
+};
+```
+
 #### Безопасность токенов
 
--   **Короткий срок действия** - access token истекает через 1 час
--   **Долгий срок действия** - refresh token истекает через 30 дней
+-   **Короткий срок действия** - access token истекает через 30 минут
+-   **Долгий срок действия** - refresh token истекает через 7 дней
 -   **Разные секреты** - отдельные секреты для access и refresh токенов
 -   **Хранение в БД** - refresh токены сохраняются в базе данных
 -   **Автоматическое обновление** - токены обновляются при каждом запросе
+-   **Проверка issuer и audience** - дополнительная валидация токенов
+-   **Проверка блокировки** - заблокированные пользователи не могут получить доступ
+-   **Детальное логирование** - все операции с токенами логируются
+-   **Разделение ответственности** - access token для API запросов, refresh token для обновления
+-   **Безопасные cookies** - refresh токены передаются через httpOnly cookies с защитой от CSRF
+-   **Двойная аутентификация** - refresh требует и Telegram initData, и валидный refresh token
+
+#### Порядок Middleware для Refresh
+
+Для refresh endpoint используется следующий порядок middleware:
+
+1. **telegramAuthMiddleware** - проверка Telegram WebApp initData из заголовков:
+    - `Authorization: tma <encoded_data>` (рекомендуется)
+    - `x-telegram-init-data: <direct_string>`
+    - `x-telegram-init-data-raw: <base64_encoded>`
+2. **refreshTokenMiddleware** - валидация refresh токена из cookies
+3. **rateLimitMiddleware** - ограничение частоты запросов
+
+Это обеспечивает двойную аутентификацию: пользователь должен быть авторизован через Telegram И иметь валидный refresh token.
+
+#### Длина Refresh Токенов
+
+**Проблема:** JWT токены могут быть длиннее 255 символов, что превышает лимит `VARCHAR(255)` в базе данных.
+
+**Решение:**
+
+-   Поле `refreshToken` изменено на тип `TEXT` для неограниченной длины
+-   Добавлена валидация длины токенов в сервисе
+-   Улучшено логирование для отладки проблем с токенами
+
+**Миграция:** `20250101000010-fix-refresh-token-length.js` изменяет тип поля в таблицах `tokens` и `admintokens`.
+
+#### Refresh Token Middleware
+
+Система использует специальный middleware для валидации refresh токенов:
+
+```javascript
+// middlewares/refresh-token-middleware.js
+module.exports = async function refreshTokenMiddleware(req, res, next) {
+	try {
+		// Получаем refresh token из cookies
+		const { refreshToken } = req.cookies;
+
+		if (!refreshToken) {
+			return next(
+				ApiError.UnauthorizedError('Refresh token required in cookies')
+			);
+		}
+
+		// Валидируем refresh token
+		const userData = tokenService.validateRefreshToken(refreshToken);
+
+		// Проверяем структуру payload
+		if (!userData || !userData.id || typeof userData.id !== 'number') {
+			return next(
+				ApiError.UnauthorizedError('Invalid refresh token payload')
+			);
+		}
+
+		// Добавляем данные в request
+		req.refreshTokenData = userData;
+		req.refreshToken = refreshToken;
+
+		next();
+	} catch (error) {
+		if (error.name === 'TokenExpiredError') {
+			return next(ApiError.TokenExpiredError('Refresh token expired'));
+		}
+		return next(
+			ApiError.UnauthorizedError('Refresh token validation failed')
+		);
+	}
+};
+```
 
 ## Авторизация
 
@@ -642,6 +834,50 @@ npm install -g eslint-plugin-security
 8. **Insecure Deserialization** - безопасная сериализация JSON
 9. **Using Components with Known Vulnerabilities** - регулярные обновления
 10. **Insufficient Logging & Monitoring** - структурированное логирование
+
+## Примеры использования
+
+### Refresh Token с Telegram аутентификацией
+
+**Рекомендуемый способ (Authorization: tma):**
+
+```bash
+curl -H "Authorization: tma <base64_encoded_telegram_init_data>" \
+     -H "Cookie: refreshToken=<refresh_token>" \
+     https://api.example.com/auth/refresh
+```
+
+**Альтернативные способы:**
+
+```bash
+# Прямая строка initData
+curl -H "x-telegram-init-data: user=...&auth_date=...&hash=..." \
+     -H "Cookie: refreshToken=<refresh_token>" \
+     https://api.example.com/auth/refresh
+
+# Base64 закодированные данные
+curl -H "x-telegram-init-data-raw: dXNlcj0..." \
+     -H "Cookie: refreshToken=<refresh_token>" \
+     https://api.example.com/auth/refresh
+```
+
+### Обычная аутентификация (с JWT токеном)
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     -H "x-telegram-init-data: user=...&auth_date=...&hash=..." \
+     https://api.example.com/api/protected-endpoint
+```
+
+### Первоначальная аутентификация
+
+```bash
+curl -X POST \
+     -H "Content-Type: application/json" \
+     -H "x-telegram-init-data: user=...&auth_date=...&hash=..." \
+     -d '{"username": "user123"}' \
+     https://api.example.com/auth/login
+```
 
 ---
 

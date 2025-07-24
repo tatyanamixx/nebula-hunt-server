@@ -529,11 +529,11 @@ class MarketService {
 	 * @param {number} buyerId Buyer ID
 	 * @returns {Promise<Object>} Information about the transaction
 	 */
-	async completeOffer(offerId, buyerId) {
-		const transaction = await sequelize.transaction();
+	async completeOffer(offerId, buyerId, transaction) {
+		const t = transaction || (await sequelize.transaction());
 
 		try {
-			const offer = await MarketOffer.findByPk(offerId, { transaction });
+			const offer = await MarketOffer.findByPk(offerId, { t });
 
 			if (!offer) {
 				throw new ApiError(404, 'Offer not found');
@@ -549,16 +549,24 @@ class MarketService {
 				throw new ApiError(400, 'You cannot buy your own offer');
 			}
 
-			// Create a market transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
+			// Find a market transaction
+			const marketTransaction = await MarketTransaction.findOne({
+				where: {
 					offerId: offer.id,
-					buyerId,
-					sellerId: offer.sellerId,
+				},
+				t,
+			});
+
+			if (!marketTransaction) {
+				throw new ApiError(404, 'Market transaction not found');
+			}
+
+			await marketTransaction.update(
+				{
 					status: 'COMPLETED',
 					completedAt: new Date(),
 				},
-				{ transaction }
+				{ t }
 			);
 
 			// Process the payment
@@ -743,6 +751,7 @@ class MarketService {
 				);
 				break;
 		}
+		await userState.save({ transaction });
 	}
 
 	/**
@@ -803,6 +812,7 @@ class MarketService {
 				);
 				break;
 		}
+		await userState.save({ transaction });
 	}
 
 	/**
@@ -825,6 +835,7 @@ class MarketService {
 						transaction,
 					}
 				);
+				await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'artifact':
 				await Artifact.update(
@@ -836,6 +847,7 @@ class MarketService {
 						transaction,
 					}
 				);
+				await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'resource':
 				await this.transferResource(offer, buyerId, transaction);
@@ -887,9 +899,8 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async transferResource(offer, buyerId, transaction) {
-		const [resourceType, amountStr] = offer.itemId.split('_');
-		const amount = parseInt(amountStr, 10);
-
+		const resourceType = offer.resource;
+		const amount = offer.amount;
 		const buyerState = await UserState.findOne({
 			where: { userId: buyerId },
 			transaction,
@@ -2102,15 +2113,15 @@ class MarketService {
 	 * @param {Object} offer - Offer data
 	 * @returns {Promise<Object>} - Market offer
 	 */
-	async registerGalaxyOffer(offer) {
-		const t1 = await sequelize.transaction();
+	async registerOffer(offer, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 
 		try {
 			const txOffer = await MarketOffer.create(
 				{
-					buyerId: offer.buyerId,
 					sellerId: offer.sellerId,
-					isItemLocked: true,
+					isItemLocked: false,
 					expiresAt: null,
 					price: offer.price,
 					currency: offer.currency,
@@ -2119,40 +2130,25 @@ class MarketService {
 					resource: offer.resource,
 					itemType: offer.itemType,
 					itemId: offer.itemId,
-					status: offer.status,
-					completedAt: null,
+					status: 'COMPLETED',
+					completedAt: new Date(),
 				},
-				{ t1 }
+				{ t }
 			);
-			await txOffer.save({ t1 });
-			await t1.commit();
-			logger.debug('offer created');
-		} catch (error) {
-			await t1.rollback();
-			throw error;
-		}
-		try {
-			const t2 = await sequelize.transaction();
+			logger.debug({ 'offer created': txOffer });
+
 			const txMarket = await MarketTransaction.create(
 				{
 					offerId: txOffer.id,
 					buyerId: offer.buyerId,
 					sellerId: offer.sellerId,
-					status: 'PENDING',
-					completedAt: null,
+					status: 'COMPLETED',
+					completedAt: new Date(),
 				},
-				{ t2 }
+				{ t }
 			);
-			await txMarket.save({ t2 });
-			await t2.commit();
-			logger.debug('marketTransaction created');
-		} catch (error) {
-			await t2.rollback();
-			throw error;
-		}
-		try {
-			// transfer money from buyer to contract
-			const t3 = await sequelize.transaction();
+
+			// transfer money from buyer to contrac
 			const payment = await PaymentTransaction.create(
 				{
 					marketTransactionId: txMarket.id,
@@ -2160,103 +2156,61 @@ class MarketService {
 					toAccount: offer.sellerId,
 					priceOrAmount: offer.price,
 					currencyOrResource: offer.currency,
-					txType: 'BUYER_TO_CONTRACT',
-					status: 'PENDING',
-					completedAt: null,
+					txType: offer.txType,
+					status: 'CONFIRMED',
+					completedAt: new Date(),
 				},
-				{ t3 }
+				{ t }
 			);
-			await payment.save({ t3 });
+			//await payment.save({ t });
 
 			logger.debug('payment created');
 			// transfer stars from contract to buyer
 			const transferStars = await PaymentTransaction.create(
 				{
 					marketTransactionId: txMarket.id,
-					fromAccount: offerData.sellerAmount,
-					toAccount: offerData.buyerId,
-					priceOrAmount: offerData.amount,
-					currencyOrResource: offerData.resource,
-					txType: 'GALAXY_RESOURCE',
-					status: 'PENDING',
-					completedAt: null,
+					fromAccount: offer.sellerId,
+					toAccount: offer.buyerId,
+					priceOrAmount: offer.amount,
+					currencyOrResource: offer.resource,
+					txType: offer.txType,
+					status: 'CONFIRMED',
+					completedAt: new Date(),
 				},
-				{ t3 }
+				{ t }
 			);
-			await transferStars.save({ t3 });
+			logger.debug('offer registered');
 
-			if (offerData.price === 0) {
-				await this.addCurrency(
-					offerData.buyerId,
-					offerData.resource,
-					offerData.amount,
-					t3
-				);
+			await this.addCurrency(
+				offer.buyerId,
+				offer.resource,
+				offer.amount,
+				t
+			);
+			await this.deductCurrency(
+				offer.sellerId,
+				offer.currency,
+				offer.price,
+				t
+			);
+
+			// Коммитим транзакцию только если она была создана в этом методе
+			if (shouldCommit) {
+				await t.commit();
 			}
 
-			await t3.commit();
-			logger.debug('transferStars created');
+			return {
+				offer: txOffer,
+				marketTransaction: txMarket,
+				payment: payment,
+				transferStars: transferStars,
+			};
 		} catch (error) {
-			logger.error('Error in registerGalaxyOffer', error);
-			await t3.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			throw error;
 		}
-
-		const t4 = await sequelize.transaction();
-		try {
-			// Complete the offer
-			await txOffer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txOffer.save({ transaction: t4 });
-			// Complete the market transaction
-			await txMarket.update(
-				{
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await txMarket.save({ transaction: t4 });
-			// Complete the payment transaction
-			await payment.update(
-				{
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await payment.save({ transaction: t4 });
-			await t4.commit();
-			// Complete the transferStars transaction
-			await transferStars.update(
-				{
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ transaction: t4 }
-			);
-			await transferStars.save({ transaction: t4 });
-			await t4.commit();
-		} catch (err) {
-			await t4.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-		logger.debug('transaction committed');
-		return {
-			success: true,
-			message: 'Resource transferred to the user for farming',
-			offerData,
-		};
 	}
 	/**
 	 * Register a stars transfer

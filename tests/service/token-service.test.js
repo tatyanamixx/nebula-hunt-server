@@ -75,13 +75,13 @@ describe('TokenService', () => {
 			expect(jwt.sign).toHaveBeenCalledTimes(2);
 			expect(jwt.sign).toHaveBeenNthCalledWith(
 				1,
-				payload,
+				{ ...payload, id: 123 }, // id преобразован в число
 				'test-access-secret',
 				{ expiresIn: '30m' }
 			);
 			expect(jwt.sign).toHaveBeenNthCalledWith(
 				2,
-				payload,
+				{ id: 123, type: 'refresh', version: expect.any(Number) }, // refresh token payload
 				'test-refresh-secret',
 				{ expiresIn: '7d' }
 			);
@@ -107,6 +107,102 @@ describe('TokenService', () => {
 				ApiError
 			);
 		});
+
+		it('should work with string ID and convert to number', () => {
+			// Подготавливаем тестовые данные с строковым ID
+			const payload = { id: '123', username: 'testuser' };
+
+			// Мокаем jwt.sign
+			jwt.sign
+				.mockReturnValueOnce('mock-access-token')
+				.mockReturnValueOnce('mock-refresh-token');
+
+			// Вызываем тестируемый метод
+			const tokens = tokenService.generateTokens(payload);
+
+			// Проверяем, что jwt.sign был вызван с числовым ID
+			expect(jwt.sign).toHaveBeenCalledTimes(2);
+			expect(jwt.sign).toHaveBeenNthCalledWith(
+				1,
+				{ ...payload, id: 123 }, // строковый ID преобразован в число
+				'test-access-secret',
+				{ expiresIn: '30m' }
+			);
+			expect(jwt.sign).toHaveBeenNthCalledWith(
+				2,
+				{ id: 123, type: 'refresh', version: expect.any(Number) },
+				'test-refresh-secret',
+				{ expiresIn: '7d' }
+			);
+
+			// Проверяем результат
+			expect(tokens).toEqual({
+				accessToken: 'mock-access-token',
+				refreshToken: 'mock-refresh-token',
+			});
+		});
+
+		it('should throw error for invalid ID types', () => {
+			// Тестируем различные невалидные типы ID
+			const invalidPayloads = [
+				{ id: null, username: 'testuser' },
+				{ id: undefined, username: 'testuser' },
+				{ id: 0, username: 'testuser' },
+				{ id: -1, username: 'testuser' },
+				{ id: 'invalid', username: 'testuser' },
+				{ id: '', username: 'testuser' },
+			];
+
+			invalidPayloads.forEach((payload) => {
+				expect(() => tokenService.generateTokens(payload)).toThrow(
+					ApiError
+				);
+			});
+		});
+
+		it('should generate long refresh tokens without length issues', () => {
+			// Создаем payload с большим количеством данных для длинного токена
+			const payload = {
+				id: 123456789,
+				username: 'testuser',
+				role: 'USER',
+				// Добавляем дополнительные данные для увеличения длины токена
+				metadata: {
+					createdAt: new Date().toISOString(),
+					version: '1.0.0',
+					features: ['feature1', 'feature2', 'feature3'],
+					permissions: ['read', 'write', 'delete'],
+					settings: {
+						theme: 'dark',
+						language: 'en',
+						notifications: true,
+					},
+				},
+			};
+
+			// Мокаем jwt.sign для возврата длинного токена
+			const longToken =
+				'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
+				'eyJpZCI6MTIzNDU2Nzg5LCJ1c2VybmFtZSI6InRlc3R1c2VyIiwicm9sZSI6IlVTRVIiLCJtZXRhZGF0YSI6eyJjcmVhdGVkQXQiOiIyMDI1LTAxLTAxVDAwOjAwOjAwLjAwMFoiLCJ2ZXJzaW9uIjoiMS4wLjAiLCJmZWF0dXJlcyI6WyJmZWF0dXJlMSIsImZlYXR1cmUyIiwiZmVhdHVyZTMiXSwicGVybWlzc2lvbnMiOlsicmVhZCIsIndyaXRlIiwiZGVsZXRlIl0sInNldHRpbmdzIjp7InRoZW1lIjoiZGFyayIsImxhbmd1YWdlIjoiZW4iLCJub3RpZmljYXRpb25zIjp0cnVlfX0sImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxNzA0MTUzNjAwfQ.' +
+				'very_long_signature_that_exceeds_255_characters_limit_and_tests_our_database_field_length_handling_capabilities_with_extended_jwt_signature_simulation_for_comprehensive_testing_purposes';
+
+			jwt.sign
+				.mockReturnValueOnce('mock-access-token')
+				.mockReturnValueOnce(longToken);
+
+			// Вызываем тестируемый метод
+			const tokens = tokenService.generateTokens(payload);
+
+			// Проверяем, что токены сгенерированы успешно
+			expect(tokens).toEqual({
+				accessToken: 'mock-access-token',
+				refreshToken: longToken,
+			});
+
+			// Проверяем, что refresh token действительно длинный
+			expect(tokens.refreshToken.length).toBeGreaterThan(255);
+			expect(tokens.refreshToken.length).toBeGreaterThan(500); // Должен быть значительно длиннее
+		});
 	});
 
 	describe('validateAccessToken', () => {
@@ -127,8 +223,23 @@ describe('TokenService', () => {
 				'test-access-secret'
 			);
 
-			// Проверяем результат
-			expect(result).toEqual(userData);
+			// Проверяем результат - id должен быть числом
+			expect(result).toEqual({ ...userData, id: 123 });
+		});
+
+		it('should work with string ID in token and convert to number', () => {
+			// Подготавливаем тестовые данные с строковым ID
+			const token = 'valid-access-token';
+			const userData = { id: '123', username: 'testuser' };
+
+			// Мокаем jwt.verify
+			jwt.verify.mockReturnValue(userData);
+
+			// Вызываем тестируемый метод
+			const result = tokenService.validateAccessToken(token);
+
+			// Проверяем результат - строковый ID должен быть преобразован в число
+			expect(result).toEqual({ ...userData, id: 123 });
 		});
 
 		it('should return null when token is invalid', () => {

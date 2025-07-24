@@ -24,7 +24,7 @@ https://your-server.com/api
 
 2. **Создание системного пользователя**
 
-    - ID: -1 (или из переменной окружения SYSTEM_USER_ID)
+    - ID: 999999999 (или из переменной окружения SYSTEM_USER_ID)
     - Username: 'SYSTEM'
     - Role: 'SYSTEM'
     - Создается UserState с нулевыми балансами для всех валют
@@ -54,7 +54,7 @@ module.exports = {
 
 ```javascript
 // Системный пользователь
-const SYSTEM_USER_ID = -1;
+const SYSTEM_USER_ID = 999999999;
 
 // Игровые настройки
 const DAILY_BONUS_STARDUST = 50;
@@ -68,7 +68,7 @@ const LEADERBOARD_LIMIT = 100;
 
 **Переменные окружения:**
 
--   `SYSTEM_USER_ID` - ID системного пользователя (по умолчанию: -1)
+-   `SYSTEM_USER_ID` - ID системного пользователя (по умолчанию: 999999999)
 
 **Игровые настройки (теперь в constants.js):**
 
@@ -252,7 +252,14 @@ const LEADERBOARD_LIMIT = 100;
 
 **GET** `/auth/refresh`
 
-Обновляет access token используя refresh token. Требует TMA, JWT авторизации и rate limiting (30 запросов в минуту).
+Обновляет access token используя refresh token из cookies. Требует Telegram WebApp initData и rate limiting (30 запросов в минуту).
+
+**Заголовки:**
+
+-   `Authorization: tma <encoded_telegram_init_data>` - Telegram WebApp initData с префиксом tma (рекомендуется)
+-   `x-telegram-init-data: <telegram_init_data>` - прямая строка initData
+-   `x-telegram-init-data-raw: <base64_encoded_data>` - base64 закодированные данные
+-   `Cookie: refreshToken=<refresh_token>` - refresh токен из cookies
 
 **Ответ:**
 

@@ -20,6 +20,7 @@ const {
 } = require('./middlewares/ip-security-middleware');
 const customLoggingMiddleware = require('./middlewares/custom-logging-middleware');
 const prometheusService = require('./service/prometheus-service');
+const { bigIntSerializationMiddleware } = require('./utils/serialization');
 
 const app = express();
 
@@ -41,6 +42,9 @@ app.use(cookieParser());
 
 // Request sanitization
 app.use(sanitizeRequestBody());
+
+// BigInt serialization middleware
+app.use(bigIntSerializationMiddleware);
 
 // Добавляем в конфиг настройки для пагинации и срока действия оферт
 app.use(express.static(path.resolve(__dirname, 'static')));

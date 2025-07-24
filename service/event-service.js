@@ -9,6 +9,7 @@ const {
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
+const logger = require('./logger-service');
 const { Op } = require('sequelize');
 const marketService = require('./market-service');
 
@@ -20,12 +21,23 @@ class EventService {
 	 * @returns {Promise<Object>} Initialized user event settings
 	 */
 	async initializeUserEvents(userId, t) {
+		const transaction = t || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+		logger.debug('initializeUserEvents on start', {
+			userId,
+		});
 		try {
 			const availableEvents = await EventTemplate.findAll({
 				where: { active: true },
-				transaction: t,
+				transaction: transaction,
 			});
-
+			if (availableEvents.length === 0) {
+				logger.debug('no available events');
+				if (shouldCommit && !transaction.finished) {
+					await transaction.commit();
+				}
+				return null;
+			}
 			for (const event of availableEvents) {
 				const userEvent = await UserEvent.findOrCreate({
 					where: { userId, eventId: event.id },
@@ -57,11 +69,16 @@ class EventService {
 					disabledEvents: [],
 					priorityEvents: [],
 				},
-				{ transaction: t }
+				{ transaction: transaction }
 			);
-
+			if (shouldCommit && !transaction.finished) {
+				await transaction.commit();
+			}
 			return userEventSettings;
 		} catch (err) {
+			if (shouldCommit && !transaction.finished) {
+				await transaction.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to initialize user events: ${err.message}`
 			);
@@ -79,7 +96,7 @@ class EventService {
 		try {
 			const userEvents = await this.initializeUserEvents(userId, t);
 			logger.debug('userEvents', userEvents);
-			
+
 			const now = new Date();
 
 			// Get or create user event settings
@@ -472,7 +489,13 @@ class EventService {
 					include: [
 						{
 							model: EventTemplate,
-							attributes: ['id', 'slug', 'name', 'description', 'type'],
+							attributes: [
+								'id',
+								'slug',
+								'name',
+								'description',
+								'type',
+							],
 						},
 					],
 					transaction: t,
@@ -487,7 +510,13 @@ class EventService {
 					include: [
 						{
 							model: EventTemplate,
-							attributes: ['id', 'slug', 'name', 'description', 'type'],
+							attributes: [
+								'id',
+								'slug',
+								'name',
+								'description',
+								'type',
+							],
 						},
 					],
 					transaction: t,

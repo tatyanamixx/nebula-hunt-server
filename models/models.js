@@ -33,59 +33,78 @@ const User = sequelize.define(
 	}
 );
 
-const UserState = sequelize.define('userstate', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	userId: { type: DataTypes.BIGINT, unique: true, allowNull: false },
-	stardust: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-	darkMatter: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-	stars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-	tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-	tonToken: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
-	lastLoginDate: {
-		type: DataTypes.DATEONLY,
-		allowNull: true,
-		comment: 'Date of the last login (YYYY-MM-DD)',
+const UserState = sequelize.define(
+	'userstate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, unique: true, allowNull: false },
+		stardust: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			defaultValue: 0,
+		},
+		darkMatter: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			defaultValue: 0,
+		},
+		stars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+		tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+		tonToken: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+		lastLoginDate: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+			comment: 'Date of the last login (YYYY-MM-DD)',
+		},
+		currentStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Number of consecutive days logged in',
+		},
+		maxStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Maximum streak achieved',
+		},
+		streakUpdatedAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Timestamp of the last streak update',
+		},
+		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
+		lockedStardust: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+			defaultValue: 0,
+		},
+		lockedDarkMatter: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+			defaultValue: 0,
+		},
+		lockedStars: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+			defaultValue: 0,
+		},
+		stateHistory: {
+			type: DataTypes.JSONB,
+			defaultValue: [],
+			comment: 'History of user state with timestamps',
+		},
 	},
-	currentStreak: {
-		type: DataTypes.INTEGER,
-		defaultValue: 0,
-		comment: 'Number of consecutive days logged in',
-	},
-	maxStreak: {
-		type: DataTypes.INTEGER,
-		defaultValue: 0,
-		comment: 'Maximum streak achieved',
-	},
-	streakUpdatedAt: {
-		type: DataTypes.DATE,
-		allowNull: true,
-		comment: 'Timestamp of the last streak update',
-	},
-	chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-	lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
-	lockedStardust: {
-		type: DataTypes.INTEGER,
-		allowNull: true,
-		defaultValue: 0,
-	},
-	lockedDarkMatter: {
-		type: DataTypes.INTEGER,
-		allowNull: true,
-		defaultValue: 0,
-	},
-	lockedStars: {
-		type: DataTypes.INTEGER,
-		allowNull: true,
-		defaultValue: 0,
-	},
-	stateHistory: {
-		type: DataTypes.JSONB,
-		defaultValue: [],
-		comment: 'History of user state with timestamps',
-	},
-});
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'userstate_user_id_idx',
+			},
+		],
+	}
+);
 
 // Новая модель для пользовательских апгрейдов
 const UserUpgrade = sequelize.define(
@@ -118,11 +137,6 @@ const UserUpgrade = sequelize.define(
 				name: 'userupgrades_upgrade_node_id_idx',
 			},
 			{
-				fields: ['userId', 'nodeId'],
-				name: 'userupgrades_user_node_idx',
-				unique: true,
-			},
-			{
 				fields: ['completed'],
 				name: 'userupgrades_completed_idx',
 			},
@@ -140,7 +154,10 @@ const UserTask = sequelize.define(
 		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
 		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
-		reward: { type: DataTypes.INTEGER, defaultValue: 0 },
+		reward: {
+			type: DataTypes.JSONB,
+			defaultValue: { type: 'stardust', amount: 0 },
+		},
 		progressHistory: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
@@ -162,11 +179,7 @@ const UserTask = sequelize.define(
 				fields: ['taskTemplateId'],
 				name: 'usertasks_task_template_id_idx',
 			},
-			{
-				fields: ['userId', 'taskTemplateId'],
-				name: 'usertasks_user_task_template_idx',
-				unique: true,
-			},
+
 			{
 				fields: ['completed'],
 				name: 'usertasks_completed_idx',
@@ -283,10 +296,6 @@ const UserEventSetting = sequelize.define(
 				name: 'usereventsettings_user_id_idx',
 				unique: true,
 			},
-			{
-				fields: ['lastEventCheck'],
-				name: 'usereventsettings_last_event_check_idx',
-			},
 		],
 	}
 );
@@ -296,7 +305,11 @@ const Token = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
-		refreshToken: { type: DataTypes.STRING, allowNull: false },
+		refreshToken: {
+			type: DataTypes.TEXT,
+			allowNull: false,
+			comment: 'JWT refresh token (может быть длиннее 255 символов)',
+		},
 	},
 	{
 		indexes: [
@@ -337,14 +350,39 @@ const Galaxy = sequelize.define(
 	}
 );
 
-const Artifact = sequelize.define('artifact', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	userId: { type: DataTypes.BIGINT, allowNull: false },
-	artifactTemplateId: { type: DataTypes.BIGINT, allowNull: false },
-	name: { type: DataTypes.STRING, allowNull: false },
+const Artifact = sequelize.define(
+	'artifact',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		userId: { type: DataTypes.BIGINT, allowNull: false },
+		seed: { type: DataTypes.STRING, unique: true },
+		artifactTemplateId: { type: DataTypes.BIGINT, allowNull: false },
+		name: { type: DataTypes.STRING, allowNull: false },
+		description: { type: DataTypes.TEXT },
 
-	tradable: { type: DataTypes.BOOLEAN, defaultValue: true },
-});
+		tradable: { type: DataTypes.BOOLEAN, defaultValue: true },
+	},
+	{
+		indexes: [
+			{
+				fields: ['userId'],
+				name: 'artifact_user_id_idx',
+			},
+			{
+				fields: ['artifactTemplateId'],
+				name: 'artifact_artifact_template_id_idx',
+			},
+			{
+				fields: ['seed'],
+				name: 'artifact_seed_idx',
+			},
+			{
+				fields: ['tradable'],
+				name: 'artifact_tradable_idx',
+			},
+		],
+	}
+);
 
 const ArtifactTemplate = sequelize.define('artifacttemplate', {
 	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
@@ -404,7 +442,7 @@ const UpgradeNodeTemplate = sequelize.define(
 		basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
 		effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
 		priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
-		resource: {
+		currency: {
 			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
 			defaultValue: 'stardust',
 		},
@@ -470,6 +508,10 @@ const TaskTemplate = sequelize.define(
 		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
 		title: {
 			type: DataTypes.JSONB,
+			defaultValue: {
+				en: '',
+				ru: '',
+			},
 			allowNull: false,
 			comment: 'Localized task descriptions',
 		},
@@ -478,7 +520,8 @@ const TaskTemplate = sequelize.define(
 			allowNull: false,
 		},
 		reward: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.JSONB,
+			defaultValue: { type: 'stardust', amount: 0 },
 			allowNull: false,
 		},
 		condition: {
@@ -609,8 +652,8 @@ const MarketOffer = sequelize.define(
 			),
 			allowNull: false,
 		},
-		itemId: { type: DataTypes.INTEGER, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
-		amount: { type: DataTypes.INTEGER, allowNull: false },
+		itemId: { type: DataTypes.BIGINT, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
+		amount: { type: DataTypes.DECIMAL, allowNull: false },
 		resource: {
 			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
 			allowNull: false,
@@ -640,7 +683,7 @@ const MarketOffer = sequelize.define(
 		isItemLocked: {
 			type: DataTypes.BOOLEAN,
 			allowNull: false,
-			defaultValue: true,
+			defaultValue: false,
 		}, // Флаг блокировки ресурса или объекта
 	},
 	{
@@ -795,8 +838,8 @@ const PackageStore = sequelize.define(
 			allowNull: false,
 		},
 		status: {
-			type: DataTypes.ENUM('ACTIVE', 'INACTIVE'),
-			defaultValue: 'ACTIVE',
+			type: DataTypes.BOOLEAN,
+			defaultValue: true,
 			allowNull: false,
 		},
 		isUsed: {
@@ -863,18 +906,6 @@ const PackageTemplate = sequelize.define(
 				fields: ['slug'],
 				name: 'packagetemplate_slug_idx',
 			},
-			{
-				fields: ['status'],
-				name: 'packagetemplate_status_idx',
-			},
-			{
-				fields: ['category'],
-				name: 'packagetemplate_category_idx',
-			},
-			{
-				fields: ['sortOrder'],
-				name: 'packagetemplate_sort_order_idx',
-			},
 		],
 	}
 );
@@ -903,24 +934,29 @@ const Admin = sequelize.define(
 	}
 );
 const AdminToken = sequelize.define(
-	'admin_token',
+	'admintoken',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		adminId: { type: DataTypes.BIGINT, allowNull: false },
-		refreshToken: { type: DataTypes.STRING, allowNull: false },
+		refreshToken: {
+			type: DataTypes.TEXT,
+			allowNull: false,
+			comment:
+				'JWT refresh token для админов (может быть длиннее 255 символов)',
+		},
 	},
 	{
 		indexes: [
-			{ fields: ['refreshToken'] },
+			{ fields: ['refreshToken'], name: 'admintoken_refresh_token_idx' },
 			{
 				fields: ['adminId'],
-				name: 'admin_token_admin_id_idx',
+				name: 'admintoken_admin_id_idx',
 			},
 		],
 	}
 );
 const AdminInvite = sequelize.define(
-	'admin_invite',
+	'admininvite',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		adminId: { type: DataTypes.BIGINT, allowNull: false },
@@ -929,7 +965,10 @@ const AdminInvite = sequelize.define(
 		usedAt: { type: DataTypes.DATE, allowNull: true },
 	},
 	{
-		indexes: [{ fields: ['email'] }, { fields: ['adminId'] }],
+		indexes: [
+			{ fields: ['email'], name: 'admininvite_email_idx' },
+			{ fields: ['adminId'], name: 'admininvite_admin_id_idx' },
+		],
 	}
 );
 
@@ -946,11 +985,17 @@ Artifact.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(Artifact);
 
 // --- MARKET RELATIONS ---
-User.hasMany(MarketOffer);
-MarketOffer.belongsTo(User, { foreignKey: 'sellerId' });
+User.hasMany(MarketOffer, { foreignKey: 'sellerId', as: 'marketoffers' });
+MarketOffer.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
-User.hasMany(MarketTransaction, { as: 'buyer', foreignKey: 'buyerId' });
-User.hasMany(MarketTransaction, { as: 'seller', foreignKey: 'sellerId' });
+User.hasMany(MarketTransaction, {
+	as: 'buyertransactions',
+	foreignKey: 'buyerId',
+});
+User.hasMany(MarketTransaction, {
+	as: 'sellertransactions',
+	foreignKey: 'sellerId',
+});
 MarketTransaction.belongsTo(User, { as: 'buyer', foreignKey: 'buyerId' });
 MarketTransaction.belongsTo(User, { as: 'seller', foreignKey: 'sellerId' });
 
@@ -965,16 +1010,19 @@ PaymentTransaction.belongsTo(User, { foreignKey: 'toAccount', as: 'payee' });
 
 User.hasMany(PaymentTransaction, {
 	foreignKey: 'fromAccount',
-	as: 'sentPayments',
+	as: 'sentpayments',
 });
 User.hasMany(PaymentTransaction, {
 	foreignKey: 'toAccount',
-	as: 'receivedPayments',
+	as: 'receivedpayments',
 });
 
 // Связь для пакетов
 User.hasMany(PackageStore, { foreignKey: 'userId' });
 PackageStore.belongsTo(User, { foreignKey: 'userId' });
+
+PackageTemplate.hasMany(PackageStore);
+PackageStore.belongsTo(PackageTemplate, { foreignKey: 'packageTemplateId' });
 
 // Связи для новых моделей
 User.hasMany(UserUpgrade);
@@ -1004,8 +1052,8 @@ AdminToken.belongsTo(Admin, { foreignKey: 'adminId' });
 Admin.hasMany(AdminInvite);
 AdminInvite.belongsTo(Admin, { foreignKey: 'adminId' });
 
-ArtifactTemplate.hasMany(Artifact);
-Artifact.belongsTo(ArtifactTemplate, { foreignKey: 'templateId' });
+ArtifactTemplate.hasMany(Artifact, { foreignKey: 'artifactTemplateId' });
+Artifact.belongsTo(ArtifactTemplate, { foreignKey: 'artifactTemplateId' });
 
 module.exports = {
 	// ADMIN

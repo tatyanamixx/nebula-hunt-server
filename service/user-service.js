@@ -2,7 +2,7 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * Сервис для работы с пользователями: регистрация, аутентификация, управление состоянием
  */
-const { User, UserState } = require('../models/models');
+const { User, UserState, Galaxy } = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const userStateService = require('./user-state-service');
@@ -11,6 +11,7 @@ const eventService = require('./event-service');
 const upgradeService = require('./upgrade-service');
 const taskService = require('./task-service');
 const UserDto = require('../dtos/user-dto');
+const UserStateDto = require('../dtos/user-state-dto');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op, where } = require('sequelize');
@@ -22,22 +23,72 @@ const packageStoreService = require('./package-store-service');
 const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
 
 class UserService {
+	constructor() {
+		// Проверяем, что prometheusService импортирован корректно
+		if (!prometheusService) {
+			logger.warn('PrometheusService not imported correctly');
+		} else if (!prometheusService.incrementUserRegistration) {
+			logger.warn(
+				'PrometheusService.incrementUserRegistration method not found'
+			);
+		} else {
+			logger.debug('PrometheusService imported successfully');
+		}
+	}
+
+	/**
+	 * Безопасное обновление метрик Prometheus
+	 * @param {string} metricType - Тип метрики для обновления
+	 * @param {Object} options - Дополнительные параметры
+	 */
+	safeUpdatePrometheusMetric(metricType, options = {}) {
+		process.nextTick(() => {
+			try {
+				if (
+					!prometheusService ||
+					typeof prometheusService !== 'object'
+				) {
+					logger.debug('Prometheus service not available');
+					return;
+				}
+
+				switch (metricType) {
+					case 'userRegistration':
+						if (
+							typeof prometheusService.incrementUserRegistration ===
+							'function'
+						) {
+							prometheusService.incrementUserRegistration();
+							logger.debug(
+								'User registration metric incremented successfully'
+							);
+						} else {
+							logger.debug(
+								'User registration metric method not available'
+							);
+						}
+						break;
+					default:
+						logger.debug(`Unknown metric type: ${metricType}`);
+				}
+			} catch (error) {
+				logger.warn('Failed to update Prometheus metric:', {
+					metricType,
+					error: error.message,
+					...options,
+				});
+			}
+		});
+	}
+
 	/**
 	 * Создает системного пользователя, если он не существует
 	 * @returns {Promise<Object>} Объект системного пользователя
 	 */
-	async createSystemUser() {
-		const t = await sequelize.transaction();
+	async createSystemUser(transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 		try {
-			// Check if system user already exists
-			const existingSystemUser = await User.findByPk(SYSTEM_USER_ID, {
-				transaction: t,
-			});
-			if (existingSystemUser) {
-				await t.commit();
-				return existingSystemUser;
-			}
-
 			// Create system user
 			const systemUser = await User.create(
 				{
@@ -50,16 +101,22 @@ class UserService {
 				{ transaction: t }
 			);
 
-			logger.debug('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
+			//logger.debug('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
 			// Create UserState for SYSTEM user (for contract balance)
+			logger.debug('SYSTEM_USER_ID_STATE', systemUser.id);
 			await UserState.findOrCreate({
-				userId: SYSTEM_USER_ID,
+				where: {
+					userId: systemUser.id,
+				},
+				defaults: {
+					userId: systemUser.id,
+				},
+				transaction: t,
 			});
-
-			await t.commit();
+			if (shouldCommit) await t.commit();
 			return systemUser;
 		} catch (err) {
-			if (!t.finished) await t.rollback();
+			if (!t.finished && shouldCommit) await t.rollback();
 			throw ApiError.Internal(
 				`Failed to create system user: ${err.message}`
 			);
@@ -70,44 +127,54 @@ class UserService {
 	 * Проверяет существование системного пользователя и создает его при необходимости
 	 */
 	async ensureSystemUserExists() {
+		const t = await sequelize.transaction();
 		try {
 			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 			if (!systemUser) {
-				await this.createSystemUser();
+				logger.info(
+					'System user not found, creating with ID:',
+					SYSTEM_USER_ID
+				);
+				await this.createSystemUser(t);
+			} else {
+				logger.debug(
+					'System user already exists with ID:',
+					systemUser.id
+				);
 			}
+			await t.commit();
 		} catch (err) {
+			if (!t.finished) await t.rollback();
+			logger.error('Failed to ensure system user exists:', err);
 			throw ApiError.Internal(
 				`Failed to ensure system user exists: ${err.message}`
 			);
 		}
 	}
 
-	/**
-	 * Регистрация нового пользователя с инициализацией всех необходимых данных
-	 * @param {BigInt|string} userId - Идентификатор пользователя
-	 * @param {string} username - Имя пользователя
-	 * @param {BigInt|string} referral - Идентификатор реферала
-	 * @param {Object} reqUserState - Начальное состояние пользователя
-	 * @param {Array} galaxies - Массив данных о галактиках пользователя
-	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
-	 */
-	async registration(userId, username, referral, reqUserState, galaxies) {
-		// Первая транзакция - создаем только пользователя
-		const t1 = await sequelize.transaction();
+	// create user
+	async createUser(userId, username, referral) {
+		// Валидация входных данных
+		if (!userId || !username) {
+			throw ApiError.withCode(
+				400,
+				'Missing required user data (id or username)',
+				'VAL_005'
+			);
+		}
+
+		// Преобразуем referral в число, если это строка
+		if (typeof referral === 'string') {
+			referral = BigInt(referral);
+		}
+		logger.debug('createUser on start', {
+			userId,
+			username,
+			referral,
+		});
+
+		const transaction = await sequelize.transaction();
 		try {
-			// Валидация входных данных
-			if (!userId || !username) {
-				throw ApiError.BadRequest(
-					'Missing required user data (id or username)'
-				);
-			}
-
-			// Преобразуем referral в число, если это строка
-			if (typeof referral === 'string') {
-				referral = BigInt(referral);
-			}
-
-			// 1. Создаём только пользователя
 			const [user, created] = await User.findOrCreate({
 				where: { id: userId },
 				defaults: {
@@ -117,146 +184,189 @@ class UserService {
 					role: 'USER',
 					blocked: false,
 				},
-				transaction: t1,
+				transaction: transaction,
 			});
 
-			if (created) {
-				prometheusService.incrementUserRegistration();
+			// Проверяем, был ли пользователь создан или уже существовал
+			if (!created) {
+				await transaction.rollback();
+				throw ApiError.UserAlreadyExists(
+					`User with ID ${userId} already exists`
+				);
 			}
+
+			await transaction.commit();
+			return { user, created };
+		} catch (err) {
+			if (!transaction.finished) await transaction.rollback();
+
+			// Если это уже ApiError, пробрасываем как есть
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
+			// Проверяем на дублирование по уникальному ключу
+			if (err.name === 'SequelizeUniqueConstraintError') {
+				throw ApiError.UserAlreadyExists(
+					`User with ID ${userId} already exists`
+				);
+			}
+
+			throw ApiError.DatabaseError(
+				`Failed to create user: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Регистрация нового пользователя с инициализацией всех необходимых данных
+	 * @param {BigInt|string} userId - Идентификатор пользователя
+	 * @param {string} username - Имя пользователя
+	 * @param {BigInt|string} referral - Идентификатор реферала
+	 * @param {Object} galaxy - Данные о галактике пользователя
+	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
+	 */
+	async registration(userId, username, referral, galaxy) {
+		// Первая транзакция - создаем только пользователя
+		// Если пользователь уже существует, createUser выбросит ошибку
+		const { user, created } = await this.createUser(
+			userId,
+			username,
+			referral
+		);
+		logger.debug('registration after create user', { user });
+
+		const transaction = await sequelize.transaction();
+		try {
+			// Откладываем проверку всех deferrable ограничений
+			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+				transaction,
+			});
 
 			// Создаём DTO пользователя для токенов
 			const userDto = new UserDto(user);
 
-			// Фиксируем первую транзакцию - пользователь создан
-			await t1.commit();
+			// 2. Инициализируем состояние пользователя
+			const [userState, createdUserState] = await UserState.findOrCreate({
+				where: { userId: user.id },
+				defaults: {
+					userId: user.id,
+				},
+				transaction: transaction,
+			});
 
-			// Вторая транзакция - создаем все остальное
-			const t2 = await sequelize.transaction();
-			try {
-				// 2. Инициализируем состояние пользователя
-				const initialState = {
-					state: {
-						stars: 0,
-						stardustCount: 0,
-						darkMatterCount: 0,
-						tgStarsCount: 0,
-						tokenTonsCount: 0,
-						ownedGalaxiesCount: 0,
-						ownedNodesCount: 0,
-						ownedTasksCount: 0,
-						ownedUpgradesCount: 0,
-						ownedEventsCount: 0,
-						...(reqUserState?.state || {}),
-					},
-					...(reqUserState || {}),
+			// 3. Генерируем JWT токены
+			const tokens = tokenService.generateTokens({ ...userDto });
+			await tokenService.saveToken(
+				user.id,
+				tokens.refreshToken,
+				transaction
+			);
+
+			// 4. Создаём галактику для пользователя, если данные предоставлены
+			const galaxyData = await Galaxy.findOne({
+				where: {
+					userId: user.id,
+				},
+				transaction: transaction,
+			});
+			logger.debug('registration after create user', { user });
+			logger.debug('galaxy input', { galaxy });
+			logger.debug('existing galaxyData', { galaxyData });
+
+			// Объявляем переменные в начале функции
+			let createdGalaxy = false;
+			let userGalaxy = null;
+			let userStateNew = userState.toJSON();
+
+			logger.debug('Galaxy creation condition check', {
+				hasGalaxy: !!galaxy,
+				hasGalaxyData: !!galaxyData,
+				shouldCreate: !!(galaxy && !galaxyData),
+			});
+
+			if (galaxy && !galaxyData) {
+				const offer = {
+					buyerId: user.id,
+					sellerId: SYSTEM_USER_ID,
+					amount: galaxy.starCurrent || 100,
+					resource: 'stars',
+					price: 0,
+					currency: 'tgStars',
+					offerType: 'SYSTEM',
 				};
 
-				const [userState, created] = await UserState.findOrCreate({
-					where: { userId: user.id },
-					defaults: {
-						state: initialState,
-					},
-					transaction: t2,
-				});
-
-				// 3. Генерируем JWT токены
-				const tokens = tokenService.generateTokens({ ...userDto });
-				await tokenService.saveToken(user.id, tokens.refreshToken, t2);
-
-				// 4. Создаём галактики для пользователя, если данные предоставлены
-				const userGalaxies = [];
-				let totalStars = 0;
-				if (Array.isArray(galaxies) && galaxies.length > 0) {
-					for (const galaxyData of galaxies) {
-						const offer = {
-							buyerId: user.id,
-							price: galaxyData.price || GALAXY_BASE_PRICE,
-							currency: 'stars',
-							stars: galaxyData.starCurrent || 100,
-						};
-						const newGalaxy =
-							await galaxyService.createGalaxyWithOffer(
-								galaxyData,
-								offer,
-								t2
-							);
-						userGalaxies.push(newGalaxy);
-						totalStars += galaxyData.starCurrent || 100;
-					}
-
-					// Обновляем счётчик галактик
-
-					userState.state.ownedGalaxiesCount = userGalaxies.length;
-					userState.state.stars = totalStars;
-					await userState.save({ transaction: t2 });
-				}
-
-				// 5. Инициализируем дерево апгрейдов
-				await upgradeService.initializeUserUpgradeTree(user.id, t2);
-
-				// 6. Инициализируем события пользователя
-				await eventService.initializeUserEvents(user.id, t2);
-
-				// 7. Инициализируем список задач пользователя
-				await taskService.initializeUserTasks(user.id, t2);
-
-				// 8. Получаем системные пакеты услуг
-				await packageStoreService.initializePackageStore(user.id, t2);
-
-				// Фиксируем вторую транзакцию
-				await t2.commit();
-
-				// Возвращаем результат
-				return {
-					...tokens,
-					user: userDto,
-					userState,
-					userGalaxies,
-					// userTasks: [],
-					// userUpgrades: [],
-					// userEvents: [],
-					// packageOffers: [], // Будет заполнено позже при необходимости
-				};
-			} catch (err) {
-				// Откатываем вторую транзакцию в случае ошибки
-				if (!t2.finished) await t2.rollback();
-
-				// Логируем ошибку, но не прерываем регистрацию
-				logger.error(
-					`Failed to create related data for user ${user.id}: ${err.message}`,
-					{
-						userId: user.id,
-						error: err.stack,
-					}
+				logger.debug('Creating galaxy with offer', { offer });
+				const result = await galaxyService.createGalaxyWithOffer(
+					galaxy,
+					offer,
+					transaction
 				);
 
-				// Возвращаем результат без связанных данных
-				// Пользователь уже создан, связанные данные можно создать позже
-				const tokens = tokenService.generateTokens({ ...userDto });
-				await tokenService.saveToken(user.id, tokens.refreshToken);
-
-				return {
-					...tokens,
-					user: userDto,
-					userState: null,
-					userGalaxies: [],
-					// userTasks: [],
-					// userUpgrades: [],
-					// userEvents: [],
-					// packageOffers: [],
-				};
+				logger.debug('Galaxy creation result', result);
+				createdGalaxy = result.createdGalaxy;
+				userGalaxy = result.galaxy;
+				userStateNew = result.userState;
 			}
-		} catch (err) {
-			// Откатываем первую транзакцию в случае ошибки
-			if (!t1.finished) await t1.rollback();
+			logger.debug('registration after create galaxy', {
+				createdGalaxy,
+				userGalaxy,
+				userState: userStateNew,
+			});
 
+			// 5. Инициализируем дерево апгрейдов
+			await upgradeService.initializeUserUpgradeTree(
+				user.id,
+				transaction
+			);
+
+			// 6. Инициализируем события пользователя
+			await eventService.initializeUserEvents(user.id, transaction);
+
+			// 7. Инициализируем список задач пользователя
+			await taskService.initializeUserTasks(user.id, transaction);
+
+			// 8. Получаем системные пакеты услуг
+			await packageStoreService.initializePackageStore(
+				user.id,
+				transaction
+			);
+
+			// Безопасно обновляем метрики Prometheus только если пользователь был создан
+			if (created) {
+				this.safeUpdatePrometheusMetric('userRegistration', { userId });
+			}
+			await transaction.commit();
+			logger.debug('registration after commit', { userState });
+			logger.debug('registration after commit', { userGalaxy });
+			const response = {
+				...tokens,
+				user: userDto,
+				createdGalaxy,
+				userState: userStateNew,
+				galaxy: userGalaxy,
+			};
+			logger.debug('User registration response', response);
+			return response;
+		} catch (err) {
+			if (!transaction.finished) await transaction.rollback();
 			// Логируем ошибку
-			logger.error(`Registration failed: ${err.message}`, {
+			logger.error({
+				message: `Registration failed: ${err.message}`,
 				userId: userId,
 				error: err.stack,
 			});
+			const t = await sequelize.transaction();
+			await user.destroy({ transaction: t });
+			await t.commit();
+			// Если это уже ApiError, пробрасываем как есть
+			if (err instanceof ApiError) {
+				throw err;
+			}
 
-			throw ApiError.Internal(`Registration failed: ${err.message}`);
+			throw ApiError.DatabaseError(
+				`Failed to register user ${userId}: ${err.message}`
+			);
 		}
 	}
 
@@ -266,79 +376,83 @@ class UserService {
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
 	async login(userId) {
-		const t = await sequelize.transaction();
+		const transaction = await sequelize.transaction();
 		try {
+			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+				transaction,
+			});
 			// 1. Проверяем существование пользователя
-			const user = await User.findByPk(userId, { transaction: t });
+			const user = await User.findByPk(userId, {
+				transaction: transaction,
+			});
 
 			if (!user) {
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.UserNotFound();
 			}
 
 			if (user.blocked) {
-				throw ApiError.BadRequest('User is blocked');
+				throw ApiError.UserBlocked();
 			}
 
 			const userDto = new UserDto(user);
 
 			// 2. Получаем состояние пользователя, галактики и артефакты
 			const [userState, userGalaxies, userArtifacts] = await Promise.all([
-				stateService.getUserState(userDto.id),
-				galaxyService.getUserGalaxies(userDto.id),
-				artifactService.getUserArtifacts(userDto.id),
+				userStateService.getUserState(userDto.id, transaction),
+				galaxyService.getUserGalaxies(userDto.id, transaction),
+				artifactService.getUserArtifacts(userDto.id, transaction),
 			]);
 
 			// 3. Проверяем и инициализируем state, если его нет
-			if (!userState.state) {
-				userState.state = {
-					stars: userGalaxies.currentStars,
-					stardustCount: 0,
-					darkMatterCount: 0,
-					tgStarsCount: 0,
-					tokenTonsCount: 0,
-					ownedGalaxiesCount: userGalaxies.length,
-					ownedNodesCount: 0,
-					ownedTasksCount: 0,
-					ownedUpgradesCount: 0,
-					ownedEventsCount: 0,
-				};
-				await userState.save({ transaction: t });
-			}
 
 			// 4. Обновляем и инициализируем события пользователя
 			const userEvents = await eventService.checkAndTriggerEvents(
-				userDto.id
+				userDto.id,
+				transaction
 			);
 
 			// 5. Проверяем и инициализируем дерево апгрейдов
 			if (!userState.upgrades || userState.upgrades.items.length === 0) {
 				// Если дерево апгрейдов не инициализировано - инициализируем
-				await upgradeService.initializeUserUpgradeTree(userDto.id, t);
+				await upgradeService.initializeUserUpgradeTree(
+					userDto.id,
+					transaction
+				);
 			} else {
 				// Если дерево существует - активируем новые доступные узлы
-				await upgradeService.activateUserUpgradeNodes(userDto.id, t);
+				await upgradeService.activateUserUpgradeNodes(
+					userDto.id,
+					transaction
+				);
 			}
 
 			// 6. Проверяем и инициализируем задачи пользователя
-			await taskService.initializeUserTasks(userDto.id, t);
+			await taskService.initializeUserTasks(userDto.id, transaction);
 
 			// 7. Проверяем и инициализируем пакеты пользователя
-			await packageStoreService.initializePackageStore(userDto.id, t);
+			await packageStoreService.initializePackageStore(
+				userDto.id,
+				transaction
+			);
 
 			// 8. Генерируем и сохраняем новые токены
 			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(userDto.id, tokens.refreshToken, t);
+			await tokenService.saveToken(
+				userDto.id,
+				tokens.refreshToken,
+				transaction
+			);
 
 			// Фиксируем транзакцию
-			await t.commit();
+			await transaction.commit();
 
 			// Возвращаем результат (без дублирования данных)
 			return {
 				...tokens,
 				user: userDto,
 				userState,
-				userGalaxies,
-				userArtifacts,
+				galaxies: userGalaxies,
+				artifacts: userArtifacts,
 				// userEvents,
 				// packageOffers: packageOffers || [],
 				// userTasks: [],
@@ -346,15 +460,18 @@ class UserService {
 			};
 		} catch (err) {
 			// Откатываем транзакцию в случае ошибки
-			if (!t.finished) await t.rollback();
+			if (!transaction.finished) await transaction.rollback();
 
 			// Логируем ошибку
 			logger.error(`Login failed: ${err.message}`, {
 				userId: userId,
 				error: err.stack,
 			});
+			if (err instanceof ApiError) {
+				throw err;
+			}
 
-			throw ApiError.Internal(`Login failed: ${err.message}`);
+			throw ApiError.DatabaseError(`Login failed: ${err.message}`);
 		}
 	}
 

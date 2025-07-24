@@ -8,6 +8,7 @@ const {
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
+const logger = require('./logger-service');
 const { Op } = require('sequelize');
 
 class PackageStoreService {
@@ -18,21 +19,26 @@ class PackageStoreService {
 	 * @returns {Promise<void>}
 	 */
 	async initializePackageStore(userId, t) {
+		const transaction = t || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+		logger.debug('initializePackageStore on start', {
+			userId,
+		});
 		try {
 			// Get active package templates
 			const activeTemplates = await PackageTemplate.findAll({
 				where: {
-					status: 'ACTIVE',
+					status: true,
 				},
-				transaction: t,
+				transaction: transaction,
 			});
 
 			const initializedPackages = [];
-			if (!activeTemplates || activeTemplates.length === 0) {
+			if (activeTemplates && activeTemplates.length > 0) {
 				for (const template of activeTemplates) {
 					const existingPackage = await PackageStore.findOne({
 						where: { userId, templateId: template.id },
-						transaction: t,
+						transaction: transaction,
 					});
 					if (!existingPackage) {
 						// If no active templates, create default welcome package if user doesn't have any
@@ -44,36 +50,34 @@ class PackageStoreService {
 								resource: template.resource,
 								price: template.price,
 								currency: template.currency,
-								status: 'ACTIVE',
+								status: true,
 								isUsed: false,
 								isLocked: false,
 							},
-							{ transaction: t }
+							{ transaction: transaction }
 						);
 						initializedPackages.push({
 							...packagenew.toJSON(),
 							package: template.toJSON(),
 						});
+					} else {
+						logger.debug('package already exists');
+						initializedPackages.push({
+							...existingPackage.toJSON(),
+							package: template.toJSON(),
+						});
 					}
-					await t.commit();
-					return initializedPackages;
 				}
 			}
-			// Get user's existing packages
-			const existingPackages = await PackageStore.findAll({
-				where: { userId },
-				transaction: t,
-			});
-			for (const pck of existingPackages) {
-				initializedPackages.push({
-					...pck.toJSON(),
-					package: pck.packageTemplate.toJSON(),
-				});
+
+			if (shouldCommit && !transaction.finished) {
+				await transaction.commit();
 			}
-			await t.commit();
 			return initializedPackages;
 		} catch (error) {
-			await t.rollback();
+			if (shouldCommit && !transaction.finished) {
+				await transaction.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to initialize package store: ${error.message}`
 			);

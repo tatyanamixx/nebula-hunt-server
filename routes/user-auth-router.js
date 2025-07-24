@@ -8,6 +8,7 @@ const { body } = require('express-validator');
 const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const authMiddleware = require('../middlewares/auth-middleware');
+const refreshTokenMiddleware = require('../middlewares/refresh-token-middleware');
 
 /**
  * @swagger
@@ -96,7 +97,11 @@ router.post(
 
 router.get(
 	'/refresh',
-	[telegramAuthMiddleware, authMiddleware, rateLimitMiddleware(30, 60)],
+	[
+		telegramAuthMiddleware,
+		refreshTokenMiddleware,
+		rateLimitMiddleware(30, 60),
+	],
 	userController.refresh
 );
 
@@ -106,11 +111,28 @@ router.get(
  *   get:
  *     summary: Refresh user session
  *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
+ *     description: Refresh access token using refresh token from cookies. Requires Telegram WebApp initData in Authorization header with 'tma' prefix.
  *     responses:
  *       200:
- *         description: Session refreshed
+ *         description: Session refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: New access token
+ *                 refreshToken:
+ *                   type: string
+ *                   description: New refresh token
+ *                 user:
+ *                   type: object
+ *                   description: User data
+ *       401:
+ *         description: Invalid or expired refresh token, or invalid Telegram initData
+ *       429:
+ *         description: Rate limit exceeded
  */
 
 router.get(

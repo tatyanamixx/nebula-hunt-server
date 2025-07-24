@@ -6,7 +6,17 @@ Telegram WebApp передает данные пользователя чере�
 
 ## Форматы initData
 
-### 1. URL-encoded формат (прямой)
+### 1. Authorization с префиксом tma (рекомендуется)
+
+```
+dXNlcj0lN0IlMjJpZCUyMiUzQTEyMzQ1Njc4OSUyQyUyMmZpcnN0X25hbWUlMjIlM0ElMjJKb2huJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJqb2huX2RvZSUyMiU3RCZhX2RhdGU9MTY0MDk5NTIwMCZoYXNoPWFiYzEyMy4uLg==
+```
+
+**Заголовок:** `Authorization: tma <base64_data>`
+
+**Приоритет:** Высший (рекомендуется для всех запросов)
+
+### 2. URL-encoded формат (прямой)
 
 ```
 user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22John%22%2C%22username%22%3A%22john_doe%22%7D&auth_date=1640995200&hash=abc123...
@@ -14,16 +24,13 @@ user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22John%22%2C%22username%22%3A
 
 **Заголовок:** `x-telegram-init-data`
 
-### 2. Base64 encoded формат
+### 3. Base64 encoded формат
 
 ```
 dXNlcj0lN0IlMjJpZCUyMiUzQTEyMzQ1Njc4OSUyQyUyMmZpcnN0X25hbWUlMjIlM0ElMjJKb2huJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJqb2huX2RvZSUyMiU3RCZhX2RhdGU9MTY0MDk5NTIwMCZoYXNoPWFiYzEyMy4uLg==
 ```
 
-**Заголовки:**
-
--   `x-telegram-init-data-raw`
--   `authorization: tma <base64_data>`
+**Заголовок:** `x-telegram-init-data-raw`
 
 ## Структура initData
 
@@ -99,16 +106,15 @@ npm run decode:initdata -- --base64 "dXNlcj0..."
 ### Примеры использования
 
 ```bash
-# Тестирование с реальными данными
+# Рекомендуемый способ (Authorization: tma)
+curl -H "Authorization: tma dXNlcj0..." \
+     http://localhost:5000/api/auth/login
+
+# Альтернативные способы
 curl -H "x-telegram-init-data: user=...&auth_date=...&hash=..." \
      http://localhost:5000/api/auth/login
 
-# Тестирование с base64 данными
 curl -H "x-telegram-init-data-raw: dXNlcj0..." \
-     http://localhost:5000/api/auth/login
-
-# Тестирование с authorization header
-curl -H "authorization: tma dXNlcj0..." \
      http://localhost:5000/api/auth/login
 ```
 
@@ -162,7 +168,16 @@ Middleware логирует:
 // В Telegram WebApp
 const initData = window.Telegram.WebApp.initData;
 
-// Отправка на сервер
+// Рекомендуемый способ (Authorization: tma)
+fetch('/api/auth/login', {
+	method: 'POST',
+	headers: {
+		'Content-Type': 'application/json',
+		Authorization: 'tma ' + btoa(initData), // Base64 encode
+	},
+});
+
+// Альтернативный способ
 fetch('/api/auth/login', {
 	method: 'POST',
 	headers: {
@@ -178,7 +193,16 @@ fetch('/api/auth/login', {
 // В мобильном приложении
 const initData = await getTelegramInitData(); // Получение от Telegram SDK
 
-// Отправка на сервер
+// Рекомендуемый способ (Authorization: tma)
+fetch('/api/auth/login', {
+	method: 'POST',
+	headers: {
+		'Content-Type': 'application/json',
+		Authorization: 'tma ' + btoa(initData), // Base64 encode
+	},
+});
+
+// Альтернативный способ
 fetch('/api/auth/login', {
 	method: 'POST',
 	headers: {

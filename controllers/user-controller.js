@@ -12,14 +12,16 @@ class UserController {
 			const id = req.initdata.id;
 			const username = req.initdata.username;
 
-			let { referral, userState, galaxies } = req.body;
+			let { referral, galaxy } = req.body;
 			if (typeof referral === 'string') {
 				try {
 					referral = BigInt(referral);
 				} catch {
 					return next(
-						ApiError.BadRequest(
-							'Referral must be a number, bigint, or numeric string'
+						ApiError.withCode(
+							400,
+							'Referral must be a number, bigint, or numeric string',
+							'VAL_002'
 						)
 					);
 				}
@@ -29,20 +31,35 @@ class UserController {
 				// Оставляем как есть (BigInt)
 			} else if (referral !== undefined && referral !== null) {
 				return next(
-					ApiError.BadRequest(
-						'Referral must be a number, bigint, or numeric string'
+					ApiError.withCode(
+						400,
+						'Referral must be a number, bigint, or numeric string',
+						'VAL_002'
 					)
 				);
 			}
-
+			logger.debug('User registration', {
+				userId: id,
+				username,
+				referral,
+				galaxy,
+			});
 			const userData = await userService.registration(
 				id,
 				username,
 				referral,
-				userState,
-				galaxies
+				galaxy
 			);
-			logger.info('User registered', { userId: id, username, referral });
+			logger.debug('User registered', { userData });
+			logger.debug('User registration response details', {
+				hasUser: !!userData.user,
+				hasUserState: !!userData.userState,
+				hasUserGalaxy: !!userData.userGalaxy,
+				createdGalaxy: userData.createdGalaxy,
+				userGalaxyKeys: userData.userGalaxy
+					? Object.keys(userData.userGalaxy)
+					: null,
+			});
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -57,7 +74,7 @@ class UserController {
 		try {
 			const id = req.initdata.id;
 			const userData = await userService.login(id);
-			logger.info('User login', { userId: id });
+			logger.debug('User login', { userId: id });
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
@@ -81,14 +98,30 @@ class UserController {
 
 	async refresh(req, res, next) {
 		try {
-			const { refreshToken } = req.cookies;
+			// Используем refresh token из middleware (уже валидирован)
+			const refreshToken = req.refreshToken;
 			const userData = await userService.refresh(refreshToken);
+
+			// Устанавливаем новый refresh token в cookies
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production', // HTTPS только в production
+				sameSite: 'strict', // Защита от CSRF
 			});
+
+			logger.debug('Token refresh successful', {
+				userId: req.refreshTokenData?.id,
+				ip: req.ip,
+			});
+
 			return res.json(userData);
 		} catch (e) {
+			logger.error('Token refresh failed', {
+				userId: req.refreshTokenData?.id,
+				ip: req.ip,
+				error: e.message,
+			});
 			next(e);
 		}
 	}

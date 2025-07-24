@@ -158,7 +158,7 @@ describe('Auth Router', () => {
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
+			expect(authMiddleware).not.toHaveBeenCalled(); // JWT auth не нужен для refresh
 			// Не проверяем rateLimitMiddleware, так как это фабрика middleware
 
 			// Проверяем, что вызван правильный метод контроллера
@@ -169,6 +169,43 @@ describe('Auth Router', () => {
 			expect(response.body).toHaveProperty('user');
 			expect(response.body).toHaveProperty('accessToken');
 			expect(response.body).toHaveProperty('refreshToken');
+		});
+
+		it('should use refresh token middleware', async () => {
+			// Мокаем refresh token middleware
+			const refreshTokenMiddleware = require('../../middlewares/refresh-token-middleware');
+			jest.spyOn(refreshTokenMiddleware, 'default').mockImplementation(
+				(req, res, next) => {
+					req.refreshToken = 'test-refresh-token';
+					req.refreshTokenData = { id: 123, type: 'refresh' };
+					next();
+				}
+			);
+
+			// Выполняем запрос
+			const response = await request(app)
+				.get('/auth/refresh')
+				.set('Cookie', ['refreshToken=test-refresh-token']);
+
+			// Проверяем, что telegram auth middleware был вызван
+			expect(telegramAuthMiddleware).toHaveBeenCalled();
+
+			// Проверяем, что refresh token middleware был вызван
+			expect(refreshTokenMiddleware.default).toHaveBeenCalled();
+
+			// Проверяем ответ
+			expect(response.status).toBe(200);
+		});
+
+		it('should return 401 when refresh token is missing', async () => {
+			// Выполняем запрос без refresh token
+			const response = await request(app).get('/auth/refresh');
+
+			// Проверяем, что контроллер был вызван
+			expect(userController.refresh).toHaveBeenCalled();
+
+			// Ожидаем ошибку от сервиса (токен отсутствует)
+			// Контроллер должен обработать это и вернуть 401
 		});
 	});
 

@@ -1,7 +1,15 @@
 /**
  * created by Tatyana Mikhniukevich on 04.05.2025
  */
-const { Sequelize } = require('sequelize');
+const { Sequelize, DataTypes } = require('sequelize');
+
+// Настройка BIGINT для возврата как BigInt
+DataTypes.BIGINT.prototype._sanitize = function _sanitize(value) {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return BigInt(value);
+};
 
 if (process.env.NODE_ENV === 'production') {
 	// В продакшене — только переменные окружения
@@ -21,6 +29,9 @@ if (process.env.NODE_ENV === 'production') {
 			port: process.env.DB_PORT || 5432,
 			dialect: 'postgres',
 			logging: false,
+			define: {
+				underscored: false, // Используем camelCase для имен колонок
+			},
 		}
 	);
 } else {
@@ -43,6 +54,9 @@ if (process.env.NODE_ENV === 'production') {
 			port: config.port || 5432,
 			dialect: config.dialect,
 			logging: false,
+			define: {
+				underscored: false, // Используем camelCase для имен колонок
+			},
 		}
 	);
 }

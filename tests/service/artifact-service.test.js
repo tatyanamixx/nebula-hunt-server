@@ -43,7 +43,7 @@ jest.mock('../../db', () => {
 });
 
 jest.mock('../../config/constants', () => ({
-	SYSTEM_USER_ID: 999,
+	SYSTEM_USER_ID: 999999999,
 }));
 
 describe('ArtifactService', () => {

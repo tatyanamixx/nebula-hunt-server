@@ -10,7 +10,7 @@
 			"ownedNodesCount": 0
 		}
 	},
-	"galaxies": [
+	"galaxy": 
 		{
 			"starMin": 100,
 			"starCurrent": 100,
@@ -38,37 +38,6 @@
 				"coreRadius": 0.3,
 				"coreDensity": 0.001
 			}
-		},
-		{
-			"starMin": 1000,
-			"starCurrent": 100,
-			"price": 100,
-			"seed": "abc123430403493094943",
-			"particleCount": 100,
-			"onParticleCountChange": true,
-			"galaxyProperties": {
-				"galaxySetting": {
-					"seed": "abc123430403493094943",
-					"type": "spiral",
-					"colorPalette": {
-						"insideColor": "#ff1493",
-						"outsideColor": "#00ffff",
-						"coreColor": "#ffd700",
-						"armColor": "#ff4500"
-					},
-					"branches": 5,
-					"radius": 4.2,
-					"randomness": 0.5,
-					"randomnessPower": 2.3,
-					"armWidth": 0.25,
-					"tilt": 0.4,
-					"warp": 0.1,
-					"rotation": 1.57,
-					"scale": 0.5,
-					"coreRadius": 0.3,
-					"coreDensity": 0.001
-				}
-			}
 		}
-	]
+		
 }

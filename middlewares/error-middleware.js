@@ -17,9 +17,28 @@ module.exports = function (err, req, res, next) {
 	});
 
 	if (err instanceof ApiError) {
-		return res
-			.status(err.status)
-			.json({ message: err.message, errors: err.errors });
+		const errorResponse = {
+			message: err.message,
+			errors: err.errors,
+		};
+
+		// Добавляем код ошибки, если он есть
+		if (err.errorCode) {
+			errorResponse.errorCode = err.errorCode;
+		}
+
+		// Добавляем уровень серьезности, если он есть
+		if (err.severity) {
+			errorResponse.severity = err.severity;
+		}
+
+		return res.status(err.status).json(errorResponse);
 	}
-	return res.status(500).json({ message: err.message });
+
+	// Для неизвестных ошибок возвращаем системный код
+	return res.status(500).json({
+		message: err.message,
+		errorCode: 'SYS_002',
+		severity: 'CRITICAL',
+	});
 };

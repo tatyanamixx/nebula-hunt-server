@@ -16,33 +16,34 @@ class GalaxyController {
 			// Валидация данных
 			if (!galaxyData || !offerData) {
 				return res.status(400).json({
-					error: 'Missing required data: galaxyData and offerData',
+					message: 'Missing required data: galaxyData and offerData',
+					errorCode: 'VAL_005',
+					severity: 'LOW',
 				});
 			}
 
 			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
 				return res.status(400).json({
-					error: 'Invalid galaxy data: seed and galaxyProperties are required',
+					message:
+						'Invalid galaxy data: seed and galaxyProperties are required',
+					errorCode: 'VAL_003',
+					severity: 'MEDIUM',
 				});
 			}
 
-			if (!offerData.price || !offerData.currency) {
-				return res.status(400).json({
-					error: 'Invalid offer data: price and currency are required',
-				});
-			}
 
 			const result = await galaxyService.createGalaxyWithOffer(
-				buyerId,
 				galaxyData,
-				offerData
+				{ ...offerData, buyerId }
 			);
 
 			logger.info('System galaxy with offer created', {
 				buyerId,
-				galaxyId: result.galaxy.id,
-				offerId: result.offer.id,
+				galaxyId: result.galaxy?.id,
+				offerId: result.offerOut?.id,
 			});
+
+			logger.debug('Galaxy controller response', result);
 
 			return res.json(result);
 		} catch (e) {

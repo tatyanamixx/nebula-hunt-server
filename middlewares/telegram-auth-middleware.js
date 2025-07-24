@@ -134,6 +134,10 @@ module.exports = function telegramAuthMiddleware(req, res, next) {
 				username: parsedData.user?.username,
 				source,
 			});
+			
+			logger.debug('Telegram user data parsed successfully', {
+				initData: req.initdata,
+			});
 		} catch (parseError) {
 			logger.error('Error parsing Telegram initData:', parseError);
 			return next(

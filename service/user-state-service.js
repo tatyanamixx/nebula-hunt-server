@@ -21,8 +21,6 @@ class UserStateService {
 		// );
 
 		const today = new Date(now);
-
-		await this.updateStreak(userState);
 		const lastLogin = userState.lastLoginDate
 			? new Date(userState.lastLoginDate)
 			: null;
@@ -71,9 +69,9 @@ class UserStateService {
 		});
 	}
 
-	async getUserState(userId) {
-		const t = await sequelize.transaction();
-
+	async getUserState(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 		try {
 			// Get basic user state
 			let userState = await UserState.findOne({
@@ -86,21 +84,26 @@ class UserStateService {
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
 
-				await t.commit();
-				return userState;
+				if (shouldCommit) {
+					await t.commit();
+				}
+				return userState.toJSON();
 			}
-
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 			return userState;
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(`Failed to get user state: ${err.message}`);
 		}
 	}
 
 	async createUserState(userId, userState, transaction) {
 		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+		const shouldCommit = !transaction;
 		try {
 			await this.updateStreak(userState);
 			logger.debug('createUserState', userId, userState);
@@ -124,11 +127,12 @@ class UserStateService {
 				},
 				transaction: t,
 			});
-
-			await t.commit();
-			return stateNew;
+			if (shouldCommit) {
+				await t.commit();
+			}
+			return stateNew[0].toJSON();
 		} catch (err) {
-			if (!externalTransaction) {
+			if (shouldCommit) {
 				await t.rollback();
 			}
 			throw ApiError.Internal(
@@ -139,7 +143,7 @@ class UserStateService {
 
 	async updateUserState(userId, userState, transaction) {
 		const t = transaction || (await sequelize.transaction());
-		const externalTransaction = !!transaction;
+		const shouldCommit = !transaction;
 
 		try {
 			const stateData = await UserState.findOne({
@@ -179,7 +183,7 @@ class UserStateService {
 						: { ...stateData },
 				};
 
-				if (!externalTransaction) {
+				if (shouldCommit) {
 					await t.commit();
 				}
 				return responseObj;
@@ -209,19 +213,24 @@ class UserStateService {
 				state: stateNew.toJSON(),
 			});
 			await stateNew.save({ transaction: t });
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 
-			return { userId, userState: stateNew };
+			return { userId, userState: stateNew.toJSON() };
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to update user state: ${err.message}`
 			);
 		}
 	}
 
-	async leaderboard(userId) {
-		const t = await sequelize.transaction();
+	async leaderboard(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 
 		try {
 			// Get user data and position in the leaderboard
@@ -317,21 +326,26 @@ class UserStateService {
 				users.push(userData);
 			}
 
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 			return {
 				leaderboard: users,
 				userRating: userRating,
 			};
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to get leaderboard: ${err.message}`
 			);
 		}
 	}
 
-	async getUserResources(userId) {
-		const t = await sequelize.transaction();
+	async getUserResources(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 
 		try {
 			const userState = await UserState.findOne({
@@ -340,7 +354,9 @@ class UserStateService {
 			});
 
 			if (!userState) {
-				await t.rollback();
+				if (shouldCommit) {
+					await t.rollback();
+				}
 				throw ApiError.NotFound('User state not found');
 			}
 
@@ -359,10 +375,14 @@ class UserStateService {
 				},
 			};
 
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 			return resources;
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			if (err instanceof ApiError) {
 				throw err;
 			}
@@ -372,8 +392,9 @@ class UserStateService {
 		}
 	}
 
-	async claimDailyBonus(userId) {
-		const t = await sequelize.transaction();
+	async claimDailyBonus(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 
 		try {
 			const userState = await UserState.findOne({
@@ -382,7 +403,9 @@ class UserStateService {
 			});
 
 			if (!userState) {
-				await t.rollback();
+				if (shouldCommit) {
+					await t.rollback();
+				}
 				throw ApiError.NotFound('User state not found');
 			}
 
@@ -403,7 +426,9 @@ class UserStateService {
 				);
 
 				if (lastClaimDate.getTime() === today.getTime()) {
-					await t.rollback();
+					if (shouldCommit) {
+						await t.rollback();
+					}
 					throw ApiError.BadRequest(
 						'Daily bonus already claimed today'
 					);
@@ -421,7 +446,9 @@ class UserStateService {
 
 			await userState.save({ transaction: t });
 
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 
 			return {
 				bonus: {
@@ -439,7 +466,9 @@ class UserStateService {
 				), // Tomorrow
 			};
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			if (err instanceof ApiError) {
 				throw err;
 			}
@@ -449,8 +478,9 @@ class UserStateService {
 		}
 	}
 
-	async farming(userId, offers) {
-		const t = await sequelize.transaction();
+	async farming(userId, offers, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 		const result = [];
 		try {
 			if (offers.length > 0) {
@@ -483,12 +513,16 @@ class UserStateService {
 				}
 			}
 
-			await t.commit();
+			if (shouldCommit) {
+				await t.commit();
+			}
 			return {
 				result,
 			};
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit) {
+				await t.rollback();
+			}
 			logger.error('Error in createSystemGalaxyWithOffer', err);
 			throw ApiError.Internal(
 				`Failed to create system galaxy with offer: ${err.message}`

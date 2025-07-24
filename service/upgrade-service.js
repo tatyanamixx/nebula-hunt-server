@@ -14,6 +14,8 @@ class UpgradeService {
 	 * @returns {Promise<Array>} Initialized user upgrades
 	 */
 	async initializeUserUpgradeTree(userId, t) {
+		const transaction = t || (await sequelize.transaction());
+		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 		try {
 			const userUpgrades = [];
 			logger.debug('initializeUserUpgradeTree', userId);
@@ -27,7 +29,7 @@ class UpgradeService {
 					// 	{ $conditions$: {} },
 					// ],
 				},
-				transaction: t,
+				transaction: transaction,
 			});
 			logger.debug('rootNodes', rootNodes);
 			// Create initial user upgrades for root nodes
@@ -52,14 +54,20 @@ class UpgradeService {
 							],
 							lastProgressUpdate: new Date(),
 						},
-						{ transaction: t }
+						{ transaction: transaction }
 					);
 					userUpgrades.push(userUpgrade);
 				}
 			}
 
+			if (shouldCommit && !t.finished) {
+				await t.commit();
+			}
 			return userUpgrades;
 		} catch (err) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to initialize user upgrade tree: ${err.message}`
 			);

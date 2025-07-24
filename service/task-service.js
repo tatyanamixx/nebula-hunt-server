@@ -5,6 +5,7 @@ const { TaskTemplate, UserState, UserTask } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const marketService = require('./market-service');
+const logger = require('./logger-service');
 
 class TaskService {
 	/**
@@ -15,7 +16,10 @@ class TaskService {
 	 */
 	async initializeUserTasks(userId, transaction) {
 		const t = transaction || (await sequelize.transaction());
-
+		const shouldCommit = !transaction;
+		logger.debug('initializeUserTasks on start', {
+			userId,
+		});
 		try {
 			// Get all active tasks
 			const tasks = await TaskTemplate.findAll({
@@ -26,7 +30,9 @@ class TaskService {
 			});
 
 			if (tasks.length === 0) {
-				await t.commit();
+				if (shouldCommit && !t.finished) {
+					await t.commit();
+				}
 				return {
 					tasks: [],
 				};
@@ -101,7 +107,9 @@ class TaskService {
 				},
 			});
 
-			await t.commit();
+			if (shouldCommit && !t.finished) {
+				await t.commit();
+			}
 
 			return {
 				tasks: initializedTasks,
@@ -110,13 +118,14 @@ class TaskService {
 				},
 			};
 		} catch (err) {
-			await t.rollback();
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
 			throw ApiError.Internal(
 				`Failed to initialize user tasks: ${err.message}`
 			);
 		}
 	}
-
 
 	async getUserTasks(userId) {
 		const t = await sequelize.transaction();

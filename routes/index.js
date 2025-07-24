@@ -27,6 +27,7 @@ const eventTemplateRouter = require('./event-template-router');
 const upgradeTemplateRouter = require('./upgrade-template-router');
 const packageTemplateRouter = require('./package-template-router');
 const artifactTemplateRouter = require('./artifact-template-router');
+const templateViewRouter = require('./template-view-router');
 
 router.use('/auth', authRouter);
 router.use('/state', userStateRouter);
@@ -48,5 +49,6 @@ router.use('/game-metrics', gameMetricsRouter);
 router.use('/metrics', prometheusRouter);
 router.use('/artifact-templates', artifactTemplateRouter);
 router.use('/admin-users', adminUserRouter);
+router.use('/template-views', templateViewRouter);
 
 module.exports = router;
