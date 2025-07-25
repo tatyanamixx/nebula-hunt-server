@@ -53,13 +53,8 @@ class TaskService {
 						{
 							userId,
 							taskId: task.id,
-							progress: 0,
-							targetProgress:
-								task.condition?.targetProgress || 100,
 							completed: false,
 							reward: 0,
-							progressHistory: [],
-							lastProgressUpdate: new Date(),
 							active: true,
 						},
 						{ transaction: t }
@@ -100,7 +95,7 @@ class TaskService {
 				await userState.save({ transaction: t });
 			}
 
-			const totalReward = await UserTask.sum('reward', {
+			const totalReward = await UserTask.sum('reward.amount', {
 				where: {
 					userId,
 					completed: true,
@@ -157,12 +152,8 @@ class TaskService {
 				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
-				progress: userTask.progress,
-				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
 				reward: userTask.reward,
-				progressHistory: userTask.progressHistory,
-				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
 				task: userTask.tasktemplate,
@@ -175,23 +166,40 @@ class TaskService {
 			throw ApiError.Internal(`Failed to get user tasks: ${err.message}`);
 		}
 	}
-
-	async updateTaskProgress(userId, slug, progress) {
-		const t = await sequelize.transaction();
+	/**
+	 * Complete a task for a user
+	 * @param {number} userId - User ID
+	 * @param {string} slug - Task slug
+	 * @param {Transaction} transaction - Optional transaction object
+	 * @returns {Promise<Object>} - Completed task
+	 */
+	async completeTask(userId, slug, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 
 		try {
-			const task = await TaskTemplate.findOne({
+			logger.debug('completeTask on start', {
+				userId,
+				slug,
+			});
+			const taskTemplate = await TaskTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
-			if (!task) {
+			if (!taskTemplate) {
+				logger.debug('completeTask on end', {
+					userId,
+					slug,
+					error: 'Task not found',
+				});
 				throw ApiError.NotFound('Task not found');
 			}
+
 			// Находим задачу пользователя
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId: task.id,
+					taskTemplateId: taskTemplate.id,
 					active: true,
 					completed: false,
 				},
@@ -205,62 +213,52 @@ class TaskService {
 			});
 
 			if (!userTask) {
+				logger.debug('completeTask on end', {
+					userId,
+					slug,
+					error: 'User task not found',
+				});
 				await t.rollback();
 				throw ApiError.BadRequest('User task not found');
 			}
 
 			// Если задача уже завершена, ничего не делаем
 			if (userTask.completed) {
+				logger.debug('completeTask on end', {
+					userId,
+					slug,
+					error: 'User task already completed',
+				});
 				await t.rollback();
-				return userTask;
+				return { success: false, userTask };
 			}
 
-			// Обновляем прогресс
-			const oldProgress = userTask.progress;
-			userTask.progress = Math.min(
-				userTask.progress + progress,
-				userTask.targetProgress
-			);
-
-			// Добавляем запись в историю прогресса
+			// Помечаем задачу как завершенную
 			const now = new Date();
-			userTask.progressHistory.push({
-				timestamp: now,
-				oldValue: oldProgress,
-				newValue: userTask.progress,
-				increment: progress,
-			});
-
-			userTask.lastProgressUpdate = now;
+			userTask.completed = true;
+			userTask.completedAt = now;
+			userTask.reward = userTask.tasktemplate.reward;
 			await userTask.save({ transaction: t });
 
-			// Если прогресс достиг цели, помечаем как завершенную
-			if (userTask.progress >= userTask.targetProgress) {
-				userTask.completed = true;
-				userTask.completedAt = now;
-				userTask.reward = userTask.tasktemplate.reward;
-				await userTask.save({ transaction: t });
-
-				// Обновляем счетчик в UserState
-				const userState = await UserState.findOne({
-					where: { userId },
-					transaction: t,
-				});
-
-				if (userState && userState.state) {
-					userState.state.ownedTasksCount =
-						(userState.state.ownedTasksCount || 0) + 1;
-					await userState.save({ transaction: t });
-				}
+			if (shouldCommit && !t.finished) {
+				await t.commit();
 			}
-
-			await t.commit();
-			return userTask;
+			logger.debug('completeTask on end', {
+				userId,
+				slug,
+				userTask,
+			});
+			return { success: true, userTask };
 		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to update task progress: ${err.message}`
-			);
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
+			logger.debug('completeTask on end', {
+				userId,
+				slug,
+				error: err.message,
+			});
+			throw ApiError.Internal(`Failed to complete task: ${err.message}`);
 		}
 	}
 
@@ -297,13 +295,8 @@ class TaskService {
 				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
-				slug: userTask.tasktemplate.slug,
-				progress: userTask.progress,
-				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
 				reward: userTask.reward,
-				progressHistory: userTask.progressHistory,
-				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
 				task: userTask.tasktemplate,
@@ -351,13 +344,8 @@ class TaskService {
 				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
-				slug: userTask.tasktemplate.slug,
-				progress: userTask.progress,
-				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
 				reward: userTask.reward,
-				progressHistory: userTask.progressHistory,
-				lastProgressUpdate: userTask.lastProgressUpdate,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
 				task: userTask.tasktemplate,
@@ -442,13 +430,8 @@ class TaskService {
 				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
 				taskId: userTask.taskId,
-				slug: userTask.tasktemplate.slug,
-				progress: userTask.progress,
-				targetProgress: userTask.targetProgress,
 				completed: userTask.completed,
 				active: userTask.active,
-				progressHistory: userTask.progressHistory,
-				lastProgressUpdate: userTask.lastProgressUpdate,
 				task: userTask.tasktemplate,
 			};
 
@@ -460,14 +443,10 @@ class TaskService {
 		}
 	}
 
-	async completeTask(userId, slug) {
-		const t = await sequelize.transaction();
-
+	async getTaskStatus(userId, slug) {
 		try {
-			// Find the user task
 			const task = await TaskTemplate.findOne({
 				where: { slug },
-				transaction: t,
 			});
 			if (!task) {
 				throw ApiError.NotFound('Task not found');
@@ -477,95 +456,6 @@ class TaskService {
 					userId,
 					taskId: task.id,
 					active: true,
-					completed: false,
-				},
-				transaction: t,
-			});
-
-			if (!userTask) {
-				await t.rollback();
-				throw ApiError.BadRequest('User task not found');
-			}
-
-			// Check if task is already completed
-			if (userTask.completed) {
-				await t.rollback();
-				return {
-					userTask,
-					slug: userTask.tasktemplate.slug,
-					reward: userTask.reward,
-					rewardType: userTask.rewardType,
-				};
-			}
-
-			// Check if task has enough progress
-			if (userTask.progress < userTask.targetProgress) {
-				await t.rollback();
-				throw ApiError.BadRequest(
-					'Not enough progress to complete this task'
-				);
-			}
-
-			// Get the task to determine reward
-
-			// Mark task as completed
-			userTask.completed = true;
-			await userTask.save({ transaction: t });
-
-			// Определяем тип награды и сумму
-			const reward = task.reward || 0;
-			const rewardType = task.condition?.rewardType || 'stardust';
-
-			// Регистрируем награду через marketService
-			await marketService.registerTaskReward({
-				userId,
-				taskId: task.id,
-				amount: reward,
-				currency: rewardType,
-			});
-
-			// Update user state
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (userState && userState.state) {
-				// Update task counters
-				userState.state.ownedTasksCount =
-					(userState.state.ownedTasksCount || 0) + 1;
-
-				await userState.save({ transaction: t });
-			}
-
-			await t.commit();
-			return {
-				task: userTask,
-				slug: userTask.tasktemplate.slug,
-				reward: task.reward,
-				rewardType: rewardType,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Failed to complete task: ${err.message}`);
-		}
-	}
-
-	async getTaskProgress(userId, slug) {
-		try {
-			const task = await TaskTemplate.findOne({
-				where: { slug },
-				transaction: t,
-			});
-			if (!task) {
-				throw ApiError.NotFound('Task not found');
-			}
-			const userTask = await UserTask.findOne({
-				where: {
-					userId,
-					taskId: task.id,
-					active: true,
-					completed: false,
 				},
 			});
 
@@ -575,19 +465,14 @@ class TaskService {
 
 			return {
 				taskId: task.id,
-				slug: userTask.tasktemplate.slug,
-				progress: userTask.progress,
-				targetProgress: userTask.targetProgress,
+				slug: task.slug,
 				completed: userTask.completed,
-				progressPercentage:
-					userTask.targetProgress > 0
-						? (userTask.progress / userTask.targetProgress) * 100
-						: 0,
-				lastProgressUpdate: userTask.lastProgressUpdate,
+				active: userTask.active,
+				completedAt: userTask.completedAt,
 			};
 		} catch (err) {
 			throw ApiError.Internal(
-				`Failed to get task progress: ${err.message}`
+				`Failed to get task status: ${err.message}`
 			);
 		}
 	}
@@ -611,19 +496,9 @@ class TaskService {
 				(task) => task.active && !task.completed
 			).length;
 
-			// Calculate overall progress
-			let totalProgress = 0;
-			let totalTarget = 0;
-
-			userTasks.forEach((task) => {
-				if (task.active && !task.completed) {
-					totalProgress += task.progress;
-					totalTarget += task.targetProgress;
-				}
-			});
-
-			const overallProgress =
-				totalTarget > 0 ? (totalProgress / totalTarget) * 100 : 0;
+			// Calculate completion percentage
+			const completionPercentage =
+				totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
 			await t.commit();
 
@@ -631,7 +506,7 @@ class TaskService {
 				total: totalTasks,
 				completed: completedTasks,
 				active: activeTasks,
-				overallProgress,
+				completionPercentage,
 				lastUpdate: new Date(),
 			};
 		} catch (err) {

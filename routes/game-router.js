@@ -16,7 +16,7 @@ const router = express.Router();
  * @access Private
  */
 router.post(
-	'/upgrade-payment',
+	'/upgrade-payment/:slug',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
@@ -29,7 +29,7 @@ router.post(
  * @access Private
  */
 router.post(
-	'/task-reward',
+	'/task-reward/:slug',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
@@ -42,7 +42,7 @@ router.post(
  * @access Private
  */
 router.post(
-	'/event-reward',
+	'/event-reward/:slug',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
@@ -68,11 +68,11 @@ router.post(
  * @access Private
  */
 router.post(
-	'/stars-transfer',
+	'/stars-transfer-to-galaxy',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
-	gameController.registerStarsTransfer
+	gameController.registerStarsTransferToGalaxy
 );
 
 /**
@@ -107,7 +107,7 @@ router.post(
  * @access Private
  */
 router.post(
-	'/transfer-stars',
+	'/stars-transfer-to-user',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,

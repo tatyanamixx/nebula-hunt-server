@@ -568,66 +568,16 @@ describe('TaskService', () => {
 		});
 	});
 
-	describe('updateTaskProgress', () => {
-		it('should update task progress successfully', async () => {
+	describe('completeTask', () => {
+		it('should complete task successfully', async () => {
 			// Подготавливаем тестовые данные
 			const userId = 123;
-			const taskId = 'task1';
-			const progress = 25;
+			const slug = 'task1';
 			const userTask = {
 				id: 1,
 				userId,
-				taskId,
-				progress: 50,
-				targetProgress: 100,
+				taskId: 1,
 				completed: false,
-				progressHistory: [],
-				lastProgressUpdate: new Date(),
-				save: jest.fn(),
-				tasktemplate: {
-					reward: 100,
-				},
-			};
-
-			// Мокаем поиск задачи пользователя
-			UserTask.findOne.mockResolvedValue(userTask);
-
-			// Вызываем метод сервиса
-			const result = await taskService.updateTaskProgress(
-				userId,
-				taskId,
-				progress
-			);
-
-			// Проверяем, что прогресс был обновлен
-			expect(userTask.progress).toBe(75);
-			expect(userTask.progressHistory).toHaveLength(1);
-			expect(userTask.save).toHaveBeenCalledWith({
-				transaction,
-			});
-
-			// Проверяем, что транзакция была подтверждена
-			expect(mockCommit).toHaveBeenCalled();
-			expect(mockRollback).not.toHaveBeenCalled();
-
-			// Проверяем результат
-			expect(result).toBe(userTask);
-		});
-
-		it('should complete task if progress reaches target', async () => {
-			// Подготавливаем тестовые данные
-			const userId = 123;
-			const taskId = 'task1';
-			const progress = 60;
-			const userTask = {
-				id: 1,
-				userId,
-				taskId,
-				progress: 50,
-				targetProgress: 100,
-				completed: false,
-				progressHistory: [],
-				lastProgressUpdate: new Date(),
 				save: jest.fn(),
 				tasktemplate: {
 					reward: 100,
@@ -645,14 +595,9 @@ describe('TaskService', () => {
 			UserState.findOne.mockResolvedValue(userState);
 
 			// Вызываем метод сервиса
-			const result = await taskService.updateTaskProgress(
-				userId,
-				taskId,
-				progress
-			);
+			const result = await taskService.completeTask(userId, slug);
 
-			// Проверяем, что прогресс был обновлен до целевого
-			expect(userTask.progress).toBe(100);
+			// Проверяем, что задача была завершена
 			expect(userTask.completed).toBe(true);
 			expect(userTask.reward).toBe(100);
 			expect(userTask.save).toHaveBeenCalled();
@@ -663,6 +608,35 @@ describe('TaskService', () => {
 			// Проверяем, что транзакция была подтверждена
 			expect(mockCommit).toHaveBeenCalled();
 			expect(mockRollback).not.toHaveBeenCalled();
+
+			// Проверяем результат
+			expect(result).toBe(userTask);
+		});
+
+		it('should handle already completed task', async () => {
+			// Подготавливаем тестовые данные
+			const userId = 123;
+			const slug = 'task1';
+			const userTask = {
+				id: 1,
+				userId,
+				taskId: 1,
+				completed: true,
+				save: jest.fn(),
+			};
+
+			// Мокаем поиск задачи пользователя
+			UserTask.findOne.mockResolvedValue(userTask);
+
+			// Вызываем метод сервиса
+			const result = await taskService.completeTask(userId, slug);
+
+			// Проверяем, что транзакция была откачена
+			expect(mockRollback).toHaveBeenCalled();
+			expect(mockCommit).not.toHaveBeenCalled();
+
+			// Проверяем результат
+			expect(result).toBe(userTask);
 		});
 	});
 

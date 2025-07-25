@@ -766,14 +766,6 @@ module.exports = {
 				onUpdate: 'CASCADE',
 				onDelete: 'CASCADE',
 			},
-			progress: {
-				type: Sequelize.INTEGER,
-				defaultValue: 0,
-			},
-			targetProgress: {
-				type: Sequelize.INTEGER,
-				defaultValue: 100,
-			},
 			completed: {
 				type: Sequelize.BOOLEAN,
 				defaultValue: false,
@@ -781,14 +773,6 @@ module.exports = {
 			reward: {
 				type: Sequelize.JSONB,
 				defaultValue: { type: 'stardust', amount: 0 },
-			},
-			progressHistory: {
-				type: Sequelize.JSONB,
-				defaultValue: [],
-			},
-			lastProgressUpdate: {
-				type: Sequelize.DATE,
-				defaultValue: Sequelize.NOW,
 			},
 			active: {
 				type: Sequelize.BOOLEAN,

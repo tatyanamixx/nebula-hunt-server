@@ -60,16 +60,7 @@ router.get(
 	taskController.getUserTask
 );
 
-// Update progress for a user task
-router.put(
-	'/:slug/progress',
-	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	taskController.updateTaskProgress
-);
-
-// Complete a task for the user
+// Complete a user task
 router.post(
 	'/:slug/complete',
 	telegramAuthMiddleware,

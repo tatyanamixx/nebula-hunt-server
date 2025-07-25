@@ -405,6 +405,80 @@ describe('AdminService', () => {
 		});
 	});
 
+	describe('initSupervisor', () => {
+		beforeEach(() => {
+			process.env.SUPERVISOR_EMAIL = 'supervisor@test.com';
+		});
+
+		afterEach(() => {
+			delete process.env.SUPERVISOR_EMAIL;
+		});
+
+		it('should initialize supervisor successfully', async () => {
+			// Мокаем Admin.create
+			const mockSupervisor = {
+				id: 999,
+				email: 'supervisor@test.com',
+				role: 'SUPERVISOR',
+				is_superadmin: true,
+				google2faSecret: 'test-2fa-secret',
+				is_2fa_enabled: true,
+			};
+
+			Admin.create = jest.fn().mockResolvedValue(mockSupervisor);
+			Admin.findOne = jest.fn().mockResolvedValue(null); // Супервайзер не существует
+
+			const result = await adminService.initSupervisor();
+
+			expect(Admin.create).toHaveBeenCalledWith({
+				email: 'supervisor@test.com',
+				role: 'SUPERVISOR',
+				is_superadmin: true,
+				google2faSecret: expect.any(String),
+				is_2fa_enabled: true,
+			});
+
+			expect(result).toEqual({
+				message: 'Supervisor initialized',
+				email: 'supervisor@test.com',
+				id: 999,
+				google2faSecret: expect.any(String),
+				otpAuthUrl: expect.stringContaining('otpauth://totp/'),
+			});
+		});
+
+		it('should return existing supervisor if already exists', async () => {
+			const existingSupervisor = {
+				id: 999,
+				email: 'supervisor@test.com',
+				role: 'SUPERVISOR',
+			};
+
+			Admin.findOne = jest.fn().mockResolvedValue(existingSupervisor);
+
+			const result = await adminService.initSupervisor();
+
+			expect(Admin.findOne).toHaveBeenCalledWith({
+				where: { email: 'supervisor@test.com' },
+				transaction: expect.any(Object),
+			});
+
+			expect(result).toEqual({
+				message: 'Supervisor already exists',
+				email: 'supervisor@test.com',
+				id: 999,
+			});
+		});
+
+		it('should throw error if SUPERVISOR_EMAIL not configured', async () => {
+			delete process.env.SUPERVISOR_EMAIL;
+
+			await expect(adminService.initSupervisor()).rejects.toThrow(
+				'SUPERVISOR_EMAIL not configured'
+			);
+		});
+	});
+
 	describe('verify2FA', () => {
 		it('should verify 2FA successfully', async () => {
 			// Мокаем админа

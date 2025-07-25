@@ -9,20 +9,24 @@ const speakeasy = require('speakeasy');
 const logger = require('../service/logger-service');
 
 class AdminService {
-	
 	async findAdminByEmail(email) {
 		const t = await sequelize.transaction();
 
 		try {
-		if (!email) {
-			throw ApiError.BadRequest('Email is required');
-		}
-			const admin = await Admin.findOne({ where: { email }, transaction: t });
+			if (!email) {
+				throw ApiError.BadRequest('Email is required');
+			}
+			const admin = await Admin.findOne({
+				where: { email },
+				transaction: t,
+			});
 			await t.commit();
 			return admin;
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(`Failed to find admin by email: ${err.message}`);
+			throw ApiError.Internal(
+				`Failed to find admin by email: ${err.message}`
+			);
 		}
 	}
 
@@ -98,7 +102,7 @@ class AdminService {
 
 	/**
 	 * Инициализация админа (назначение роли ADMIN пользователю)
-	 * @param {string} telegramId - Telegram ID пользователя
+	 * @param {string} email - Email пользователя
 	 * @param {string} secretKey - Секретный ключ для инициализации админа
 	 * @returns {Object} - Данные инициализированного админа
 	 */
@@ -111,10 +115,10 @@ class AdminService {
 			throw ApiError.Forbidden('Invalid secret key');
 		}
 
-		// Находим пользователя по Telegram ID
-		const user = await this.findUserByTelegramId(telegramId);
+		// Находим пользователя по email
+		const user = await this.findAdminByEmail(email);
 		if (!user) {
-			throw ApiError.BadRequest('User with this Telegram id not found');
+			throw ApiError.BadRequest('User with this email not found');
 		}
 		if (user.role === 'ADMIN') {
 			throw ApiError.BadRequest('User is already admin');
@@ -123,22 +127,23 @@ class AdminService {
 		// Генерируем секрет для Google 2FA
 		const google2faSecret = speakeasy.generateSecret({
 			length: 20,
-			name: `Nebulahunt Admin (${user.username})`,
+			name: `Nebulahunt Admin (${user.email})`,
 		});
 
 		// Обновляем пользователя
 		user.role = 'ADMIN';
 		user.google2faSecret = google2faSecret.base32;
+		user.is_2fa_enabled = true;
 		await user.save();
 
 		logger.info('Admin initialized', {
 			id: user.id,
-			username: user.username,
+			email: user.email,
 		});
 
 		return {
 			message: 'Admin initialized',
-			username: user.username,
+			email: user.email,
 			id: user.id,
 			google2faSecret: google2faSecret.base32,
 			otpAuthUrl: google2faSecret.otpauth_url,
@@ -147,29 +152,37 @@ class AdminService {
 
 	/**
 	 * Проверка 2FA кода для админа
-	 * @param {string} telegramId - Telegram ID пользователя
+	 * @param {string} email - Email админа
 	 * @param {string} otp - Одноразовый пароль для 2FA
 	 * @returns {Object} - Токены доступа
 	 */
-	async verify2FA(telegramId, otp) {
-		if (!telegramId) {
-			throw ApiError.BadRequest('Telegram user id required');
+	async verify2FA(email, otp) {
+		if (!email) {
+			throw ApiError.BadRequest('Email required');
 		}
 
 		if (!otp) {
 			throw ApiError.BadRequest('OTP code required');
 		}
 
-		// Находим админа по Telegram ID
-		const admin = await this.findAdminByTelegramId(telegramId);
+		// Находим админа по email
+		const admin = await this.findAdminByEmail(email);
 		if (!admin) {
 			logger.warn(
 				'2FA verification failed: user not found or not admin',
 				{
-					id: telegramId,
+					email,
 				}
 			);
 			throw ApiError.Forbidden('Access denied');
+		}
+
+		// Проверяем, что 2FA включен
+		if (!admin.is_2fa_enabled || !admin.google2faSecret) {
+			logger.warn('2FA verification failed: 2FA not enabled', {
+				email,
+			});
+			throw ApiError.Forbidden('2FA not enabled for this account');
 		}
 
 		// Проверяем 2FA код
@@ -182,7 +195,7 @@ class AdminService {
 
 		if (!verified) {
 			logger.warn('2FA verification failed: invalid code', {
-				id: telegramId,
+				email,
 			});
 			throw ApiError.Unauthorized('Invalid 2FA code');
 		}
@@ -193,6 +206,57 @@ class AdminService {
 			admin,
 			'2FA verification successful'
 		);
+	}
+
+	/**
+	 * Инициализация супервайзера через email из переменной окружения
+	 * @returns {Object} - Данные инициализированного супервайзера
+	 */
+	async initSupervisor() {
+		const supervisorEmail = process.env.SUPERVISOR_EMAIL;
+		if (!supervisorEmail) {
+			throw ApiError.Internal('SUPERVISOR_EMAIL not configured');
+		}
+
+		// Проверяем, существует ли уже супервайзер
+		const existingSupervisor = await this.findAdminByEmail(supervisorEmail);
+		if (existingSupervisor && existingSupervisor.role === 'SUPERVISOR') {
+			logger.info('Supervisor already exists', {
+				email: supervisorEmail,
+			});
+			return {
+				message: 'Supervisor already exists',
+				email: existingSupervisor.email,
+				id: existingSupervisor.id,
+			};
+		}
+
+		// Создаем нового супервайзера
+		const google2faSecret = speakeasy.generateSecret({
+			length: 20,
+			name: `Nebulahunt Supervisor (${supervisorEmail})`,
+		});
+
+		const supervisor = await Admin.create({
+			email: supervisorEmail,
+			role: 'SUPERVISOR',
+			is_superadmin: true,
+			google2faSecret: google2faSecret.base32,
+			is_2fa_enabled: true,
+		});
+
+		logger.info('Supervisor initialized', {
+			id: supervisor.id,
+			email: supervisor.email,
+		});
+
+		return {
+			message: 'Supervisor initialized',
+			email: supervisor.email,
+			id: supervisor.id,
+			google2faSecret: google2faSecret.base32,
+			otpAuthUrl: google2faSecret.otpauth_url,
+		};
 	}
 }
 

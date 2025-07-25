@@ -8,11 +8,10 @@ const adminController = require('../controllers/admin-controller');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
-
 // Admin login
 router.post(
 	'/login',
-	adminMiddleware,	
+	adminMiddleware,
 	rateLimitMiddleware(10, 60),
 	adminController.loginAdmin
 );
@@ -28,7 +27,7 @@ router.post(
 // Initialize admin
 router.post(
 	'/init',
-	
+
 	rateLimitMiddleware(5, 60),
 	adminController.initAdmin
 );
@@ -36,9 +35,16 @@ router.post(
 // Verify 2FA
 router.post(
 	'/2fa/verify',
-	
+
 	rateLimitMiddleware(10, 60),
 	adminController.verify2FA
+);
+
+// Initialize supervisor
+router.post(
+	'/supervisor/init',
+	rateLimitMiddleware(1, 3600), // Ограничиваем до 1 запроса в час
+	adminController.initSupervisor
 );
 
 module.exports = router;

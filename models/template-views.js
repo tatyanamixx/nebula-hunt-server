@@ -74,17 +74,10 @@ const UserTaskWithTemplate = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
 		taskTemplateId: { type: DataTypes.BIGINT, allowNull: false },
-		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
-		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 		reward: {
 			type: DataTypes.JSONB,
 			defaultValue: { type: 'stardust', amount: 0 },
-		},
-		progressHistory: { type: DataTypes.JSONB, defaultValue: [] },
-		lastProgressUpdate: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
 		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 		completedAt: { type: DataTypes.DATE },

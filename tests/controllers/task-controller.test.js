@@ -224,53 +224,35 @@ describe('TaskController', () => {
 		});
 	});
 
-	describe('updateTaskProgress', () => {
-		it('should update task progress successfully', async () => {
+	describe('completeTask', () => {
+		it('should complete task successfully', async () => {
 			// Подготавливаем тестовые данные
-			const taskId = 'task123';
-			const progress = 25;
-			req.body = { taskId, progress };
+			const slug = 'task123';
+			req.params = { slug };
 
 			// Мокаем ответ от сервиса
-			const updatedTask = { id: 1, taskId, progress: 75 };
-			taskService.updateTaskProgress.mockResolvedValue(updatedTask);
+			const completedTask = { id: 1, slug, completed: true };
+			taskService.completeTask.mockResolvedValue(completedTask);
 
 			// Вызываем метод контроллера
-			await taskController.updateTaskProgress(req, res, next);
+			await taskController.completeTask(req, res, next);
 
 			// Проверяем, что сервис был вызван с правильными параметрами
-			expect(taskService.updateTaskProgress).toHaveBeenCalledWith(
-				req.user.id,
-				taskId,
-				progress
+			expect(taskService.completeTask).toHaveBeenCalledWith(
+				req.initdata.id,
+				slug
 			);
 
 			// Проверяем ответ
-			expect(res.json).toHaveBeenCalledWith(updatedTask);
+			expect(res.json).toHaveBeenCalledWith(completedTask);
 		});
 
-		it('should handle missing taskId', async () => {
-			// Подготавливаем тестовые данные без taskId
-			const progress = 25;
-			req.body = { progress };
+		it('should handle missing slug', async () => {
+			// Подготавливаем тестовые данные без slug
+			req.params = {};
 
 			// Вызываем метод контроллера
-			await taskController.updateTaskProgress(req, res, next);
-
-			// Проверяем, что next был вызван с ошибкой
-			expect(next).toHaveBeenCalled();
-			const error = next.mock.calls[0][0];
-			expect(error).toBeInstanceOf(ApiError);
-			expect(error.status).toBe(400);
-		});
-
-		it('should handle missing progress', async () => {
-			// Подготавливаем тестовые данные без progress
-			const taskId = 'task123';
-			req.body = { taskId };
-
-			// Вызываем метод контроллера
-			await taskController.updateTaskProgress(req, res, next);
+			await taskController.completeTask(req, res, next);
 
 			// Проверяем, что next был вызван с ошибкой
 			expect(next).toHaveBeenCalled();
@@ -281,18 +263,15 @@ describe('TaskController', () => {
 
 		it('should handle service error', async () => {
 			// Подготавливаем тестовые данные
-			const taskId = 'task123';
-			const progress = 25;
-			req.body = { taskId, progress };
+			const slug = 'task123';
+			req.params = { slug };
 
 			// Мокаем ошибку от сервиса
-			const errorMessage = 'Failed to update task progress';
-			taskService.updateTaskProgress.mockRejectedValue(
-				new Error(errorMessage)
-			);
+			const errorMessage = 'Failed to complete task';
+			taskService.completeTask.mockRejectedValue(new Error(errorMessage));
 
 			// Вызываем метод контроллера
-			await taskController.updateTaskProgress(req, res, next);
+			await taskController.completeTask(req, res, next);
 
 			// Проверяем, что next был вызван с ошибкой
 			expect(next).toHaveBeenCalled();

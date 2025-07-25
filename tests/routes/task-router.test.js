@@ -33,13 +33,11 @@ jest.mock('../../controllers/task-controller', () => ({
 		res.status(200).json([{ id: 1, taskId: 'task1', active: true }])
 	),
 	getUserTask: jest.fn((req, res) =>
-		res
-			.status(200)
-			.json({
-				id: 1,
-				taskId: req.params.taskId,
-				title: { en: 'Test Task' },
-			})
+		res.status(200).json({
+			id: 1,
+			taskId: req.params.taskId,
+			title: { en: 'Test Task' },
+		})
 	),
 	completeTask: jest.fn((req, res) =>
 		res.status(200).json({
@@ -48,11 +46,11 @@ jest.mock('../../controllers/task-controller', () => ({
 			rewardType: 'stardust',
 		})
 	),
-	updateTaskProgress: jest.fn((req, res) =>
+	completeTask: jest.fn((req, res) =>
 		res.status(200).json({
 			id: 1,
-			taskId: req.body.taskId,
-			progress: req.body.progress,
+			slug: req.params.slug,
+			completed: true,
 		})
 	),
 	initializeUserTasks: jest.fn((req, res) =>
@@ -162,30 +160,22 @@ describe('Task Router', () => {
 		});
 	});
 
-	describe('POST /tasks/progress', () => {
+	describe('POST /tasks/:slug/complete', () => {
 		it('should use correct middleware and controller', async () => {
-			// Подготавливаем тестовые данные
-			const requestData = {
-				taskId: 'task123',
-				progress: 25,
-			};
-
 			// Выполняем запрос
-			const response = await request(app)
-				.post('/tasks/progress')
-				.send(requestData);
+			const response = await request(app).post('/tasks/task123/complete');
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(taskController.updateTaskProgress).toHaveBeenCalled();
+			expect(taskController.completeTask).toHaveBeenCalled();
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('taskId', 'task123');
-			expect(response.body).toHaveProperty('progress', 25);
+			expect(response.body).toHaveProperty('slug', 'task123');
+			expect(response.body).toHaveProperty('completed', true);
 		});
 	});
 

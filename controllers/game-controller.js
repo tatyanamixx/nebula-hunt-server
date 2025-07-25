@@ -60,32 +60,27 @@ class GameController {
 	 */
 	async registerTaskReward(req, res, next) {
 		try {
-			const { userId, taskId, amount, resource } = req.body;
+			const userId = req.initData.id;
+			const { slug } = req.params;
 
 			// Validate required fields
-			if (!userId || !taskId || !amount || !resource) {
+			if (!slug) {
 				throw ApiError.BadRequest(
-					'Missing required fields: userId, taskId, amount, resource'
+					'Missing required fields: slug'
 				);
 			}
 
 			// Validate amount is positive
-			if (amount <= 0) {
-				throw ApiError.BadRequest('Amount must be positive');
-			}
+
 
 			const result = await gameService.registerTaskReward({
 				userId,
-				taskId,
-				amount,
-				resource,
+				slug,
 			});
 
 			logger.info('Task reward registered successfully', {
 				userId,
-				taskId,
-				amount,
-				resource,
+				slug,
 			});
 
 			res.status(200).json({
@@ -150,7 +145,8 @@ class GameController {
 	 */
 	async registerFarmingReward(req, res, next) {
 		try {
-			const { offerData, buyerId } = req.body;
+			const userId = req.initData.id;
+			const { offerData} = req.body;
 
 			// Validate required fields
 			if (
@@ -161,10 +157,6 @@ class GameController {
 				throw ApiError.BadRequest(
 					'offerData must be a non-empty array'
 				);
-			}
-
-			if (!buyerId) {
-				throw ApiError.BadRequest('buyerId is required');
 			}
 
 			// Validate each offer in the array
@@ -183,12 +175,12 @@ class GameController {
 			}
 
 			const result = await gameService.registerFarmingReward(
+				userId,
 				offerData,
-				buyerId
 			);
 
 			logger.info('Farming reward registered successfully', {
-				buyerId,
+				userId,
 				offerCount: offerData.length,
 			});
 
@@ -207,20 +199,20 @@ class GameController {
 	 * @param {Object} res - Express response object
 	 * @param {Function} next - Express next function
 	 */
-	async registerStarsTransfer(req, res, next) {
+	async registerStarsTransferToGalaxy(req, res, next) {
 		try {
-			const offer = req.body;
+			const userId = req.initData.id;
+			const { offer, galaxySeed } = req.body;
 
 			// Validate required fields
 			if (
 				!offer ||
-				!offer.buyerId ||
-				!offer.sellerId ||
+				!galaxySeed ||
 				!offer.amount ||
 				!offer.resource
 			) {
 				throw ApiError.BadRequest(
-					'Missing required fields: buyerId, sellerId, amount, resource'
+				'Missing required fields: offer, galaxySeed, amount, resource'
 				);
 			}
 
@@ -229,11 +221,11 @@ class GameController {
 				throw ApiError.BadRequest('Amount must be positive');
 			}
 
-			const result = await gameService.registerStarsTransfer(offer);
+			const result = await gameService.registerStarsTransferToGalaxy(userId, offer, galaxySeed);
 
 			logger.info('Stars transfer registered successfully', {
-				buyerId: offer.buyerId,
-				sellerId: offer.sellerId,
+				userId,
+				galaxySeed,
 				amount: offer.amount,
 				resource: offer.resource,
 			});

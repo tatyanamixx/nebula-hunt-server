@@ -56,24 +56,16 @@ class TaskController {
 		}
 	}
 
-	async updateTaskProgress(req, res, next) {
+	async completeTask(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { slug, progress } = req.body;
+			const { slug } = req.params;
 
 			if (!slug) {
-				return next(ApiError.BadRequest('Task ID is required'));
+				return next(ApiError.BadRequest('Task slug is required'));
 			}
 
-			if (progress === undefined) {
-				return next(ApiError.BadRequest('Progress value is required'));
-			}
-
-			const result = await taskService.updateTaskProgress(
-				userId,
-				slug,
-				progress
-			);
+			const result = await taskService.completeTask(userId, slug);
 			return res.json(result);
 		} catch (err) {
 			next(err);

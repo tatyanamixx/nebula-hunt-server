@@ -76,6 +76,19 @@ class AdminController {
 			next(e);
 		}
 	}
+
+	/**
+	 * Инициализация супервайзера
+	 */
+	async initSupervisor(req, res, next) {
+		try {
+			const initResult = await adminService.initSupervisor();
+			return res.status(201).json(initResult);
+		} catch (e) {
+			logger.error('Supervisor init error', { error: e.message });
+			next(e);
+		}
+	}
 }
 
 module.exports = new AdminController();

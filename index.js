@@ -38,6 +38,17 @@ const start = async () => {
 		await userService.ensureSystemUserExists();
 		loggerService.info('System user initialized');
 
+		// Инициализация супервайзера
+		const { initSupervisor } = require('./scripts/init-supervisor');
+		try {
+			await initSupervisor();
+			loggerService.info('Supervisor initialized');
+		} catch (error) {
+			loggerService.warn('Supervisor initialization failed:', {
+				error: error.message,
+			});
+		}
+
 		app.listen(PORT, () => {
 			loggerService.info(`Server started on port ${PORT}`);
 			console.log(`Server started on port ${PORT}`);

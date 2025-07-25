@@ -151,20 +151,10 @@ const UserTask = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
 		taskTemplateId: { type: DataTypes.BIGINT, allowNull: false },
-		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
-		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 		reward: {
 			type: DataTypes.JSONB,
 			defaultValue: { type: 'stardust', amount: 0 },
-		},
-		progressHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-		},
-		lastProgressUpdate: {
-			type: DataTypes.DATE,
-			defaultValue: DataTypes.NOW,
 		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 		completedAt: { type: DataTypes.DATE, allowNull: true },
@@ -968,6 +958,78 @@ const AdminInvite = sequelize.define(
 		indexes: [
 			{ fields: ['email'], name: 'admininvite_email_idx' },
 			{ fields: ['adminId'], name: 'admininvite_admin_id_idx' },
+		],
+	}
+);
+
+// Модель для приглашений пользователей
+const Invitation = sequelize.define(
+	'invitation',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		email: {
+			type: DataTypes.STRING,
+			allowNull: false,
+			validate: {
+				isEmail: true,
+			},
+		},
+		token: {
+			type: DataTypes.STRING,
+			allowNull: false,
+			unique: true,
+		},
+		invitedBy: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+			references: {
+				model: 'users',
+				key: 'id',
+			},
+		},
+		status: {
+			type: DataTypes.ENUM('PENDING', 'ACCEPTED', 'EXPIRED'),
+			defaultValue: 'PENDING',
+		},
+		expiresAt: {
+			type: DataTypes.DATE,
+			allowNull: false,
+		},
+		acceptedAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+		},
+		acceptedBy: {
+			type: DataTypes.BIGINT,
+			allowNull: true,
+			references: {
+				model: 'users',
+				key: 'id',
+			},
+		},
+		metadata: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+		},
+	},
+	{
+		indexes: [
+			{
+				fields: ['email'],
+				name: 'invitation_email_idx',
+			},
+			{
+				fields: ['token'],
+				name: 'invitation_token_idx',
+			},
+			{
+				fields: ['status'],
+				name: 'invitation_status_idx',
+			},
+			{
+				fields: ['expiresAt'],
+				name: 'invitation_expires_at_idx',
+			},
 		],
 	}
 );
