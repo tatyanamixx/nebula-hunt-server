@@ -9,7 +9,15 @@ async function initSupervisor() {
 	try {
 		logger.info('Initializing supervisor...');
 		const result = await adminService.initSupervisor();
-		logger.info('Supervisor initialization result:', result);
+
+		if (result.skipped) {
+			logger.info(
+				'Supervisor initialization skipped (already completed)'
+			);
+		} else {
+			logger.info('Supervisor initialization result:', result);
+		}
+
 		return result;
 	} catch (error) {
 		logger.error('Failed to initialize supervisor:', error.message);

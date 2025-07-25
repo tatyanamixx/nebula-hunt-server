@@ -8,13 +8,20 @@ const adminController = require('../controllers/admin-controller');
 const adminMiddleware = require('../middlewares/admin-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
-// Admin login
+// Google OAuth аутентификация для администраторов
 router.post(
-	'/login',
-	adminMiddleware,
+	'/oauth/google',
 	rateLimitMiddleware(10, 60),
-	adminController.loginAdmin
+	adminController.googleOAuth
 );
+router.post(
+	'/oauth/2fa/verify',
+	rateLimitMiddleware(10, 60),
+	adminController.oauth2FAVerify
+);
+
+// Admin login (email + 2FA) - устаревший метод
+router.post('/login', rateLimitMiddleware(10, 60), adminController.loginAdmin);
 
 // Admin logout
 router.post(
@@ -40,11 +47,56 @@ router.post(
 	adminController.verify2FA
 );
 
-// Initialize supervisor
+// Initialize supervisor (legacy)
 router.post(
 	'/supervisor/init',
 	rateLimitMiddleware(1, 3600), // Ограничиваем до 1 запроса в час
 	adminController.initSupervisor
+);
+
+// Complete 2FA setup (for registration)
+router.post(
+	'/2fa/complete',
+	rateLimitMiddleware(10, 60),
+	adminController.complete2FA
+);
+
+// Admin registration via invite
+router.post(
+	'/register',
+	rateLimitMiddleware(5, 60),
+	adminController.registerAdmin
+);
+
+// Send admin invite
+router.post(
+	'/invite',
+	adminMiddleware,
+	rateLimitMiddleware(5, 60),
+	adminController.sendInvite
+);
+
+// Validate invite token
+router.get(
+	'/invite/validate',
+	rateLimitMiddleware(10, 60),
+	adminController.validateInvite
+);
+
+// Get all invites
+router.get(
+	'/invites',
+	adminMiddleware,
+	rateLimitMiddleware(10, 60),
+	adminController.getInvites
+);
+
+// Get admin stats
+router.get(
+	'/stats',
+	adminMiddleware,
+	rateLimitMiddleware(10, 60),
+	adminController.getStats
 );
 
 module.exports = router;

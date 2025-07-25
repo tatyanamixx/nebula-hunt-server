@@ -903,8 +903,10 @@ const PackageTemplate = sequelize.define(
 const Admin = sequelize.define(
 	'admin',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, defaultValue: 0 },
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		email: { type: DataTypes.STRING, unique: true, allowNull: false },
+		name: { type: DataTypes.STRING, allowNull: true },
+		password: { type: DataTypes.STRING, allowNull: true },
 		google_id: { type: DataTypes.STRING, unique: true, allowNull: true },
 		google2faSecret: {
 			type: DataTypes.STRING,
@@ -913,7 +915,7 @@ const Admin = sequelize.define(
 		},
 		role: {
 			type: DataTypes.ENUM('ADMIN', 'SUPERVISOR'),
-			defaultValue: 'SUPERVISOR',
+			defaultValue: 'ADMIN',
 		},
 		is_superadmin: { type: DataTypes.BOOLEAN, defaultValue: false },
 		is_2fa_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -951,8 +953,14 @@ const AdminInvite = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		adminId: { type: DataTypes.BIGINT, allowNull: false },
 		email: { type: DataTypes.STRING, allowNull: false },
-		token: { type: DataTypes.STRING, allowNull: false },
+		name: { type: DataTypes.STRING, allowNull: false },
+		role: {
+			type: DataTypes.ENUM('ADMIN', 'SUPERVISOR'),
+			defaultValue: 'ADMIN',
+		},
+		token: { type: DataTypes.STRING, allowNull: false, unique: true },
 		usedAt: { type: DataTypes.DATE, allowNull: true },
+		expiresAt: { type: DataTypes.DATE, allowNull: false },
 	},
 	{
 		indexes: [

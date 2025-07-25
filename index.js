@@ -9,7 +9,18 @@ const { updateActiveUsers } = require('./service/game-metrics-service');
 
 const PORT = process.env.PORT || 5000;
 
+// Флаг для отслеживания инициализации
+let isInitialized = false;
+
 const start = async () => {
+	// Защита от повторного запуска
+	if (isInitialized) {
+		loggerService.warn(
+			'Server initialization already completed, skipping...'
+		);
+		return;
+	}
+
 	try {
 		await sequelize.authenticate();
 
@@ -41,13 +52,22 @@ const start = async () => {
 		// Инициализация супервайзера
 		const { initSupervisor } = require('./scripts/init-supervisor');
 		try {
-			await initSupervisor();
-			loggerService.info('Supervisor initialized');
+			const result = await initSupervisor();
+			if (result.skipped) {
+				loggerService.info(
+					'Supervisor initialization skipped (already completed)'
+				);
+			} else {
+				loggerService.info('Supervisor initialized');
+			}
 		} catch (error) {
 			loggerService.warn('Supervisor initialization failed:', {
 				error: error.message,
 			});
 		}
+
+		// Отмечаем инициализацию как завершенную
+		isInitialized = true;
 
 		app.listen(PORT, () => {
 			loggerService.info(`Server started on port ${PORT}`);
