@@ -984,7 +984,13 @@ const AdminInvite = sequelize.define(
 			defaultValue: 'ADMIN',
 		},
 		token: { type: DataTypes.STRING, allowNull: false, unique: true },
+		used: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
 		usedAt: { type: DataTypes.DATE, allowNull: true },
+		usedBy: { type: DataTypes.BIGINT, allowNull: true },
 		expiresAt: { type: DataTypes.DATE, allowNull: false },
 	},
 	{

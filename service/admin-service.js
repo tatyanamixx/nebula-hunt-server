@@ -65,7 +65,8 @@ class AdminService {
 				// Генерируем секрет для Google 2FA
 				const google2faSecret = speakeasy.generateSecret({
 					length: 20,
-					name: `Nebulahunt Admin (${googleUser.email})`,
+					name: `Admin (${googleUser.email})`,
+					issuer: 'Nebulahunt',
 				});
 
 				admin = await Admin.create({
@@ -441,26 +442,80 @@ class AdminService {
 		// Сбрасываем счетчик неудачных попыток
 		await passwordService.resetLoginAttempts(admin);
 
-		logger.info('Admin password login successful', { email });
+		// Проверяем, что 2FA настроен
+		if (!admin.is_2fa_enabled) {
+			logger.warn('Password login failed: 2FA not enabled', {
+				email: admin.email,
+			});
+			throw ApiError.Forbidden('2FA not enabled for this account');
+		}
+
+		logger.info('Admin password login successful, requires 2FA', { email });
+
+		return {
+			message: 'Please enter 2FA code',
+			requires2FA: true,
+			userData: {
+				id: admin.id,
+				email: admin.email,
+				name: admin.name,
+				role: admin.role,
+				provider: 'password',
+			},
+			// Добавляем информацию о пароле
+			passwordWarning: passwordCheck.warning,
+			passwordDaysLeft: passwordCheck.daysLeft,
+			passwordMessage: passwordCheck.message,
+		};
+	}
+
+	/**
+	 * 2FA верификация для входа через пароль
+	 * @param {string} email - Email пользователя
+	 * @param {string} otp - 2FA код
+	 * @returns {Object} - Результат верификации с токенами
+	 */
+	async password2FAVerify(email, otp) {
+		if (!email || !otp) {
+			throw ApiError.BadRequest('Email and OTP are required');
+		}
+
+		logger.info('Password 2FA verification attempt', { email });
+
+		const admin = await this.findAdminByEmail(email);
+		if (!admin) {
+			throw ApiError.UnauthorizedError('Invalid email or password');
+		}
+
+		if (admin.blocked) {
+			throw ApiError.Forbidden('Account is blocked');
+		}
+
+		// Проверяем 2FA код
+		const verified = speakeasy.totp.verify({
+			secret: admin.google2faSecret,
+			encoding: 'base32',
+			token: otp,
+			window: 1, // допускаем +/- 30 сек
+		});
+
+		if (!verified) {
+			logger.warn('Password 2FA verification failed: invalid code', {
+				email: admin.email,
+			});
+			throw ApiError.Unauthorized('Invalid 2FA code');
+		}
+
+		logger.info('Password 2FA verification successful', {
+			id: admin.id,
+			email: admin.email,
+		});
 
 		const response = await this.generateAdminTokensAndResponse(
 			admin,
 			'Admin login successful',
 			'password'
 		);
-
-		// Добавляем информацию о пароле
-		response.passwordWarning = passwordCheck.warning;
-		response.passwordDaysLeft = passwordCheck.daysLeft;
-		response.passwordMessage = passwordCheck.message;
-
-		logger.info('Password login response:', {
-			id: response.id,
-			email: response.email,
-			provider: response.provider,
-			hasAccessToken: !!response.accessToken,
-			hasRefreshToken: !!response.refreshToken,
-		});
 
 		return response;
 	}
@@ -551,7 +606,8 @@ class AdminService {
 		// Генерируем секрет для Google 2FA
 		const google2faSecret = speakeasy.generateSecret({
 			length: 20,
-			name: `Nebulahunt Admin (${user.email})`,
+			name: `Admin (${user.email})`,
+			issuer: 'Nebulahunt',
 		});
 
 		// Обновляем пользователя
@@ -689,7 +745,8 @@ class AdminService {
 			// Создаем нового супервайзера
 			const google2faSecret = speakeasy.generateSecret({
 				length: 20,
-				name: `Nebulahunt Supervisor (${supervisorEmail})`,
+				name: `Supervisor (${supervisorEmail})`,
+				issuer: 'Nebulahunt',
 			});
 
 			const supervisor = await Admin.create({
@@ -896,7 +953,7 @@ class AdminService {
 		}
 
 		// Генерируем otpauth URL для QR кода
-		const otpAuthUrl = `otpauth://totp/Nebulahunt%20Admin%20(${admin.email})?secret=${admin.google2faSecret}&issuer=Nebulahunt`;
+		const otpAuthUrl = `otpauth://totp/Admin%20(${admin.email})?secret=${admin.google2faSecret}&issuer=Nebulahunt`;
 
 		logger.info('2FA info retrieved', { id: admin.id, email: admin.email });
 
@@ -905,6 +962,52 @@ class AdminService {
 			google2faSecret: admin.google2faSecret,
 			otpAuthUrl: otpAuthUrl,
 			is2FAEnabled: admin.is_2fa_enabled,
+		};
+	}
+
+	/**
+	 * Получение QR кода 2FA для входа (без аутентификации)
+	 * @param {string} email - Email админа
+	 * @returns {Object} - QR код и секрет для 2FA
+	 */
+	async get2FAQRForLogin(email) {
+		if (!email) {
+			throw ApiError.BadRequest('Email required');
+		}
+
+		logger.info('2FA QR code request for login', { email });
+
+		// Находим админа по email
+		const admin = await Admin.findOne({
+			where: {
+				email: email.toLowerCase(),
+				role: { [Op.in]: ['ADMIN', 'SUPERVISOR'] },
+			},
+		});
+
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+
+		// Проверяем, что 2FA включен
+		if (!admin.is_2fa_enabled || !admin.google2faSecret) {
+			throw ApiError.BadRequest('2FA is not enabled for this account');
+		}
+
+		// Генерируем otpauth URL для QR кода
+		const otpAuthUrl = `otpauth://totp/Admin%20(${admin.email})?secret=${admin.google2faSecret}&issuer=Nebulahunt`;
+
+		logger.info('2FA QR code retrieved for login', {
+			id: admin.id,
+			email: admin.email,
+		});
+
+		return {
+			message: '2FA QR code retrieved successfully',
+			google2faSecret: admin.google2faSecret,
+			otpAuthUrl: otpAuthUrl,
+			email: admin.email,
+			name: admin.name,
 		};
 	}
 
@@ -949,7 +1052,8 @@ class AdminService {
 		// Генерируем секрет для Google 2FA
 		const google2faSecret = speakeasy.generateSecret({
 			length: 20,
-			name: `Nebulahunt Admin (${email})`,
+			name: `Admin (${email})`,
+			issuer: 'Nebulahunt',
 		});
 
 		// Создаем админа
@@ -961,6 +1065,14 @@ class AdminService {
 			is_2fa_enabled: true,
 			blocked: false,
 		});
+
+		// Устанавливаем пароль, если он предоставлен
+		if (password) {
+			await passwordService.setPasswordWithExpiry(admin, password);
+		}
+
+		// Отмечаем приглашение как использованное
+		await this.markInviteAsUsed(inviteToken, admin.id);
 
 		logger.info('Admin registered successfully', {
 			id: admin.id,
@@ -1096,15 +1208,17 @@ class AdminService {
 			order: [['createdAt', 'DESC']],
 		});
 
-		return invites.map((invite) => ({
+		const result = invites.map((invite) => ({
 			id: invite.id,
 			email: invite.email,
-			name: invite.name,
-			role: invite.role,
+			name: invite.name || '',
+			role: invite.role || 'ADMIN',
 			status: this.getInviteStatus(invite),
-			createdAt: invite.createdAt,
-			expiresAt: invite.expiresAt,
+			createdAt: invite.createdAt ? invite.createdAt.toISOString() : null,
+			expiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
 		}));
+
+		return result;
 	}
 
 	/**
@@ -1193,12 +1307,12 @@ class AdminService {
 	 */
 	getInviteStatus(invite) {
 		if (invite.used) {
-			return 'used';
+			return 'ACCEPTED';
 		}
-		if (invite.expiresAt < new Date()) {
-			return 'expired';
+		if (invite.expiresAt && invite.expiresAt < new Date()) {
+			return 'EXPIRED';
 		}
-		return 'pending';
+		return 'PENDING';
 	}
 
 	/**

@@ -31,6 +31,13 @@ router.post(
 	adminController.loginWithPassword
 );
 
+// Admin password 2FA verification
+router.post(
+	'/login/password/2fa/verify',
+	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	adminController.password2FAVerify
+);
+
 // Admin logout
 router.post(
 	'/logout',
@@ -91,6 +98,13 @@ router.get(
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
 	adminController.get2FAInfo
+);
+
+// Get 2FA QR code for login (no auth required)
+router.get(
+	'/2fa/qr/:email',
+	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	adminController.get2FAQRForLogin
 );
 
 // Admin registration via invite

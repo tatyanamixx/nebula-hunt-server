@@ -236,6 +236,27 @@ class AdminController {
 	}
 
 	/**
+	 * Получение QR кода 2FA для входа (без аутентификации)
+	 */
+	async get2FAQRForLogin(req, res, next) {
+		try {
+			const { email } = req.params;
+
+			if (!email) {
+				return next(ApiError.BadRequest('Email required'));
+			}
+
+			logger.info('2FA QR code request for login', { email });
+
+			const qrInfo = await adminService.get2FAQRForLogin(email);
+			return res.status(200).json(qrInfo);
+		} catch (e) {
+			logger.error('Get 2FA QR for login error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
 	 * Регистрация админа через приглашение
 	 */
 	async registerAdmin(req, res, next) {
@@ -393,6 +414,35 @@ class AdminController {
 			return res.status(200).json(loginResult);
 		} catch (e) {
 			logger.error('Admin password login error', {
+				error: e.message,
+				email: req.body.email,
+			});
+			next(e);
+		}
+	}
+
+	/**
+	 * 2FA верификация для входа через пароль
+	 */
+	async password2FAVerify(req, res, next) {
+		try {
+			const { email, otp } = req.body;
+
+			if (!email || !otp) {
+				return next(ApiError.BadRequest('Email and OTP are required'));
+			}
+
+			const verifyResult = await adminService.password2FAVerify(
+				email,
+				otp
+			);
+			logger.info('Admin password 2FA verification successful', {
+				email,
+			});
+
+			return res.status(200).json(verifyResult);
+		} catch (e) {
+			logger.error('Admin password 2FA verification error', {
 				error: e.message,
 				email: req.body.email,
 			});
