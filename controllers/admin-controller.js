@@ -167,6 +167,75 @@ class AdminController {
 	}
 
 	/**
+	 * Настройка 2FA для существующего администратора
+	 */
+	async setup2FA(req, res, next) {
+		try {
+			const { email } = req.body;
+			const adminId = req.userToken.id;
+
+			logger.info('2FA setup attempt', { adminId, email });
+
+			const setupResult = await adminService.setup2FA(adminId, email);
+			return res.status(200).json(setupResult);
+		} catch (e) {
+			logger.error('Setup 2FA error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
+	 * Отключение 2FA
+	 */
+	async disable2FA(req, res, next) {
+		try {
+			const { email } = req.body;
+			const adminId = req.userToken.id;
+
+			logger.info('2FA disable attempt', { adminId, email });
+
+			await adminService.disable2FA(adminId, email);
+			return res.status(200).json({
+				message: '2FA has been disabled successfully',
+			});
+		} catch (e) {
+			logger.error('Disable 2FA error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
+	 * Получение информации о 2FA (QR код и секрет)
+	 */
+	async get2FAInfo(req, res, next) {
+		try {
+			console.log('🔐 get2FAInfo controller - Request object:', {
+				userToken: req.userToken ? 'present' : 'missing',
+				userTokenId: req.userToken?.id,
+				userTokenEmail: req.userToken?.email,
+				headers: req.headers.authorization ? 'present' : 'missing',
+			});
+
+			const adminId = req.userToken.id;
+
+			logger.info('2FA info request', { adminId });
+			console.log(
+				'🔐 get2FAInfo controller - Calling service with adminId:',
+				adminId
+			);
+
+			const info = await adminService.get2FAInfo(adminId);
+			console.log('🔐 get2FAInfo controller - Service response:', info);
+
+			return res.status(200).json(info);
+		} catch (e) {
+			console.error('🔐 get2FAInfo controller - Error:', e);
+			logger.error('Get 2FA info error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
 	 * Регистрация админа через приглашение
 	 */
 	async registerAdmin(req, res, next) {
@@ -201,6 +270,14 @@ class AdminController {
 		try {
 			const { email, name, role } = req.body;
 			const adminId = req.userToken.id;
+
+			console.log('🔐 sendInvite controller - Request data:', {
+				email,
+				name,
+				role,
+				adminId,
+				userToken: req.userToken ? 'present' : 'missing',
+			});
 
 			if (!email || !name || !role) {
 				return next(
@@ -262,6 +339,153 @@ class AdminController {
 			return res.status(200).json(stats);
 		} catch (e) {
 			logger.error('Get stats error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
+	 * Обновление JWT токена админа
+	 */
+	async refreshToken(req, res, next) {
+		try {
+			const { refreshToken } = req.body;
+			if (!refreshToken) {
+				return next(ApiError.BadRequest('refreshToken required'));
+			}
+
+			const refreshResult = await adminService.refreshToken(refreshToken);
+			logger.info('Admin token refresh successful', {
+				id: req.userToken?.id,
+			});
+
+			return res.status(200).json(refreshResult);
+		} catch (e) {
+			logger.error('Admin token refresh error', { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
+	 * Вход администратора через email и пароль
+	 */
+	async loginWithPassword(req, res, next) {
+		try {
+			console.log('🔐 Получен запрос на вход через пароль');
+			console.log('🔐 Тело запроса:', req.body);
+			console.log('🔐 Email:', req.body.email);
+			console.log('🔐 Has password:', !!req.body.password);
+
+			const { email, password } = req.body;
+			if (!email || !password) {
+				console.log('❌ Отсутствует email или пароль');
+				return next(
+					ApiError.BadRequest('Email and password are required')
+				);
+			}
+
+			const loginResult = await adminService.loginAdminWithPassword(
+				email,
+				password
+			);
+			logger.info('Admin password login successful', { email });
+			logger.info('Login result keys:', Object.keys(loginResult));
+
+			return res.status(200).json(loginResult);
+		} catch (e) {
+			logger.error('Admin password login error', {
+				error: e.message,
+				email: req.body.email,
+			});
+			next(e);
+		}
+	}
+
+	/**
+	 * Смена пароля администратора
+	 */
+	async changePassword(req, res, next) {
+		try {
+			const { currentPassword, newPassword } = req.body;
+			const adminId = req.userToken.id;
+
+			if (!currentPassword || !newPassword) {
+				return next(
+					ApiError.BadRequest(
+						'Current password and new password are required'
+					)
+				);
+			}
+
+			const changeResult = await adminService.changePassword(
+				adminId,
+				currentPassword,
+				newPassword
+			);
+			logger.info('Admin password change successful', { adminId });
+
+			return res.status(200).json(changeResult);
+		} catch (e) {
+			logger.error('Admin password change change error', {
+				error: e.message,
+			});
+			next(e);
+		}
+	}
+
+	/**
+	 * Принудительная смена пароля администратора (для супервизора)
+	 */
+	async forceChangePassword(req, res, next) {
+		try {
+			const { adminId, newPassword } = req.body;
+			const currentAdminId = req.userToken.id;
+
+			if (!adminId || !newPassword) {
+				return next(
+					ApiError.BadRequest(
+						'Admin ID and new password are required'
+					)
+				);
+			}
+
+			// Проверяем, что текущий пользователь - супервизор
+			if (req.userToken.role !== 'SUPERVISOR') {
+				return next(
+					ApiError.Forbidden(
+						'Only supervisor can force change passwords'
+					)
+				);
+			}
+
+			const changeResult = await adminService.forceChangePassword(
+				adminId,
+				newPassword
+			);
+			logger.info('Admin force password change successful', {
+				adminId,
+				changedBy: currentAdminId,
+			});
+
+			return res.status(200).json(changeResult);
+		} catch (e) {
+			logger.error('Admin force password change error', {
+				error: e.message,
+			});
+			next(e);
+		}
+	}
+
+	/**
+	 * Получение информации о пароле администратора
+	 */
+	async getPasswordInfo(req, res, next) {
+		try {
+			const adminId = req.userToken.id;
+			const passwordInfo = await adminService.getPasswordInfo(adminId);
+
+			return res.status(200).json(passwordInfo);
+		} catch (e) {
+			logger.error('Get password info error', { error: e.message });
 			next(e);
 		}
 	}

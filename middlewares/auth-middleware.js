@@ -131,7 +131,7 @@ module.exports = async function authMiddleware(req, res, next) {
 						userId: userId,
 					}
 				);
-				return next(ApiError.ForbiddenError('JWT: Account is blocked'));
+				return next(ApiError.Forbidden('JWT: Account is blocked'));
 			}
 
 			// Добавляем данные пользователя в request

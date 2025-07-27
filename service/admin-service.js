@@ -6,6 +6,7 @@ const speakeasy = require('speakeasy');
 const { Admin, AdminInvite } = require('../models/models');
 const { Op } = require('sequelize');
 const tokenService = require('./token-service');
+const passwordService = require('./password-service');
 const ApiError = require('../exceptions/api-error');
 const logger = require('./logger-service');
 
@@ -272,20 +273,103 @@ class AdminService {
 	}
 
 	/**
+	 * Обновление JWT токена админа
+	 * @param {string} refreshToken - Refresh token
+	 * @returns {Object} - Новые токены и данные админа
+	 */
+	async refreshToken(refreshToken) {
+		if (!refreshToken) {
+			throw ApiError.BadRequest('Refresh token is required');
+		}
+
+		logger.info('Admin token refresh attempt');
+
+		try {
+			// Валидируем refresh token
+			const userData = tokenService.validateRefreshToken(refreshToken);
+
+			// Ищем токен в базе данных
+			const tokenFromDb = await tokenService.findAdminToken(refreshToken);
+			if (!tokenFromDb) {
+				logger.warn(
+					'Admin token refresh failed: token not found in database'
+				);
+				throw ApiError.UnauthorizedError('Invalid refresh token');
+			}
+
+			// Находим админа
+			const admin = await Admin.findOne({ where: { id: userData.id } });
+			if (!admin) {
+				logger.warn('Admin token refresh failed: admin not found', {
+					adminId: userData.id,
+				});
+				throw ApiError.UnauthorizedError('Admin not found');
+			}
+
+			// Проверяем, что аккаунт не заблокирован
+			if (admin.blocked) {
+				logger.warn('Admin token refresh failed: account blocked', {
+					adminId: admin.id,
+				});
+				throw ApiError.Forbidden('Account is blocked');
+			}
+
+			// Генерируем новые токены
+			const payload = {
+				id: admin.id,
+				email: admin.email,
+				name: admin.name,
+				role: admin.role,
+				provider: 'google',
+				providerId: admin.google_id,
+			};
+			const tokens = tokenService.generateTokens(payload);
+
+			// Сохраняем новый refresh token
+			await tokenService.saveAdminToken(admin.id, tokens.refreshToken);
+
+			// Удаляем старый refresh token
+			await tokenService.removeAdminToken(refreshToken);
+
+			logger.info('Admin token refresh successful', {
+				adminId: admin.id,
+				email: admin.email,
+			});
+
+			return {
+				message: 'Token refreshed successfully',
+				email: admin.email,
+				id: admin.id,
+				name: admin.name,
+				role: admin.role,
+				provider: 'google',
+				providerId: admin.google_id,
+				accessToken: tokens.accessToken,
+				refreshToken: tokens.refreshToken,
+			};
+		} catch (error) {
+			logger.error('Admin token refresh error', {
+				error: error.message,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Генерация токенов и ответа для админа
 	 * @param {Object} admin - Объект админа
 	 * @param {string} message - Сообщение
 	 * @returns {Object} - Ответ с токенами и данными пользователя
 	 */
-	async generateAdminTokensAndResponse(admin, message) {
+	async generateAdminTokensAndResponse(admin, message, provider = 'google') {
 		// Генерируем JWT-токены для админа
 		const payload = {
 			id: admin.id,
 			email: admin.email,
 			name: admin.name,
 			role: admin.role,
-			provider: 'google',
-			providerId: admin.google_id,
+			provider: provider,
+			providerId: admin.google_id || null,
 		};
 		const tokens = tokenService.generateTokens(payload);
 
@@ -298,11 +382,87 @@ class AdminService {
 			id: admin.id,
 			name: admin.name,
 			role: admin.role,
-			provider: 'google',
-			providerId: admin.google_id,
+			provider: provider,
+			providerId: admin.google_id || null,
 			accessToken: tokens.accessToken,
 			refreshToken: tokens.refreshToken,
 		};
+	}
+
+	/**
+	 * Авторизация админа через email и пароль
+	 */
+	async loginAdminWithPassword(email, password) {
+		if (!email || !password) {
+			throw ApiError.BadRequest('Email and password are required');
+		}
+
+		logger.info('Admin password login attempt', { email });
+
+		const admin = await this.findAdminByEmail(email);
+		if (!admin) {
+			throw ApiError.UnauthorizedError('Invalid email or password');
+		}
+
+		if (admin.blocked) {
+			throw ApiError.Forbidden('Account is blocked');
+		}
+
+		// Проверяем блокировку аккаунта
+		const lockCheck = passwordService.checkAccountLock(admin);
+		if (lockCheck.isLocked) {
+			throw ApiError.Forbidden(
+				`Account is locked. Try again in ${lockCheck.minutesLeft} minutes.`
+			);
+		}
+
+		// Проверяем пароль
+		if (!admin.password) {
+			await passwordService.handleFailedLogin(admin);
+			throw ApiError.UnauthorizedError('Invalid email or password');
+		}
+
+		const isPasswordValid = await passwordService.comparePassword(
+			password,
+			admin.password
+		);
+		if (!isPasswordValid) {
+			await passwordService.handleFailedLogin(admin);
+			throw ApiError.UnauthorizedError('Invalid email or password');
+		}
+
+		// Проверяем срок действия пароля
+		const passwordCheck =
+			passwordService.checkPasswordChangeRequired(admin);
+		if (passwordCheck.changeRequired) {
+			throw ApiError.ForbiddenError(passwordCheck.message);
+		}
+
+		// Сбрасываем счетчик неудачных попыток
+		await passwordService.resetLoginAttempts(admin);
+
+		logger.info('Admin password login successful', { email });
+
+		const response = await this.generateAdminTokensAndResponse(
+			admin,
+			'Admin login successful',
+			'password'
+		);
+
+		// Добавляем информацию о пароле
+		response.passwordWarning = passwordCheck.warning;
+		response.passwordDaysLeft = passwordCheck.daysLeft;
+		response.passwordMessage = passwordCheck.message;
+
+		logger.info('Password login response:', {
+			id: response.id,
+			email: response.email,
+			provider: response.provider,
+			hasAccessToken: !!response.accessToken,
+			hasRefreshToken: !!response.refreshToken,
+		});
+
+		return response;
 	}
 
 	/**
@@ -541,6 +701,18 @@ class AdminService {
 				blocked: false,
 			});
 
+			// Устанавливаем пароль супервизора из переменной окружения
+			const supervisorPassword = process.env.SUPERVISOR_PASSWORD;
+			if (supervisorPassword) {
+				await passwordService.setPasswordWithExpiry(
+					supervisor,
+					supervisorPassword
+				);
+				logger.info(
+					'Supervisor password set from environment variable'
+				);
+			}
+
 			logger.info('Supervisor created successfully', {
 				id: supervisor.id,
 				email: supervisor.email,
@@ -582,19 +754,11 @@ class AdminService {
 	 * @param {string} inviteToken - Токен приглашения
 	 */
 	async complete2FA(email, otp, inviteToken) {
-		if (!email || !otp || !inviteToken) {
-			throw ApiError.BadRequest(
-				'Email, OTP and inviteToken are required'
-			);
+		if (!email || !otp) {
+			throw ApiError.BadRequest('Email and OTP are required');
 		}
 
 		logger.info('Complete 2FA attempt', { email });
-
-		// Валидируем токен приглашения
-		const invite = await this.validateInviteToken(inviteToken);
-		if (!invite) {
-			throw ApiError.BadRequest('Invalid invite token');
-		}
 
 		// Находим админа
 		const admin = await this.findAdminByEmail(email);
@@ -614,13 +778,133 @@ class AdminService {
 			throw ApiError.Unauthorized('Invalid 2FA code');
 		}
 
-		// Отмечаем приглашение как использованное
-		await this.markInviteAsUsed(inviteToken, admin.id);
+		// Если это регистрация через приглашение, валидируем токен
+		if (inviteToken && inviteToken !== 'existing-admin') {
+			const invite = await this.validateInviteToken(inviteToken);
+			if (!invite) {
+				throw ApiError.BadRequest('Invalid invite token');
+			}
+			// Отмечаем приглашение как использованное
+			await this.markInviteAsUsed(inviteToken, admin.id);
+		}
 
 		logger.info('2FA setup completed', { id: admin.id, email });
 
 		return {
 			message: '2FA setup completed successfully',
+		};
+	}
+
+	/**
+	 * Настройка 2FA для существующего администратора
+	 * @param {number} adminId - ID администратора
+	 * @param {string} email - Email администратора
+	 * @returns {Object} - Результат настройки 2FA
+	 */
+	async setup2FA(adminId, email) {
+		if (!adminId || !email) {
+			throw ApiError.BadRequest('Admin ID and email required');
+		}
+
+		logger.info('2FA setup attempt', { adminId, email });
+
+		// Находим админа
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.BadRequest('Admin not found');
+		}
+
+		// Проверяем, что 2FA еще не включен
+		if (admin.is_2fa_enabled && admin.google2faSecret) {
+			throw ApiError.BadRequest(
+				'2FA is already enabled for this account'
+			);
+		}
+
+		// Генерируем новый секрет для Google 2FA
+		const google2faSecret = speakeasy.generateSecret({
+			length: 20,
+			name: `Nebulahunt Admin (${admin.email})`,
+		});
+
+		// Обновляем админа
+		admin.google2faSecret = google2faSecret.base32;
+		admin.is_2fa_enabled = true;
+		await admin.save();
+
+		logger.info('2FA setup initiated', { id: admin.id, email });
+
+		return {
+			message: '2FA setup initiated',
+			google2faSecret: google2faSecret.base32,
+			otpAuthUrl: google2faSecret.otpauth_url,
+		};
+	}
+
+	/**
+	 * Отключение 2FA
+	 * @param {number} adminId - ID администратора
+	 * @param {string} email - Email администратора
+	 */
+	async disable2FA(adminId, email) {
+		if (!adminId || !email) {
+			throw ApiError.BadRequest('Admin ID and email required');
+		}
+
+		logger.info('2FA disable attempt', { adminId, email });
+
+		// Находим админа
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.BadRequest('Admin not found');
+		}
+
+		// Проверяем, что 2FA включен
+		if (!admin.is_2fa_enabled || !admin.google2faSecret) {
+			throw ApiError.BadRequest('2FA is not enabled for this account');
+		}
+
+		// Отключаем 2FA
+		admin.google2faSecret = null;
+		admin.is_2fa_enabled = false;
+		await admin.save();
+
+		logger.info('2FA disabled', { id: admin.id, email });
+	}
+
+	/**
+	 * Получение информации о 2FA (QR код и секрет)
+	 * @param {number} adminId - ID администратора
+	 * @returns {Object} - Информация о 2FA
+	 */
+	async get2FAInfo(adminId) {
+		if (!adminId) {
+			throw ApiError.BadRequest('Admin ID required');
+		}
+
+		logger.info('2FA info request', { adminId });
+
+		// Находим админа
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.BadRequest('Admin not found');
+		}
+
+		// Проверяем, что 2FA включен
+		if (!admin.is_2fa_enabled || !admin.google2faSecret) {
+			throw ApiError.BadRequest('2FA is not enabled for this account');
+		}
+
+		// Генерируем otpauth URL для QR кода
+		const otpAuthUrl = `otpauth://totp/Nebulahunt%20Admin%20(${admin.email})?secret=${admin.google2faSecret}&issuer=Nebulahunt`;
+
+		logger.info('2FA info retrieved', { id: admin.id, email: admin.email });
+
+		return {
+			message: '2FA info retrieved successfully',
+			google2faSecret: admin.google2faSecret,
+			otpAuthUrl: otpAuthUrl,
+			is2FAEnabled: admin.is_2fa_enabled,
 		};
 	}
 
@@ -710,6 +994,14 @@ class AdminService {
 
 		logger.info('Send invite attempt', { email, name, role, adminId });
 
+		console.log('🔐 sendInvite service - Parameters:', {
+			email,
+			name,
+			role,
+			adminId,
+			adminIdType: typeof adminId,
+		});
+
 		// Проверяем, что роль валидна
 		if (!['ADMIN', 'SUPERVISOR'].includes(role)) {
 			throw ApiError.BadRequest('Invalid role');
@@ -724,12 +1016,22 @@ class AdminService {
 		// Генерируем токен приглашения
 		const token = require('crypto').randomBytes(32).toString('hex');
 
+		console.log('🔐 sendInvite service - Creating invite with data:', {
+			email: email.toLowerCase(),
+			name,
+			role,
+			token: token.substring(0, 8) + '...',
+			adminId,
+			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+		});
+
 		// Создаем приглашение
 		const invite = await AdminInvite.create({
 			email: email.toLowerCase(),
 			name: name,
 			role: role,
 			token: token,
+			adminId: adminId, // Добавляем adminId
 			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 дней
 			used: false,
 		});
@@ -907,14 +1209,157 @@ class AdminService {
 	 * @param {string} token - Токен приглашения
 	 */
 	async sendInviteEmail(email, name, role, token) {
-		// Здесь должна быть логика отправки email
-		// Пока просто логируем
-		logger.info('Invite email would be sent', {
-			email,
-			name,
-			role,
-			token: token.substring(0, 8) + '...',
-		});
+		try {
+			const emailService = require('./email-service');
+			await emailService.sendAdminInvite(email, name, role, token);
+		} catch (error) {
+			logger.error('Failed to send invite email', {
+				error: error.message,
+				email,
+				name,
+				role,
+			});
+			// Не прерываем процесс, если email не отправлен
+		}
+	}
+
+	/**
+	 * Смена пароля администратора
+	 * @param {number} adminId - ID администратора
+	 * @param {string} currentPassword - Текущий пароль
+	 * @param {string} newPassword - Новый пароль
+	 * @returns {Object} - Результат смены пароля
+	 */
+	async changePassword(adminId, currentPassword, newPassword) {
+		if (!adminId || !currentPassword || !newPassword) {
+			throw ApiError.BadRequest(
+				'Admin ID, current password and new password are required'
+			);
+		}
+
+		logger.info('Admin password change attempt', { adminId });
+
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+
+		if (admin.blocked) {
+			throw ApiError.Forbidden('Account is blocked');
+		}
+
+		// Проверяем текущий пароль
+		if (!admin.password) {
+			throw ApiError.BadRequest('No password set for this account');
+		}
+
+		const isCurrentPasswordValid = await passwordService.comparePassword(
+			currentPassword,
+			admin.password
+		);
+		if (!isCurrentPasswordValid) {
+			throw ApiError.UnauthorizedError('Current password is incorrect');
+		}
+
+		// Валидируем новый пароль
+		const passwordValidation =
+			passwordService.validatePassword(newPassword);
+		if (!passwordValidation.isValid) {
+			throw ApiError.BadRequest(passwordValidation.error);
+		}
+
+		// Проверяем, что новый пароль отличается от текущего
+		const isSamePassword = await passwordService.comparePassword(
+			newPassword,
+			admin.password
+		);
+		if (isSamePassword) {
+			throw ApiError.BadRequest(
+				'New password must be different from current password'
+			);
+		}
+
+		// Устанавливаем новый пароль
+		await passwordService.setPasswordWithExpiry(admin, newPassword);
+
+		logger.info('Admin password changed successfully', { adminId });
+
+		return {
+			message: 'Password changed successfully',
+			email: admin.email,
+			id: admin.id,
+		};
+	}
+
+	/**
+	 * Принудительная смена пароля администратора (для супервизора)
+	 * @param {number} adminId - ID администратора
+	 * @param {string} newPassword - Новый пароль
+	 * @returns {Object} - Результат смены пароля
+	 */
+	async forceChangePassword(adminId, newPassword) {
+		if (!adminId || !newPassword) {
+			throw ApiError.BadRequest('Admin ID and new password are required');
+		}
+
+		logger.info('Admin force password change attempt', { adminId });
+
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+
+		// Валидируем новый пароль
+		const passwordValidation =
+			passwordService.validatePassword(newPassword);
+		if (!passwordValidation.isValid) {
+			throw ApiError.BadRequest(passwordValidation.error);
+		}
+
+		// Устанавливаем новый пароль
+		await passwordService.setPasswordWithExpiry(admin, newPassword);
+
+		logger.info('Admin password force changed successfully', { adminId });
+
+		return {
+			message: 'Password changed successfully',
+			email: admin.email,
+			id: admin.id,
+		};
+	}
+
+	/**
+	 * Получение информации о пароле администратора
+	 * @param {number} adminId - ID администратора
+	 * @returns {Object} - Информация о пароле
+	 */
+	async getPasswordInfo(adminId) {
+		if (!adminId) {
+			throw ApiError.BadRequest('Admin ID is required');
+		}
+
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+
+		const passwordCheck =
+			passwordService.checkPasswordChangeRequired(admin);
+		const lockCheck = passwordService.checkAccountLock(admin);
+
+		return {
+			hasPassword: !!admin.password,
+			passwordChangedAt: admin.passwordChangedAt,
+			passwordExpiresAt: admin.passwordExpiresAt,
+			lastLoginAt: admin.lastLoginAt,
+			loginAttempts: admin.loginAttempts,
+			lockedUntil: admin.lockedUntil,
+			passwordWarning: passwordCheck.warning,
+			passwordDaysLeft: passwordCheck.daysLeft,
+			passwordMessage: passwordCheck.message,
+			isLocked: lockCheck.isLocked,
+			lockMinutesLeft: lockCheck.minutesLeft,
+		};
 	}
 }
 

@@ -25,7 +25,7 @@ module.exports = async function (req, res, next) {
 				{ id }
 			);
 			return next(
-				ApiError.ForbiddenError('Access denied. Admin role required')
+				ApiError.Forbidden('Access denied. Admin role required')
 			);
 		}
 
@@ -35,7 +35,7 @@ module.exports = async function (req, res, next) {
 				{ id }
 			);
 			return next(
-				ApiError.ForbiddenError('Access denied. Account is blocked')
+				ApiError.Forbidden('Access denied. Account is blocked')
 			);
 		}
 

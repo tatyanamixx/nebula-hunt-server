@@ -920,6 +920,31 @@ const Admin = sequelize.define(
 		is_superadmin: { type: DataTypes.BOOLEAN, defaultValue: false },
 		is_2fa_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
+		passwordChangedAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Дата последнего изменения пароля',
+		},
+		passwordExpiresAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Дата истечения срока действия пароля',
+		},
+		lastLoginAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Дата последнего входа',
+		},
+		loginAttempts: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: 'Количество неудачных попыток входа',
+		},
+		lockedUntil: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Время блокировки аккаунта после неудачных попыток',
+		},
 	},
 	{
 		indexes: [{ fields: ['email'] }, { fields: ['google_id'] }],
@@ -966,78 +991,6 @@ const AdminInvite = sequelize.define(
 		indexes: [
 			{ fields: ['email'], name: 'admininvite_email_idx' },
 			{ fields: ['adminId'], name: 'admininvite_admin_id_idx' },
-		],
-	}
-);
-
-// Модель для приглашений пользователей
-const Invitation = sequelize.define(
-	'invitation',
-	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		email: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			validate: {
-				isEmail: true,
-			},
-		},
-		token: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			unique: true,
-		},
-		invitedBy: {
-			type: DataTypes.BIGINT,
-			allowNull: false,
-			references: {
-				model: 'users',
-				key: 'id',
-			},
-		},
-		status: {
-			type: DataTypes.ENUM('PENDING', 'ACCEPTED', 'EXPIRED'),
-			defaultValue: 'PENDING',
-		},
-		expiresAt: {
-			type: DataTypes.DATE,
-			allowNull: false,
-		},
-		acceptedAt: {
-			type: DataTypes.DATE,
-			allowNull: true,
-		},
-		acceptedBy: {
-			type: DataTypes.BIGINT,
-			allowNull: true,
-			references: {
-				model: 'users',
-				key: 'id',
-			},
-		},
-		metadata: {
-			type: DataTypes.JSONB,
-			defaultValue: {},
-		},
-	},
-	{
-		indexes: [
-			{
-				fields: ['email'],
-				name: 'invitation_email_idx',
-			},
-			{
-				fields: ['token'],
-				name: 'invitation_token_idx',
-			},
-			{
-				fields: ['status'],
-				name: 'invitation_status_idx',
-			},
-			{
-				fields: ['expiresAt'],
-				name: 'invitation_expires_at_idx',
-			},
 		],
 	}
 );

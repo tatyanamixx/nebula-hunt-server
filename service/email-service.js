@@ -1,0 +1,142 @@
+const nodemailer = require('nodemailer');
+const logger = require('../config/logger.config');
+
+class EmailService {
+	constructor() {
+		this.transporter = null;
+		this.initializeTransporter();
+	}
+
+	/**
+	 * Инициализация транспорта для отправки email
+	 */
+	initializeTransporter() {
+		// Для разработки используем Ethereal Email (тестовый сервис)
+		if (process.env.NODE_ENV === 'development') {
+			this.transporter = nodemailer.createTransport({
+				host: 'smtp.ethereal.email',
+				port: 587,
+				secure: false,
+				auth: {
+					user: process.env.ETHEREAL_USER || 'test@ethereal.email',
+					pass: process.env.ETHEREAL_PASS || 'test123',
+				},
+			});
+		} else {
+			// Для продакшена используем реальный SMTP
+			this.transporter = nodemailer.createTransport({
+				host: process.env.SMTP_HOST,
+				port: process.env.SMTP_PORT || 587,
+				secure: process.env.SMTP_SECURE === 'true',
+				auth: {
+					user: process.env.SMTP_USER,
+					pass: process.env.SMTP_PASS,
+				},
+			});
+		}
+	}
+
+	/**
+	 * Отправка email с приглашением администратора
+	 * @param {string} email - Email получателя
+	 * @param {string} name - Имя получателя
+	 * @param {string} role - Роль
+	 * @param {string} token - Токен приглашения
+	 */
+	async sendAdminInvite(email, name, role, token) {
+		try {
+			const inviteUrl = `${
+				process.env.FRONTEND_URL || 'http://localhost:3000'
+			}/admin/register?token=${token}`;
+
+			const mailOptions = {
+				from: process.env.SMTP_FROM || 'noreply@nebulahunt.com',
+				to: email,
+				subject: 'Invitation to join Nebulahunt Admin Panel',
+				html: `
+					<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+						<h2 style="color: #333;">Welcome to Nebulahunt Admin Panel</h2>
+						<p>Hello ${name},</p>
+						<p>You have been invited to join the Nebulahunt Admin Panel as a <strong>${role}</strong>.</p>
+						<p>To accept this invitation, please click the link below:</p>
+						<div style="text-align: center; margin: 30px 0;">
+							<a href="${inviteUrl}" 
+							   style="background-color: #007bff; color: white; padding: 12px 24px; 
+							          text-decoration: none; border-radius: 5px; display: inline-block;">
+								Accept Invitation
+							</a>
+						</div>
+						<p><strong>Important:</strong></p>
+						<ul>
+							<li>This invitation link will expire in 7 days</li>
+							<li>Please complete your registration within this time</li>
+							<li>If you did not expect this invitation, please ignore this email</li>
+						</ul>
+						<p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+						<p style="word-break: break-all; color: #666;">${inviteUrl}</p>
+						<hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+						<p style="color: #666; font-size: 12px;">
+							This is an automated message from Nebulahunt Admin Panel. 
+							Please do not reply to this email.
+						</p>
+					</div>
+				`,
+			};
+
+			const result = await this.transporter.sendMail(mailOptions);
+
+			logger.info('Admin invite email sent successfully', {
+				email,
+				name,
+				role,
+				messageId: result.messageId,
+			});
+
+			return {
+				success: true,
+				messageId: result.messageId,
+			};
+		} catch (error) {
+			logger.error('Failed to send admin invite email', {
+				error: error.message,
+				email,
+				name,
+				role,
+			});
+
+			// В режиме разработки показываем ссылку в консоли
+			if (process.env.NODE_ENV === 'development') {
+				const inviteUrl = `${
+					process.env.FRONTEND_URL || 'http://localhost:3000'
+				}/admin/register?token=${token}`;
+				console.log('\n📧 DEVELOPMENT MODE - Email would be sent:');
+				console.log(`📧 To: ${email}`);
+				console.log(
+					`📧 Subject: Invitation to join Nebulahunt Admin Panel`
+				);
+				console.log(`📧 Invite URL: ${inviteUrl}`);
+				console.log('📧 In production, this would be sent via email\n');
+			}
+
+			throw error;
+		}
+	}
+
+	/**
+	 * Проверка соединения с SMTP сервером
+	 */
+	async verifyConnection() {
+		try {
+			await this.transporter.verify();
+			logger.info('SMTP connection verified successfully');
+			return true;
+		} catch (error) {
+			logger.error('SMTP connection verification failed', {
+				error: error.message,
+			});
+			return false;
+		}
+	}
+}
+
+module.exports = new EmailService();
