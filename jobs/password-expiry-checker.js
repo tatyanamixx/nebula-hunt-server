@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const { passwordExpiryService } = require('../service/password-expiry-service');
-const { logger } = require('../config/logger.config');
+const logger = require('../service/logger-service');
 
 /**
  * Cron job для проверки истечения паролей администраторов
