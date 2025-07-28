@@ -30,7 +30,7 @@ const corsOptions = {
 		);
 		return callback(new Error('CORS: Origin not allowed'), false);
 	},
-	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 	allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-init-data'],
 	exposedHeaders: ['Content-Length', 'Content-Type'],
 	credentials: true,

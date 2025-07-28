@@ -5,13 +5,13 @@
 const Router = require('express').Router;
 const router = new Router();
 const adminUserController = require('../controllers/admin-user-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 // Get all users
 router.get(
 	'/users',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	adminUserController.getUsers
 );
@@ -19,7 +19,7 @@ router.get(
 // Block user
 router.post(
 	'/users/:userId/block',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	adminUserController.blockUser
 );
@@ -27,9 +27,17 @@ router.post(
 // Unblock user
 router.post(
 	'/users/:userId/unblock',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	adminUserController.unblockUser
+);
+
+// Toggle user block status
+router.patch(
+	'/users/:userId/block',
+	adminAuthMiddleware,
+	rateLimitMiddleware(30, 60),
+	adminUserController.toggleUserBlock
 );
 
 module.exports = router;

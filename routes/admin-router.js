@@ -100,6 +100,14 @@ router.get(
 	adminController.get2FAInfo
 );
 
+// Get current admin info
+router.get(
+	'/me',
+	adminAuthMiddleware,
+	rateLimitMiddleware(100, 60),
+	adminController.getCurrentAdmin
+);
+
 // Get 2FA QR code for login (no auth required)
 router.get(
 	'/2fa/qr/:email',

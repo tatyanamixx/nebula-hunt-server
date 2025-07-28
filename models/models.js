@@ -24,6 +24,7 @@ const User = sequelize.define(
 		},
 	},
 	{
+		timestamps: true, // This will add createdAt and updatedAt fields
 		indexes: [
 			{
 				fields: ['referral'],

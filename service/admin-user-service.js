@@ -1,24 +1,22 @@
 /**
  * created by Tatyana Mikhniukevich on 28.05.2025
  */
-const { User } = require('../models/models');
+const { User, UserState } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 
 class AdminUserService {
 	async getAllUsers() {
-		const t = await sequelize.transaction();
-
 		try {
+			console.log('🔍 Executing simple User.findAll query...');
 			const users = await User.findAll({
-				attributes: ['id', 'username', 'role', 'blocked', 'referral'],
-				transaction: t,
+				attributes: ['id', 'username', 'role', 'blocked'],
 			});
 
-			await t.commit();
+			console.log(`🔍 Query successful, found ${users.length} users`);
 			return users;
 		} catch (err) {
-			await t.rollback();
+			console.error('❌ Database error in getAllUsers:', err);
 			throw ApiError.Internal(`Failed to get users: ${err.message}`);
 		}
 	}
@@ -60,6 +58,28 @@ class AdminUserService {
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(`Failed to unblock user: ${err.message}`);
+		}
+	}
+
+	async toggleUserBlock(userId, blocked) {
+		const t = await sequelize.transaction();
+
+		try {
+			const user = await User.findByPk(userId, { transaction: t });
+			if (!user) {
+				throw ApiError.BadRequest('User not found');
+			}
+
+			user.blocked = blocked;
+			await user.save({ transaction: t });
+
+			await t.commit();
+			return user;
+		} catch (err) {
+			await t.rollback();
+			throw ApiError.Internal(
+				`Failed to toggle user block: ${err.message}`
+			);
 		}
 	}
 }

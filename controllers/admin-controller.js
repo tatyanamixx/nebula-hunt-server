@@ -539,6 +539,40 @@ class AdminController {
 			next(e);
 		}
 	}
+
+	/**
+	 * Получить информацию о текущем администраторе
+	 */
+	async getCurrentAdmin(req, res, next) {
+		try {
+			const adminId = req.userToken.id;
+			const admin = await adminService.getAdminById(adminId);
+
+			if (!admin) {
+				return next(ApiError.NotFound('Admin not found'));
+			}
+
+			// Return admin data without sensitive information
+			const adminData = {
+				id: admin.id,
+				email: admin.email,
+				username: admin.name, // Map name to username for frontend compatibility
+				firstName: admin.name?.split(' ')[0] || '',
+				lastName: admin.name?.split(' ').slice(1).join(' ') || '',
+				role: admin.role,
+				provider: 'google', // Default provider
+				providerId: admin.google_id,
+				is2FAEnabled: admin.is_2fa_enabled,
+				createdAt: admin.createdAt,
+				lastLoginAt: admin.lastLoginAt,
+			};
+
+			return res.json(adminData);
+		} catch (e) {
+			logger.error('Get current admin error', { error: e.message });
+			next(e);
+		}
+	}
 }
 
 module.exports = new AdminController();
