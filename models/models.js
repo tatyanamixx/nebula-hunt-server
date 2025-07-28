@@ -945,6 +945,21 @@ const Admin = sequelize.define(
 			allowNull: true,
 			comment: 'Время блокировки аккаунта после неудачных попыток',
 		},
+		passwordExpiryNotified: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			comment: 'Флаг отправки уведомления об истечении пароля',
+		},
+		isLocked: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			comment: 'Флаг блокировки аккаунта из-за истекшего пароля',
+		},
+		lastPasswordChange: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: 'Дата последней смены пароля',
+		},
 	},
 	{
 		indexes: [{ fields: ['email'] }, { fields: ['google_id'] }],

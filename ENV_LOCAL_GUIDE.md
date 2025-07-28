@@ -42,7 +42,11 @@ DB_PASSWORD_DEV=your_local_password
 JWT_ACCESS_SECRET=local_access_secret_key_change_this_in_production_64_chars_min
 JWT_REFRESH_SECRET=local_refresh_secret_key_change_this_in_production_64_chars_min
 
-# Локальный токен бота
+# Google OAuth credentials (для администраторов)
+GOOGLE_CLIENT_ID=your_local_google_client_id
+GOOGLE_CLIENT_SECRET=your_local_google_client_secret
+
+# Telegram Bot token (для пользователей игры)
 BOT_TOKEN=your_local_telegram_bot_token
 
 # Локальные настройки CORS
@@ -96,6 +100,8 @@ DB_PASSWORD_DEV=default_password
 ```env
 # В .env.local
 JWT_ACCESS_SECRET=my_local_secret_key_for_development_only
+GOOGLE_CLIENT_ID=my_local_google_client_id
+GOOGLE_CLIENT_SECRET=my_local_google_client_secret
 BOT_TOKEN=my_local_bot_token
 
 # В .env
@@ -121,6 +127,8 @@ DB_LOGGING=true
 # Секреты
 JWT_ACCESS_SECRET=dev_access_secret_local_64_chars_min
 JWT_REFRESH_SECRET=dev_refresh_secret_local_64_chars_min
+GOOGLE_CLIENT_ID=your_local_google_client_id
+GOOGLE_CLIENT_SECRET=your_local_google_client_secret
 BOT_TOKEN=your_local_bot_token
 
 # Безопасность

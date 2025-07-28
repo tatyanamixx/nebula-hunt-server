@@ -22,6 +22,7 @@ const prometheusRouter = require('./prometheus-router');
 
 const adminRouter = require('./admin-router');
 const adminUserRouter = require('./admin-user-router');
+const passwordResetRouter = require('./password-reset-router');
 
 const taskTemplateRouter = require('./task-template-router');
 const eventTemplateRouter = require('./event-template-router');
@@ -43,6 +44,7 @@ router.use('/game', gameRouter);
 
 // Admin routes
 router.use('/admin', adminRouter);
+router.use('/admin/password-reset', passwordResetRouter);
 router.use('/task-templates', taskTemplateRouter);
 router.use('/event-templates', eventTemplateRouter);
 router.use('/upgrade-templates', upgradeTemplateRouter);

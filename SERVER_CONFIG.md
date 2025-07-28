@@ -74,7 +74,7 @@ JWT_ACCESS_AUDIENCE=nebulahunt-users
 JWT_REFRESH_AUDIENCE=nebulahunt-users
 
 # =============================================================================
-# TELEGRAM BOT
+# TELEGRAM BOT (для пользователей игры)
 # =============================================================================
 BOT_TOKEN=your_telegram_bot_token
 TELEGRAM_WEBHOOK_URL=http://localhost:3001/webhook
@@ -162,7 +162,7 @@ JWT_ACCESS_AUDIENCE=nebulahunt-users
 JWT_REFRESH_AUDIENCE=nebulahunt-users
 
 # =============================================================================
-# TELEGRAM BOT
+# TELEGRAM BOT (для пользователей игры)
 # =============================================================================
 BOT_TOKEN=your_real_telegram_bot_token
 TELEGRAM_WEBHOOK_URL=https://your-domain.com/webhook
@@ -233,7 +233,7 @@ nebulahunt-server/
 
 ### Аутентификация
 
--   `POST /api/admin/login` - Вход через Telegram WebApp
+-   `POST /api/admin/oauth/google` - Вход через Google OAuth
 -   `POST /api/admin/2fa/verify` - Проверка 2FA
 -   `POST /api/admin/logout` - Выход
 -   `POST /api/admin/init` - Инициализация админа
@@ -268,7 +268,7 @@ nebulahunt-server/
 -   **Rate Limiting** - Ограничение запросов
 -   **IP Security** - Блокировка IP адресов
 -   **Request Validation** - Валидация запросов
--   **Telegram Auth** - Аутентификация через Telegram
+-   **Google OAuth** - Аутентификация через Google
 
 ### Настройки безопасности
 
@@ -429,11 +429,11 @@ module.exports = {
     - Проверьте CORS_ORIGIN в настройках
     - Убедитесь, что клиент отправляет правильные заголовки
 
-3. **Ошибки Telegram WebApp**
+3. **Ошибки Google OAuth**
 
-    - Проверьте BOT_TOKEN
-    - Убедитесь, что бот настроен правильно
-    - Проверьте webhook URL
+    - Проверьте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET
+    - Убедитесь, что OAuth настроен правильно
+    - Проверьте redirect URI в Google Console
 
 4. **Проблемы с JWT**
     - Проверьте JWT_ACCESS_SECRET и JWT_REFRESH_SECRET

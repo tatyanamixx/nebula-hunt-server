@@ -1475,6 +1475,88 @@ class AdminService {
 			lockMinutesLeft: lockCheck.minutesLeft,
 		};
 	}
+
+	/**
+	 * Устанавливает пароль с датой истечения
+	 * @param {number} adminId - ID администратора
+	 * @param {string} password - Новый пароль
+	 */
+	async setPasswordWithExpiry(adminId, password) {
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+
+		const hashedPassword = await passwordService.hashPassword(password);
+		const expiryDays =
+			parseInt(process.env.ADMIN_PASSWORD_EXPIRY_DAYS) || 90;
+		const expiryDate = new Date();
+		expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+		await admin.update({
+			password: hashedPassword,
+			passwordExpiresAt: expiryDate,
+			lastPasswordChange: new Date(),
+			passwordExpiryNotified: false,
+			isLocked: false,
+		});
+
+		logger.info('Password set with expiry', {
+			adminId,
+			expiryDate: expiryDate.toISOString(),
+		});
+	}
+
+	/**
+	 * Получает админа по ID
+	 * @param {number} adminId - ID администратора
+	 * @returns {Object} - Администратор
+	 */
+	async getAdminById(adminId) {
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			throw ApiError.NotFound('Admin not found');
+		}
+		return admin;
+	}
+
+	/**
+	 * Получает админа по email
+	 * @param {string} email - Email администратора
+	 * @returns {Object} - Администратор
+	 */
+	async getAdminByEmail(email) {
+		const admin = await Admin.findOne({
+			where: { email },
+		});
+		return admin;
+	}
+
+	/**
+	 * Проверяет, заблокирован ли админ из-за истекшего пароля
+	 * @param {number} adminId - ID администратора
+	 * @returns {boolean} - Заблокирован ли админ
+	 */
+	async isAdminLocked(adminId) {
+		const admin = await Admin.findByPk(adminId);
+		if (!admin) {
+			return false;
+		}
+		return admin.isLocked || false;
+	}
+
+	/**
+	 * Получает всех администраторов
+	 * @returns {Array} - Список всех администраторов
+	 */
+	async getAllAdmins() {
+		return await Admin.findAll({
+			where: {
+				role: { [Op.in]: ['ADMIN', 'SUPERVISOR'] },
+			},
+			order: [['createdAt', 'DESC']],
+		});
+	}
 }
 
 module.exports = new AdminService();

@@ -103,7 +103,15 @@ JWT_ACCESS_AUDIENCE=nebulahunt-users
 JWT_REFRESH_AUDIENCE=nebulahunt-users
 ```
 
-### Telegram Bot
+### Google OAuth (для администраторов)
+
+```bash
+# Google OAuth credentials
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+### Telegram Bot (для пользователей игры)
 
 ```bash
 # Telegram Bot токен
@@ -178,7 +186,13 @@ RUN_MIGRATIONS=true|false
 -   В production используйте SSL соединения
 -   Ограничьте права доступа пользователей БД
 
-### 3. Telegram Bot
+### 3. Google OAuth (для администраторов)
+
+-   Храните Client ID и Client Secret в безопасном месте
+-   Не публикуйте credentials в публичных репозиториях
+-   Используйте HTTPS в production
+
+### 4. Telegram Bot (для пользователей игры)
 
 -   Храните токен бота в безопасном месте
 -   Не публикуйте токен в публичных репозиториях

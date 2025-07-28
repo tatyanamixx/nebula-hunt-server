@@ -83,7 +83,19 @@ npm start
 2. **API документация**: http://localhost:3001/api-docs
 3. **Prometheus метрики**: http://localhost:3001/metrics
 
-## 🔧 Настройка Telegram бота
+## 🔧 Настройка аутентификации
+
+### Google OAuth (для администраторов)
+
+1. Создайте проект в Google Cloud Console
+2. Получите Client ID и Client Secret
+3. Добавьте их в `.env` файл:
+    ```env
+    GOOGLE_CLIENT_ID=your_google_client_id_here
+    GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+    ```
+
+### Telegram Bot (для пользователей игры)
 
 1. Создайте бота через @BotFather
 2. Получите токен бота
@@ -144,6 +156,12 @@ npm run env:check
 
 -   Убедитесь, что `CORS_ORIGIN` и `ALLOWED_ORIGINS` содержат правильные URL
 -   Проверьте, что фронтенд работает на указанном порту
+
+### Ошибки Google OAuth
+
+-   Проверьте `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET` в `.env`
+-   Убедитесь, что OAuth настроен правильно
+-   Проверьте redirect URI в Google Console
 
 ### Ошибки Telegram WebApp
 

@@ -81,6 +81,12 @@ if (process.env.NODE_ENV !== 'test') {
 
 	// Запускаем задачу обновления метрик
 	metricsUpdateJob.start();
+
+	// Запуск проверки истечения паролей администраторов (каждый день в 9:00)
+	const {
+		startPasswordExpiryChecker,
+	} = require('./jobs/password-expiry-checker');
+	startPasswordExpiryChecker();
 }
 
 // Swagger setup
