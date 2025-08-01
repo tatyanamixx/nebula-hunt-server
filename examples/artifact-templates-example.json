@@ -1,0 +1,168 @@
+[
+	{
+		"slug": "stardust_amplifier",
+		"name": "Stardust Amplifier",
+		"description": {
+			"en": "Increases stardust production by 10%",
+			"ru": "Увеличивает производство звездной пыли на 10%"
+		},
+		"rarity": "COMMON",
+		"image": "2633332.png",
+		"effects": {
+			"stardustProduction": 0.1
+		},
+		"baseChance": 0.1,
+		"limited": false
+	},
+	{
+		"slug": "chaos_crystal",
+		"name": "Chaos Crystal",
+		"description": {
+			"en": "Increases chaos chance by 5%",
+			"ru": "Увеличивает шанс хаоса на 5%"
+		},
+		"rarity": "UNCOMMON",
+		"image": "💎",
+		"effects": {
+			"chaosChance": 0.05
+		},
+		"baseChance": 0.05,
+		"limited": true,
+		"limitedCount": 100
+	},
+	{
+		"slug": "dark_matter_orb",
+		"name": "Dark Matter Orb",
+		"description": {
+			"en": "Increases dark matter production by 15%",
+			"ru": "Увеличивает производство темной материи на 15%"
+		},
+		"rarity": "RARE",
+		"image": "🌌",
+		"effects": {
+			"darkMatterProduction": 0.15
+		},
+		"baseChance": 0.15,
+		"limited": false
+	},
+	{
+		"slug": "stellar_engine",
+		"name": "Stellar Engine",
+		"description": {
+			"en": "Massively increases all production by 25%",
+			"ru": "Значительно увеличивает все производство на 25%"
+		},
+		"rarity": "EPIC",
+		"image": "🚀",
+		"effects": {
+			"stardustProduction": 0.25,
+			"darkMatterProduction": 0.25,
+			"starsProduction": 0.25
+		},
+		"baseChance": 0.25,
+		"limited": true,
+		"limitedCount": 50,
+		"limitedDurationType": "WEEK",
+		"limitedDurationValue": 1
+	},
+	{
+		"slug": "cosmic_heart",
+		"name": "Cosmic Heart",
+		"description": {
+			"en": "The legendary artifact that grants immortality and infinite power",
+			"ru": "Легендарный артефакт, дарующий бессмертие и бесконечную силу"
+		},
+		"rarity": "LEGENDARY",
+		"image": "💖",
+		"effects": {
+			"immortality": true,
+			"infinitePower": true,
+			"allProduction": 1.0
+		},
+		"baseChance": 1.0,
+		"limited": true,
+		"limitedCount": 1,
+		"limitedDurationType": "YEAR",
+		"limitedDurationValue": 1
+	},
+	{
+		"slug": "stability_anchor",
+		"name": "Stability Anchor",
+		"description": {
+			"en": "Reduces chaos and increases stability by 20%",
+			"ru": "Уменьшает хаос и увеличивает стабильность на 20%"
+		},
+		"rarity": "UNCOMMON",
+		"image": "⚓",
+		"effects": {
+			"chaosReduction": 0.2,
+			"stabilityIncrease": 0.2
+		},
+		"baseChance": 0.2,
+		"limited": false
+	},
+	{
+		"slug": "galaxy_core",
+		"name": "Galaxy Core",
+		"description": {
+			"en": "Increases galaxy exploration efficiency by 30%",
+			"ru": "Увеличивает эффективность исследования галактик на 30%"
+		},
+		"rarity": "RARE",
+		"image": "🌠",
+		"effects": {
+			"galaxyExplorationEfficiency": 0.3
+		},
+		"baseChance": 0.3,
+		"limited": false
+	},
+	{
+		"slug": "time_dilator",
+		"name": "Time Dilator",
+		"description": {
+			"en": "Speeds up all processes by 40%",
+			"ru": "Ускоряет все процессы на 40%"
+		},
+		"rarity": "EPIC",
+		"image": "⏰",
+		"effects": {
+			"timeAcceleration": 0.4
+		},
+		"baseChance": 0.4,
+		"limited": true,
+		"limitedCount": 25,
+		"limitedDurationType": "DAY",
+		"limitedDurationValue": 7
+	},
+	{
+		"slug": "quantum_shard",
+		"name": "Quantum Shard",
+		"description": {
+			"en": "Randomly boosts one resource production by 50%",
+			"ru": "Случайно увеличивает производство одного ресурса на 50%"
+		},
+		"rarity": "UNCOMMON",
+		"image": "🔮",
+		"effects": {
+			"randomResourceBoost": 0.5
+		},
+		"baseChance": 0.5,
+		"limited": false
+	},
+	{
+		"slug": "void_crystal",
+		"name": "Void Crystal",
+		"description": {
+			"en": "Absorbs negative effects and converts them to positive ones",
+			"ru": "Поглощает негативные эффекты и преобразует их в позитивные"
+		},
+		"rarity": "RARE",
+		"image": "💎",
+		"effects": {
+			"negativeEffectAbsorption": true,
+			"effectConversion": true
+		},
+		"baseChance": 1.0,
+		"limited": false
+	}
+]

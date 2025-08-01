@@ -155,6 +155,14 @@ npm run seed:undo
 -   `GET /api/events` - События пользователя
 -   `GET /api/market/offers` - Предложения на рынке
 
+### Game API эндпоинты
+
+ -   `POST /api/game/farming-reward` - Регистрация наград за фарминг
+ -   `POST /api/game/galaxy-with-offer` - Создание галактики с предложением
+ -   `POST /api/game/galaxy-for-sale` - Создание галактики для продажи
+ -   `POST /api/game/register-transfer-stardust-to-galaxy` - Регистрация передачи звездной пыли в галактику
+ -   `POST /api/game/daily-reward` - Получение ежедневной награды
+
 ### Документация API
 
 Полная документация API доступна по адресу `/api-docs` после запуска сервера.

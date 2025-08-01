@@ -21,253 +21,13 @@ const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const { SYSTEM_USER_ID, GALAXY_BASE_PRICE } = require('../config/constants');
+const { ERROR_CODES } = require('../config/error-codes');
 const logger = require('./logger-service');
 const userStateService = require('./user-state-service');
 const marketService = require('./market-service');
 const taskService = require('./task-service');
 
 class GameService {
-	/**
-	 * Register the transfer of a resource for an upgrade
-	 * @param {Object} params { userId, slug }
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerUpgradePayment({ userId, slug, transaction }) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-
-		try {
-			// Откладываем проверку всех deferrable ограничений
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
-			
-			const { success, userTask } = await taskService.completeTask(userId, slug, t);
-			if (!success) {
-				throw ApiError.BadRequest('Task not found');
-			}
-
-
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: userId, // The user "sells" the resource to the system
-				itemType: 'resource',
-				itemId: `${userTask.reward.type}_${userTask.reward.amount}`,
-				price: 0, // Free, because this is an exchange of resources for an upgrade
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-			};
-
-			// Check that the resource is available
-			await this.checkResourceAvailability(
-				userId,
-				{ type: userTask.reward.type, amount: userTask.reward.amount },
-				t
-			);
-
-			// Lock the resource
-			await this.lockResource(userId, { type: userTask.reward.type, amount: userTask.reward.amount }, t);
-
-			// Create an offer
-			const offer = await MarketOffer.create(offerData, {
-				transaction: t,
-			});
-
-			// Create a transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
-					offerId: offer.id,
-					buyerId: SYSTEM_USER_ID, // The system "buys" the resource
-					sellerId: userId,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Create a record about the transaction
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: userId,
-					toAccount: SYSTEM_USER_ID,
-					amount,
-					currency: 'tonToken', // The currency is not important, because the price is 0
-					txType: 'UPGRADE_RESOURCE',
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Unlock and transfer the resource to the system
-			await this.transferResource(offer, SYSTEM_USER_ID, t);
-
-			// Complete the offer
-			await offer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Resource transferred to the system for an upgrade',
-				userTask,
-				resource: userTask.reward.type,
-				amount: userTask.reward.amount,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register upgrade payment: ${err.message}`
-				  );
-		}
-	}
-
-	/**
-	 * Register the transfer of a resource for a task
-	 * @param {BigInt} userId - User ID
-	 * @param {string} slug - Task slug
-	 * @param {Object} transaction - Transaction object
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerTaskReward(userId, slug, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-
-		try {
-			// Откладываем проверку всех deferrable ограничений
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
-			
-			const { success, userTask } = await taskService.completeTask(userId, slug, t);
-			if (!success) {
-				throw ApiError.BadRequest('Task not found');
-			}
-
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
-				itemType: 'task',
-				itemId: userTask.id,
-				price: 0, // Free, because this is a reward for a task
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-				amount: userTask.reward.amount,
-				resource: userTask.reward.type,
-				txType: 'TASK_REWARD',
-			};
-
-			// Create an offer
-			const offer = await this.registerReward(offerData, userId, t);
-
-			await t.commit();
-			return {
-				success: true,
-				message:
-					'Resource transferred to the user for completing a tas	k',
-				userTask,
-				resource: userTask.reward.type,
-				amount: userTask.reward.amount,
-				offer,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register task reward: ${err.message}`
-				  );
-		}
-	}
-
-	/**
-	 * Register the transfer of a resource for an event
-	 * @param {Object} params { userId, eventId, amount, resource }
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerEventReward({ userId, eventId, amount, resource }) {
-		const t = await sequelize.transaction();
-
-		try {
-			// Create an offer from the system to transfer the resource
-			const offerData = {
-				sellerId: SYSTEM_USER_ID, // The system "sells" the resource to the user
-				itemType: 'resource',
-				itemId: `${resource}_${amount}`,
-				price: 0, // Free, because this is a reward for an event
-				currency: 'tonToken', // The currency is not important, because the price is 0
-				offerType: 'SYSTEM',
-			};
-
-			// Create an offer
-			const offer = await MarketOffer.create(offerData, {
-				transaction: t,
-			});
-
-			// Create a transaction
-			const marketTransaction = await MarketTransaction.create(
-				{
-					offerId: offer.id,
-					buyerId: userId, // The user "buys" the resource
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Create a record about the transaction
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: marketTransaction.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: userId,
-					amount,
-					currency: 'tonToken', // The currency is not important, because the price is 0
-					txType: 'EVENT_RESOURCE',
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Transfer the resource to the user
-			await this.transferResource(offer, userId, t);
-
-			// Complete the offer
-			await offer.update(
-				{
-					status: 'COMPLETED',
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Resource transferred to the user for an event',
-				eventId,
-				resource,
-				amount,
-			};
-		} catch (err) {
-			await t.rollback();
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register event reward: ${err.message}`
-				  );
-		}
-	}
 	/**
 	 * Get the farming id for a resource
 	 * @param {string} resource - Resource name
@@ -287,223 +47,165 @@ class GameService {
 	}
 
 	/**
-	 * Register the transfer of a resource for farming
-	 * @param {Object} offerData [] { userId, amount, resource, source }
-	 * @param {BigInt} buyerId - Buyer ID
+	 * Register farming reward for internal currency
+	 * @param {BigInt} userId - User ID
+	 * @param {Array} offerData - Array of farming rewards [{"resource": "stardust", "amount": 3890}, {"resource": "darkMatter", "amount": X}]
 	 * @param {Object} transaction - Transaction object
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async registerFarmingReward(userId, offerData, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
-		logger.debug('registerFarmingReward');
+
+		logger.debug('registerFarmingReward', { userId, offerData });
+
 		try {
-			// Откладываем проверку всех deferrable ограничений
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
-			logger.debug('registerFarmingReward', offerData);
+			// Validate farming data structure
+			if (!Array.isArray(offerData) || offerData.length !== 2) {
+				throw ApiError.BadRequest(
+					'Farming data must be an array with exactly 2 elements',
+					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
+				);
+			}
+
+			// Validate each farming reward
+			const validResources = ['stardust', 'darkMatter'];
+			const processedResources = new Set();
+
 			for (const offer of offerData) {
-				offer.txType = 'FARMING_REWARD';
-				offer.itemType = 'farming';
-				offer.itemId = this.getFarmingId(offer.resource);
-				offer.price = 0;
-				offer.currency = 'tonToken';
+				// Validate required fields
+				if (!offer.resource || !offer.amount) {
+					throw ApiError.BadRequest(
+						'Each farming reward must have resource and amount',
+						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+					);
+				}
 
-				// Create an offer from the system to transfer the resource
-				const result = await this.registerReward(offer, userId, t);
+				// Validate resource type
+				if (!validResources.includes(offer.resource)) {
+					throw ApiError.BadRequest(
+						`Invalid resource: ${
+							offer.resource
+						}. Must be one of: ${validResources.join(', ')}`,
+						ERROR_CODES.VALIDATION.INVALID_RESOURCE
+					);
+				}
+
+				// Validate amount is positive
+				if (offer.amount <= 0) {
+					throw ApiError.BadRequest(
+						`Amount must be positive for resource: ${offer.resource}`,
+						ERROR_CODES.VALIDATION.INVALID_AMOUNT
+					);
+				}
+
+				// Check for duplicate resources
+				if (processedResources.has(offer.resource)) {
+					throw ApiError.BadRequest(
+						`Duplicate resource: ${offer.resource}`,
+						ERROR_CODES.VALIDATION.DUPLICATE_RESOURCE
+					);
+				}
+
+				processedResources.add(offer.resource);
 			}
 
-			const userState = await userStateService.getUserState(userId, t);
-
-			await t.commit();
-			return {
-				success: true,
-				message: 'Resource transferred to the user for farming',
-				userState,
-			};
-		} catch (err) {
-			if (shouldCommit && !t.finished) {
-				await t.rollback();
+			// Ensure both required resources are present
+			if (
+				!processedResources.has('stardust') ||
+				!processedResources.has('darkMatter')
+			) {
+				throw ApiError.BadRequest(
+					'Farming data must include both stardust and darkMatter',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
 			}
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register farming reward: ${err.message}`
-				  );
-		}
-	}
 
-	/**
-	 * Register the transfer of a resource for farming
-	 * @param {Object} offerData [] { userId, amount, resource, source }
-	 * @param {BigInt} buyerId - Buyer ID
-	 * @param {Object} transaction - Transaction object
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerReward(offer, buyerId, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		logger.debug('registerReward');
-		try {
-			// Откладываем проверку всех deferrable ограничений
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
-			logger.debug('registerReward', offer);
-			// Create an offer from the system to transfer the resource
-			const transactionOffer = await MarketOffer.create(
-				{
+			// Process each farming reward using marketService.registerOffer
+			const results = [];
+			const marketService = require('./market-service');
+
+			for (const offer of offerData) {
+				// Prepare offer data for system transaction
+				const systemOffer = {
 					sellerId: SYSTEM_USER_ID,
-					itemType: offer.itemType,
-					itemId: offer.itemId,
-					price: offer.price,
-					currency: offer.currency,
+					buyerId: userId,
+					txType: 'FARMING_REWARD',
+					itemType: 'resource', // Используем 'resource' вместо 'farming'
+					itemId: this.getFarmingId(offer.resource),
+					price: 0, // Free from system user
+					currency: 'tonToken',
 					amount: offer.amount,
 					resource: offer.resource,
-					isItemLocked: false,
 					offerType: 'SYSTEM',
-					expiresAt: null,
-					completedAt: new Date(),
-					status: 'COMPLETED',
-					source: offer.source,
-					isItemLocked: false,
-				},
-				{ transaction: t }
-			);
+				};
 
-			// Create a transaction
-			const transactionMarket = await MarketTransaction.create(
-				{
-					offerId: transactionOffer.id,
-					buyerId: buyerId, // The user "buys" the resource
-					sellerId: SYSTEM_USER_ID,
-					status: 'COMPLETED',
-					completedAt: new Date(),
-				},
-				{ transaction: t }
-			);
+				logger.debug('Processing farming reward', {
+					userId,
+					resource: offer.resource,
+					amount: offer.amount,
+				});
 
-			// Create a record about the transaction
-			const transferTransaction = await PaymentTransaction.create(
-				{
-					marketTransactionId: transactionMarket.id,
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: buyerId,
-					priceOrAmount: offer.amount,
-					currencyOrResource: offer.resource,
-					txType: offer.txType,
-					status: 'CONFIRMED',
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
-
-			// Transfer the resource to the user
-			await this.addCurrency(buyerId, offer.resource, offer.amount, t);
-
-			if (offer.price > 0) {
-				const paymentTransaction = await PaymentTransaction.create(
-					{
-						marketTransactionId: transactionMarket.id,
-						fromAccount: buyerId,
-						toAccount: SYSTEM_USER_ID,
-						amount: offer.price,
-						currency: offer.currency,
-						txType: offer.txType,
-						status: 'CONFIRMED',
-						confirmedAt: new Date(),
-					},
-					{ transaction: t }
-				);
-				await this.deductCurrency(
-					buyerId,
-					offer.currency,
-					offer.price,
+				// Use marketService.registerOffer for creating the transaction
+				const result = await marketService.registerOffer(
+					systemOffer,
 					t
 				);
+
+				results.push({
+					resource: offer.resource,
+					amount: offer.amount,
+					success: true,
+					offerId: result.offer.id,
+					marketTransactionId: result.marketTransaction.id,
+				});
 			}
 
-			// Commit the transaction if it was created
+			// Get updated user state
+			const userState = await userStateService.getUserState(userId, t);
+
 			if (shouldCommit && !t.finished) {
 				await t.commit();
 			}
+
+			logger.info('Farming rewards registered successfully', {
+				userId,
+				rewards: results,
+				userState: {
+					stardust: userState.stardust,
+					darkMatter: userState.darkMatter,
+					stars: userState.stars,
+				},
+			});
+
 			return {
 				success: true,
-				message: 'Resource transferred to the user',
-				offer,
-			};
-		} catch (err) {
-			if (shouldCommit && !t.finished) {
-				await t.rollback();
-			}
-			throw err instanceof ApiError
-				? err
-				: ApiError.Internal(
-						`Failed to register reward: ${err.message}`
-				  );
-		}
-	}
-
-	/**
-	 * Register a stars transfer to a galaxy
-	 * @param {Object} offer - Offer data
-	 * @param {BigInt} buyerId - Buyer ID
-	 * @param {string} galaxySeed - Galaxy seed
-	 * @param {Object} transaction - Transaction object
-	 * @returns {Promise<Object>} - Market offer
-	 */
-	async registerStarsTransferToGalaxy(userId, offer, galaxySeed, transaction) {	
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		try {
-			// Откладываем проверку всех deferrable ограничений
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
-			const galaxy = await Galaxy.findOne({
-				where: { seed: galaxySeed, userId: userId },
-				transaction: t,
-			});
-			if (!galaxy) {
-				throw ApiError.BadRequest('Galaxy not found for user');
-			}
-			const offerData = {
-				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: offer.price,
-				currency: offer.currency,
-				itemId: galaxy.id,
-				itemType: 'galaxy',
-				amount: offer.amount,
-				resource: offer.resource,
-				offerType: 'SYSTEM',
-				txType: 'GALAXY_RESOURCE',
-			};
-			const { success, message, offer } = await this.registerReward(
-				offerData,
-				userId,
-				t
-			);
-			const userState = await userStateService.getUserState(userId, t);
-			await galaxy.update(
-				{
-					starCurrent: galaxy.starCurrent + offer.amount,
+				message: 'Farming rewards transferred to user successfully',
+				data: {
+					rewards: results,
+					userState: {
+						stardust: userState.stardust,
+						darkMatter: userState.darkMatter,
+						stars: userState.stars,
+					},
 				},
-				{ transaction: t }
-			);
-			if (shouldCommit && !t.finished) {
-				await t.commit();
-			}
-			return { success, message, offer, userState, galaxy };
+			};
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
 				await t.rollback();
 			}
+
+			logger.error('Failed to register farming reward', {
+				userId,
+				offerData,
+				error: err.message,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: ApiError.Internal(
-						`Failed to register stars transfer to galaxy: ${err.message}`
+						`Failed to register farming reward: ${err.message}`,
+						ERROR_CODES.SYSTEM.DATABASE_ERROR
 				  );
 		}
 	}
@@ -642,18 +344,20 @@ class GameService {
 	 * Create a galaxy with an offer
 	 * @param {Object} galaxyData - данные галактики
 	 * @param {number} buyerId - ID покупателя
-	 * @param {Object} offerData - данные оферты (price, currency, expiresAt)
+	 * @param {Object} offer - данные оферты (price, currency, expiresAt)
+	 * @param {Object} transaction - транзакция
 	 */
-	async createGalaxyAsGift(galaxyData, buyerId, transaction) {
+	async createGalaxyWithOffer(galaxyData, buyerId, offer, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 		logger.debug('createGalaxyAsGift');
 
 		try {
-			//Откладываем проверку внешних ключей до конца транзакции
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction: t,
-			});
+			if (shouldCommit) {
+				await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+					transaction: t,
+				});
+			}
 			// 1. Создаем галактику от имени SYSTEM
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
@@ -685,31 +389,30 @@ class GameService {
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: buyerId,
-				price: 0,
-				currency: 'tonToken',
+				price: offer.price,
+				currency: offer.currency,
 				itemId: galaxy.id,
 				itemType: 'galaxy',
-				amount: galaxy.starCurrent,
+				amount: galaxyData.starCurrent,
 				resource: 'stars',
 				offerType: 'SYSTEM',
 				txType: 'GALAXY_RESOURCE',
 			};
-			const { offerOut, marketTransaction, payment, transferStars } =
-				await marketService.registerOffer(offerData, t);
+			const result = await marketService.registerOffer(offerData, t);
 			const userState = await userStateService.getUserState(buyerId, t);
 
 			// Коммитим транзакцию только если она была создана в этом методе и не завершена
 			if (shouldCommit && !t.finished) {
+				await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+					transaction: t,
+				});
 				await t.commit();
 			}
 
 			const response = {
 				galaxy: galaxy.toJSON(),
 				userState,
-				offerOut,
-				marketTransaction,
-				payment,
-				transferStars,
+				marketOffer: result,
 			};
 			logger.debug('createGalaxyWithOffer response', response);
 			return response;
@@ -720,153 +423,445 @@ class GameService {
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			logger.error('Error in createSystemGalaxyWithOffer', err);
+			logger.error('Error in createGalaxyWithOffer', err);
 			throw ApiError.DatabaseError(
-				`Failed to create system galaxy with offer: ${err.message}`
+				`Failed to create galaxy with offer: ${err.message}`
 			);
 		}
 	}
 
 	/**
-	 * Create a galaxy with an offer
-	 * @param {Object} galaxyData - данные галактики
-	 * @param {Object} offer - данные оферты (price, currency, expiresAt)
+	 * Register transfer stardust to galaxy - create offer for galaxy purchase with funds check
+	 * @param {BigInt} userId - User ID from initdata
+	 * @param {Object} galaxyData - Galaxy data {seed: string}
+	 * @param {Object} reward - Reward data {currency: string, price: number, resource: string, amount: number}
+	 * @param {Object} transaction - Database transaction
+	 * @returns {Promise<Object>} Result of the operation
 	 */
-	async createGalaxyForSale(galaxyData, offer, transaction) {
+	async registerTransferStardustToGalaxy(
+		userId,
+		galaxyData,
+		reward,
+		transaction
+	) {
 		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
-		logger.debug('createGalaxyForSale');
+		const shouldCommit = !transaction;
+
+		logger.debug('registerTransferStardustToGalaxy', {
+			userId,
+			galaxyData,
+			reward,
+		});
 
 		try {
-			//Откладываем проверку внешних ключей до конца транзакции
+			// Откладываем проверку всех deferrable ограничений
 			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
 				transaction: t,
 			});
-			// 1. Создаем галактику от имени SYSTEM
-			const [galaxy, created] = await Galaxy.findOrCreate({
-				where: {
-					seed: galaxyData.seed,
-				},
-				defaults: {
-					userId: SYSTEM_USER_ID,
-					starMin: galaxyData.starMin || 100,
-					starCurrent: galaxyData.starCurrent || 100,
-					price: offer.price,
-					seed: galaxyData.seed || '',
-					particleCount: galaxyData.particleCount || 100,
-					onParticleCountChange:
-						galaxyData.onParticleCountChange || true,
-					galaxyProperties: galaxyData.galaxyProperties || {},
-					active: true,
-				},
-				transaction: t,
-			});
-			if (!created && galaxy.userId !== SYSTEM_USER_ID) {
-				throw ApiError.GalaxyAlreadyExists();
-				logger.debug(
-					'galaxy already exists && buyerId !== galaxy.userId'
+
+			// Validate input data
+			if (!galaxyData || !galaxyData.seed) {
+				throw ApiError.BadRequest(
+					'Galaxy seed is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
 
-			logger.debug('galaxy created', { galaxy });
+			if (
+				!reward ||
+				!reward.currency ||
+				!reward.price ||
+				!reward.resource ||
+				!reward.amount
+			) {
+				throw ApiError.BadRequest(
+					'Reward must have currency, price, resource, and amount',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
 
+			// Validate price and amount are positive
+			if (reward.price <= 0) {
+				throw ApiError.BadRequest(
+					'Price must be positive',
+					ERROR_CODES.VALIDATION.INVALID_AMOUNT
+				);
+			}
+
+			if (reward.amount <= 0) {
+				throw ApiError.BadRequest(
+					'Amount must be positive',
+					ERROR_CODES.VALIDATION.INVALID_AMOUNT
+				);
+			}
+
+			// Find galaxy by seed
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxyData.seed },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				throw ApiError.BadRequest(
+					'Galaxy not found',
+					ERROR_CODES.GALAXY.GALAXY_NOT_FOUND
+				);
+			}
+
+			logger.debug('Found galaxy', {
+				galaxyId: galaxy.id,
+				seed: galaxy.seed,
+			});
+
+			// Check if user has sufficient funds
+			const userState = await userStateService.getUserState(userId, t);
+
+			if (
+				reward.currency === 'stardust' &&
+				userState.stardust < reward.price
+			) {
+				throw ApiError.BadRequest(
+					'Insufficient stardust for this offer',
+					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
+				);
+			}
+
+			if (
+				reward.currency === 'darkMatter' &&
+				userState.darkMatter < reward.price
+			) {
+				throw ApiError.BadRequest(
+					'Insufficient dark matter for this offer',
+					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
+				);
+			}
+
+			if (reward.currency === 'stars' && userState.stars < reward.price) {
+				throw ApiError.BadRequest(
+					'Insufficient stars for this offer',
+					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
+				);
+			}
+
+			logger.debug('User has sufficient funds', {
+				userId,
+				currency: reward.currency,
+				price: reward.price,
+				userState: {
+					stardust: userState.stardust,
+					darkMatter: userState.darkMatter,
+					stars: userState.stars,
+				},
+			});
+
+			// Prepare offer data similar to registerStarsTransferToGalaxy
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
-				buyerId: buyerId,
-				price: offer.price,
-				currency: offer.currency,
+				buyerId: userId,
+				price: reward.price,
+				currency: reward.currency,
 				itemId: galaxy.id,
 				itemType: 'galaxy',
-				amount: galaxy.starCurrent,
-				resource: 'stars',
+				amount: reward.amount,
+				resource: reward.resource,
 				offerType: 'SYSTEM',
 				txType: 'GALAXY_RESOURCE',
 			};
-			// 2. create an offer for sale
-			const offerOut = await marketService.createOffer(offer, t);
 
-			// 3. create invoice
-			const { transactionMarket, payment } =
-				await marketService.createInvoice(offerOut, buyerId, t);
+			// Use marketService.registerOffer to create the transaction
+			const result = await marketService.registerOffer(offerData, t);
 
-			// Коммитим транзакцию только если она была создана в этом методе и не завершена
+			// Get updated user state
+			const updatedUserState = await userStateService.getUserState(
+				userId,
+				t
+			);
+
 			if (shouldCommit && !t.finished) {
 				await t.commit();
 			}
 
-			const response = {
-				galaxy: galaxy.toJSON(),
-				offerOut,
-				transactionMarket,
-				payment,
+			logger.info('Galaxy purchase offer registered successfully', {
+				userId,
+				galaxyId: galaxy.id,
+				galaxySeed: galaxy.seed,
+				price: reward.price,
+				currency: reward.currency,
+				amount: reward.amount,
+				resource: reward.resource,
+				offerId: result.offer.id,
+				marketTransactionId: result.marketTransaction.id,
+			});
+
+			return {
+				success: true,
+				message: 'Galaxy purchase offer registered successfully',
+				data: {
+					galaxy: {
+						id: galaxy.id,
+						seed: galaxy.seed,
+					},
+					offer: {
+						id: result.offer.id,
+						price: reward.price,
+						currency: reward.currency,
+						amount: reward.amount,
+						resource: reward.resource,
+					},
+					transaction: {
+						id: result.marketTransaction.id,
+						status: result.marketTransaction.status,
+					},
+					userState: {
+						stardust: updatedUserState.stardust,
+						darkMatter: updatedUserState.darkMatter,
+						stars: updatedUserState.stars,
+					},
+				},
 			};
-			logger.debug('createGalaxyForSale response', response);
-			return response;
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
 				await t.rollback();
 			}
-			if (err instanceof ApiError) {
-				throw err;
-			}
-			logger.error('Error in createGalaxyForSale', err);
-			throw ApiError.DatabaseError(
-				`Failed to create galaxy for sale: ${err.message}`
-			);
+
+			logger.error('Failed to register transfer stardust to galaxy', {
+				userId,
+				galaxyData,
+				reward,
+				error: err.message,
+			});
+
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register transfer stardust to galaxy: ${err.message}`,
+						ERROR_CODES.SYSTEM.DATABASE_ERROR
+				  );
 		}
 	}
 
-	async transferStarsToUser(userId, galaxyData, offer) {
-		const t = await sequelize.transaction();
+	/**
+	 * Claim daily reward for user
+	 * @param {BigInt} userId - User ID
+	 * @param {Object} transaction - Sequelize transaction
+	 * @returns {Promise<Object>} - Daily reward result
+	 */
+	async claimDailyReward(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
 
 		try {
-			// Проверяем, что галактика принадлежит пользователю
-			const galaxy = await Galaxy.findOne({
-				where: { seed: offer.seed },
+			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
 				transaction: t,
 			});
-			if (!galaxy) {
-				throw ApiError.BadRequest('Galaxy not found');
-			}
 
-			// const user = await User.findOne({
-			// 	where: { id: userId },
-			// 	transaction: t,
-			// });
-
-			// Validate stars value
-			if (galaxy.starCurrent < 0) {
-				throw ApiError.InsufficientStars('Stars cannot be negative');
-			}
-
-			const offerData = {
-				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: offer.price,
-				currency: offer.currency,
-				itemId: galaxy.id,
-				itemType: 'galaxy',
-				amount: offer.amount,
-				resource: offer.resource,
-				offerType: 'SYSTEM',
-				status: 'COMPLETED',
-			};
-			// Регистрируем передачу звезд через marketService
-			const result = await marketService.registerStarsTransfer(offerData);
-
-			galaxy.starCurrent = galaxyData.starCurrent;
-			galaxy.particleCount = galaxyData.particleCount;
-			galaxy.onParticleCountChange = galaxyData.onParticleCountChange;
-			galaxy.galaxyProperties = galaxyData.galaxyProperties || {};
-			await galaxy.save({ transaction: t });
-
-			await t.commit();
-			return result;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(
-				`Failed to transfer stars to user: ${err.message}`
+			const userState = await userStateService.getUserState(userId, t);
+			const now = new Date();
+			const today = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate()
 			);
+
+			// Check if user already claimed today
+			if (userState.lastDailyBonus) {
+				const lastClaim = new Date(userState.lastDailyBonus);
+				const lastClaimDate = new Date(
+					lastClaim.getFullYear(),
+					lastClaim.getMonth(),
+					lastClaim.getDate()
+				);
+
+				if (lastClaimDate.getTime() === today.getTime()) {
+					throw ApiError.BadRequest(
+						'Daily reward already claimed today',
+						ERROR_CODES.GAME.DAILY_REWARD_ALREADY_CLAIMED
+					);
+				}
+			}
+
+			// Calculate current streak
+			let currentStreak = 1;
+			if (userState.lastDailyBonus) {
+				const lastClaim = new Date(userState.lastDailyBonus);
+				const lastClaimDate = new Date(
+					lastClaim.getFullYear(),
+					lastClaim.getMonth(),
+					lastClaim.getDate()
+				);
+				const yesterday = new Date(today);
+				yesterday.setDate(yesterday.getDate() - 1);
+
+				if (lastClaimDate.getTime() === yesterday.getTime()) {
+					// Consecutive day
+					currentStreak = (userState.currentStreak || 0) + 1;
+				} else if (lastClaimDate.getTime() < yesterday.getTime()) {
+					// Streak broken
+					currentStreak = 1;
+				} else {
+					// Same day or future date (shouldn't happen)
+					currentStreak = userState.currentStreak || 1;
+				}
+			}
+
+			// Get user's daily login tasks
+			const { UserTask, TaskTemplate } = require('../models/models');
+
+			// First, initialize user tasks if needed
+			const taskService = require('./task-service');
+			await taskService.initializeUserTasks(userId, t);
+
+			// Then get the daily tasks
+			const dailyTasks = await UserTask.findAll({
+				include: [
+					{
+						model: TaskTemplate,
+						where: {
+							slug: {
+								[require('sequelize').Op.in]: [
+									'daily_login_stardust',
+									'daily_login_darkmatter',
+								],
+							},
+						},
+						required: true,
+					},
+				],
+				where: {
+					userId: userId,
+					active: true,
+				},
+				transaction: t,
+			});
+
+			// Process rewards based on task templates
+			const processedRewards = [];
+			for (const userTask of dailyTasks) {
+				const taskTemplate = userTask.TaskTemplate;
+
+				// Skip if taskTemplate is undefined
+				if (!taskTemplate) {
+					logger.warn('TaskTemplate is undefined for userTask', {
+						userTaskId: userTask.id,
+						userId: userTask.userId,
+					});
+					continue;
+				}
+
+				const condition = taskTemplate.condition;
+				const reward = taskTemplate.reward;
+
+				// Skip if condition or reward is missing
+				if (!condition || !reward) {
+					logger.warn(
+						'Missing condition or reward for task template',
+						{
+							taskSlug: taskTemplate.slug,
+						}
+					);
+					continue;
+				}
+
+				// Check if current day is in the allowed days array
+				if (condition.days && condition.days.includes(currentStreak)) {
+					const rewardAmount = Math.floor(
+						reward.amount * (reward.multiplier || 1) * currentStreak
+					);
+
+					const offerData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: userId,
+						price: 0, // Daily rewards are free
+						currency: 'stardust', // Not used for free rewards
+						itemId: userTask.id, // Use 0 for system rewards (no specific item)
+						itemType: 'task', // Use 'resource' type for daily rewards
+						amount: rewardAmount,
+						resource: reward.type,
+						offerType: 'SYSTEM',
+						txType: 'DAILY_REWARD',
+					};
+
+					const result = await marketService.registerOffer(
+						offerData,
+						t
+					);
+					processedRewards.push({
+						resource: reward.type,
+						amount: rewardAmount,
+						transactionId: result.marketTransaction.id,
+						taskSlug: taskTemplate.slug,
+					});
+
+					// Mark task as completed for today
+					userTask.completed = true;
+					userTask.completedAt = now;
+					await userTask.save({ transaction: t });
+				}
+			}
+
+			// Update user state with new lastDailyBonus and streak
+			await userStateService.updateUserState(
+				userId,
+				{
+					...userState,
+					lastDailyBonus: now,
+					currentStreak: currentStreak,
+					maxStreak: Math.max(
+						currentStreak,
+						userState.maxStreak || 0
+					),
+				},
+				t
+			);
+
+			// Get updated user state
+			const updatedUserState = await userStateService.getUserState(
+				userId,
+				t
+			);
+
+			if (shouldCommit && !t.finished) {
+				await t.commit();
+			}
+
+			logger.info('Daily reward claimed successfully', {
+				userId,
+				currentStreak,
+				rewards: processedRewards,
+				lastDailyBonus: now,
+			});
+
+			return {
+				success: true,
+				message: 'Daily reward claimed successfully',
+				data: {
+					currentStreak,
+					maxStreak: updatedUserState.maxStreak,
+					rewards: processedRewards,
+					userState: {
+						stardust: updatedUserState.stardust,
+						darkMatter: updatedUserState.darkMatter,
+						stars: updatedUserState.stars,
+					},
+				},
+			};
+		} catch (err) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to claim daily reward', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to claim daily reward: ${err.message}`,
+						ERROR_CODES.SYSTEM.DATABASE_ERROR
+				  );
 		}
 	}
 }

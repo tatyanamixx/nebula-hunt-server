@@ -18,11 +18,10 @@ const {
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
-const { commission, pagination, offers } = require('../config/market.config');
+const { pagination, offers } = require('../config/market.config');
 const { SYSTEM_USER_ID } = require('../config/constants');
 const logger = require('../service/logger-service');
 const userStateService = require('./user-state-service');
-const gameService = require('./game-service');
 
 class MarketService {
 	/**
@@ -213,18 +212,18 @@ class MarketService {
 		// Проверяем наличие достаточного количества ресурсов
 		switch (resourceType) {
 			case 'stardust':
-				if (userState.stardust < amount) {
+				if (BigInt(userState.stardust) < BigInt(amount)) {
 					throw new ApiError(400, 'Not enough stardust');
 				}
 				break;
 			case 'darkMatter':
-				if (userState.darkMatter < amount) {
+				if (BigInt(userState.darkMatter) < BigInt(amount)) {
 					throw new ApiError(400, 'Not enough dark matter');
 				}
 				break;
-			case 'tgStars':
-				if (userState.tgStars < amount) {
-					throw new ApiError(400, 'Not enough tg stars');
+			case 'stars':
+				if (BigInt(userState.stars) < BigInt(amount)) {
+					throw new ApiError(400, 'Not enough stars');
 				}
 				break;
 			default:
@@ -297,9 +296,11 @@ class MarketService {
 			case 'stardust':
 				await userState.update(
 					{
-						stardust: userState.stardust - amount,
-						lockedStardust:
-							(userState.lockedStardust || 0) + amount,
+						stardust: BigInt(userState.stardust) - BigInt(amount),
+						lockedStardust: Number(
+							BigInt(userState.lockedStardust || 0) +
+								BigInt(amount)
+						),
 					},
 					{ transaction }
 				);
@@ -307,18 +308,23 @@ class MarketService {
 			case 'darkMatter':
 				await userState.update(
 					{
-						darkMatter: userState.darkMatter - amount,
-						lockedDarkMatter:
-							(userState.lockedDarkMatter || 0) + amount,
+						darkMatter:
+							BigInt(userState.darkMatter) - BigInt(amount),
+						lockedDarkMatter: Number(
+							BigInt(userState.lockedDarkMatter || 0) +
+								BigInt(amount)
+						),
 					},
 					{ transaction }
 				);
 				break;
-			case 'tgStars':
+			case 'stars':
 				await userState.update(
 					{
-						tgStars: userState.tgStars - amount,
-						lockedTgStars: (userState.lockedTgStars || 0) + amount,
+						stars: BigInt(userState.stars) - BigInt(amount),
+						lockedStars: Number(
+							BigInt(userState.lockedStars || 0) + BigInt(amount)
+						),
 					},
 					{ transaction }
 				);
@@ -408,10 +414,13 @@ class MarketService {
 			case 'stardust':
 				await userState.update(
 					{
-						stardust: userState.stardust + amount,
+						stardust: BigInt(userState.stardust) + BigInt(amount),
 						lockedStardust: Math.max(
 							0,
-							(userState.lockedStardust || 0) - amount
+							Number(
+								BigInt(userState.lockedStardust || 0) -
+									BigInt(amount)
+							)
 						),
 					},
 					{ transaction }
@@ -420,22 +429,29 @@ class MarketService {
 			case 'darkMatter':
 				await userState.update(
 					{
-						darkMatter: userState.darkMatter + amount,
+						darkMatter:
+							BigInt(userState.darkMatter) + BigInt(amount),
 						lockedDarkMatter: Math.max(
 							0,
-							(userState.lockedDarkMatter || 0) - amount
+							Number(
+								BigInt(userState.lockedDarkMatter || 0) -
+									BigInt(amount)
+							)
 						),
 					},
 					{ transaction }
 				);
 				break;
-			case 'tgStars':
+			case 'stars':
 				await userState.update(
 					{
-						tgStars: userState.tgStars + amount,
-						lockedTgStars: Math.max(
+						stars: BigInt(userState.stars) + BigInt(amount),
+						lockedStars: Math.max(
 							0,
-							(userState.lockedTgStars || 0) - amount
+							Number(
+								BigInt(userState.lockedStars || 0) -
+									BigInt(amount)
+							)
 						),
 					},
 					{ transaction }
@@ -648,8 +664,12 @@ class MarketService {
 			await this.deductCurrency(buyerId, currency, price, transaction);
 		}
 
-		// Calculate the commission
-		const commissionRate = commission[currency] || 0;
+		// Get commission rate from database
+		const commissionRecord = await MarketCommission.findOne({
+			where: { currency },
+			transaction,
+		});
+		const commissionRate = commissionRecord ? commissionRecord.rate : 0;
 		const commissionAmount = price * commissionRate;
 		const sellerAmount = price - commissionAmount;
 
@@ -700,9 +720,6 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async deductCurrency(userId, currency, amount, transaction) {
-		if (userId === SYSTEM_USER_ID) {
-			return;
-		}
 		const userState = await UserState.findOne({
 			where: { userId },
 			transaction,
@@ -710,39 +727,67 @@ class MarketService {
 
 		switch (currency) {
 			case 'stardust':
+				if (
+					BigInt(userState.stardust) < BigInt(amount) &&
+					userId !== SYSTEM_USER_ID
+				) {
+					throw new ApiError(400, 'Insufficient stardust');
+				}
 				await userState.update(
 					{
-						stardust: userState.stardust - amount,
+						stardust: BigInt(userState.stardust) - BigInt(amount),
 					},
 					{ transaction }
 				);
 				break;
 			case 'darkMatter':
+				if (
+					BigInt(userState.darkMatter) < BigInt(amount) &&
+					userId !== SYSTEM_USER_ID
+				) {
+					throw new ApiError(400, 'Insufficient dark matter');
+				}
 				await userState.update(
 					{
-						darkMatter: userState.darkMatter - amount,
+						darkMatter:
+							BigInt(userState.darkMatter) - BigInt(amount),
+					},
+					{ transaction }
+				);
+				break;
+			case 'stars':
+				if (
+					BigInt(userState.stars) < BigInt(amount) &&
+					userId !== SYSTEM_USER_ID
+				) {
+					throw new ApiError(400, 'Insufficient stars');
+				}
+				await userState.update(
+					{
+						stars: BigInt(userState.stars) - BigInt(amount),
+					},
+					{ transaction }
+				);
+				break;
+			case 'tonToken':
+				await userState.update(
+					{
+						tonToken:
+							parseFloat(userState.tonToken) - parseFloat(amount),
 					},
 					{ transaction }
 				);
 				break;
 			case 'tgStars':
+				if (
+					BigInt(userState.tgStars) < BigInt(amount) &&
+					userId !== SYSTEM_USER_ID
+				) {
+					throw new ApiError(400, 'Insufficient tgStars');
+				}
 				await userState.update(
 					{
-						tgStars: userState.tgStars - amount,
-					},
-					{ transaction }
-				);
-			case 'tonToken':
-				await userState.update(
-					{
-						tonToken: userState.tonToken - amount,
-					},
-					{ transaction }
-				);
-			case 'stars':
-				await userState.update(
-					{
-						stars: userState.stars - amount,
+						tgStars: BigInt(userState.tgStars) - BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -759,19 +804,20 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async addCurrency(userId, currency, amount, transaction) {
-		if (userId === SYSTEM_USER_ID) {
-			return;
-		}
 		const userState = await UserState.findOne({
 			where: { userId },
 			transaction,
 		});
 
+		if (!userState) {
+			throw new Error(`UserState not found for userId: ${userId}`);
+		}
+
 		switch (currency) {
 			case 'stardust':
 				await userState.update(
 					{
-						stardust: userState.stardust + amount,
+						stardust: BigInt(userState.stardust) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -779,7 +825,8 @@ class MarketService {
 			case 'darkMatter':
 				await userState.update(
 					{
-						darkMatter: userState.darkMatter + amount,
+						darkMatter:
+							BigInt(userState.darkMatter) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -787,15 +834,7 @@ class MarketService {
 			case 'tgStars':
 				await userState.update(
 					{
-						tgStars: userState.tgStars + amount,
-					},
-					{ transaction }
-				);
-				break;
-			case 'stars':
-				await userState.update(
-					{
-						stars: userState.stars + amount,
+						tgStars: BigInt(userState.tgStars) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -803,7 +842,16 @@ class MarketService {
 			case 'tonToken':
 				await userState.update(
 					{
-						tonToken: userState.tonToken + amount,
+						tonToken:
+							parseFloat(userState.tonToken) + parseFloat(amount),
+					},
+					{ transaction }
+				);
+				break;
+			case 'stars':
+				await userState.update(
+					{
+						stars: BigInt(userState.stars) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -823,15 +871,20 @@ class MarketService {
 
 		switch (itemType) {
 			case 'galaxy':
-				await Galaxy.update(
-					{
-						userId: buyerId,
-					},
-					{
-						where: { id: itemId },
-						transaction,
-					}
-				);
+				// Update galaxy ownership and add stars to starCurrent
+				const galaxy = await Galaxy.findByPk(itemId, { transaction });
+				if (galaxy) {
+					await Galaxy.update(
+						{
+							userId: buyerId,
+							starCurrent: galaxy.starCurrent + offer.amount,
+						},
+						{
+							where: { id: itemId },
+							transaction,
+						}
+					);
+				}
 				await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'artifact':
@@ -908,7 +961,7 @@ class MarketService {
 			case 'stardust':
 				await buyerState.update(
 					{
-						stardust: buyerState.stardust + amount,
+						stardust: BigInt(buyerState.stardust) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -916,7 +969,8 @@ class MarketService {
 			case 'darkMatter':
 				await buyerState.update(
 					{
-						darkMatter: buyerState.darkMatter + amount,
+						darkMatter:
+							BigInt(buyerState.darkMatter) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -924,7 +978,7 @@ class MarketService {
 			case 'stars':
 				await buyerState.update(
 					{
-						stars: buyerState.stars + amount,
+						stars: BigInt(buyerState.stars) + BigInt(amount),
 					},
 					{ transaction }
 				);
@@ -945,7 +999,10 @@ class MarketService {
 						{
 							lockedStardust: Math.max(
 								0,
-								(sellerState.lockedStardust || 0) - amount
+								Number(
+									BigInt(sellerState.lockedStardust || 0) -
+										BigInt(amount)
+								)
 							),
 						},
 						{ transaction }
@@ -956,7 +1013,10 @@ class MarketService {
 						{
 							lockedDarkMatter: Math.max(
 								0,
-								(sellerState.lockedDarkMatter || 0) - amount
+								Number(
+									BigInt(sellerState.lockedDarkMatter || 0) -
+										BigInt(amount)
+								)
 							),
 						},
 						{ transaction }
@@ -967,7 +1027,10 @@ class MarketService {
 						{
 							lockedTgStars: Math.max(
 								0,
-								(sellerState.lockedTgStars || 0) - amount
+								Number(
+									BigInt(sellerState.lockedTgStars || 0) -
+										BigInt(amount)
+								)
 							),
 						},
 						{ transaction }
@@ -1028,48 +1091,6 @@ class MarketService {
 			logger.error(`Error processing expired offers: ${error.message}`);
 			throw error;
 		}
-	}
-
-	/**
-	 * Register the transfer of a resource for an upgrade
-	 * @param {Object} params { userId, nodeId, amount, resource }
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerUpgradePayment({ userId, nodeId, amount, resource }) {
-		return await gameService.registerUpgradePayment({
-			userId,
-			nodeId,
-			amount,
-			resource,
-		});
-	}
-
-	/**
-	 * Register the transfer of a resource for a task
-	 * @param {Object} params { userId, taskId, amount, resource }
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerTaskReward({ userId, taskId, amount, resource }) {
-		return await gameService.registerTaskReward({
-			userId,
-			taskId,
-			amount,
-			resource,
-		});
-	}
-
-	/**
-	 * Register the transfer of a resource for an event
-	 * @param {Object} params { userId, eventId, amount, resource }
-	 * @returns {Promise<Object>} Result of the operation
-	 */
-	async registerEventReward({ userId, eventId, amount, resource }) {
-		return await gameService.registerEventReward({
-			userId,
-			eventId,
-			amount,
-			resource,
-		});
 	}
 
 	/**
@@ -1804,6 +1825,46 @@ class MarketService {
 		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 
 		try {
+			// Устанавливаем отложенные ограничения для этой транзакции
+			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+				transaction: t,
+			});
+			if (offer.price > 0) {
+				await this.addCurrency(
+					offer.sellerId,
+					offer.currency,
+					offer.price,
+					t
+				);
+
+				await this.deductCurrency(
+					offer.buyerId,
+					offer.currency,
+					offer.price,
+					t
+				);
+			}
+
+			if (offer.amount > 0) {
+				await this.addCurrency(
+					offer.buyerId,
+					offer.resource,
+					offer.amount,
+					t
+				);
+				await this.deductCurrency(
+					offer.sellerId,
+					offer.resource,
+					offer.amount,
+					t
+				);
+			}
+
+			// Transfer item ownership if needed (for galaxies, artifacts, etc.)
+			//if (offer.itemType === 'galaxy' || offer.itemType === 'artifact') {
+			//	await this.transferItemOwnership(offer, offer.buyerId, t);
+			//}
+
 			const txOffer = await MarketOffer.create(
 				{
 					sellerId: offer.sellerId,
@@ -1833,78 +1894,68 @@ class MarketService {
 				},
 				{ t }
 			);
-
-			// transfer money from buyer to contrac
-			const payment = await PaymentTransaction.create(
-				{
-					marketTransactionId: txMarket.id,
-					fromAccount: offer.buyerId,
-					toAccount: offer.sellerId,
-					priceOrAmount: offer.price,
-					currencyOrResource: offer.currency,
-					txType: offer.txType,
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ t }
-			);
+			let payment = null;
+			if (offer.price > 0) {
+				// transfer money from buyer to contrac
+				payment = await PaymentTransaction.create(
+					{
+						marketTransactionId: txMarket.id,
+						fromAccount: offer.buyerId,
+						toAccount: offer.sellerId,
+						priceOrAmount: offer.price,
+						currencyOrResource: offer.currency,
+						txType: offer.txType,
+						status: 'CONFIRMED',
+						completedAt: new Date(),
+					},
+					{ t }
+				);
+			}
 			//await payment.save({ t });
 
 			logger.debug('payment created');
+			let transferResource = null;
 			// transfer stars from contract to buyer
-			const transferStars = await PaymentTransaction.create(
-				{
-					marketTransactionId: txMarket.id,
-					fromAccount: offer.sellerId,
-					toAccount: offer.buyerId,
-					priceOrAmount: offer.amount,
-					currencyOrResource: offer.resource,
-					txType: offer.txType,
-					status: 'CONFIRMED',
-					completedAt: new Date(),
-				},
-				{ t }
-			);
+			if (offer.amount > 0) {
+				transferResource = await PaymentTransaction.create(
+					{
+						marketTransactionId: txMarket.id,
+						fromAccount: offer.sellerId,
+						toAccount: offer.buyerId,
+						priceOrAmount: offer.amount,
+						currencyOrResource: offer.resource,
+						txType: offer.txType,
+						status: 'CONFIRMED',
+						completedAt: new Date(),
+					},
+					{ t }
+				);
+			}
 			logger.debug('offer registered');
-
-			await this.addCurrency(
-				offer.buyerId,
-				offer.resource,
-				offer.amount,
-				t
-			);
-			await this.deductCurrency(
-				offer.sellerId,
-				offer.currency,
-				offer.price,
-				t
-			);
 
 			// Коммитим транзакцию только если она была создана в этом методе
 			if (shouldCommit) {
+				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+					transaction: t,
+				});
+				logger.debug('constraints set');
 				await t.commit();
 			}
-
-			return {
+			const result = {
 				offer: txOffer,
 				marketTransaction: txMarket,
 				payment: payment,
-				transferStars: transferStars,
+				transferResource: transferResource,
 			};
+			logger.debug('offer registered', result);
+
+			return result;
 		} catch (error) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
 			throw error;
 		}
-	}
-	/**
-	 * Register a stars transfer
-	 * @param {Object} offer - Offer data
-	 * @returns {Promise<Object>} - Market offer
-	 */
-	async registerStarsTransfer(offer) {
-		return await gameService.registerStarsTransfer(offer);
 	}
 }
 

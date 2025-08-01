@@ -52,13 +52,13 @@ describe('Upgrade Router', () => {
 	let app;
 	let authMiddleware;
 	let telegramAuthMiddleware;
-	let adminMiddleware;
+	let adminAuthMiddleware;
 
 	beforeEach(() => {
 		// Получаем моки middleware
 		authMiddleware = require('../../middlewares/auth-middleware');
 		telegramAuthMiddleware = require('../../middlewares/telegram-auth-middleware');
-		adminMiddleware = require('../../middlewares/admin-middleware');
+		adminAuthMiddleware = require('../../middlewares/admin-auth-middleware');
 
 		// Сбрасываем моки перед каждым тестом
 		jest.clearAllMocks();
@@ -237,7 +237,7 @@ describe('Upgrade Router', () => {
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
 			expect(upgradeController.createUpgradeNodes).toHaveBeenCalled();
@@ -258,7 +258,7 @@ describe('Upgrade Router', () => {
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
 			expect(upgradeController.getAllUpgradeNodes).toHaveBeenCalled();

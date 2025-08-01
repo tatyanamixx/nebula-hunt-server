@@ -8,15 +8,13 @@ const User = sequelize.define(
 	'user',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true },
-		username: { type: DataTypes.STRING },
-		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
+		username: { type: DataTypes.STRING, allowNull: true },
 		role: {
 			type: DataTypes.ENUM('USER', 'SYSTEM'),
 			defaultValue: 'USER',
 		},
-
+		referral: { type: DataTypes.BIGINT, defaultValue: 0 },
 		blocked: { type: DataTypes.BOOLEAN, defaultValue: false },
-
 		tonWallet: {
 			type: DataTypes.STRING,
 			allowNull: true,
@@ -24,7 +22,6 @@ const User = sequelize.define(
 		},
 	},
 	{
-		timestamps: true, // This will add createdAt and updatedAt fields
 		indexes: [
 			{
 				fields: ['referral'],
@@ -40,61 +37,37 @@ const UserState = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, unique: true, allowNull: false },
 		stardust: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			allowNull: false,
 			defaultValue: 0,
 		},
 		darkMatter: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			allowNull: false,
 			defaultValue: 0,
 		},
-		stars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-		tgStars: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-		tonToken: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
-		lastLoginDate: {
-			type: DataTypes.DATEONLY,
-			allowNull: true,
-			comment: 'Date of the last login (YYYY-MM-DD)',
-		},
-		currentStreak: {
-			type: DataTypes.INTEGER,
+		stars: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+		tgStars: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+		tonToken: {
+			type: DataTypes.DECIMAL(30, 8),
+			allowNull: false,
 			defaultValue: 0,
-			comment: 'Number of consecutive days logged in',
 		},
-		maxStreak: {
-			type: DataTypes.INTEGER,
-			defaultValue: 0,
-			comment: 'Maximum streak achieved',
-		},
-		streakUpdatedAt: {
-			type: DataTypes.DATE,
-			allowNull: true,
-			comment: 'Timestamp of the last streak update',
-		},
-		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
-		entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 		lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
 		lockedStardust: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			allowNull: true,
 			defaultValue: 0,
 		},
 		lockedDarkMatter: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			allowNull: true,
 			defaultValue: 0,
 		},
 		lockedStars: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			allowNull: true,
 			defaultValue: 0,
-		},
-		stateHistory: {
-			type: DataTypes.JSONB,
-			defaultValue: [],
-			comment: 'History of user state with timestamps',
 		},
 	},
 	{
@@ -112,12 +85,31 @@ const UserUpgrade = sequelize.define(
 	'userupgrade',
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-		userId: { type: DataTypes.BIGINT, allowNull: false },
-		upgradeNodeTemplateId: { type: DataTypes.BIGINT, allowNull: false },
-		level: { type: DataTypes.INTEGER, defaultValue: 0 },
-		progress: { type: DataTypes.INTEGER, defaultValue: 0 },
-		targetProgress: { type: DataTypes.INTEGER, defaultValue: 100 },
-		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		userId: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+		},
+		upgradeNodeTemplateId: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+			field: 'upgradeNodeTemplateId', // Explicitly set the field name
+		},
+		level: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+		},
+		progress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+		},
+		targetProgress: {
+			type: DataTypes.INTEGER,
+			defaultValue: 100,
+		},
+		completed: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+		},
 		progressHistory: {
 			type: DataTypes.JSONB,
 			defaultValue: [],
@@ -125,6 +117,14 @@ const UserUpgrade = sequelize.define(
 		lastProgressUpdate: {
 			type: DataTypes.DATE,
 			defaultValue: DataTypes.NOW,
+		},
+		stability: {
+			type: DataTypes.FLOAT,
+			defaultValue: 0.0,
+		},
+		instability: {
+			type: DataTypes.FLOAT,
+			defaultValue: 0.0,
 		},
 	},
 	{
@@ -135,7 +135,7 @@ const UserUpgrade = sequelize.define(
 			},
 			{
 				fields: ['upgradeNodeTemplateId'],
-				name: 'userupgrades_upgrade_node_id_idx',
+				name: 'userupgrades_upgrade_node_template_id_idx',
 			},
 			{
 				fields: ['completed'],
@@ -151,7 +151,11 @@ const UserTask = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
-		taskTemplateId: { type: DataTypes.BIGINT, allowNull: false },
+		taskTemplateId: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+			field: 'taskTemplateId', // Explicitly set the field name
+		},
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 		reward: {
 			type: DataTypes.JSONB,
@@ -189,7 +193,11 @@ const UserEvent = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
-		eventTemplateId: { type: DataTypes.BIGINT, allowNull: false },
+		eventTemplateId: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+			field: 'eventTemplateId', // Explicitly set the field name
+		},
 		status: {
 			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED', 'CANCELLED'),
 			defaultValue: 'ACTIVE',
@@ -296,6 +304,7 @@ const Token = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
+
 		refreshToken: {
 			type: DataTypes.TEXT,
 			allowNull: false,
@@ -375,45 +384,68 @@ const Artifact = sequelize.define(
 	}
 );
 
-const ArtifactTemplate = sequelize.define('artifacttemplate', {
-	id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-	slug: { type: DataTypes.STRING, unique: true, allowNull: false },
-	name: { type: DataTypes.STRING },
-	description: { type: DataTypes.TEXT },
-	rarity: {
-		type: DataTypes.ENUM('COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'),
-		defaultValue: 'COMMON',
-	},
-	image: { type: DataTypes.STRING },
-	effects: {
-		type: DataTypes.JSONB,
-		defaultValue: {},
-		comment: 'Например: { chaos: 0.1, stability: -0.2 }',
-	},
-	limited: { type: DataTypes.BOOLEAN, defaultValue: false },
-	limitedCount: { type: DataTypes.INTEGER, defaultValue: 0 },
-	limitedDuration: { type: DataTypes.INTEGER, defaultValue: 0 },
-	limitedDurationType: {
-		type: DataTypes.ENUM('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'),
-		defaultValue: 'HOUR',
-	},
-	limitedDurationValue: { type: DataTypes.INTEGER, defaultValue: 0 },
-
-	indexes: [
-		{
-			fields: ['slug'],
-			name: 'artifacttemplate_slug_idx',
+const ArtifactTemplate = sequelize.define(
+	'artifacttemplate',
+	{
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
+		name: { type: DataTypes.STRING },
+		description: {
+			type: DataTypes.JSONB,
+			defaultValue: {
+				en: '',
+				ru: '',
+			},
+			comment: 'Localized artifact descriptions',
 		},
-		{
-			fields: ['rarity'],
-			name: 'artifacttemplate_rarity_idx',
+		rarity: {
+			type: DataTypes.ENUM(
+				'COMMON',
+				'UNCOMMON',
+				'RARE',
+				'EPIC',
+				'LEGENDARY'
+			),
+			defaultValue: 'COMMON',
 		},
-		{
-			fields: ['limited'],
-			name: 'artifacttemplate_limited_idx',
+		image: { type: DataTypes.STRING },
+		effects: {
+			type: DataTypes.JSONB,
+			defaultValue: {},
+			comment: 'Например: { chaos: 0.1, stability: -0.2 }',
 		},
-	],
-});
+		limited: { type: DataTypes.BOOLEAN, defaultValue: false },
+		limitedCount: { type: DataTypes.INTEGER, defaultValue: 0 },
+		limitedDuration: { type: DataTypes.INTEGER, defaultValue: 0 },
+		limitedDurationType: {
+			type: DataTypes.ENUM('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'),
+			defaultValue: 'HOUR',
+		},
+		limitedDurationValue: { type: DataTypes.INTEGER, defaultValue: 0 },
+		baseChance: {
+			type: DataTypes.FLOAT,
+			defaultValue: 0.01,
+			allowNull: false,
+			comment: 'Base chance for this artifact to be found (0.0 to 1.0)',
+		},
+	},
+	{
+		indexes: [
+			{
+				fields: ['slug'],
+				name: 'artifacttemplate_slug_idx',
+			},
+			{
+				fields: ['rarity'],
+				name: 'artifacttemplate_rarity_idx',
+			},
+			{
+				fields: ['limited'],
+				name: 'artifacttemplate_limited_idx',
+			},
+		],
+	}
+);
 
 const UpgradeNodeTemplate = sequelize.define(
 	'upgradenodetemplate',
@@ -434,7 +466,7 @@ const UpgradeNodeTemplate = sequelize.define(
 		effectPerLevel: { type: DataTypes.FLOAT, defaultValue: 0 },
 		priceMultiplier: { type: DataTypes.FLOAT, defaultValue: 1.0 },
 		currency: {
-			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
+			type: DataTypes.ENUM('stardust', 'darkmatter', 'stars'),
 			defaultValue: 'stardust',
 		},
 		category: {
@@ -528,6 +560,11 @@ const TaskTemplate = sequelize.define(
 			type: DataTypes.BOOLEAN,
 			defaultValue: true,
 		},
+		sortOrder: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			allowNull: false,
+		},
 	},
 	{
 		indexes: [
@@ -542,7 +579,12 @@ const TaskTemplate = sequelize.define(
 const EventTemplate = sequelize.define(
 	'eventtemplate',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+		id: {
+			type: DataTypes.BIGINT,
+			primaryKey: true,
+			autoIncrement: true,
+			allowNull: false,
+		},
 		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
 		name: { type: DataTypes.STRING, allowNull: false },
 		description: {
@@ -765,7 +807,8 @@ const PaymentTransaction = sequelize.define(
 				'TON_TRANSFER',
 				'TG_STARS_TRANSFER',
 				'STARDUST_TRANSFER',
-				'DARK_MATTER_TRANSFER'
+				'DARK_MATTER_TRANSFER',
+				'DAILY_REWARD'
 			),
 			allowNull: false,
 		},
@@ -796,22 +839,40 @@ const MarketCommission = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		currency: {
-			type: DataTypes.ENUM('tgStars', 'tonToken'),
+			type: DataTypes.ENUM(
+				'tgstars',
+				'tontoken',
+				'stardust',
+				'darkmatter',
+				'stars'
+			),
 			unique: true,
 			allowNull: false,
 		},
 		rate: { type: DataTypes.FLOAT, allowNull: false },
 		description: { type: DataTypes.STRING, allowNull: true },
 	},
-	{ tableName: 'marketcommissions' }
+	{
+		tableName: 'marketcommissions',
+		indexes: [
+			{
+				fields: ['currency'],
+				name: 'marketcommission_currency_idx',
+			},
+		],
+	}
 );
 
 const PackageStore = sequelize.define(
 	'packagestore',
 	{
-		id: { type: DataTypes.BIGINT, primaryKey: true },
+		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
-		packageTemplateId: { type: DataTypes.BIGINT, allowNull: false },
+		packageTemplateId: {
+			type: DataTypes.BIGINT,
+			allowNull: false,
+			field: 'packageTemplateId', // Explicitly set the field name
+		},
 		amount: { type: DataTypes.INTEGER, allowNull: false },
 		resource: {
 			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
@@ -885,9 +946,9 @@ const PackageTemplate = sequelize.define(
 			type: DataTypes.BOOLEAN,
 			defaultValue: true,
 		},
-		imageUrl: { type: DataTypes.STRING, allowNull: true },
+		icon: { type: DataTypes.STRING, allowNull: true },
 		sortOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
-		category: { type: DataTypes.STRING, allowNull: true },
+		labelKey: { type: DataTypes.STRING(500), allowNull: true },
 		isPromoted: { type: DataTypes.BOOLEAN, defaultValue: false },
 		validUntil: { type: DataTypes.DATE, allowNull: true },
 	},
@@ -1036,15 +1097,28 @@ MarketOffer.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 User.hasMany(MarketTransaction, {
 	as: 'buyertransactions',
 	foreignKey: 'buyerId',
+	constraints: false,
 });
 User.hasMany(MarketTransaction, {
 	as: 'sellertransactions',
 	foreignKey: 'sellerId',
+	constraints: false,
 });
-MarketTransaction.belongsTo(User, { as: 'buyer', foreignKey: 'buyerId' });
-MarketTransaction.belongsTo(User, { as: 'seller', foreignKey: 'sellerId' });
+MarketTransaction.belongsTo(User, {
+	as: 'buyer',
+	foreignKey: 'buyerId',
+	constraints: false,
+});
+MarketTransaction.belongsTo(User, {
+	as: 'seller',
+	foreignKey: 'sellerId',
+	constraints: false,
+});
 
-MarketTransaction.belongsTo(MarketOffer, { foreignKey: 'offerId' });
+MarketTransaction.belongsTo(MarketOffer, {
+	foreignKey: 'offerId',
+	constraints: false,
+});
 
 PaymentTransaction.belongsTo(MarketTransaction, {
 	foreignKey: 'marketTransactionId',
@@ -1066,27 +1140,47 @@ User.hasMany(PaymentTransaction, {
 User.hasMany(PackageStore, { foreignKey: 'userId' });
 PackageStore.belongsTo(User, { foreignKey: 'userId' });
 
-PackageTemplate.hasMany(PackageStore);
-PackageStore.belongsTo(PackageTemplate, { foreignKey: 'packageTemplateId' });
+PackageTemplate.hasMany(PackageStore, {
+	foreignKey: 'packageTemplateId',
+});
+PackageStore.belongsTo(PackageTemplate, {
+	foreignKey: 'packageTemplateId',
+	targetKey: 'id',
+});
 
 // Связи для новых моделей
 User.hasMany(UserUpgrade);
 UserUpgrade.belongsTo(User, { foreignKey: 'userId' });
 
-UpgradeNodeTemplate.hasMany(UserUpgrade);
-UserUpgrade.belongsTo(UpgradeNodeTemplate, { foreignKey: 'nodeId' });
+UpgradeNodeTemplate.hasMany(UserUpgrade, {
+	foreignKey: 'upgradeNodeTemplateId',
+});
+UserUpgrade.belongsTo(UpgradeNodeTemplate, {
+	foreignKey: 'upgradeNodeTemplateId',
+	targetKey: 'id',
+});
 
 User.hasMany(UserTask);
 UserTask.belongsTo(User, { foreignKey: 'userId' });
 
-TaskTemplate.hasMany(UserTask);
-UserTask.belongsTo(TaskTemplate, { foreignKey: 'taskId' });
+TaskTemplate.hasMany(UserTask, {
+	foreignKey: 'taskTemplateId',
+});
+UserTask.belongsTo(TaskTemplate, {
+	foreignKey: 'taskTemplateId',
+	targetKey: 'id',
+});
 
 User.hasMany(UserEvent);
 UserEvent.belongsTo(User, { foreignKey: 'userId' });
 
-EventTemplate.hasMany(UserEvent);
-UserEvent.belongsTo(EventTemplate, { foreignKey: 'eventId' });
+EventTemplate.hasMany(UserEvent, {
+	foreignKey: 'eventTemplateId',
+});
+UserEvent.belongsTo(EventTemplate, {
+	foreignKey: 'eventTemplateId',
+	targetKey: 'id',
+});
 
 User.hasOne(UserEventSetting);
 UserEventSetting.belongsTo(User, { foreignKey: 'userId' });
@@ -1101,6 +1195,9 @@ ArtifactTemplate.hasMany(Artifact, { foreignKey: 'artifactTemplateId' });
 Artifact.belongsTo(ArtifactTemplate, { foreignKey: 'artifactTemplateId' });
 
 module.exports = {
+	// DATABASE
+	sequelize,
+
 	// ADMIN
 	Admin,
 	AdminToken,

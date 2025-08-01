@@ -1,365 +1,363 @@
-{
-	"nodes": [
-		{
-			"id": "stardust_production",
-			"name": "Stellar Collector",
-			"description": {
-				"en": "Increases stardust generation rate",
-				"ru": "Базовая добыча звездной пыли"
-			},
-			"category": "production",
-			"basePrice": 1000,
-			"currency": "stardust",
-			"maxLevel": 20,
-			"priceMultiplier": 1.5,
-			"effectPerLevel": 0.1,
-			"icon": "⚡",
-			"stability": 0.1,
-			"instability": 0.1,
-			"conditions": { "targetProgress": 20 },
-			"children": ["star_effeciency"]
+[
+	{
+		"slug": "stardust_production",
+		"name": "Stellar Collector",
+		"description": {
+			"en": "Increases stardust generation rate",
+			"ru": "Базовая добыча звездной пыли"
 		},
-		{
-			"id": "star_effeciency",
-			"name": "Star Effeciency",
-			"description": {
-				"en": "Stars generate more stardust based on their luminosity",
-				"ru": "..."
-			},
-			"category": "production",
-			"basePrice": 2000,
-			"currency": "stardust",
-			"maxLevel": 15,
-			"priceMultiplier": 1.6,
-			"effectPerLevel": 0.08,
-			"icon": "🔆",
-			"stability": 0.1,
-			"instability": 0.05,
-			"conditions": { "targetProgress": 15 },
-			"children": ["cosmos_harmony"]
+		"category": "production",
+		"basePrice": 1000,
+		"currency": "stardust",
+		"maxLevel": 20,
+		"priceMultiplier": 1.5,
+		"effectPerLevel": 0.1,
+		"icon": "⚡",
+		"stability": 0.1,
+		"instability": 0.1,
+		"conditions": { "targetProgress": 20 },
+		"children": ["star_effeciency"]
+	},
+	{
+		"slug": "star_effeciency",
+		"name": "Star Effeciency",
+		"description": {
+			"en": "Stars generate more stardust based on their luminosity",
+			"ru": "..."
 		},
-		{
-			"id": "cosmos_harmony",
-			"name": "Cosmos Harmony",
-			"description": {
-				"en": "Stars work in harmony, boosting overall production",
-				"ru": "..."
-			},
-			"category": "production",
-			"basePrice": 7500,
-			"currency": "stardust",
-			"maxLevel": 10,
-			"priceMultiplier": 1.7,
-			"effectPerLevel": 0.15,
-			"icon": "☯️",
-			"stability": 0.1,
-			"instability": 0,
-			"conditions": { "targetProgress": 10 },
-			"children": ["star_discount"]
+		"category": "production",
+		"basePrice": 2000,
+		"currency": "stardust",
+		"maxLevel": 15,
+		"priceMultiplier": 1.6,
+		"effectPerLevel": 0.08,
+		"icon": "🔆",
+		"stability": 0.1,
+		"instability": 0.05,
+		"conditions": { "targetProgress": 15 },
+		"children": ["cosmos_harmony"]
+	},
+	{
+		"slug": "cosmos_harmony",
+		"name": "Cosmos Harmony",
+		"description": {
+			"en": "Stars work in harmony, boosting overall production",
+			"ru": "..."
 		},
-		{
-			"id": "star_discount",
-			"name": "Astronomical Coupon",
-			"description": {
-				"en": "Reduces star creation cost",
-				"ru": "..."
-			},
-			"category": "economy",
-			"basePrice": 2500,
-			"currency": "stardust",
-			"maxLevel": 20,
-			"icon": "💰",
-			"stability": 0.1,
-			"instability": 0.25,
-			"priceMultiplier": 1.75,
-			"effectPerLevel": 0.05,
-			"conditions": { "targetProgress": 20 },
-			"children": ["bulk_creation"]
+		"category": "production",
+		"basePrice": 7500,
+		"currency": "stardust",
+		"maxLevel": 10,
+		"priceMultiplier": 1.7,
+		"effectPerLevel": 0.15,
+		"icon": "☯️",
+		"stability": 0.1,
+		"instability": 0,
+		"conditions": { "targetProgress": 10 },
+		"children": ["star_discount"]
+	},
+	{
+		"slug": "star_discount",
+		"name": "Astronomical Coupon",
+		"description": {
+			"en": "Reduces star creation cost",
+			"ru": "..."
 		},
-		{
-			"id": "bulk_creation",
-			"name": "Bulk Creation",
-			"description": {
-				"en": "Creating multiple stars at once gives a discount",
-				"ru": "..."
-			},
-			"category": "economy",
-			"basePrice": 5000,
-			"currency": "stardust",
-			"maxLevel": 10,
-			"icon": "📊",
-			"stability": 0.1,
-			"instability": 0.3,
-			"priceMultiplier": 1.65,
-			"effectPerLevel": 0.03,
-			"conditions": { "targetProgress": 10 },
-			"children": ["stellar_market"]
+		"category": "economy",
+		"basePrice": 2500,
+		"currency": "stardust",
+		"maxLevel": 20,
+		"icon": "💰",
+		"stability": 0.1,
+		"instability": 0.25,
+		"priceMultiplier": 1.75,
+		"effectPerLevel": 0.05,
+		"conditions": { "targetProgress": 20 },
+		"children": ["bulk_creation"]
+	},
+	{
+		"slug": "bulk_creation",
+		"name": "Bulk Creation",
+		"description": {
+			"en": "Creating multiple stars at once gives a discount",
+			"ru": "..."
 		},
-		{
-			"id": "stellar_market",
-			"name": "Stellar Market",
-			"description": {
-				"en": "Occasional sales on star creation costs",
-				"ru": "..."
-			},
-			"currency": "stardust",
-			"category": "economy",
-			"basePrice": 10000,
-			"maxLevel": 5,
-			"icon": "🏪",
-			"stability": 0.1,
-			"instability": 0.3,
-			"priceMultiplier": 2.0,
-			"effectPerLevel": 0.1,
-			"conditions": { "targetProgress": 5 },
-			"children": ["stardust_storage"]
+		"category": "economy",
+		"basePrice": 5000,
+		"currency": "stardust",
+		"maxLevel": 10,
+		"icon": "📊",
+		"stability": 0.1,
+		"instability": 0.3,
+		"priceMultiplier": 1.65,
+		"effectPerLevel": 0.03,
+		"conditions": { "targetProgress": 10 },
+		"children": ["stellar_market"]
+	},
+	{
+		"slug": "stellar_market",
+		"name": "Stellar Market",
+		"description": {
+			"en": "Occasional sales on star creation costs",
+			"ru": "..."
 		},
-		{
-			"id": "stardust_storage",
-			"name": "Cosmic Storage",
-			"description": {
-				"en": "Increases maximum stardust accumulation between collections",
-				"ru": "..."
-			},
-			"category": "storage",
-			"basePrice": 5000,
-			"currency": "stardust",
-			"maxLevel": 15,
-			"stability": 0.1,
-			"instability": 0.0,
-			"priceMultiplier": 1.6,
-			"effectPerLevel": 0.2,
-			"icon": "🗄️",
-			"conditions": { "targetProgress": 15 },
-			"children": ["compression_tech"]
+		"currency": "stardust",
+		"category": "economy",
+		"basePrice": 10000,
+		"maxLevel": 5,
+		"icon": "🏪",
+		"stability": 0.1,
+		"instability": 0.3,
+		"priceMultiplier": 2.0,
+		"effectPerLevel": 0.1,
+		"conditions": { "targetProgress": 5 },
+		"children": ["stardust_storage"]
+	},
+	{
+		"slug": "stardust_storage",
+		"name": "Cosmic Storage",
+		"description": {
+			"en": "Increases maximum stardust accumulation between collections",
+			"ru": "..."
 		},
-		{
-			"id": "compression_tech",
-			"name": "Compression Techology",
-			"description": {
-				"en": "Advanced technology to store more stardust in the same space",
-				"ru": "..."
-			},
-			"category": "storage",
-			"basePrice": 10000,
-			"currency": "stardust",
-			"maxLevel": 10,
-			"stability": 0.1,
-			"instability": 0.0,
-			"priceMultiplier": 1.7,
-			"effectPerLevel": 0.15,
-			"icon": "📦",
-			"conditions": { "targetProgress": 10 },
-			"children": ["overflow_protection"]
+		"category": "storage",
+		"basePrice": 5000,
+		"currency": "stardust",
+		"maxLevel": 15,
+		"stability": 0.1,
+		"instability": 0.0,
+		"priceMultiplier": 1.6,
+		"effectPerLevel": 0.2,
+		"icon": "🗄️",
+		"conditions": { "targetProgress": 15 },
+		"children": ["compression_tech"]
+	},
+	{
+		"slug": "compression_tech",
+		"name": "Compression Techology",
+		"description": {
+			"en": "Advanced technology to store more stardust in the same space",
+			"ru": "..."
 		},
-		{
-			"id": "overflow_protection",
-			"name": "Overflow Protection",
-			"description": {
-				"en": "Prevents stardust from being lost when storage is full",
-				"ru": "..."
-			},
-			"category": "storage",
-			"basePrice": 15000,
-			"currency": "stardust",
-			"maxLevel": 5,
-			"stability": 0.1,
-			"instability": -0.1,
-			"priceMultiplier": 2.0,
-			"effectPerLevel": 0.1,
-			"icon": "🛡️",
-			"conditions": { "targetProgress": 5 },
-			"children": []
+		"category": "storage",
+		"basePrice": 10000,
+		"currency": "stardust",
+		"maxLevel": 10,
+		"stability": 0.1,
+		"instability": 0.0,
+		"priceMultiplier": 1.7,
+		"effectPerLevel": 0.15,
+		"icon": "📦",
+		"conditions": { "targetProgress": 10 },
+		"children": ["overflow_protection"]
+	},
+	{
+		"slug": "overflow_protection",
+		"name": "Overflow Protection",
+		"description": {
+			"en": "Prevents stardust from being lost when storage is full",
+			"ru": "..."
 		},
-		{
-			"id": "dark_matter_chance",
-			"name": "Dark Matter Extractor",
-			"description": {
-				"en": "Improve dark matter extraction rate",
-				"ru": "..."
-			},
-			"category": "chance",
-			"basePrice": 5,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": 0.1,
-			"instability": 0.2,
-			"priceMultiplier": 0.5,
-			"effectPerLevel": 0.1,
-			"icon": "🌑",
-			"conditions": { "targetProgress": 5 },
-			"children": ["quantum_instability"]
+		"category": "storage",
+		"basePrice": 15000,
+		"currency": "stardust",
+		"maxLevel": 5,
+		"stability": 0.1,
+		"instability": -0.1,
+		"priceMultiplier": 2.0,
+		"effectPerLevel": 0.1,
+		"icon": "🛡️",
+		"conditions": { "targetProgress": 5 },
+		"children": []
+	},
+	{
+		"slug": "dark_matter_chance",
+		"name": "Dark Matter Extractor",
+		"description": {
+			"en": "Improve dark matter extraction rate",
+			"ru": "..."
 		},
-		{
-			"id": "quantum_instability",
-			"name": "Quantum Instability",
-			"description": {
-				"en": "Introduces quantum fluctuations that can yield dark matter",
-				"ru": "..."
-			},
-			"category": "chance",
-			"basePrice": 40,
-			"currency": "darkmetter",
-			"maxLevel": 8,
-			"stability": -10,
-			"instability": 0.25,
-			"priceMultiplier": 1.6,
-			"effectPerLevel": 0.02,
-			"icon": "🌌",
-			"conditions": { "targetProgress": 8 },
-			"children": ["void_resonance"]
+		"category": "chance",
+		"basePrice": 5,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": 0.1,
+		"instability": 0.2,
+		"priceMultiplier": 0.5,
+		"effectPerLevel": 0.1,
+		"icon": "🌑",
+		"conditions": { "targetProgress": 5 },
+		"children": ["quantum_instability"]
+	},
+	{
+		"slug": "quantum_instability",
+		"name": "Quantum Instability",
+		"description": {
+			"en": "Introduces quantum fluctuations that can yield dark matter",
+			"ru": "..."
 		},
-		{
-			"id": "void_resonance",
-			"name": "Void Resonance",
-			"description": {
-				"en": "Occasional bursts of dark matter from cosmic anomalies",
-				"ru": "..."
-			},
-			"category": "chance",
-			"basePrice": 60,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": -15,
-			"instability": 0.3,	
-			"priceMultiplier": 1.8,
-			"effectPerLevel": 0.05,
-			"icon": "🕳️",
-			"conditions": { "targetProgress": 5 },
-			"children": ["stardust_multiplier"]
+		"category": "chance",
+		"basePrice": 40,
+		"currency": "darkmatter",
+		"maxLevel": 8,
+		"stability": -10,
+		"instability": 0.25,
+		"priceMultiplier": 1.6,
+		"effectPerLevel": 0.02,
+		"icon": "🌌",
+		"conditions": { "targetProgress": 8 },
+		"children": ["void_resonance"]
+	},
+	{
+		"slug": "void_resonance",
+		"name": "Void Resonance",
+		"description": {
+			"en": "Occasional bursts of dark matter from cosmic anomalies",
+			"ru": "..."
 		},
-		{
-			"id": "stardust_multiplier",
-			"name": "Quantum Accelerator",
-			"description": {
-				"en": "Multiplier for all stardust gains",
-				"ru": "..."
-			},
-			"category": "multiplier",
-			"basePrice": 50,
-			"currency": "darkmetter",
-			"maxLevel": 10,
-			"stability": 5,
-			"priceMultiplier": 1.8,
-			"effectPerLevel": 0.2,
-			"icon": "⚛️",
-			"instability": 0.05,
-			"conditions": { "targetProgress": 10 },
-			"children": ["dark_energy_infusion"]
+		"category": "chance",
+		"basePrice": 60,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": -15,
+		"instability": 0.3,
+		"priceMultiplier": 1.8,
+		"effectPerLevel": 0.05,
+		"icon": "🕳️",
+		"conditions": { "targetProgress": 5 },
+		"children": ["stardust_multiplier"]
+	},
+	{
+		"slug": "stardust_multiplier",
+		"name": "Quantum Accelerator",
+		"description": {
+			"en": "Multiplier for all stardust gains",
+			"ru": "..."
 		},
-		{
-			"id": "dark_energy_infusion",
-			"name": "Dark Energy Infusion",
-			"description": {
-				"en": "Infuse stars with dark energy to boost their output",
-				"ru": "..."
-			},
-			"category": "multiplier",
-			"basePrice": 75,
-			"currency": "darkmetter",
-			"maxLevel": 8,
-			"stability": 10,
-			"priceMultiplier": 1.7,
-			"effectPerLevel": 0.15,
-			"icon": "✨",
-			"instability": 0.1,
-			"conditions": { "targetProgress": 8 },
-			"children": ["cosmic_acceleration"]
+		"category": "multiplier",
+		"basePrice": 50,
+		"currency": "darkmatter",
+		"maxLevel": 10,
+		"stability": 5,
+		"priceMultiplier": 1.8,
+		"effectPerLevel": 0.2,
+		"icon": "⚛️",
+		"instability": 0.05,
+		"conditions": { "targetProgress": 10 },
+		"children": ["dark_energy_infusion"]
+	},
+	{
+		"slug": "dark_energy_infusion",
+		"name": "Dark Energy Infusion",
+		"description": {
+			"en": "Infuse stars with dark energy to boost their output",
+			"ru": "..."
 		},
-		{
-			"id": "cosmic_acceleration",
-			"name": "Cosmic Acceleration",
-			"description": {
-				"en": "Time flows faster in your galaxy, speeding up all production",
-				"ru": "..."
-			},
-			"category": "multiplier",
-			"basePrice": 150,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": 15,
-			"priceMultiplier": 1.9,
-			"effectPerLevel": 0.1,
-			"icon": "⏰",
-			"instability": 0.3,
-			"conditions": { "targetProgress": 5 },
-			"children": ["galaxy_explorer"]
+		"category": "multiplier",
+		"basePrice": 75,
+		"currency": "darkmatter",
+		"maxLevel": 8,
+		"stability": 10,
+		"priceMultiplier": 1.7,
+		"effectPerLevel": 0.15,
+		"icon": "✨",
+		"instability": 0.1,
+		"conditions": { "targetProgress": 8 },
+		"children": ["cosmic_acceleration"]
+	},
+	{
+		"slug": "cosmic_acceleration",
+		"name": "Cosmic Acceleration",
+		"description": {
+			"en": "Time flows faster in your galaxy, speeding up all production",
+			"ru": "..."
 		},
-		{
-			"id": "galaxy_explorer",
-			"name": "Galactic Explorer",
-			"description": {
-				"en": "Unlocks special events when exploring new galaxies",
-				"ru": "..."
-			},
-			"category": "special",
-			"basePrice": 100,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": 20,
-			"priceMultiplier": 2.0,
-			"effectPerLevel": 1,
-			"icon": "🚀",
-			"instability": 0.3,
-			"conditions": { "targetProgress": 5 },
-			"children": ["auto_collector"]
+		"category": "multiplier",
+		"basePrice": 150,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": 15,
+		"priceMultiplier": 1.9,
+		"effectPerLevel": 0.1,
+		"icon": "⏰",
+		"instability": 0.3,
+		"conditions": { "targetProgress": 5 },
+		"children": ["galaxy_explorer"]
+	},
+	{
+		"slug": "galaxy_explorer",
+		"name": "Galactic Explorer",
+		"description": {
+			"en": "Unlocks special events when exploring new galaxies",
+			"ru": "..."
 		},
-		{
-			"id": "auto_collector",
-			"name": "Auto Collector",
-			"description": {
-				"en": "Automatically collects a portion of stardust without your intervention",
-				"ru": "..."
-			},
-			"category": "special",
-			"basePrice": 75,
-			"currency": "darkmetter",
-			"maxLevel": 10,
-			"stability": 20,
-			"priceMultiplier": 1.7,
-			"effectPerLevel": 0.1,
-			"icon": "🤖",
-			"instability": -0.1,
-			"conditions": { "targetProgress": 10 },
-			"children": ["stellar_forge"]
+		"category": "special",
+		"basePrice": 100,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": 20,
+		"priceMultiplier": 2.0,
+		"effectPerLevel": 1,
+		"icon": "🚀",
+		"instability": 0.3,
+		"conditions": { "targetProgress": 5 },
+		"children": ["auto_collector"]
+	},
+	{
+		"slug": "auto_collector",
+		"name": "Auto Collector",
+		"description": {
+			"en": "Automatically collects a portion of stardust without your intervention",
+			"ru": "..."
 		},
-		{
-			"id": "stellar_forge",
-			"name": "Stellar Forge",
-			"description": {
-				"en": "Automatically creates stars over time using accumulated stardust",
-				"ru": "..."
-			},
-			"category": "special",
-			"basePrice": 200,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": 20,
-			"priceMultiplier": 2.0,
-			"effectPerLevel": 0.05,
-			"icon": "⚒️",
-			"instability": -0.1,
-			"conditions": { "targetProgress": 5 },
-			"children": ["dark_matter_synthesis"]
+		"category": "special",
+		"basePrice": 75,
+		"currency": "darkmatter",
+		"maxLevel": 10,
+		"stability": 20,
+		"priceMultiplier": 1.7,
+		"effectPerLevel": 0.1,
+		"icon": "🤖",
+		"instability": -0.1,
+		"conditions": { "targetProgress": 10 },
+		"children": ["stellar_forge"]
+	},
+	{
+		"slug": "stellar_forge",
+		"name": "Stellar Forge",
+		"description": {
+			"en": "Automatically creates stars over time using accumulated stardust",
+			"ru": "..."
 		},
-		{
-			"id": "dark_matter_synthesis",
-			"name": "Dark matter Synthesis",
-			"description": {
-				"en": "Chance to create dark matter when creating stars",
-				"ru": "..."
-			},
-			"category": "special",
-			"basePrice": 250,
-			"currency": "darkmetter",
-			"maxLevel": 5,
-			"stability": 20,
-			"priceMultiplier": 2.2,
-			"effectPerLevel": 0.02,
-			"icon": "🌟",
-			"instability": 0.2,
-			"conditions": { "targetProgress": 5 },
-			"children": []
-		}
-	]
-}
+		"category": "special",
+		"basePrice": 200,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": 20,
+		"priceMultiplier": 2.0,
+		"effectPerLevel": 0.05,
+		"icon": "⚒️",
+		"instability": -0.1,
+		"conditions": { "targetProgress": 5 },
+		"children": ["dark_matter_synthesis"]
+	},
+	{
+		"slug": "dark_matter_synthesis",
+		"name": "Dark matter Synthesis",
+		"description": {
+			"en": "Chance to create dark matter when creating stars",
+			"ru": "..."
+		},
+		"category": "special",
+		"basePrice": 250,
+		"currency": "darkmatter",
+		"maxLevel": 5,
+		"stability": 20,
+		"priceMultiplier": 2.2,
+		"effectPerLevel": 0.02,
+		"icon": "🌟",
+		"instability": 0.2,
+		"conditions": { "targetProgress": 5 },
+		"children": []
+	}
+]

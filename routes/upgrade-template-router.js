@@ -4,13 +4,13 @@
 const Router = require('express').Router;
 const router = new Router();
 const upgradeTemplateController = require('../controllers/upgrade-template-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 // Get all upgrade templates
 router.get(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	upgradeTemplateController.getAllUpgradeNodeTemplates
 );
@@ -18,7 +18,7 @@ router.get(
 // Get a specific upgrade template
 router.get(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	upgradeTemplateController.getUpgradeNodeTemplate
 );
@@ -26,7 +26,7 @@ router.get(
 // Create a new upgrade template
 router.post(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	upgradeTemplateController.createUpgradeTemplates
 );
@@ -34,7 +34,7 @@ router.post(
 // Update an upgrade template
 router.put(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	upgradeTemplateController.updateUpgradeNodeTemplate
 );
@@ -42,7 +42,7 @@ router.put(
 // Delete an upgrade template
 router.delete(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(10, 60),
 	upgradeTemplateController.deleteUpgradeNodeTemplate
 );
@@ -50,7 +50,7 @@ router.delete(
 // Activate an upgrade template
 router.post(
 	'/:slug/activate',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	upgradeTemplateController.toggleUpgradeNodeTemplateActive
 );
@@ -58,7 +58,7 @@ router.post(
 // Get upgrade node templates stats
 router.get(
 	'/stats',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	upgradeTemplateController.getUpgradeNodeTemplatesStats
 );

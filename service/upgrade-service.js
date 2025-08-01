@@ -1,7 +1,11 @@
 /**
  * created by Claude on 15.07.2025
  */
-const { UpgradeNodeTemplate, UserUpgrade, UserState } = require('../models/models');
+const {
+	UpgradeNodeTemplate,
+	UserUpgrade,
+	UserState,
+} = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
@@ -38,7 +42,7 @@ class UpgradeService {
 					const userUpgrade = await UserUpgrade.create(
 						{
 							userId,
-							nodeId: node.id,
+							upgradeNodeTemplateId: node.id,
 							level: 0,
 							progress: 0,
 							targetProgress: 100,
@@ -91,7 +95,7 @@ class UpgradeService {
 			// Create a map of user upgrades for quick lookup
 			const userUpgradeMap = {};
 			userUpgrades.forEach((upgrade) => {
-				userUpgradeMap[upgrade.nodeId] = upgrade;
+				userUpgradeMap[upgrade.upgradeNodeTemplateId] = upgrade;
 			});
 
 			// Get all active upgrade nodes
@@ -142,7 +146,7 @@ class UpgradeService {
 				const userUpgrade = await UserUpgrade.create(
 					{
 						userId,
-						nodeId: node.id,
+						upgradeNodeTemplateId: node.id,
 						level: 0,
 						progress: 0,
 						targetProgress: 100,
@@ -191,7 +195,6 @@ class UpgradeService {
 							'basePrice',
 							'effectPerLevel',
 							'priceMultiplier',
-							'resource',
 							'category',
 							'icon',
 							'stability',
@@ -231,7 +234,7 @@ class UpgradeService {
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeNode.id,
+					upgradeNodeTemplateId: upgradeNode.id,
 				},
 				include: [
 					{
@@ -245,7 +248,6 @@ class UpgradeService {
 							'basePrice',
 							'effectPerLevel',
 							'priceMultiplier',
-							'resource',
 							'category',
 							'icon',
 							'stability',
@@ -297,7 +299,7 @@ class UpgradeService {
 			// Create a map of user upgrades for quick lookup
 			const userUpgradeMap = {};
 			userUpgrades.forEach((upgrade) => {
-				userUpgradeMap[upgrade.nodeId] = upgrade;
+				userUpgradeMap[upgrade.upgradeNodeTemplateId] = upgrade;
 			});
 
 			// Filter upgrade nodes based on availability
@@ -404,7 +406,7 @@ class UpgradeService {
 			let userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeNode.id,
+					upgradeNodeTemplateId: upgradeNode.id,
 				},
 				transaction: t,
 			});
@@ -453,7 +455,7 @@ class UpgradeService {
 				userUpgrade = await UserUpgrade.create(
 					{
 						userId,
-						nodeId: upgradeNode.id,
+						upgradeNodeTemplateId: upgradeNode.id,
 						level: 1,
 						progress: 0,
 						targetProgress: 100,
@@ -550,7 +552,7 @@ class UpgradeService {
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					nodeId: upgradeNode.id,
+					upgradeNodeTemplateId: upgradeNode.id,
 				},
 				include: [
 					{

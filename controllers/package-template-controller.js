@@ -56,7 +56,7 @@ class PackageTemplateController {
 				templateData
 			);
 
-			res.status(201).json(template);
+			res.status(201).json(templates);
 		} catch (e) {
 			next(e);
 		}

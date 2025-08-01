@@ -58,26 +58,6 @@ router.get(
 
 /**
  * @swagger
- * /state/daily-bonus:
- *   post:
- *     summary: Claim daily bonus
- *     tags: [UserState]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Daily bonus claimed
- */
-router.post(
-	'/daily-bonus',
-	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	userStateController.claimDailyBonus
-);
-
-/**
- * @swagger
  * /state/leaderboard:
  *   get:
  *     summary: Get leaderboard
@@ -116,23 +96,4 @@ router.put(
 	userStateController.updateUserState
 );
 
-/**
- * @swagger
- * /state/farming:
- *   post:
- *     summary: Farming
- *     tags: [UserState]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Farming
- */
-router.post(
-	'/farming',
-	telegramAuthMiddleware,
-	authMiddleware,
-	rateLimitMiddleware(60, 60),
-	userStateController.farming
-);
 module.exports = router;

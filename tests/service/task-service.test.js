@@ -27,9 +27,7 @@ jest.mock('../../db', () => ({
 	transaction: jest.fn(),
 }));
 
-jest.mock('../../service/market-service', () => ({
-	registerTaskReward: jest.fn(),
-}));
+jest.mock('../../service/market-service', () => ({}));
 
 describe('TaskService', () => {
 	let transaction;
@@ -515,14 +513,6 @@ describe('TaskService', () => {
 			expect(userTask.completed).toBe(true);
 			expect(userTask.save).toHaveBeenCalledWith({
 				transaction,
-			});
-
-			// Проверяем, что marketService.registerTaskReward был вызван
-			expect(marketService.registerTaskReward).toHaveBeenCalledWith({
-				userId,
-				taskId,
-				amount: 100,
-				currency: 'stardust',
 			});
 
 			// Проверяем, что состояние пользователя было обновлено

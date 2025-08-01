@@ -74,7 +74,11 @@ class ArtifactTemplateController {
 	 */
 	async updateArtifactTemplate(req, res, next) {
 		try {
+			const { slug } = req.params;
 			const artifactData = req.body;
+
+			// Ensure slug is included in the data
+			artifactData.slug = slug;
 
 			const result = await artifactTemplateService.updateArtifactTemplate(
 				artifactData

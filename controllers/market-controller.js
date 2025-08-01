@@ -178,54 +178,6 @@ class MarketController {
 		}
 	}
 
-	async registerUpgradePayment(req, res, next) {
-		try {
-			const { nodeId, amount, resource } = req.body;
-			const userId = req.initdata.id;
-			const result = await marketService.registerUpgradePayment({
-				userId,
-				nodeId,
-				amount,
-				resource,
-			});
-			res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async registerTaskReward(req, res, next) {
-		try {
-			const { taskId, amount, resource } = req.body;
-			const userId = req.initdata.id;
-			const result = await marketService.registerTaskReward({
-				userId,
-				taskId,
-				amount,
-				resource,
-			});
-			res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async registerEventReward(req, res, next) {
-		try {
-			const { eventId, amount, resource } = req.body;
-			const userId = req.initdata.id;
-			const result = await marketService.registerEventReward({
-				userId,
-				eventId,
-				amount,
-				resource,
-			});
-			res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
-
 	async registerGalaxyStarsTransfer(req, res, next) {
 		try {
 			const { galaxyId, amount, currency } = req.body;

@@ -5,6 +5,7 @@
 const Router = require('express').Router;
 const router = new Router();
 const galaxyController = require('../controllers/galaxy-controller');
+const gameController = require('../controllers/game-controller');
 const authMiddleware = require('../middlewares/auth-middleware');
 const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
@@ -110,6 +111,26 @@ router.post(
 	rateLimitMiddleware(10, 60),
 	authMiddleware,
 	galaxyController.createGalaxyWithOffer
+);
+
+/**
+ * @swagger
+ * /state/daily-bonus:
+ *   post:
+ *     summary: Claim daily bonus
+ *     tags: [UserState]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Daily bonus claimed
+ */
+router.post(
+	'/daily-bonus',
+	telegramAuthMiddleware,
+	rateLimitMiddleware(30, 60),
+	authMiddleware,
+	gameController.claimDailyReward
 );
 
 /**

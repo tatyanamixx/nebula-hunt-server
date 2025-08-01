@@ -9,6 +9,7 @@ const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware'
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const authMiddleware = require('../middlewares/auth-middleware');
 const refreshTokenMiddleware = require('../middlewares/refresh-token-middleware');
+const { ERROR_CODES } = require('../config/error-codes');
 
 /**
  * @swagger
@@ -18,43 +19,8 @@ const refreshTokenMiddleware = require('../middlewares/refresh-token-middleware'
  */
 
 router.post(
-	'/registration',
-	[telegramAuthMiddleware, rateLimitMiddleware(10, 60)],
-	userController.registration
-);
-
-/**
- * @swagger
- * /auth/registration:
- *   post:
- *     summary: Register a new user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               referral:
- *                 type: string
- *                 description: Referral code (number, bigint, or numeric string)
- *               userState:
- *                 type: object
- *                 description: Initial user state
- *               galaxies:
- *                 type: array
- *                 description: Initial galaxies data
- *     responses:
- *       201:
- *         description: User registered successfully
- *       400:
- *         description: Bad request - invalid referral format
- */
-
-router.post(
 	'/login',
-	[telegramAuthMiddleware, rateLimitMiddleware(30, 60), authMiddleware],
+	[telegramAuthMiddleware, rateLimitMiddleware(30, 60)],
 	userController.login
 );
 
@@ -62,37 +28,53 @@ router.post(
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Universal login/registration endpoint
  *     tags: [Auth]
+ *     description: Automatically handles both login for existing users and registration for new users
  *     requestBody:
  *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             description: No body parameters required - authentication is handled via Telegram WebApp initData
+ *             properties:
+ *               referral:
+ *                 type: string
+ *                 description: Referral code (number, bigint, or numeric string) - optional, used for new user registration
+ *               galaxy:
+ *                 type: object
+ *                 description: Galaxy data - optional, used for new user registration
  *     responses:
  *       200:
- *         description: User logged in successfully
- */
-
-router.post(
-	'/logout',
-	[telegramAuthMiddleware, rateLimitMiddleware(20, 60), authMiddleware],
-	userController.logout
-);
-
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: Logout user
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User logged out
+ *         description: User logged in successfully (existing user)
+ *       201:
+ *         description: User registered and logged in successfully (new user)
+ *       400:
+ *         description: Bad request - invalid referral format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Referral must be a number, bigint, or numeric string"
+ *                 errorCode:
+ *                   type: string
+ *                   example: "VAL_002"
+ *       404:
+ *         description: User not found (when no registration data provided)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "User not found"
+ *                 errorCode:
+ *                   type: string
+ *                   example: "AUTH_001"
  */
 
 router.get(
@@ -131,8 +113,30 @@ router.get(
  *                   description: User data
  *       401:
  *         description: Invalid or expired refresh token, or invalid Telegram initData
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid refresh token"
+ *                 errorCode:
+ *                   type: string
+ *                   example: "AUTH_003"
  *       429:
  *         description: Rate limit exceeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Rate limit exceeded"
+ *                 errorCode:
+ *                   type: string
+ *                   example: "SYS_004"
  */
 
 router.get(

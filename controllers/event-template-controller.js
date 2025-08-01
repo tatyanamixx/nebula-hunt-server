@@ -21,6 +21,31 @@ class EventTemplateController {
 				);
 			}
 
+			// Validate required fields
+			if (!eventData.slug) {
+				return next(
+					ApiError.BadRequest('Invalid request: slug is required')
+				);
+			}
+
+			if (!eventData.name) {
+				return next(
+					ApiError.BadRequest('Invalid request: name is required')
+				);
+			}
+
+			if (!eventData.type) {
+				return next(
+					ApiError.BadRequest('Invalid request: type is required')
+				);
+			}
+
+			if (!eventData.effect) {
+				return next(
+					ApiError.BadRequest('Invalid request: effect is required')
+				);
+			}
+
 			// Wrap the event data in an array for the createEvents method
 			const result = await eventTemplateService.createEvents([eventData]);
 			return res.json(result.events[0]);
@@ -39,6 +64,13 @@ class EventTemplateController {
 	async updateEventTemplate(req, res, next) {
 		try {
 			const eventData = req.body;
+
+			// Validate required fields
+			if (!eventData.slug) {
+				return next(
+					ApiError.BadRequest('Invalid request: slug is required')
+				);
+			}
 
 			const event = await eventTemplateService.updateEvent(eventData);
 			return res.json(event);

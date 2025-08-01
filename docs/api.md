@@ -280,6 +280,568 @@ Complete a specific task.
 Authorization: Bearer <access_token>
 ```
 
+### Register Farming Reward
+
+```
+POST /api/game/farming-reward
+```
+
+Register farming rewards for internal currency.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"offerData": [
+		{
+			"resource": "stardust",
+			"amount": 100
+		},
+		{
+			"resource": "darkMatter",
+			"amount": 50
+		}
+	]
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Farming rewards registered successfully",
+	"data": {
+		"rewards": [
+			{
+				"resource": "stardust",
+				"amount": 100
+			},
+			{
+				"resource": "darkMatter",
+				"amount": 50
+			}
+		]
+	}
+}
+```
+
+### Create Galaxy with Offer
+
+```
+POST /api/game/galaxy-with-offer
+```
+
+Create a galaxy with an offer.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"galaxyData": {
+		"seed": "galaxy_seed_123",
+		"name": "My Galaxy",
+		"description": "A beautiful galaxy"
+	},
+	"offer": {
+		"buyerId": 123,
+		"price": 1000,
+		"currency": "tonToken"
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"data": {
+		"galaxy": {
+			"id": 1,
+			"seed": "galaxy_seed_123",
+			"name": "My Galaxy"
+		},
+		"offer": {
+			"id": 1,
+			"price": 1000,
+			"currency": "tonToken"
+		}
+	}
+}
+```
+
+### Create Galaxy for Sale
+
+```
+POST /api/game/galaxy-for-sale
+```
+
+Create a galaxy for sale.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"galaxyData": {
+		"seed": "galaxy_seed_456",
+		"name": "Galaxy for Sale",
+		"description": "A galaxy available for purchase"
+	},
+	"offer": {
+		"buyerId": 123,
+		"price": 2000,
+		"currency": "tonToken"
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"data": {
+		"galaxy": {
+			"id": 2,
+			"seed": "galaxy_seed_456",
+			"name": "Galaxy for Sale"
+		},
+		"offer": {
+			"id": 2,
+			"price": 2000,
+			"currency": "tonToken"
+		}
+	}
+}
+```
+
+### Register Transfer Stardust to Galaxy
+
+```
+POST /api/game/register-transfer-stardust-to-galaxy
+```
+
+Register transfer of stardust to galaxy - create offer for galaxy purchase.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"userId": 123,
+	"galaxy": {
+		"seed": "galaxy_seed_789"
+	},
+	"reward": {
+		"currency": "tonToken",
+		"price": 500,
+		"resource": "stardust",
+		"amount": 100
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Galaxy purchase offer registered successfully",
+	"data": {
+		"offer": {
+			"id": 3,
+			"price": 500,
+			"currency": "tonToken"
+		},
+		"galaxy": {
+			"id": 3,
+			"seed": "galaxy_seed_789"
+		}
+	}
+}
+```
+
+### Claim Daily Reward
+
+```
+POST /api/game/daily-reward
+```
+
+Claim daily reward for the user. Rewards are based on consecutive days (streak):
+
+-   Days 3, 5, 7: Only darkmatter is awarded
+-   Other days: Both stardust and darkmatter are awarded
+-   Amounts increase with streak length
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Daily reward claimed successfully",
+	"data": {
+		"currentStreak": 3,
+		"maxStreak": 5,
+		"rewards": [
+			{
+				"resource": "darkMatter",
+				"amount": 150,
+				"transactionId": 123
+			}
+		],
+		"userState": {
+			"stardust": 1000,
+			"darkMatter": 250,
+			"stars": 50
+		}
+	}
+}
+```
+
+**Error Response (if already claimed today):**
+
+```json
+{
+	"success": false,
+	"message": "Daily reward already claimed today",
+	"errorCode": "GAM_001"
+}
+```
+
+## Task Template API
+
+### Get All Task Templates
+
+```
+GET /api/task-templates
+```
+
+Get all task templates with JSONB fields formatted for web forms.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+[
+	{
+		"id": 23,
+		"slug": "daily_login_stardust",
+		"title": {
+			"en": "Daily login reward",
+			"ru": "Ежедневный логин"
+		},
+		"description": {
+			"en": "Login daily to receive rewards",
+			"ru": "Входите ежедневно для получения наград"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 2500,
+			"multiplier": 1.25
+		},
+		"condition": {
+			"type": "daily_login_stardust",
+			"days": [1, 2, 3, 4, 5, 6, 7],
+			"amount": 0,
+			"operator": ">=",
+			"resource": "",
+			"resetTime": "00:00"
+		},
+		"icon": "📆",
+		"active": true,
+		"sortOrder": 20,
+		"createdAt": "2025-08-01T10:00:00.000Z",
+		"updatedAt": "2025-08-01T10:00:00.000Z"
+	}
+]
+```
+
+### Get Task Template by Slug
+
+```
+GET /api/task-templates/:slug
+```
+
+Get a specific task template by slug.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"id": 23,
+	"slug": "daily_login_stardust",
+	"title": {
+		"en": "Daily login reward",
+		"ru": "Ежедневный логин"
+	},
+	"description": {
+		"en": "Login daily to receive rewards",
+		"ru": "Входите ежедневно для получения наград"
+	},
+	"reward": {
+		"type": "stardust",
+		"amount": 2500,
+		"multiplier": 1.25
+	},
+	"condition": {
+		"type": "daily_login_stardust",
+		"days": [1, 2, 3, 4, 5, 6, 7],
+		"amount": 0,
+		"operator": ">=",
+		"resource": "",
+		"resetTime": "00:00"
+	},
+	"icon": "📆",
+	"active": true,
+	"sortOrder": 20,
+	"createdAt": "2025-08-01T10:00:00.000Z",
+	"updatedAt": "2025-08-01T10:00:00.000Z"
+}
+```
+
+### Update Task Template
+
+```
+PUT /api/task-templates
+```
+
+Update a task template. JSONB fields should be sent as structured objects.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"id": 23,
+	"slug": "daily_login_stardust",
+	"title": {
+		"en": "Daily login reward",
+		"ru": "Ежедневный логин"
+	},
+	"description": {
+		"en": "Login daily to receive rewards",
+		"ru": "Входите ежедневно для получения наград"
+	},
+	"reward": {
+		"type": "stardust",
+		"amount": 2500,
+		"multiplier": 1.25
+	},
+	"condition": {
+		"type": "daily_login_stardust",
+		"days": [1, 2, 3, 4, 5, 6, 7],
+		"amount": 0,
+		"operator": ">=",
+		"resource": "",
+		"resetTime": "00:00"
+	},
+	"icon": "📆",
+	"active": true,
+	"sortOrder": 20
+}
+```
+
+**Response:**
+
+```json
+{
+	"id": 23,
+	"slug": "daily_login_stardust",
+	"title": {
+		"en": "Daily login reward",
+		"ru": "Ежедневный логин"
+	},
+	"description": {
+		"en": "Login daily to receive rewards",
+		"ru": "Входите ежедневно для получения наград"
+	},
+	"reward": {
+		"type": "stardust",
+		"amount": 2500,
+		"multiplier": 1.25
+	},
+	"condition": {
+		"type": "daily_login_stardust",
+		"days": [1, 2, 3, 4, 5, 6, 7],
+		"amount": 0,
+		"operator": ">=",
+		"resource": "",
+		"resetTime": "00:00"
+	},
+	"icon": "📆",
+	"active": true,
+	"sortOrder": 20,
+	"createdAt": "2025-08-01T10:00:00.000Z",
+	"updatedAt": "2025-08-01T10:00:00.000Z"
+}
+```
+
+**Error Response (validation errors):**
+
+```json
+{
+	"success": false,
+	"message": "Validation errors",
+	"errors": {
+		"title": "Title must contain both \"en\" and \"ru\" fields",
+		"reward": "Reward must contain \"type\" and \"amount\" fields"
+	}
+}
+```
+
+### Create Task Templates
+
+```
+POST /api/task-templates
+```
+
+Create new task templates. JSONB fields should be sent as structured objects.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+[
+	{
+		"slug": "new_task",
+		"title": {
+			"en": "New Task",
+			"ru": "Новая задача"
+		},
+		"description": {
+			"en": "Complete this task",
+			"ru": "Выполните эту задачу"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 1000,
+			"multiplier": 1.0
+		},
+		"condition": {
+			"type": "resource_threshold",
+			"amount": 100,
+			"operator": ">=",
+			"resource": "stars",
+			"days": [],
+			"resetTime": "00:00"
+		},
+		"icon": "⭐",
+		"active": true,
+		"sortOrder": 25
+	}
+]
+```
+
+### Toggle Task Template Status
+
+```
+PATCH /api/task-templates/:slug/toggle
+```
+
+Toggle the active status of a task template.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Task template status toggled successfully",
+	"data": {
+		"slug": "daily_login_stardust",
+		"active": false
+	}
+}
+```
+
+### Delete Task Template
+
+```
+DELETE /api/task-templates/:slug
+```
+
+Delete a task template.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Task template deleted successfully",
+	"data": {
+		"slug": "daily_login_stardust"
+	}
+}
+```
+
 ## Error Responses
 
 All endpoints return errors in the following format:

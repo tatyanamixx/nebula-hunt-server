@@ -4,13 +4,13 @@
 const Router = require('express');
 const router = new Router();
 const artifactTemplateController = require('../controllers/artifact-template-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 // Get all artifact templates
 router.get(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	artifactTemplateController.getAllArtifactTemplates
 );
@@ -18,7 +18,7 @@ router.get(
 // Get a specific artifact template
 router.get(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	artifactTemplateController.getArtifactTemplateBySlug
 );
@@ -26,7 +26,7 @@ router.get(
 // Create a new artifact template
 router.post(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	artifactTemplateController.createArtifactTemplates
 );
@@ -34,7 +34,7 @@ router.post(
 // Update an artifact template
 router.put(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	artifactTemplateController.updateArtifactTemplate
 );
@@ -42,7 +42,7 @@ router.put(
 // Delete an artifact template
 router.delete(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(10, 60),
 	artifactTemplateController.deleteArtifactTemplate
 );

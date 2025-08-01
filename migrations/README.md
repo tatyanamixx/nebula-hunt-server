@@ -30,7 +30,7 @@
 -   **marketoffers** - Предложения на рынке
 -   **markettransactions** - Транзакции на рынке
 -   **paymenttransactions** - Платежные транзакции
--   **marketcommissions** - Комиссии рынка
+-   **marketcommissions** - Комиссии рынка (управляются через админ-панель)
 
 ### Таблицы пакетов
 

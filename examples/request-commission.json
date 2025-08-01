@@ -1,0 +1,27 @@
+[
+	{
+		"currency": "tgstars",
+		"rate": 0.05,
+		"description": "Fee 5% for tgStars"
+	},
+	{
+		"currency": "tontoken",
+		"rate": 0.1,
+		"description": "Fee 3% for tonToken"
+	},
+	{
+		"currency": "stardust",
+		"rate": 0.02,
+		"description": "Fee 2% for stardust"
+	},
+	{
+		"currency": "darkmatter",
+		"rate": 0.02,
+		"description": "Fee 2% for darkMatter"
+	},
+	{
+		"currency": "stars",
+		"rate": 0.02,
+		"description": "Fee 2% for stars"
+	}
+]

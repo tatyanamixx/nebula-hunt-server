@@ -53,9 +53,7 @@ jest.mock('../../db', () => {
 });
 
 // Мокаем marketService
-jest.mock('../../service/market-service', () => ({
-	registerUpgradePayment: jest.fn().mockResolvedValue({ success: true }),
-}));
+jest.mock('../../service/market-service', () => ({}));
 
 describe('UpgradeService', () => {
 	beforeEach(() => {

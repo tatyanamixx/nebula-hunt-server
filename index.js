@@ -24,26 +24,6 @@ const start = async () => {
 	try {
 		await sequelize.authenticate();
 
-		// Инициализация комиссий маркета
-		const { MarketCommission } = require('./models/models');
-		const marketConfig = require('./config/market.config');
-
-		const commissionData = Object.entries(marketConfig.commission).map(
-			([currency, rate]) => ({
-				currency,
-				rate,
-				description: `Fee ${(rate * 100).toFixed(0)}% for ${currency}`,
-			})
-		);
-
-		for (const entry of commissionData) {
-			await MarketCommission.findOrCreate({
-				where: { currency: entry.currency },
-				defaults: entry,
-			});
-		}
-		loggerService.info('MarketCommission table initialized');
-
 		// Инициализация системного пользователя
 		const userService = require('./service/user-service');
 		await userService.ensureSystemUserExists();

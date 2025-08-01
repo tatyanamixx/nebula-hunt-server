@@ -4,12 +4,14 @@ const {
 	PackageStore,
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
+const { ERROR_CODES } = require('../config/error-codes');
 const { SYSTEM_USER_ID } = require('../config/constants');
 const { offers } = require('../config/market.config');
 const marketService = require('./market-service');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
 const sequelize = require('../db');
+const logger = require('./logger-service');
 
 class PackageTemplateService {
 	/**
@@ -18,19 +20,48 @@ class PackageTemplateService {
 	 * @returns {Promise<Array>} Массив шаблонов пакетов
 	 */
 	async getAllTemplates() {
-		const t = await sequelize.transaction();
-
 		try {
+			logger.debug('getAllTemplates on start');
 			const templates = await PackageTemplate.findAll({
 				order: [['sortOrder', 'ASC']],
-				transaction: t,
 			});
 
-			await t.commit();
-			return templates;
+			// Convert Sequelize instances to plain objects and fix data types
+			const plainTemplates = templates.map((template) => {
+				const templateData = template.get({ plain: true });
+				return {
+					...templateData,
+					id: parseInt(templateData.id) || templateData.id,
+					amount: parseInt(templateData.amount) || 0,
+					price: parseFloat(templateData.price) || 0,
+					sortOrder: parseInt(templateData.sortOrder) || 0,
+					createdAt: templateData.createdAt
+						? new Date(templateData.createdAt).toISOString()
+						: null,
+					updatedAt: templateData.updatedAt
+						? new Date(templateData.updatedAt).toISOString()
+						: null,
+					validUntil: templateData.validUntil
+						? new Date(templateData.validUntil).toISOString()
+						: null,
+				};
+			});
+
+			logger.debug('getAllTemplates completed successfully', {
+				count: plainTemplates.length,
+			});
+			return plainTemplates;
 		} catch (err) {
-			await t.rollback();
-			throw new ApiError(500, `Failed to get templates: ${err.message}`);
+			logger.error('Failed to get all package templates', {
+				error: err.message,
+				stack: err.stack,
+			});
+
+			throw new ApiError(
+				500,
+				`Failed to get templates: ${err.message}`,
+				ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+			);
 		}
 	}
 
@@ -40,26 +71,57 @@ class PackageTemplateService {
 	 * @returns {Promise<Object>} Шаблон пакета
 	 */
 	async getTemplateBySlug(slug) {
-		const t = await sequelize.transaction();
-
 		try {
+			logger.debug('getTemplateBySlug on start', { slug });
+
 			const template = await PackageTemplate.findOne({
 				where: { slug },
-				transaction: t,
 			});
 
 			if (!template) {
-				await t.rollback();
-				throw new ApiError(404, 'Package template not found');
+				logger.debug('Package template not found', { slug });
+				throw new ApiError(
+					404,
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
-			await t.commit();
-			return template;
+			// Convert Sequelize instance to plain object and fix data types
+			const templateData = template.get({ plain: true });
+			return {
+				...templateData,
+				id: parseInt(templateData.id) || templateData.id,
+				amount: parseInt(templateData.amount) || 0,
+				price: parseFloat(templateData.price) || 0,
+				sortOrder: parseInt(templateData.sortOrder) || 0,
+				createdAt: templateData.createdAt
+					? new Date(templateData.createdAt).toISOString()
+					: null,
+				updatedAt: templateData.updatedAt
+					? new Date(templateData.updatedAt).toISOString()
+					: null,
+				validUntil: templateData.validUntil
+					? new Date(templateData.validUntil).toISOString()
+					: null,
+			};
+
+			logger.debug('getTemplateBySlug completed successfully', { slug });
+			return templateData;
 		} catch (err) {
-			await t.rollback();
+			logger.error('Failed to get package template by slug', {
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
-				: new ApiError(500, `Failed to get template: ${err.message}`);
+				: new ApiError(
+						500,
+						`Failed to get template: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				  );
 		}
 	}
 
@@ -72,42 +134,119 @@ class PackageTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('createTemplates on start', {
+				templatesCount: templates.length,
+			});
+			// Set transaction to defer constraints
+			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+				transaction: t,
+			});
+
 			const createdTemplates = [];
 
 			for (const templateData of templates) {
-				// Try to find existing template with the same slug
-				let template = await PackageTemplate.findOne({
-					where: { slug: templateData.slug },
-					transaction: t,
-				});
-
-				if (template) {
-					await PackageTemplate.update(templateData, {
-						where: { id: template.id },
-						transaction: t,
+				// Validate template data
+				if (!templateData.slug || !templateData.name) {
+					if (t && !t.finished) {
+						await t.rollback();
+					}
+					logger.debug('Invalid template data structure', {
+						templateData,
 					});
-
-					template = await PackageTemplate.findOne({
-						where: { id: template.id },
-						transaction: t,
-					});
-					createdTemplates.push(template);
-					continue;
+					throw new ApiError(
+						400,
+						'Invalid template data structure',
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+					);
 				}
 
-				const newTemplate = await PackageTemplate.create(templateData, {
+				// Prepare template data (exclude id, createdAt, updatedAt)
+				const cleanTemplateData = {
+					slug: templateData.slug,
+					name: templateData.name,
+					description: templateData.description,
+					amount: templateData.amount,
+					resource: templateData.resource,
+					price: templateData.price,
+					currency: templateData.currency,
+					status: templateData.status ?? true,
+					icon: templateData.icon,
+					sortOrder: templateData.sortOrder || 0,
+					labelKey: templateData.labelKey,
+					isPromoted: templateData.isPromoted ?? false,
+					validUntil: templateData.validUntil,
+				};
+
+				// Use findOrCreate to handle duplicates
+				const [template, created] = await PackageTemplate.findOrCreate({
+					where: { slug: templateData.slug },
+					defaults: cleanTemplateData,
 					transaction: t,
 				});
-				createdTemplates.push(newTemplate);
+
+				// If template already exists, update it
+				if (!created) {
+					await template.update(cleanTemplateData, {
+						transaction: t,
+					});
+				}
+
+				createdTemplates.push(template);
 			}
 
+			// Set constraints back to immediate before commit
+			await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				transaction: t,
+			});
+
 			await t.commit();
-			return createdTemplates;
+
+			// Convert Sequelize instances to plain objects and fix data types
+			const plainResults = createdTemplates.map((template) => {
+				const templateData = template.get({ plain: true });
+				return {
+					...templateData,
+					id: parseInt(templateData.id) || templateData.id,
+					amount: parseInt(templateData.amount) || 0,
+					price: parseFloat(templateData.price) || 0,
+					sortOrder: parseInt(templateData.sortOrder) || 0,
+					createdAt: templateData.createdAt
+						? new Date(templateData.createdAt).toISOString()
+						: null,
+					updatedAt: templateData.updatedAt
+						? new Date(templateData.updatedAt).toISOString()
+						: null,
+					validUntil:
+						templateData.validUntil &&
+						templateData.validUntil.trim() !== ''
+							? new Date(templateData.validUntil).toISOString()
+							: null,
+				};
+			});
+
+			logger.debug('createTemplates completed successfully', {
+				createdCount: plainResults.length,
+			});
+			return plainResults;
 		} catch (err) {
-			await t.rollback();
+			if (t && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to create package templates', {
+				templatesCount: templates.length,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw new ApiError(
 				500,
-				`Failed to create templates: ${err.message}`
+				`Failed to create templates: ${err.message}`,
+				ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 			);
 		}
 	}
@@ -117,32 +256,75 @@ class PackageTemplateService {
 	 * @param {Object} templateData Новые данные шаблона
 	 * @returns {Promise<Object>} Обновленный шаблон
 	 */
-	async updateTemplate(templateData) {
+	async updateTemplate(updateData) {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('updateTemplate on start', { slug: updateData.slug });
 			const template = await PackageTemplate.findOne({
-				where: { slug: templateData.slug },
+				where: { slug: updateData.slug },
 				transaction: t,
 			});
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Package template not found');
+				logger.debug('Package template not found for update', {
+					slug: updateData.slug,
+				});
+				throw new ApiError(
+					404,
+					`Package template not found: ${updateData.slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Обновляем данные
-			await template.update(templateData, { transaction: t });
+			await template.update(updateData, { transaction: t });
 
 			await t.commit();
-			return template;
+
+			// Convert Sequelize instance to plain object and fix data types
+			const templateData = template.get({ plain: true });
+			const result = {
+				...templateData,
+				id: parseInt(templateData.id) || templateData.id,
+				amount: parseInt(templateData.amount) || 0,
+				price: parseFloat(templateData.price) || 0,
+				sortOrder: parseInt(templateData.sortOrder) || 0,
+				createdAt: templateData.createdAt
+					? new Date(templateData.createdAt).toISOString()
+					: null,
+				updatedAt: templateData.updatedAt
+					? new Date(templateData.updatedAt).toISOString()
+					: null,
+				validUntil:
+					templateData.validUntil &&
+					templateData.validUntil.trim() !== ''
+						? new Date(templateData.validUntil).toISOString()
+						: null,
+			};
+
+			logger.debug('updateTemplate completed successfully', {
+				slug: updateData.slug,
+			});
+			return result;
 		} catch (err) {
-			await t.rollback();
+			if (t && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to update package template', {
+				slug: updateData.slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: new ApiError(
 						500,
-						`Failed to update template: ${err.message}`
+						`Failed to update template: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 				  );
 		}
 	}
@@ -155,14 +337,50 @@ class PackageTemplateService {
 	async deleteTemplate(slug) {
 		const t = await sequelize.transaction();
 		try {
+			logger.debug('deleteTemplate on start', { slug });
+			const template = await PackageTemplate.findOne({
+				where: { slug },
+				transaction: t,
+			});
+
+			if (!template) {
+				await t.rollback();
+				logger.debug('Package template not found for deletion', {
+					slug,
+				});
+				throw new ApiError(
+					404,
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
+			}
+
 			await PackageTemplate.destroy({ where: { slug }, transaction: t });
+
+			await t.commit();
+
+			logger.debug('deleteTemplate completed successfully', { slug });
+			return {
+				success: true,
+				message: `Package template ${slug} deleted successfully`,
+			};
 		} catch (err) {
-			await t.rollback();
+			if (t && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to delete package template', {
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: new ApiError(
 						500,
-						`Failed to delete template: ${err.message}`
+						`Failed to delete template: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 				  );
 		}
 	}
@@ -177,6 +395,7 @@ class PackageTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('toggleTemplateStatus on start', { slug });
 			const template = await PackageTemplate.findOne({
 				where: { slug: slug },
 				transaction: t,
@@ -184,21 +403,62 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Package template not found');
+				logger.debug('Package template not found for status toggle', {
+					slug,
+				});
+				throw new ApiError(
+					404,
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			template.status = !template.status;
 			await template.save({ transaction: t });
 
 			await t.commit();
-			return template;
+
+			// Convert Sequelize instance to plain object and fix data types
+			const templateData = template.get({ plain: true });
+			const result = {
+				...templateData,
+				id: parseInt(templateData.id) || templateData.id,
+				amount: parseInt(templateData.amount) || 0,
+				price: parseFloat(templateData.price) || 0,
+				sortOrder: parseInt(templateData.sortOrder) || 0,
+				createdAt: templateData.createdAt
+					? new Date(templateData.createdAt).toISOString()
+					: null,
+				updatedAt: templateData.updatedAt
+					? new Date(templateData.updatedAt).toISOString()
+					: null,
+				validUntil: templateData.validUntil
+					? new Date(templateData.validUntil).toISOString()
+					: null,
+			};
+
+			logger.debug('toggleTemplateStatus completed successfully', {
+				slug,
+				newStatus: template.status,
+			});
+			return result;
 		} catch (err) {
-			await t.rollback();
+			if (t && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to toggle package template status', {
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: new ApiError(
 						500,
-						`Failed to change template status: ${err.message}`
+						`Failed to change template status: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 				  );
 		}
 	}
@@ -209,29 +469,44 @@ class PackageTemplateService {
 	 * @returns {Promise<Object>} Созданная оферта
 	 */
 	async createOfferFromTemplate(slug) {
-		const t = await sequelize.transaction();
-
 		try {
+			logger.debug('createOfferFromTemplate on start', { slug });
 			const template = await PackageTemplate.findOne({
 				where: { slug },
-				transaction: t,
 			});
 
 			if (!template) {
-				await t.rollback();
-				throw new ApiError(404, 'Package template not found');
+				logger.debug('Package template not found for offer creation', {
+					slug,
+				});
+				throw new ApiError(
+					404,
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Проверяем, что шаблон активен
 			if (!template.status) {
-				await t.rollback();
-				throw new ApiError(400, 'Package template is inactive');
+				logger.debug('Package template is inactive', { slug });
+				throw new ApiError(
+					400,
+					`Package template is inactive: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Проверяем, что срок действия не истек
 			if (template.validUntil && template.validUntil < new Date()) {
-				await t.rollback();
-				throw new ApiError(400, 'Package template has expired');
+				logger.debug('Package template has expired', {
+					slug,
+					validUntil: template.validUntil,
+				});
+				throw new ApiError(
+					400,
+					`Package template has expired: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_EXPIRED
+				);
 			}
 
 			// Создаем оферту от имени системного пользователя
@@ -244,18 +519,27 @@ class PackageTemplateService {
 				offerType: 'SYSTEM',
 			};
 
-			await t.commit();
-
 			// Создаем оферту через marketService
 			// Примечание: marketService.createOffer использует свою собственную транзакцию
-			return await marketService.createOffer(offerData);
+			const result = await marketService.createOffer(offerData);
+
+			logger.debug('createOfferFromTemplate completed successfully', {
+				slug,
+			});
+			return result;
 		} catch (err) {
-			await t.rollback();
+			logger.error('Failed to create offer from package template', {
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: new ApiError(
 						500,
-						`Failed to create offer from template: ${err.message}`
+						`Failed to create offer from template: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 				  );
 		}
 	}
@@ -270,6 +554,10 @@ class PackageTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('createPackageFromTemplate on start', {
+				slug,
+				userId,
+			});
 			const template = await PackageTemplate.findOne({
 				where: { slug },
 				transaction: t,
@@ -277,7 +565,15 @@ class PackageTemplateService {
 
 			if (!template) {
 				await t.rollback();
-				throw new ApiError(404, 'Package template not found');
+				logger.debug(
+					'Package template not found for package creation',
+					{ slug, userId }
+				);
+				throw new ApiError(
+					404,
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Создаем пакет для пользователя
@@ -297,14 +593,30 @@ class PackageTemplateService {
 			);
 
 			await t.commit();
+
+			logger.debug('createPackageFromTemplate completed successfully', {
+				slug,
+				userId,
+			});
 			return packageStore;
 		} catch (err) {
-			await t.rollback();
+			if (t && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to create package from template', {
+				slug,
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw err instanceof ApiError
 				? err
 				: new ApiError(
 						500,
-						`Failed to create package from template: ${err.message}`
+						`Failed to create package from template: ${err.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
 				  );
 		}
 	}

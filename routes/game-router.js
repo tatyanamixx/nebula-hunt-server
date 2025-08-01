@@ -11,45 +11,6 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 const router = express.Router();
 
 /**
- * @route POST /api/game/upgrade-payment
- * @desc Register upgrade payment
- * @access Private
- */
-router.post(
-	'/upgrade-payment/:slug',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	gameController.registerUpgradePayment
-);
-
-/**
- * @route POST /api/game/task-reward
- * @desc Register task reward
- * @access Private
- */
-router.post(
-	'/task-reward/:slug',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	gameController.registerTaskReward
-);
-
-/**
- * @route POST /api/game/event-reward
- * @desc Register event reward
- * @access Private
- */
-router.post(
-	'/event-reward/:slug',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	gameController.registerEventReward
-);
-
-/**
  * @route POST /api/game/farming-reward
  * @desc Register farming reward
  * @access Private
@@ -60,19 +21,6 @@ router.post(
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
 	gameController.registerFarmingReward
-);
-
-/**
- * @route POST /api/game/stars-transfer
- * @desc Register stars transfer
- * @access Private
- */
-router.post(
-	'/stars-transfer-to-galaxy',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
-	authMiddleware,
-	gameController.registerStarsTransferToGalaxy
 );
 
 /**
@@ -102,16 +50,29 @@ router.post(
 );
 
 /**
- * @route POST /api/game/transfer-stars
- * @desc Transfer stars to user
+ * @route POST /api/game/register-transfer-stardust-to-galaxy
+ * @desc Register transfer stardust to galaxy - create offer for galaxy purchase
  * @access Private
  */
 router.post(
-	'/stars-transfer-to-user',
+	'/register-transfer-stardust-to-galaxy',
 	validateTelegramWebAppData,
 	rateLimitMiddleware(30, 60),
 	authMiddleware,
-	gameController.transferStarsToUser
+	gameController.registerTransferStardustToGalaxy
+);
+
+/**
+ * @route POST /api/game/daily-reward
+ * @desc Claim daily reward
+ * @access Private
+ */
+router.post(
+	'/daily-reward',
+	validateTelegramWebAppData,
+	rateLimitMiddleware(5, 60), // Limit to 5 requests per minute for daily rewards
+	authMiddleware,
+	gameController.claimDailyReward
 );
 
 module.exports = router;

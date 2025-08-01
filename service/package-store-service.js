@@ -7,44 +7,50 @@ const {
 	PackageTemplate,
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
+const { ERROR_CODES } = require('../config/error-codes');
 const sequelize = require('../db');
 const logger = require('./logger-service');
 const { Op } = require('sequelize');
 
 class PackageStoreService {
 	/**
-	 * Initialize package store for a new user or update based on active package templates
+	 * Initialize package store for a new user using findOrCreate
 	 * @param {number} userId - User ID
 	 * @param {Object} transaction - Sequelize transaction
-	 * @returns {Promise<void>}
+	 * @returns {Promise<Array>} - Initialized packages
 	 */
 	async initializePackageStore(userId, t) {
 		const transaction = t || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		logger.debug('initializePackageStore on start', {
-			userId,
-		});
+		const shouldCommit = !t;
+
+		logger.debug('initializePackageStore on start', { userId });
+
 		try {
 			// Get active package templates
 			const activeTemplates = await PackageTemplate.findAll({
-				where: {
-					status: true,
-				},
+				where: { status: true },
 				transaction: transaction,
 			});
 
+			if (!activeTemplates || activeTemplates.length === 0) {
+				logger.debug('No active package templates found', { userId });
+				if (shouldCommit && !transaction.finished) {
+					await transaction.commit();
+				}
+				return [];
+			}
+
 			const initializedPackages = [];
-			if (activeTemplates && activeTemplates.length > 0) {
-				for (const template of activeTemplates) {
-					const existingPackage = await PackageStore.findOne({
-						where: { userId, templateId: template.id },
-						transaction: transaction,
-					});
-					if (!existingPackage) {
-						// If no active templates, create default welcome package if user doesn't have any
-						const packagenew = await PackageStore.create(
-							{
-								templateId: template.id,
+			for (const template of activeTemplates) {
+				try {
+					const [packageItem, created] =
+						await PackageStore.findOrCreate({
+							where: {
+								userId,
+								packageTemplateId: template.id,
+							},
+							defaults: {
+								packageTemplateId: template.id,
 								userId,
 								amount: template.amount,
 								resource: template.resource,
@@ -54,32 +60,74 @@ class PackageStoreService {
 								isUsed: false,
 								isLocked: false,
 							},
-							{ transaction: transaction }
-						);
+							transaction: transaction,
+						});
+
+					if (created) {
+						logger.debug('Created new package store item', {
+							userId,
+							packageTemplateId: template.id,
+							templateSlug: template.slug,
+						});
+
 						initializedPackages.push({
-							...packagenew.toJSON(),
+							...packageItem.toJSON(),
 							package: template.toJSON(),
 						});
 					} else {
-						logger.debug('package already exists');
+						logger.debug('Package store item already exists', {
+							userId,
+							packageTemplateId: template.id,
+							templateSlug: template.slug,
+						});
+
 						initializedPackages.push({
-							...existingPackage.toJSON(),
+							...packageItem.toJSON(),
 							package: template.toJSON(),
 						});
 					}
+				} catch (packageError) {
+					logger.error('Error creating package store item', {
+						userId,
+						packageTemplateId: template.id,
+						templateSlug: template.slug,
+						error: packageError.message,
+					});
+					throw ApiError.Internal(
+						`Failed to create package store item for template ${template.slug}: ${packageError.message}`,
+						ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+					);
 				}
 			}
 
 			if (shouldCommit && !transaction.finished) {
 				await transaction.commit();
 			}
+
+			logger.debug('Package store initialized successfully', {
+				userId,
+				packagesCreated: initializedPackages.length,
+			});
+
 			return initializedPackages;
-		} catch (error) {
+		} catch (err) {
 			if (shouldCommit && !transaction.finished) {
 				await transaction.rollback();
 			}
+
+			logger.error('Failed to initialize package store', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to initialize package store: ${error.message}`
+				`Failed to initialize package store: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -93,21 +141,62 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getUserPackages on start', { userId });
+
 			const packages = await PackageStore.findAll({
 				where: {
 					userId,
 					status: 'ACTIVE',
 				},
+				include: [
+					{
+						model: PackageTemplate,
+						attributes: [
+							'id',
+							'slug',
+							'title',
+							'description',
+							'amount',
+							'resource',
+							'price',
+							'currency',
+							'status',
+						],
+					},
+				],
 				order: [['createdAt', 'DESC']],
 				transaction: t,
 			});
 
+			const result = packages.map((packageItem) => ({
+				...packageItem.toJSON(),
+				package: packageItem.packagetemplate?.toJSON(),
+			}));
+
 			await t.commit();
-			return packages;
-		} catch (error) {
+
+			logger.debug('getUserPackages completed successfully', {
+				userId,
+				packagesCount: result.length,
+			});
+
+			return result;
+		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get user packages', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get user packages: ${error.message}`
+				`Failed to get user packages: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -122,37 +211,96 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getUserPackageById on start', { userId, slug });
+
+			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!packageTemplate) {
-				throw ApiError.NotFound('Package template not found');
+				logger.debug(
+					'getUserPackageById - package template not found',
+					{
+						userId,
+						slug,
+					}
+				);
+				throw ApiError.NotFound(
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
+
+			// Находим пакет пользователя
 			const packageItem = await PackageStore.findOne({
 				where: {
-					templateId: packageTemplate.id,
+					packageTemplateId: packageTemplate.id,
 					userId,
 				},
+				include: [
+					{
+						model: PackageTemplate,
+						attributes: [
+							'id',
+							'slug',
+							'title',
+							'description',
+							'amount',
+							'resource',
+							'price',
+							'currency',
+							'status',
+						],
+					},
+				],
 				transaction: t,
 			});
 
 			if (!packageItem) {
-				await t.rollback();
+				logger.debug('getUserPackageById - package not found', {
+					userId,
+					slug,
+					packageTemplateId: packageTemplate.id,
+				});
 				throw ApiError.NotFound(
-					'Package not found or does not belong to user'
+					`Package not found or does not belong to user: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_NOT_FOUND
 				);
 			}
 
+			const result = {
+				...packageItem.toJSON(),
+				package: packageItem.packagetemplate?.toJSON(),
+			};
+
 			await t.commit();
-			return packageItem;
-		} catch (error) {
+
+			logger.debug('getUserPackageById completed successfully', {
+				userId,
+				slug,
+				packageId: packageItem.id,
+			});
+
+			return result;
+		} catch (err) {
 			await t.rollback();
-			if (error instanceof ApiError) {
-				throw error;
+
+			logger.error('Failed to get user package by ID', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
 			}
+
 			throw ApiError.Internal(
-				`Failed to get user package: ${error.message}`
+				`Failed to get user package: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -167,17 +315,29 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('usePackage on start', { userId, slug });
+
+			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!packageTemplate) {
-				throw ApiError.NotFound('Package template not found');
+				logger.debug('usePackage - package template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Package template not found: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
+				);
 			}
-			// Find the package
+
+			// Находим пакет пользователя
 			const packageItem = await PackageStore.findOne({
 				where: {
-					templateId: packageTemplate.id,
+					packageTemplateId: packageTemplate.id,
 					userId,
 					status: 'ACTIVE',
 					isUsed: false,
@@ -187,24 +347,40 @@ class PackageStoreService {
 			});
 
 			if (!packageItem) {
-				await t.rollback();
+				logger.debug('usePackage - package not found or unavailable', {
+					userId,
+					slug,
+					packageTemplateId: packageTemplate.id,
+				});
 				throw ApiError.NotFound(
-					'Package not found, already used, or locked'
+					`Package not found, already used, or locked: ${slug}`,
+					ERROR_CODES.PACKAGE.PACKAGE_NOT_FOUND
 				);
 			}
 
-			// Get user state
+			// Получаем состояние пользователя
 			const userState = await UserState.findOne({
 				where: { userId },
 				transaction: t,
 			});
 
 			if (!userState) {
-				await t.rollback();
-				throw ApiError.NotFound('User state not found');
+				logger.debug('usePackage - user state not found', {
+					userId,
+				});
+				throw ApiError.NotFound(
+					`User state not found for user: ${userId}`,
+					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
+				);
 			}
 
-			// Add resources to user state
+			// Добавляем ресурсы к состоянию пользователя
+			const oldValues = {
+				stardust: userState.stardust,
+				darkMatter: userState.darkMatter,
+				stars: userState.stars,
+			};
+
 			switch (packageItem.resource) {
 				case 'stardust':
 					userState.stardust += packageItem.amount;
@@ -213,17 +389,24 @@ class PackageStoreService {
 					userState.darkMatter += packageItem.amount;
 					break;
 				case 'stars':
-					userState.tgStars += packageItem.amount;
+					userState.stars += packageItem.amount;
 					break;
 				default:
-					await t.rollback();
-					throw ApiError.BadRequest('Invalid resource type');
+					logger.error('usePackage - invalid resource type', {
+						userId,
+						slug,
+						resource: packageItem.resource,
+					});
+					throw ApiError.BadRequest(
+						`Invalid resource type: ${packageItem.resource}`,
+						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+					);
 			}
 
-			// Mark package as used
+			// Помечаем пакет как использованный
 			packageItem.isUsed = true;
 
-			// Save changes
+			// Сохраняем изменения
 			await Promise.all([
 				userState.save({ transaction: t }),
 				packageItem.save({ transaction: t }),
@@ -231,16 +414,42 @@ class PackageStoreService {
 
 			await t.commit();
 
+			logger.debug('usePackage completed successfully', {
+				userId,
+				slug,
+				packageId: packageItem.id,
+				resource: packageItem.resource,
+				amount: packageItem.amount,
+				oldValues,
+				newValues: {
+					stardust: userState.stardust,
+					darkMatter: userState.darkMatter,
+					stars: userState.stars,
+				},
+			});
+
 			return {
 				userState,
 				package: packageItem,
 			};
-		} catch (error) {
+		} catch (err) {
 			await t.rollback();
-			if (error instanceof ApiError) {
-				throw error;
+
+			logger.error('Failed to use package', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
 			}
-			throw ApiError.Internal(`Failed to use package: ${error.message}`);
+
+			throw ApiError.Internal(
+				`Failed to use package: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 }

@@ -58,13 +58,23 @@ class TokenService {
 				}
 			);
 
+			// Вычисляем время истечения access token
+			const accessTokenExpiresAt = new Date();
+			accessTokenExpiresAt.setMinutes(
+				accessTokenExpiresAt.getMinutes() + 15
+			); // 15 минут
+
 			logger.debug('Tokens generated successfully', {
 				userId: userId,
 				accessTokenExpiresIn: JWT_CONFIG.ACCESS_EXPIRES_IN,
 				refreshTokenExpiresIn: JWT_CONFIG.REFRESH_EXPIRES_IN,
 			});
 
-			return { accessToken, refreshToken };
+			return {
+				accessToken,
+				refreshToken,
+				expiresAt: accessTokenExpiresAt,
+			};
 		} catch (err) {
 			logger.error('Failed to generate tokens', {
 				error: err.message,
@@ -189,25 +199,38 @@ class TokenService {
 		}
 	}
 
-	async saveToken(userId, refreshToken, transaction = null) {
+	async saveToken(
+		userId,
+
+		refreshToken,
+
+		transaction = null
+	) {
 		const shouldCommit = !transaction;
 		const t = transaction || (await sequelize.transaction());
 
 		try {
 			if (!userId || !refreshToken) {
-				throw new Error('User ID and refresh token are required');
+				throw new Error(
+					'User ID, access token, refresh token and expiresAt are required'
+				);
 			}
 
-			// Проверяем длину refresh token (для безопасности)
+			// Проверяем длину токенов (для безопасности)
+
 			if (typeof refreshToken !== 'string' || refreshToken.length === 0) {
 				throw new Error('Refresh token must be a non-empty string');
 			}
 
-			// Логируем длину токена для отладки
-			logger.debug('Saving refresh token', {
+			// Логируем длину токенов для отладки
+			logger.debug('Saving tokens', {
 				userId,
-				tokenLength: refreshToken.length,
-				tokenPreview: refreshToken.substring(0, 50) + '...',
+
+				refreshTokenLength: refreshToken.length,
+
+				refreshTokenPreview: refreshToken.substring(0, 50) + '...',
+
+				refreshToken: refreshToken,
 			});
 
 			const tokenData = await Token.findOne({
@@ -217,6 +240,7 @@ class TokenService {
 
 			if (tokenData) {
 				tokenData.refreshToken = refreshToken;
+
 				await tokenData.save({ transaction: t });
 				if (shouldCommit) {
 					await t.commit();
@@ -228,6 +252,7 @@ class TokenService {
 			const token = await Token.create(
 				{
 					userId: userId,
+
 					refreshToken,
 				},
 				{ transaction: t }

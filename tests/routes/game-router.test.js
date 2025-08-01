@@ -23,73 +23,6 @@ describe('Game Router', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('POST /api/game/upgrade-payment', () => {
-		it('should call registerUpgradePayment controller', async () => {
-			const gameController = require('../../controllers/game-controller');
-			gameController.registerUpgradePayment.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
-
-			const response = await request(app)
-				.post('/api/game/upgrade-payment')
-				.send({
-					userId: 123,
-					nodeId: 456,
-					amount: 100,
-					resource: 'stardust',
-				});
-
-			expect(response.status).toBe(200);
-			expect(gameController.registerUpgradePayment).toHaveBeenCalled();
-		});
-	});
-
-	describe('POST /api/game/task-reward', () => {
-		it('should call registerTaskReward controller', async () => {
-			const gameController = require('../../controllers/game-controller');
-			gameController.registerTaskReward.mockImplementation((req, res) => {
-				res.status(200).json({ success: true });
-			});
-
-			const response = await request(app)
-				.post('/api/game/task-reward')
-				.send({
-					userId: 123,
-					taskId: 789,
-					amount: 50,
-					resource: 'darkMatter',
-				});
-
-			expect(response.status).toBe(200);
-			expect(gameController.registerTaskReward).toHaveBeenCalled();
-		});
-	});
-
-	describe('POST /api/game/event-reward', () => {
-		it('should call registerEventReward controller', async () => {
-			const gameController = require('../../controllers/game-controller');
-			gameController.registerEventReward.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
-
-			const response = await request(app)
-				.post('/api/game/event-reward')
-				.send({
-					userId: 123,
-					eventId: 999,
-					amount: 25,
-					resource: 'tgStars',
-				});
-
-			expect(response.status).toBe(200);
-			expect(gameController.registerEventReward).toHaveBeenCalled();
-		});
-	});
-
 	describe('POST /api/game/farming-reward', () => {
 		it('should call registerFarmingReward controller', async () => {
 			const gameController = require('../../controllers/game-controller');
@@ -195,32 +128,54 @@ describe('Game Router', () => {
 		});
 	});
 
-	describe('POST /api/game/transfer-stars', () => {
-		it('should call transferStarsToUser controller', async () => {
+	describe('POST /api/game/daily-reward', () => {
+		it('should call claimDailyReward controller method', async () => {
 			const gameController = require('../../controllers/game-controller');
-			gameController.transferStarsToUser.mockImplementation(
+			gameController.claimDailyReward.mockImplementation(
 				(req, res) => {
 					res.status(200).json({ success: true });
 				}
 			);
 
 			const response = await request(app)
-				.post('/api/game/transfer-stars')
-				.send({
-					userId: 123,
-					galaxyData: {
-						starCurrent: 100,
-						particleCount: 200,
-					},
-					offer: {
-						seed: 'test-seed-123',
-						amount: 50,
-						resource: 'stardust',
-					},
-				});
+				.post('/api/game/daily-reward')
+				.set('Authorization', `Bearer ${mockToken}`)
+				.set('X-Telegram-Init-Data', mockInitData)
+				.send({});
 
 			expect(response.status).toBe(200);
-			expect(gameController.transferStarsToUser).toHaveBeenCalled();
+			expect(gameController.claimDailyReward).toHaveBeenCalled();
+		});
+
+		it('should require authentication', async () => {
+			const gameController = require('../../controllers/game-controller');
+			gameController.claimDailyReward.mockImplementation(
+				(req, res) => {
+					res.status(200).json({ success: true });
+				}
+			);
+
+			const response = await request(app)
+				.post('/api/game/daily-reward')
+				.send({});
+
+			expect(response.status).toBe(401);
+		});
+
+		it('should require Telegram init data', async () => {
+			const gameController = require('../../controllers/game-controller');
+			gameController.claimDailyReward.mockImplementation(
+				(req, res) => {
+					res.status(200).json({ success: true });
+				}
+			);
+
+			const response = await request(app)
+				.post('/api/game/daily-reward')
+				.set('Authorization', `Bearer ${mockToken}`)
+				.send({});
+
+			expect(response.status).toBe(401);
 		});
 	});
 

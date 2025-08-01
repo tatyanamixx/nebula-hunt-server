@@ -1,110 +1,106 @@
-{
-    "events":
-    [
-        {
-          "id": "supernova_bonus",
-          "name": "Supernova Bonus",
-          "description": {
-            "en": "A massive energy burst doubles your production!",
-            "ru": "Вспышка сверхновой удваивает производство!"
-          },
-          "type": "ONE_TIME",
-          "triggerConfig": {
-            "at": "2025-07-01T12:00:00Z"
-          },
-          "effect": {
-            "multipliers": {
-              "cps": 2.0
-            },
-            "duration": 600
-          },
-          "conditions": {
-            "minLevel": 10
-          },
-          "active": true
-        },
-        {
-          "id": "chaos_spike",
-          "name": "Chaos Spike",
-          "description": {
-            "en": "Triggered when chaos level exceeds threshold.",
-            "ru": "Срабатывает при достижении высокого уровня хаоса."
-          },
-          "type": "CONDITIONAL",
-          "triggerConfig": {
-            "condition": {
-              "chaosLevel": {
-                "$gt": 70
-              }
-            }
-          },
-          "effect": {
-            "multipliers": {
-              "entropy": 1.5
-            },
-            "duration": 300
-          },
-          "conditions": {},
-          "active": true
-        },
-        {
-          "id": "daily_reward",
-          "name": "Daily Reward",
-          "description": {
-            "en": "Daily check-in bonus!",
-            "ru": "Ежедневная награда за вход!"
-          },
-          "type": "PERIODIC",
-          "triggerConfig": {
-            "interval": "24h"
-          },
-          "effect": {
-            "reward": {
-              "stardust": 50
-            }
-          },
-          "frequencyLimit": {
-            "maxPerDay": 1
-          },
-          "active": true
-        },
-        {
-          "id": "solar_flare",
-          "name": "Solar Flare",
-          "description": {
-            "en": "A solar flare temporarily boosts resource production.",
-            "ru": "Вспышка на Солнце временно увеличивает производство."
-          },
-          "type": "RANDOM",
-          "triggerConfig": {
-            "chancePerMinute": 0.05
-          },
-          "effect": {
-            "multipliers": {
-              "cps": 1.25
-            },
-            "duration": 180
-          },
-          "active": true
-        },
-        {
-          "id": "blackhole_followup",
-          "name": "Black Hole Awakens",
-          "description": {
-            "en": "This event triggers after the black hole introduction.",
-            "ru": "Событие активируется после вступления в черную дыру."
-          },
-          "type": "CHAINED",
-          "triggerConfig": {
-            "after": "blackhole_intro"
-          },
-          "effect": {
-            "multipliers": {
-              "chaos": 2.0
-            }
-          },
-          "active": true
-        }
-      ]
-    }
-      
+[
+	{
+		"slug": "supernova_bonus",
+		"name": "Supernova Bonus",
+		"description": {
+			"en": "A massive energy burst doubles your production!",
+			"ru": "Вспышка сверхновой удваивает производство!"
+		},
+		"type": "ONE_TIME",
+		"triggerConfig": {
+			"at": "2025-07-01T12:00:00Z"
+		},
+		"effect": {
+			"multipliers": {
+				"cps": 2.0
+			},
+			"duration": 600
+		},
+		"conditions": {
+			"minLevel": 10
+		},
+		"active": true
+	},
+	{
+		"slug": "chaos_spike",
+		"name": "Chaos Spike",
+		"description": {
+			"en": "Triggered when chaos level exceeds threshold.",
+			"ru": "Срабатывает при достижении высокого уровня хаоса."
+		},
+		"type": "CONDITIONAL",
+		"triggerConfig": {
+			"condition": {
+				"chaosLevel": {
+					"$gt": 70
+				}
+			}
+		},
+		"effect": {
+			"multipliers": {
+				"entropy": 1.5
+			},
+			"duration": 300
+		},
+		"conditions": {},
+		"active": true
+	},
+	{
+		"slug": "daily_reward",
+		"name": "Daily Reward",
+		"description": {
+			"en": "Daily check-in bonus!",
+			"ru": "Ежедневная награда за вход!"
+		},
+		"type": "PERIODIC",
+		"triggerConfig": {
+			"interval": "24h"
+		},
+		"effect": {
+			"reward": {
+				"stardust": 50
+			}
+		},
+		"frequencyLimit": {
+			"maxPerDay": 1
+		},
+		"active": true
+	},
+	{
+		"slug": "solar_flare",
+		"name": "Solar Flare",
+		"description": {
+			"en": "A solar flare temporarily boosts resource production.",
+			"ru": "Вспышка на Солнце временно увеличивает производство."
+		},
+		"type": "RANDOM",
+		"triggerConfig": {
+			"chancePerMinute": 0.05
+		},
+		"effect": {
+			"multipliers": {
+				"cps": 1.25
+			},
+			"duration": 180
+		},
+		"active": true
+	},
+	{
+		"slug": "blackhole_followup",
+		"name": "Black Hole Awakens",
+		"description": {
+			"en": "This event triggers after the black hole introduction.",
+			"ru": "Событие активируется после вступления в черную дыру."
+		},
+		"type": "CHAINED",
+		"triggerConfig": {
+			"after": "blackhole_intro"
+		},
+		"effect": {
+			"multipliers": {
+				"chaos": 2.0
+			}
+		},
+		"active": true
+	}
+]

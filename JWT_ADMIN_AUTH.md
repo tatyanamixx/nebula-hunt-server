@@ -207,7 +207,7 @@ JWT_REFRESH_AUDIENCE=nebulahunt-users
 
 ### Изменения в маршрутах
 
--   Заменен `adminMiddleware` на `adminAuthMiddleware` для защищенных маршрутов
+-   Заменен `adminMiddleware` на `adminAuthMiddleware` для всех защищенных маршрутов (завершено)
 -   Добавлен новый маршрут `/admin/refresh` для обновления токенов
 
 ### Совместимость

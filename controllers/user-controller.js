@@ -5,92 +5,69 @@ const userService = require('../service/user-service');
 const { validationResult } = require('express-validator');
 const ApiError = require('../exceptions/api-error');
 const logger = require('../service/logger-service');
+const { ERROR_CODES } = require('../config/error-codes');
 
 class UserController {
-	async registration(req, res, next) {
+	async login(req, res, next) {
 		try {
 			const id = req.initdata.id;
 			const username = req.initdata.username;
 
 			let { referral, galaxy } = req.body;
-			if (typeof referral === 'string') {
-				try {
-					referral = BigInt(referral);
-				} catch {
+
+			// Валидация referral (если предоставлен)
+			if (referral !== undefined && referral !== null) {
+				if (typeof referral === 'string') {
+					try {
+						referral = BigInt(referral);
+					} catch {
+						return next(
+							ApiError.withCode(
+								400,
+								'Referral must be a number, bigint, or numeric string',
+								ERROR_CODES.VALIDATION.INVALID_REFERRAL
+							)
+						);
+					}
+				} else if (
+					typeof referral !== 'number' &&
+					typeof referral !== 'bigint'
+				) {
 					return next(
 						ApiError.withCode(
 							400,
 							'Referral must be a number, bigint, or numeric string',
-							'VAL_002'
+							ERROR_CODES.VALIDATION.INVALID_REFERRAL
 						)
 					);
 				}
-			} else if (typeof referral === 'number') {
-				// Оставляем как есть (Number)
-			} else if (typeof referral === 'bigint') {
-				// Оставляем как есть (BigInt)
-			} else if (referral !== undefined && referral !== null) {
-				return next(
-					ApiError.withCode(
-						400,
-						'Referral must be a number, bigint, or numeric string',
-						'VAL_002'
-					)
-				);
 			}
-			logger.debug('User registration', {
+
+			// Если referral не предоставлен, устанавливаем в null
+			if (referral === undefined) {
+				referral = null;
+			}
+
+			logger.debug('User login/registration', {
 				userId: id,
 				username,
-				referral,
-				galaxy,
+				referral: referral || 'not provided',
+				hasGalaxy: !!galaxy,
 			});
-			const userData = await userService.registration(
+
+			const result = await userService.login(
 				id,
 				username,
 				referral,
 				galaxy
 			);
-			logger.debug('User registered', { userData });
-			logger.debug('User registration response details', {
-				hasUser: !!userData.user,
-				hasUserState: !!userData.userState,
-				hasUserGalaxy: !!userData.userGalaxy,
-				createdGalaxy: userData.createdGalaxy,
-				userGalaxyKeys: userData.userGalaxy
-					? Object.keys(userData.userGalaxy)
-					: null,
-			});
-			res.cookie('refreshToken', userData.refreshToken, {
+			logger.debug('User login result', { result });
+
+			res.cookie('refreshToken', result.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
 			});
-			return res.json(userData);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async login(req, res, next) {
-		try {
-			const id = req.initdata.id;
-			const userData = await userService.login(id);
-			logger.debug('User login', { userId: id });
-			res.cookie('refreshToken', userData.refreshToken, {
-				maxAge: 30 * 24 * 60 * 60 * 1000,
-				httpOnly: true,
-			});
-			return res.json(userData);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	async logout(req, res, next) {
-		try {
-			const { refreshToken } = req.cookies;
-			const token = await userService.logout(refreshToken);
-			res.clearCookie('refreshToken');
-			return res.json(token);
+			return res.json(result);
 		} catch (e) {
 			next(e);
 		}

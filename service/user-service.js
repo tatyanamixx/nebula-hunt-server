@@ -2,7 +2,13 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * Сервис для работы с пользователями: регистрация, аутентификация, управление состоянием
  */
-const { User, UserState, Galaxy } = require('../models/models');
+const {
+	User,
+	UserState,
+	Galaxy,
+	UserUpgrade,
+	UpgradeNodeTemplate,
+} = require('../models/models');
 const tokenService = require('./token-service');
 const galaxyService = require('./galaxy-service');
 const userStateService = require('./user-state-service');
@@ -22,6 +28,7 @@ const gameService = require('./game-service');
 const packageStoreService = require('./package-store-service');
 
 const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
+const { ERROR_CODES } = require('../config/error-codes');
 
 class UserService {
 	constructor() {
@@ -91,35 +98,26 @@ class UserService {
 		const shouldCommit = !transaction;
 		try {
 			// Create system user
-			const systemUser = await User.create(
-				{
+			const systemUser = await User.findOrCreate({
+				transaction: t,
+				defaults: {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
 					referral: 0,
 					role: 'SYSTEM',
 					blocked: false,
 				},
-				{ transaction: t }
-			);
-
-			//logger.debug('SYSTEM_USER_ID_STATE', SYSTEM_USER_ID);
-			// Create UserState for SYSTEM user (for contract balance)
-			logger.debug('SYSTEM_USER_ID_STATE', systemUser.id);
-			await UserState.findOrCreate({
-				where: {
-					userId: systemUser.id,
-				},
-				defaults: {
-					userId: systemUser.id,
-				},
-				transaction: t,
 			});
+			logger.debug('systemUser', systemUser);
+
 			if (shouldCommit) await t.commit();
 			return systemUser;
 		} catch (err) {
 			if (!t.finished && shouldCommit) await t.rollback();
-			throw ApiError.Internal(
-				`Failed to create system user: ${err.message}`
+			throw ApiError.withCode(
+				500,
+				`Failed to create system user: ${err.message}`,
+				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 			);
 		}
 	}
@@ -147,8 +145,10 @@ class UserService {
 		} catch (err) {
 			if (!t.finished) await t.rollback();
 			logger.error('Failed to ensure system user exists:', err);
-			throw ApiError.Internal(
-				`Failed to ensure system user exists: ${err.message}`
+			throw ApiError.withCode(
+				500,
+				`Failed to ensure system user exists: ${err.message}`,
+				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 			);
 		}
 	}
@@ -160,7 +160,7 @@ class UserService {
 			throw ApiError.withCode(
 				400,
 				'Missing required user data (id or username)',
-				'VAL_005'
+				ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 			);
 		}
 
@@ -191,8 +191,10 @@ class UserService {
 			// Проверяем, был ли пользователь создан или уже существовал
 			if (!created) {
 				await transaction.rollback();
-				throw ApiError.UserAlreadyExists(
-					`User with ID ${userId} already exists`
+				throw ApiError.withCode(
+					409,
+					`User with ID ${userId} already exists`,
+					ERROR_CODES.AUTH.USER_ALREADY_EXISTS
 				);
 			}
 
@@ -208,276 +210,645 @@ class UserService {
 
 			// Проверяем на дублирование по уникальному ключу
 			if (err.name === 'SequelizeUniqueConstraintError') {
-				throw ApiError.UserAlreadyExists(
-					`User with ID ${userId} already exists`
+				throw ApiError.withCode(
+					409,
+					`User with ID ${userId} already exists`,
+					ERROR_CODES.AUTH.USER_ALREADY_EXISTS
 				);
 			}
 
-			throw ApiError.DatabaseError(
-				`Failed to create user: ${err.message}`
+			throw ApiError.withCode(
+				500,
+				`Failed to create user: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
+		}
+	}
+
+	async initializeUser(userId, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+		try {
+			// 5. Инициализируем дерево апгрейдов
+			const initializedUpgrades =
+				await upgradeService.initializeUserUpgradeTree(userId, t);
+			logger.debug('initializedUpgrades', { initializedUpgrades });
+
+			// 6. Активируем доступные узлы апгрейдов
+			const activatedUpgrades =
+				await upgradeService.activateUserUpgradeNodes(userId, t);
+			logger.debug('activatedUpgrades', { activatedUpgrades });
+
+			// 7. Получаем все апгрейды пользователя с шаблонами (в рамках транзакции)
+			const allUserUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+				include: [
+					{
+						model: UpgradeNodeTemplate,
+						attributes: [
+							'id',
+							'slug',
+							'name',
+							'description',
+							'maxLevel',
+							'basePrice',
+							'effectPerLevel',
+							'priceMultiplier',
+							'category',
+							'icon',
+							'stability',
+							'instability',
+							'modifiers',
+							'active',
+							'conditions',
+							'children',
+							'weight',
+						],
+					},
+				],
+				transaction: t,
+			});
+			logger.debug('allUserUpgrades', { allUserUpgrades });
+
+			// Добавляем информацию о шаблонах к инициализированным апгрейдам
+			const initializedWithTemplates = initializedUpgrades.map(
+				(upgrade) => {
+					const userUpgradeWithTemplate = allUserUpgrades.find(
+						(u) => Number(u.id) === Number(upgrade.id)
+					);
+					const template =
+						userUpgradeWithTemplate?.upgradenodetemplate;
+					return {
+						...upgrade.toJSON(),
+						slug: template?.slug || null,
+						template: template ? template.toJSON() : null,
+					};
+				}
+			);
+
+			// Добавляем информацию о шаблонах к активированным апгрейдам
+			const activatedWithTemplates = activatedUpgrades.map((upgrade) => {
+				const userUpgradeWithTemplate = allUserUpgrades.find(
+					(u) => Number(u.id) === Number(upgrade.id)
+				);
+				const template = userUpgradeWithTemplate?.upgradenodetemplate;
+				return {
+					...upgrade.toJSON(),
+					slug: template?.slug || null,
+					template: template ? template.toJSON() : null,
+				};
+			});
+
+			// Структурируем данные апгрейдов
+			const upgradeTree = {
+				initialized: initializedWithTemplates,
+				activated: activatedWithTemplates,
+				total: allUserUpgrades.length,
+			};
+			logger.debug('upgradeTree', { upgradeTree });
+			logger.debug('initializedWithTemplates', {
+				initializedWithTemplates,
+			});
+			logger.debug('activatedWithTemplates', { activatedWithTemplates });
+
+			// 8. Инициализируем события пользователя
+			const userEvents = await eventService.initializeUserEvents(
+				userId,
+				t
+			);
+			logger.debug('userEvents', { userEvents });
+
+			// 9. Инициализируем список задач пользователя
+			const userTasks = await taskService.initializeUserTasks(userId, t);
+			logger.debug('userTasks', { userTasks });
+
+			// 10. Получаем системные пакеты услуг
+			const packageOffers =
+				await packageStoreService.initializePackageStore(userId, t);
+			logger.debug('packageOffers', { packageOffers });
+
+			const result = {
+				upgradeTree,
+				userEvents,
+				userTasks,
+				packageOffers,
+			};
+
+			if (shouldCommit) await t.commit();
+			return result;
+		} catch (err) {
+			if (!t.finished && shouldCommit) await t.rollback();
+			throw ApiError.withCode(
+				500,
+				`Failed to initialize user: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
 
 	/**
-	 * Регистрация нового пользователя с инициализацией всех необходимых данных
+	 * Формирует единый структурированный ответ для клиента
+	 * @param {Object} tokens - Токены аутентификации
+	 * @param {Object} user - Данные пользователя
+	 * @param {Object} userState - Состояние пользователя
+	 * @param {Array} galaxies - Массив галактик пользователя
+	 * @param {Array} artifacts - Массив артефактов пользователя
+	 * @param {Object} userData - Игровые данные пользователя
+	 * @param {boolean} galaxyCreated - Была ли создана галактика
+	 * @returns {Object} Структурированный ответ для клиента
+	 */
+	formatClientResponse(
+		tokens,
+		user,
+		userState,
+		galaxies,
+		artifacts,
+		userData,
+		galaxyCreated = false
+	) {
+		return {
+			success: true,
+			message: galaxyCreated
+				? 'Registration successful'
+				: 'Login successful',
+			data: {
+				// Аутентификация
+				auth: {
+					accessToken: tokens.accessToken,
+					refreshToken: tokens.refreshToken,
+					expiresAt: tokens.expiresAt,
+					user: {
+						id: user.id,
+						role: user.role,
+					},
+				},
+
+				// Состояние пользователя
+				userState: {
+					id: userState.id,
+					userId: userState.userId,
+					resources: {
+						stardust: userState.stardust,
+						darkMatter: userState.darkMatter,
+						stars: userState.stars,
+						lastDailyBonus: userState.lastDailyBonus,
+					},
+					lockedResources: {
+						stardust: userState.lockedStardust,
+						darkMatter: userState.lockedDarkMatter,
+						stars: userState.lockedStars,
+					},
+					createdAt: userState.createdAt,
+					updatedAt: userState.updatedAt,
+				},
+
+				// Галактики пользователя
+				galaxies: galaxies.map((galaxy) => ({
+					id: galaxy.id,
+					userId: galaxy.userId,
+					starMin: galaxy.starMin,
+					starCurrent: galaxy.starCurrent,
+					price: galaxy.price,
+					seed: galaxy.seed,
+					particleCount: galaxy.particleCount,
+					onParticleCountChange: galaxy.onParticleCountChange,
+					galaxyProperties: galaxy.galaxyProperties,
+					active: galaxy.active,
+					createdAt: galaxy.createdAt,
+					updatedAt: galaxy.updatedAt,
+				})),
+
+				// Артефакты пользователя
+				artifacts: artifacts.map((artifact) => ({
+					id: artifact.id,
+					userId: artifact.userId,
+					// Добавьте другие поля артефакта по необходимости
+				})),
+
+				// Игровые данные
+				gameData: {
+					// Дерево улучшений
+					upgradeTree: {
+						initialized: userData.upgradeTree.initialized.map(
+							(upgrade) => ({
+								id: upgrade.id,
+								userId: upgrade.userId,
+								upgradeNodeTemplateId:
+									upgrade.upgradeNodeTemplateId,
+								level: upgrade.level,
+								progress: upgrade.progress,
+								targetProgress: upgrade.targetProgress,
+								completed: upgrade.completed,
+								progressHistory: upgrade.progressHistory,
+								lastProgressUpdate: upgrade.lastProgressUpdate,
+								stability: upgrade.stability,
+								instability: upgrade.instability,
+								slug: upgrade.slug,
+								template: {
+									id: upgrade.template.id,
+									slug: upgrade.template.slug,
+									name: upgrade.template.name,
+									description: upgrade.template.description,
+									maxLevel: upgrade.template.maxLevel,
+									basePrice: upgrade.template.basePrice,
+									effectPerLevel:
+										upgrade.template.effectPerLevel,
+									priceMultiplier:
+										upgrade.template.priceMultiplier,
+									currency: upgrade.template.currency,
+									category: upgrade.template.category,
+									icon: upgrade.template.icon,
+									stability: upgrade.template.stability,
+									instability: upgrade.template.instability,
+									modifiers: upgrade.template.modifiers,
+									active: upgrade.template.active,
+									conditions: upgrade.template.conditions,
+									delayedUntil: upgrade.template.delayedUntil,
+									children: upgrade.template.children,
+									weight: upgrade.template.weight,
+									createdAt: upgrade.template.createdAt,
+									updatedAt: upgrade.template.updatedAt,
+								},
+								createdAt: upgrade.createdAt,
+								updatedAt: upgrade.updatedAt,
+							})
+						),
+						activated: userData.upgradeTree.activated.map(
+							(upgrade) => ({
+								id: upgrade.id,
+								userId: upgrade.userId,
+								upgradeNodeTemplateId:
+									upgrade.upgradeNodeTemplateId,
+								level: upgrade.level,
+								progress: upgrade.progress,
+								targetProgress: upgrade.targetProgress,
+								completed: upgrade.completed,
+								progressHistory: upgrade.progressHistory,
+								lastProgressUpdate: upgrade.lastProgressUpdate,
+								stability: upgrade.stability,
+								instability: upgrade.instability,
+								slug: upgrade.slug,
+								template: upgrade.template,
+								createdAt: upgrade.createdAt,
+								updatedAt: upgrade.updatedAt,
+							})
+						),
+						total: userData.upgradeTree.total,
+					},
+
+					// События пользователя
+					userEvents: userData.userEvents
+						? {
+								id: userData.userEvents.id,
+								userId: userData.userEvents.userId,
+								eventMultipliers:
+									userData.userEvents.eventMultipliers,
+								lastEventCheck:
+									userData.userEvents.lastEventCheck,
+								eventCooldowns:
+									userData.userEvents.eventCooldowns,
+								enabledTypes: userData.userEvents.enabledTypes,
+								disabledEvents:
+									userData.userEvents.disabledEvents,
+								priorityEvents:
+									userData.userEvents.priorityEvents,
+								createdAt: userData.userEvents.createdAt,
+								updatedAt: userData.userEvents.updatedAt,
+						  }
+						: null,
+
+					// Задачи пользователя
+					userTasks: {
+						tasks: userData.userTasks.tasks.map((task) => ({
+							id: task.id,
+							userId: task.userId,
+							taskTemplateId: task.taskTemplateId,
+							completed: task.completed,
+							reward: task.reward,
+							active: task.active,
+							completedAt: task.completedAt,
+							slug: task.slug,
+							task: {
+								id: task.task.id,
+								slug: task.task.slug,
+								title: task.task.title,
+								description: task.task.description,
+								reward: task.task.reward,
+								condition: task.task.condition,
+								icon: task.task.icon,
+								active: task.task.active,
+								sortOrder: task.task.sortOrder,
+								createdAt: task.task.createdAt,
+								updatedAt: task.task.updatedAt,
+							},
+							createdAt: task.createdAt,
+							updatedAt: task.updatedAt,
+						})),
+						reward: userData.userTasks.reward,
+					},
+
+					// Пакеты в магазине
+					packageOffers: userData.packageOffers.map((pkg) => ({
+						id: pkg.id,
+						userId: pkg.userId,
+						packageTemplateId: pkg.packageTemplateId,
+						amount: pkg.amount,
+						resource: pkg.resource,
+						price: pkg.price,
+						currency: pkg.currency,
+						status: pkg.status,
+						isUsed: pkg.isUsed,
+						isLocked: pkg.isLocked,
+						package: {
+							id: pkg.package.id,
+							slug: pkg.package.slug,
+							name: pkg.package.name,
+							description: pkg.package.description,
+							amount: pkg.package.amount,
+							resource: pkg.package.resource,
+							price: pkg.package.price,
+							currency: pkg.package.currency,
+							status: pkg.package.status,
+							icon: pkg.package.icon,
+							sortOrder: pkg.package.sortOrder,
+							labelKey: pkg.package.labelKey,
+							isPromoted: pkg.package.isPromoted,
+							validUntil: pkg.package.validUntil,
+							createdAt: pkg.package.createdAt,
+							updatedAt: pkg.package.updatedAt,
+						},
+						createdAt: pkg.createdAt,
+						updatedAt: pkg.updatedAt,
+					})),
+				},
+
+				// Метаданные
+				metadata: {
+					galaxyCreated: galaxyCreated,
+					timestamp: new Date().toISOString(),
+					version: '1.0.0',
+				},
+			},
+		};
+	}
+
+	/**
+	 * Универсальный метод для входа пользователя: если пользователь существует - выполняет логин, если нет - регистрацию
 	 * @param {BigInt|string} userId - Идентификатор пользователя
 	 * @param {string} username - Имя пользователя
-	 * @param {BigInt|string} referral - Идентификатор реферала
-	 * @param {Object} galaxy - Данные о галактике пользователя
+	 * @param {BigInt|string} referral - Идентификатор реферала - может быть null
+	 * @param {Object} galaxyData - Данные о галактике пользователя (для регистрации) - может быть null
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async registration(userId, username, referral, galaxy) {
-		// Первая транзакция - создаем только пользователя
-		// Если пользователь уже существует, createUser выбросит ошибку
-		const { user, created } = await this.createUser(
-			userId,
-			username,
-			referral
-		);
-		logger.debug('registration after create user', { user });
-
+	async login(userId, username, referral = null, galaxyData = null) {
 		const transaction = await sequelize.transaction();
 		try {
-			// Откладываем проверку всех deferrable ограничений
+			// Откладываем проверку всех deferrable ограничений в начале транзакции
 			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
 				transaction,
 			});
 
-			// Создаём DTO пользователя для токенов
+			// 1. Проверяем существование пользователя
+			let user = await User.findByPk(userId, {
+				transaction: transaction,
+			});
+
+			let isNewUser = false;
+
+			// Если пользователь не существует, создаем нового пользователя
+			if (!user && userId) {
+				logger.debug('User not found, creating new user', {
+					userId,
+					username: username || null,
+					referral: referral || null,
+					hasGalaxyData: !!galaxyData,
+				});
+
+				// Создаем пользователя явно
+				user = await User.create(
+					{
+						id: userId,
+						username: username || null,
+						referral: referral || 0,
+						role: 'USER',
+					},
+					{
+						transaction: transaction,
+					}
+				);
+
+				isNewUser = true;
+			}
+
+			// Если пользователь все еще не найден
+			if (!user) {
+				await transaction.rollback();
+				throw ApiError.withCode(
+					404,
+					'User not found',
+					ERROR_CODES.AUTH.USER_NOT_FOUND
+				);
+			}
+
+			// Проверяем, не заблокирован ли пользователь
+			if (user.blocked) {
+				await transaction.rollback();
+				throw ApiError.withCode(
+					403,
+					'User account is blocked',
+					ERROR_CODES.AUTH.USER_BLOCKED
+				);
+			}
+
 			const userDto = new UserDto(user);
 
-			// 2. Инициализируем состояние пользователя
-			const [userState, createdUserState] = await UserState.findOrCreate({
-				where: { userId: user.id },
-				defaults: {
-					userId: user.id,
-				},
-				transaction: transaction,
-			});
+			// 2. Если это новый пользователь, выполняем инициализацию
+			if (isNewUser) {
+				logger.debug('Initializing new user', { userId });
 
-			// 3. Генерируем JWT токены
-			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(
-				user.id,
-				tokens.refreshToken,
-				transaction
-			);
+				// Инициализируем состояние пользователя
+				const [userState, createdUserState] =
+					await UserState.findOrCreate({
+						where: { userId: user.id },
+						defaults: {
+							userId: user.id,
+						},
+						transaction: transaction,
+					});
 
-			// 4. Создаём галактику для пользователя, если данные предоставлены
-			const galaxyData = await Galaxy.findOne({
-				where: {
-					userId: user.id,
-				},
-				transaction: transaction,
-			});
-			logger.debug('registration after create user', { user });
-			logger.debug('galaxy input', { galaxy });
-			logger.debug('existing galaxyData', { galaxyData });
-
-			// Объявляем переменные в начале функции
-			let createdGalaxy = false;
-			let userGalaxy = null;
-			let userStateNew = userState.toJSON();
-
-			logger.debug('Galaxy creation condition check', {
-				hasGalaxy: !!galaxy,
-				hasGalaxyData: !!galaxyData,
-				shouldCreate: !!(galaxy && !galaxyData),
-			});
-
-			if (galaxy && !galaxyData) {
-				logger.debug('Creating galaxy as gift', { galaxy });
-				const result = await gameService.createGalaxyAsGift(
-					galaxy,
+				// Инициализируем пользователя (создаем апгрейды, события, задачи)
+				const userData = await this.initializeUser(
 					user.id,
 					transaction
 				);
 
-				logger.debug('Galaxy creation result', result);
-				userGalaxy = result.galaxy;
-				userStateNew = result.userState;
+				// Создаём галактику для пользователя после коммита основной транзакции
+				let userGalaxy = null;
+				let userStateNew = userState.toJSON();
+
+				// Генерируем JWT токены
+				const tokens = tokenService.generateTokens({ ...userDto });
+				await tokenService.saveToken(
+					user.id,
+					tokens.refreshToken,
+					transaction
+				);
+
+				// Коммитим всю транзакцию
+				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+					transaction,
+				});
+				await transaction.commit();
+				logger.debug('All registration data committed to database', {
+					userId: user.id,
+				});
+
+				// Создаём галактику для пользователя после коммита основной транзакции
+				if (galaxyData && isNewUser) {
+					logger.debug(
+						'Creating galaxy as gift after main transaction commit',
+						{
+							galaxyData,
+						}
+					);
+					try {
+						const galaxyTransaction = await sequelize.transaction();
+						const offer = {
+							price: 0,
+							currency: 'tonToken',
+						};
+						try {
+							const result =
+								await gameService.createGalaxyWithOffer(
+									galaxyData,
+									user.id,
+									offer,
+									galaxyTransaction
+								);
+
+							logger.debug('Galaxy creation result', result);
+							userGalaxy = result.galaxy;
+							userStateNew = result.userState;
+
+							await galaxyTransaction.commit();
+						} catch (galaxyError) {
+							await galaxyTransaction.rollback();
+							logger.error(
+								'Failed to create galaxy',
+								galaxyError
+							);
+							// Don't fail the entire registration if galaxy creation fails
+						}
+					} catch (galaxyError) {
+						logger.error('Failed to create galaxy', galaxyError);
+						// Don't fail the entire registration if galaxy creation fails
+					}
+				} else if (isNewUser && !galaxyData) {
+					logger.debug(
+						'New user registered without galaxy data - galaxy will not be created',
+						{
+							userId: user.id,
+						}
+					);
+				}
+
+				// Получаем галактики и артефакты для нового пользователя
+				const userGalaxies = userGalaxy ? [userGalaxy] : [];
+				const userArtifacts = [];
+
+				// Формируем структурированный ответ для клиента
+				const response = this.formatClientResponse(
+					tokens,
+					userDto,
+					userStateNew,
+					userGalaxies,
+					userArtifacts,
+					userData,
+					!!userGalaxy
+				);
+
+				logger.debug('User registration response', response);
+				return response;
+			} else {
+				// 3. Для существующего пользователя выполняем логин
+				logger.debug('User exists, performing login', { userId });
+
+				// Получаем состояние пользователя, галактики и артефакты
+				const [userState, userGalaxies, userArtifacts] =
+					await Promise.all([
+						userStateService.getUserState(userDto.id, transaction),
+						galaxyService.getUserGalaxies(userDto.id, transaction),
+						artifactService.getUserArtifacts(
+							userDto.id,
+							transaction
+						),
+					]);
+
+				// Проверяем и инициализируем state, если его нет
+				const userData = await this.initializeUser(
+					user.id,
+					transaction
+				);
+
+				// Генерируем и сохраняем новые токены
+				const tokens = tokenService.generateTokens({ ...userDto });
+				await tokenService.saveToken(
+					userDto.id,
+					tokens.refreshToken,
+					transaction
+				);
+
+				// Устанавливаем ограничения обратно в немедленные перед коммитом
+				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+					transaction,
+				});
+
+				// Фиксируем транзакцию
+				await transaction.commit();
+
+				// Формируем структурированный ответ для клиента
+				return this.formatClientResponse(
+					tokens,
+					userDto,
+					userState,
+					userGalaxies,
+					userArtifacts,
+					userData,
+					false // galaxyCreated = false для существующих пользователей
+				);
 			}
-			logger.debug('registration after create galaxy', {
-				userGalaxy,
-				userState: userStateNew,
-			});
-
-			// 5. Инициализируем дерево апгрейдов
-			await upgradeService.initializeUserUpgradeTree(
-				user.id,
-				transaction
-			);
-
-			// 6. Инициализируем события пользователя
-			await eventService.initializeUserEvents(user.id, transaction);
-
-			// 7. Инициализируем список задач пользователя
-			await taskService.initializeUserTasks(user.id, transaction);
-
-			// 8. Получаем системные пакеты услуг
-			await packageStoreService.initializePackageStore(
-				user.id,
-				transaction
-			);
-
-			// Безопасно обновляем метрики Prometheus только если пользователь был создан
-			if (created) {
-				this.safeUpdatePrometheusMetric('userRegistration', { userId });
-			}
-			await transaction.commit();
-			logger.debug('registration after commit', { userState });
-			logger.debug('registration after commit', { userGalaxy });
-			const response = {
-				...tokens,
-				user: userDto,
-				userState: userStateNew,
-				galaxy: userGalaxy,
-			};
-			logger.debug('User registration response', response);
-			return response;
 		} catch (err) {
-			if (!transaction.finished) await transaction.rollback();
+			// Откатываем транзакцию в случае ошибки
+			if (!transaction.finished) {
+				await transaction.rollback();
+			}
+
 			// Логируем ошибку
 			logger.error({
-				message: `Registration failed: ${err.message}`,
+				message: `Login failed: ${err.message}`,
 				userId: userId,
 				error: err.stack,
 			});
-			const t = await sequelize.transaction();
-			await user.destroy({ transaction: t });
-			await t.commit();
+
 			// Если это уже ApiError, пробрасываем как есть
 			if (err instanceof ApiError) {
 				throw err;
 			}
 
-			throw ApiError.DatabaseError(
-				`Failed to register user ${userId}: ${err.message}`
-			);
-		}
-	}
-
-	/**
-	 * Авторизация пользователя и получение всех связанных данных
-	 * @param {BigInt|string} userId - Идентификатор пользователя
-	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
-	 */
-	async login(userId) {
-		const transaction = await sequelize.transaction();
-		try {
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
-				transaction,
-			});
-			// 1. Проверяем существование пользователя
-			const user = await User.findByPk(userId, {
-				transaction: transaction,
-			});
-
-			if (!user) {
-				throw ApiError.UserNotFound();
-			}
-
-			if (user.blocked) {
-				throw ApiError.UserBlocked();
-			}
-
-			const userDto = new UserDto(user);
-
-			// 2. Получаем состояние пользователя, галактики и артефакты
-			const [userState, userGalaxies, userArtifacts] = await Promise.all([
-				userStateService.getUserState(userDto.id, transaction),
-				galaxyService.getUserGalaxies(userDto.id, transaction),
-				artifactService.getUserArtifacts(userDto.id, transaction),
-			]);
-
-			// 3. Проверяем и инициализируем state, если его нет
-
-			// 4. Обновляем и инициализируем события пользователя
-			const userEvents = await eventService.checkAndTriggerEvents(
-				userDto.id,
-				transaction
-			);
-
-			// 5. Проверяем и инициализируем дерево апгрейдов
-			if (!userState.upgrades || userState.upgrades.items.length === 0) {
-				// Если дерево апгрейдов не инициализировано - инициализируем
-				await upgradeService.initializeUserUpgradeTree(
-					userDto.id,
-					transaction
-				);
-			} else {
-				// Если дерево существует - активируем новые доступные узлы
-				await upgradeService.activateUserUpgradeNodes(
-					userDto.id,
-					transaction
+			// Проверяем на дублирование по уникальному ключу
+			if (err.name === 'SequelizeUniqueConstraintError') {
+				throw ApiError.withCode(
+					409,
+					`User with ID ${userId} already exists`,
+					ERROR_CODES.AUTH.USER_ALREADY_EXISTS
 				);
 			}
 
-			// 6. Проверяем и инициализируем задачи пользователя
-			await taskService.initializeUserTasks(userDto.id, transaction);
-
-			// 7. Проверяем и инициализируем пакеты пользователя
-			await packageStoreService.initializePackageStore(
-				userDto.id,
-				transaction
+			throw ApiError.withCode(
+				500,
+				`Failed to login user ${userId}: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
-
-			// 8. Генерируем и сохраняем новые токены
-			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(
-				userDto.id,
-				tokens.refreshToken,
-				transaction
-			);
-
-			// Фиксируем транзакцию
-			await transaction.commit();
-
-			// Возвращаем результат (без дублирования данных)
-			return {
-				...tokens,
-				user: userDto,
-				userState,
-				galaxies: userGalaxies,
-				artifacts: userArtifacts,
-				// userEvents,
-				// packageOffers: packageOffers || [],
-				// userTasks: [],
-				// userUpgrades: [],
-			};
-		} catch (err) {
-			// Откатываем транзакцию в случае ошибки
-			if (!transaction.finished) await transaction.rollback();
-
-			// Логируем ошибку
-			logger.error(`Login failed: ${err.message}`, {
-				userId: userId,
-				error: err.stack,
-			});
-			if (err instanceof ApiError) {
-				throw err;
-			}
-
-			throw ApiError.DatabaseError(`Login failed: ${err.message}`);
-		}
-	}
-
-	/**
-	 * Выход пользователя из системы (удаление refresh токена)
-	 * @param {string} refreshToken - Токен обновления для удаления
-	 * @returns {Promise<Object>} Результат операции
-	 */
-	async logout(refreshToken) {
-		const t = await sequelize.transaction();
-
-		try {
-			const token = await tokenService.removeToken(refreshToken, t);
-			await t.commit();
-			return token;
-		} catch (err) {
-			await t.rollback();
-			throw ApiError.Internal(`Logout failed: ${err.message}`);
 		}
 	}
 
@@ -493,22 +864,32 @@ class UserService {
 			// Проверяем наличие токена
 			if (!refreshToken) {
 				await t.rollback();
-				throw ApiError.UnauthorizedError('Refresh token is required');
+				throw ApiError.withCode(
+					401,
+					'Refresh token is required',
+					ERROR_CODES.AUTH.INVALID_TOKEN
+				);
 			}
 
 			// Валидируем токен
 			const userData = tokenService.validateRefreshToken(refreshToken);
 			if (!userData) {
 				await t.rollback();
-				throw ApiError.UnauthorizedError('Invalid refresh token');
+				throw ApiError.withCode(
+					401,
+					'Invalid refresh token',
+					ERROR_CODES.AUTH.INVALID_TOKEN
+				);
 			}
 
 			// Проверяем наличие токена в базе данных
 			const tokenFromDb = await tokenService.findToken(refreshToken, t);
 			if (!tokenFromDb) {
 				await t.rollback();
-				throw ApiError.UnauthorizedError(
-					'Refresh token not found in database'
+				throw ApiError.withCode(
+					401,
+					'Refresh token not found in database',
+					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
 
@@ -516,13 +897,21 @@ class UserService {
 			const user = await User.findByPk(userData.id, { transaction: t });
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.withCode(
+					404,
+					'User not found',
+					ERROR_CODES.AUTH.USER_NOT_FOUND
+				);
 			}
 
 			// Проверяем, не заблокирован ли пользователь
 			if (user.blocked) {
 				await t.rollback();
-				throw ApiError.BadRequest('User is blocked');
+				throw ApiError.withCode(
+					403,
+					'User is blocked',
+					ERROR_CODES.AUTH.USER_BLOCKED
+				);
 			}
 
 			// Создаем DTO пользователя
@@ -557,7 +946,11 @@ class UserService {
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Token refresh failed: ${err.message}`);
+			throw ApiError.withCode(
+				500,
+				`Token refresh failed: ${err.message}`,
+				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+			);
 		}
 	}
 
@@ -573,14 +966,22 @@ class UserService {
 			// Проверяем наличие идентификатора пользователя
 			if (!userId) {
 				await t.rollback();
-				throw ApiError.BadRequest('User ID is required');
+				throw ApiError.withCode(
+					400,
+					'User ID is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
 			}
 
 			// Проверяем существование пользователя
 			const user = await User.findByPk(userId, { transaction: t });
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest(`User with ID ${id} not found`);
+				throw ApiError.withCode(
+					404,
+					`User with ID ${id} not found`,
+					ERROR_CODES.AUTH.USER_NOT_FOUND
+				);
 			}
 
 			// Получаем список друзей (пользователей, которые указали данного пользователя как реферала)
@@ -620,7 +1021,11 @@ class UserService {
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to get friends: ${err.message}`);
+			throw ApiError.withCode(
+				500,
+				`Failed to get friends: ${err.message}`,
+				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+			);
 		}
 	}
 
@@ -633,7 +1038,11 @@ class UserService {
 			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 
 			if (!systemUser) {
-				throw ApiError.BadRequest('System user not found');
+				throw ApiError.withCode(
+					404,
+					'System user not found',
+					ERROR_CODES.AUTH.USER_NOT_FOUND
+				);
 			}
 
 			return systemUser;
@@ -641,8 +1050,10 @@ class UserService {
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(
-				`Failed to get system user: ${err.message}`
+			throw ApiError.withCode(
+				500,
+				`Failed to get system user: ${err.message}`,
+				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 			);
 		}
 	}

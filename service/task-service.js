@@ -3,13 +3,14 @@
  */
 const { TaskTemplate, UserState, UserTask } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
+const { ERROR_CODES } = require('../config/error-codes');
 const sequelize = require('../db');
 const marketService = require('./market-service');
 const logger = require('./logger-service');
 
 class TaskService {
 	/**
-	 * Initialize tasks for a new user
+	 * Initialize tasks for a new user using findOrCreate
 	 * @param {number} userId - User ID
 	 * @param {Transaction} transaction - Optional transaction object
 	 * @returns {Promise<Object>} - Initialized tasks
@@ -17,107 +18,283 @@ class TaskService {
 	async initializeUserTasks(userId, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
-		logger.debug('initializeUserTasks on start', {
-			userId,
-		});
+
+		logger.debug('initializeUserTasks on start', { userId });
+
 		try {
-			// Get all active tasks
-			const tasks = await TaskTemplate.findAll({
-				where: {
-					active: true,
-				},
+			// Get all task templates (both active and inactive) to check existing user tasks
+			const allTaskTemplates = await TaskTemplate.findAll({
 				transaction: t,
 			});
 
-			if (tasks.length === 0) {
-				if (shouldCommit && !t.finished) {
-					await t.commit();
-				}
-				return {
-					tasks: [],
-				};
-			}
-
-			// Create entries for all active tasks
-			const initializedTasks = [];
-			for (const task of tasks) {
-				let userTask = await UserTask.findOne({
-					where: {
-						userId,
-						slug: task.slug,
-					},
-					transaction: t,
-				});
-				if (!userTask) {
-					userTask = await UserTask.create(
-						{
-							userId,
-							taskId: task.id,
-							completed: false,
-							reward: 0,
-							active: true,
-						},
-						{ transaction: t }
-					);
-
-					initializedTasks.push({
-						...userTask.toJSON(),
-						slug: task.slug,
-						task: task.toJSON(),
-					});
-				}
-			}
-
-			// Update counter in UserState
-			const userState = await UserState.findOne({
+			// Get all existing user tasks
+			const existingUserTasks = await UserTask.findAll({
 				where: { userId },
 				transaction: t,
 			});
 
-			if (userState && userState.state) {
-				const activeTaskCount = await UserTask.count({
-					where: {
-						userId,
-						active: true,
-					},
-					transaction: t,
-				});
+			// Create a map of template ID to template for quick lookup
+			const templateMap = new Map();
+			allTaskTemplates.forEach((template) => {
+				templateMap.set(template.id, template);
+			});
 
-				const completedTaskCount = await UserTask.count({
-					where: {
-						userId,
-						completed: true,
-					},
-					transaction: t,
-				});
+			// Create a map of existing user tasks by template ID
+			const existingTasksMap = new Map();
+			existingUserTasks.forEach((userTask) => {
+				existingTasksMap.set(userTask.taskTemplateId, userTask);
+			});
 
-				userState.state.ownedTasksCount = completedTaskCount;
-				await userState.save({ transaction: t });
+			// Get active task templates for new task creation
+			const activeTaskTemplates = allTaskTemplates.filter(
+				(template) => template.active
+			);
+
+			if (activeTaskTemplates.length === 0) {
+				logger.debug('No active task templates found');
+				if (shouldCommit && !t.finished) {
+					await t.commit();
+				}
+				return { tasks: [] };
 			}
 
-			const totalReward = await UserTask.sum('reward.amount', {
-				where: {
+			// Initialize tasks using findOrCreate for active templates
+			const initializedTasks = [];
+			for (const taskTemplate of activeTaskTemplates) {
+				try {
+					const [userTask, created] = await UserTask.findOrCreate({
+						where: {
+							userId,
+							taskTemplateId: taskTemplate.id,
+						},
+						defaults: {
+							userId,
+							taskTemplateId: taskTemplate.id,
+							completed: false,
+							reward: taskTemplate.reward || {
+								type: 'stardust',
+								amount: 0,
+							},
+							active: true,
+						},
+						transaction: t,
+					});
+
+					if (created) {
+						logger.debug('Created new user task', {
+							userId,
+							taskTemplateId: taskTemplate.id,
+							taskSlug: taskTemplate.slug,
+						});
+					} else {
+						logger.debug('User task already exists', {
+							userId,
+							taskTemplateId: taskTemplate.id,
+							taskSlug: taskTemplate.slug,
+						});
+					}
+
+					// Add to result only if template is active
+					initializedTasks.push({
+						...userTask.toJSON(),
+						slug: taskTemplate.slug,
+						task: taskTemplate.toJSON(),
+					});
+				} catch (taskError) {
+					logger.error('Error creating user task', {
+						userId,
+						taskTemplateId: taskTemplate.id,
+						error: taskError.message,
+					});
+					throw ApiError.Internal(
+						`Failed to create user task for template ${taskTemplate.slug}: ${taskError.message}`,
+						ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
+					);
+				}
+			}
+
+			// Check existing user tasks and handle activation/deactivation based on template status
+			for (const existingTask of existingUserTasks) {
+				const template = templateMap.get(existingTask.taskTemplateId);
+				if (template && template.active) {
+					// Template is active - reactivate user task if it was inactive
+					if (!existingTask.active) {
+						try {
+							await existingTask.update(
+								{ active: true },
+								{ transaction: t }
+							);
+							logger.debug(
+								'Reactivated user task due to active template',
+								{
+									userId,
+									taskTemplateId: existingTask.taskTemplateId,
+									templateActive: template.active,
+								}
+							);
+						} catch (reactivationError) {
+							logger.error('Error reactivating user task', {
+								userId,
+								taskTemplateId: existingTask.taskTemplateId,
+								error: reactivationError.message,
+							});
+							// Continue processing other tasks even if reactivation fails
+						}
+					}
+
+					// Check if this task is already in initializedTasks
+					const alreadyIncluded = initializedTasks.some(
+						(task) =>
+							task.taskTemplateId === existingTask.taskTemplateId
+					);
+
+					if (!alreadyIncluded) {
+						initializedTasks.push({
+							...existingTask.toJSON(),
+							slug: template.slug,
+							task: template.toJSON(),
+						});
+					}
+				} else {
+					// Template is inactive or not found - deactivate the user task
+					if (existingTask.active) {
+						try {
+							await existingTask.update(
+								{ active: false },
+								{ transaction: t }
+							);
+							logger.debug(
+								'Deactivated user task due to inactive template',
+								{
+									userId,
+									taskTemplateId: existingTask.taskTemplateId,
+									templateActive: template
+										? template.active
+										: 'template_not_found',
+								}
+							);
+						} catch (deactivationError) {
+							logger.error('Error deactivating user task', {
+								userId,
+								taskTemplateId: existingTask.taskTemplateId,
+								error: deactivationError.message,
+							});
+							// Continue processing other tasks even if deactivation fails
+						}
+					} else {
+						logger.debug(
+							'User task already inactive due to inactive template',
+							{
+								userId,
+								taskTemplateId: existingTask.taskTemplateId,
+								templateActive: template
+									? template.active
+									: 'template_not_found',
+							}
+						);
+					}
+				}
+			}
+
+			// Update UserState counters
+			try {
+				const userState = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				if (userState) {
+					const [activeTaskCount, completedTaskCount] =
+						await Promise.all([
+							UserTask.count({
+								where: { userId, active: true },
+								transaction: t,
+							}),
+							UserTask.count({
+								where: { userId, completed: true },
+								transaction: t,
+							}),
+						]);
+
+					// Update state if it exists
+					if (userState.state) {
+						userState.state.ownedTasksCount = completedTaskCount;
+						userState.state.activeTasksCount = activeTaskCount;
+					} else {
+						userState.state = {
+							ownedTasksCount: completedTaskCount,
+							activeTasksCount: activeTaskCount,
+						};
+					}
+
+					await userState.save({ transaction: t });
+					logger.debug('Updated user state task counters', {
+						userId,
+						activeTasks: activeTaskCount,
+						completedTasks: completedTaskCount,
+					});
+				}
+			} catch (stateError) {
+				logger.error('Error updating user state task counters', {
 					userId,
-					completed: true,
-				},
-			});
+					error: stateError.message,
+				});
+				// Не прерываем выполнение, если не удалось обновить счетчики
+			}
+
+			// Calculate total rewards
+			let totalReward = 0;
+			try {
+				const completedTasks = await UserTask.findAll({
+					where: { userId, completed: true },
+					transaction: t,
+				});
+
+				totalReward = completedTasks.reduce((sum, task) => {
+					const reward = task.reward || { amount: 0 };
+					return sum + (reward.amount || 0);
+				}, 0);
+			} catch (rewardError) {
+				logger.error('Error calculating total rewards', {
+					userId,
+					error: rewardError.message,
+				});
+				// Используем 0 если не удалось посчитать награды
+			}
 
 			if (shouldCommit && !t.finished) {
 				await t.commit();
 			}
 
+			logger.debug('User tasks initialized successfully', {
+				userId,
+				tasksCreated: initializedTasks.length,
+				totalReward,
+			});
+
 			return {
 				tasks: initializedTasks,
-				reward: {
-					task: totalReward || 0,
-				},
+				reward: { task: totalReward },
 			};
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
 				await t.rollback();
 			}
+
+			logger.error('Failed to initialize user tasks', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			// Используем коды ошибок из error-codes.js
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to initialize user tasks: ${err.message}`
+				`Failed to initialize user tasks: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -126,6 +303,8 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getUserTasks on start', { userId });
+
 			// Получаем все задачи пользователя с информацией о задачах
 			const userTasks = await UserTask.findAll({
 				where: { userId },
@@ -160,10 +339,30 @@ class TaskService {
 			}));
 
 			await t.commit();
+
+			logger.debug('getUserTasks completed successfully', {
+				userId,
+				tasksCount: result.length,
+			});
+
 			return result;
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(`Failed to get user tasks: ${err.message}`);
+
+			logger.error('Failed to get user tasks', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
+			throw ApiError.Internal(
+				`Failed to get user tasks: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 	/**
@@ -178,21 +377,23 @@ class TaskService {
 		const shouldCommit = !transaction;
 
 		try {
-			logger.debug('completeTask on start', {
-				userId,
-				slug,
-			});
+			logger.debug('completeTask on start', { userId, slug });
+
+			// Находим шаблон задачи
 			const taskTemplate = await TaskTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!taskTemplate) {
-				logger.debug('completeTask on end', {
+				logger.debug('completeTask - task template not found', {
 					userId,
 					slug,
-					error: 'Task not found',
 				});
-				throw ApiError.NotFound('Task not found');
+				throw ApiError.NotFound(
+					`Task template not found: ${slug}`,
+					ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Находим задачу пользователя
@@ -213,23 +414,23 @@ class TaskService {
 			});
 
 			if (!userTask) {
-				logger.debug('completeTask on end', {
+				logger.debug('completeTask - user task not found', {
 					userId,
 					slug,
-					error: 'User task not found',
+					taskTemplateId: taskTemplate.id,
 				});
-				await t.rollback();
-				throw ApiError.BadRequest('User task not found');
+				throw ApiError.BadRequest(
+					`User task not found for template: ${slug}`,
+					ERROR_CODES.TASK.TASK_NOT_FOUND
+				);
 			}
 
-			// Если задача уже завершена, ничего не делаем
+			// Если задача уже завершена, возвращаем информацию
 			if (userTask.completed) {
-				logger.debug('completeTask on end', {
+				logger.debug('completeTask - task already completed', {
 					userId,
 					slug,
-					error: 'User task already completed',
 				});
-				await t.rollback();
 				return { success: false, userTask };
 			}
 
@@ -243,22 +444,34 @@ class TaskService {
 			if (shouldCommit && !t.finished) {
 				await t.commit();
 			}
-			logger.debug('completeTask on end', {
+
+			logger.debug('completeTask completed successfully', {
 				userId,
 				slug,
-				userTask,
+				taskId: userTask.id,
 			});
+
 			return { success: true, userTask };
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
 				await t.rollback();
 			}
-			logger.debug('completeTask on end', {
+
+			logger.error('Failed to complete task', {
 				userId,
 				slug,
 				error: err.message,
+				stack: err.stack,
 			});
-			throw ApiError.Internal(`Failed to complete task: ${err.message}`);
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
+			throw ApiError.Internal(
+				`Failed to complete task: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
@@ -266,6 +479,8 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getActiveTasks on start', { userId });
+
 			const activeTasks = await UserTask.findAll({
 				where: {
 					userId,
@@ -290,7 +505,21 @@ class TaskService {
 				transaction: t,
 			});
 
-			const result = activeTasks.map((userTask) => ({
+			// Filter out tasks whose templates are inactive
+			const filteredTasks = activeTasks.filter((userTask) => {
+				const templateActive =
+					userTask.tasktemplate && userTask.tasktemplate.active;
+				if (!templateActive) {
+					logger.debug('Filtering out task with inactive template', {
+						userId,
+						taskTemplateId: userTask.taskTemplateId,
+						templateActive: templateActive,
+					});
+				}
+				return templateActive;
+			});
+
+			const result = filteredTasks.map((userTask) => ({
 				id: userTask.id,
 				slug: userTask.tasktemplate.slug,
 				userId: userTask.userId,
@@ -303,11 +532,30 @@ class TaskService {
 			}));
 
 			await t.commit();
+
+			logger.debug('getActiveTasks completed successfully', {
+				userId,
+				activeTasksCount: result.length,
+				filteredOutCount: activeTasks.length - filteredTasks.length,
+			});
+
 			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get active tasks', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get active tasks: ${err.message}`
+				`Failed to get active tasks: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -316,6 +564,8 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getCompletedTasks on start', { userId });
+
 			const completedTasks = await UserTask.findAll({
 				where: {
 					userId,
@@ -352,11 +602,29 @@ class TaskService {
 			}));
 
 			await t.commit();
+
+			logger.debug('getCompletedTasks completed successfully', {
+				userId,
+				completedTasksCount: result.length,
+			});
+
 			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get completed tasks', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get completed tasks: ${err.message}`
+				`Failed to get completed tasks: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -365,21 +633,49 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
-			const totalReward =
-				(await UserTask.sum('reward', {
-					where: {
-						userId,
-						completed: true,
-					},
-					transaction: t,
-				})) || 0;
+			logger.debug('getTotalTaskReward on start', { userId });
+
+			// Получаем все завершенные задачи пользователя
+			const completedTasks = await UserTask.findAll({
+				where: {
+					userId,
+					completed: true,
+				},
+				transaction: t,
+			});
+
+			// Вычисляем общую награду
+			let totalReward = 0;
+			for (const task of completedTasks) {
+				const reward = task.reward || { amount: 0 };
+				totalReward += reward.amount || 0;
+			}
 
 			await t.commit();
+
+			logger.debug('getTotalTaskReward completed successfully', {
+				userId,
+				totalReward,
+				completedTasksCount: completedTasks.length,
+			});
+
 			return { totalReward };
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get total task reward', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get total task reward: ${err.message}`
+				`Failed to get total task reward: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -388,17 +684,30 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
-			const task = await TaskTemplate.findOne({
+			logger.debug('getUserTask on start', { userId, slug });
+
+			// Находим шаблон задачи
+			const taskTemplate = await TaskTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
-			if (!task) {
-				throw ApiError.NotFound('Task not found');
+
+			if (!taskTemplate) {
+				logger.debug('getUserTask - task template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Task template not found: ${slug}`,
+					ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
+				);
 			}
+
+			// Находим задачу пользователя
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId: task.id,
+					taskTemplateId: taskTemplate.id,
 					active: true,
 					completed: false,
 				},
@@ -421,8 +730,29 @@ class TaskService {
 			});
 
 			if (!userTask) {
-				await t.rollback();
-				throw ApiError.BadRequest('User task not found');
+				logger.debug('getUserTask - user task not found', {
+					userId,
+					slug,
+					taskTemplateId: taskTemplate.id,
+				});
+				throw ApiError.BadRequest(
+					`User task not found for template: ${slug}`,
+					ERROR_CODES.TASK.TASK_NOT_FOUND
+				);
+			}
+
+			// Check if the template is active
+			if (!userTask.tasktemplate.active) {
+				logger.debug('getUserTask - template is inactive', {
+					userId,
+					slug,
+					taskTemplateId: taskTemplate.id,
+					templateActive: userTask.tasktemplate.active,
+				});
+				throw ApiError.BadRequest(
+					`Task template is inactive: ${slug}`,
+					ERROR_CODES.TASK.TASK_TEMPLATE_INACTIVE
+				);
 			}
 
 			const result = {
@@ -436,43 +766,107 @@ class TaskService {
 			};
 
 			await t.commit();
+
+			logger.debug('getUserTask completed successfully', {
+				userId,
+				slug,
+				taskId: userTask.id,
+			});
+
 			return result;
 		} catch (err) {
 			await t.rollback();
-			throw ApiError.Internal(`Failed to get user task: ${err.message}`);
+
+			logger.error('Failed to get user task', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
+			throw ApiError.Internal(
+				`Failed to get user task: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
 	async getTaskStatus(userId, slug) {
 		try {
-			const task = await TaskTemplate.findOne({
+			logger.debug('getTaskStatus on start', { userId, slug });
+
+			// Находим шаблон задачи
+			const taskTemplate = await TaskTemplate.findOne({
 				where: { slug },
 			});
-			if (!task) {
-				throw ApiError.NotFound('Task not found');
+
+			if (!taskTemplate) {
+				logger.debug('getTaskStatus - task template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Task template not found: ${slug}`,
+					ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
+				);
 			}
+
+			// Находим задачу пользователя
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskId: task.id,
+					taskTemplateId: taskTemplate.id,
 					active: true,
 				},
 			});
 
 			if (!userTask) {
-				throw ApiError.BadRequest('User task not found');
+				logger.debug('getTaskStatus - user task not found', {
+					userId,
+					slug,
+					taskTemplateId: taskTemplate.id,
+				});
+				throw ApiError.BadRequest(
+					`User task not found for template: ${slug}`,
+					ERROR_CODES.TASK.TASK_NOT_FOUND
+				);
 			}
 
-			return {
-				taskId: task.id,
-				slug: task.slug,
+			const result = {
+				taskId: taskTemplate.id,
+				slug: taskTemplate.slug,
 				completed: userTask.completed,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
 			};
+
+			logger.debug('getTaskStatus completed successfully', {
+				userId,
+				slug,
+				completed: userTask.completed,
+				active: userTask.active,
+			});
+
+			return result;
 		} catch (err) {
+			logger.error('Failed to get task status', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get task status: ${err.message}`
+				`Failed to get task status: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -481,6 +875,8 @@ class TaskService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getUserTaskStats on start', { userId });
+
 			// Get all user tasks
 			const userTasks = await UserTask.findAll({
 				where: { userId },
@@ -502,23 +898,48 @@ class TaskService {
 
 			await t.commit();
 
-			return {
+			const result = {
 				total: totalTasks,
 				completed: completedTasks,
 				active: activeTasks,
 				completionPercentage,
 				lastUpdate: new Date(),
 			};
+
+			logger.debug('getUserTaskStats completed successfully', {
+				userId,
+				totalTasks,
+				completedTasks,
+				activeTasks,
+				completionPercentage,
+			});
+
+			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get user task stats', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get user task stats: ${err.message}`
+				`Failed to get user task stats: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
 
 	async getTaskStats(userId) {
 		// Alias for getUserTaskStats
+		logger.debug('getTaskStats called (alias for getUserTaskStats)', {
+			userId,
+		});
 		return await this.getUserTaskStats(userId);
 	}
 }

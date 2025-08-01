@@ -3,7 +3,7 @@ const express = require('express');
 const eventTemplateRouter = require('../../routes/event-template-router');
 const eventTemplateController = require('../../controllers/event-template-controller');
 const authMiddleware = require('../../middlewares/auth-middleware');
-const adminMiddleware = require('../../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../../middlewares/admin-auth-middleware');
 const telegramAuthMiddleware = require('../../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../../middlewares/rate-limit-middleware');
 
@@ -80,7 +80,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.getAllEventTemplates
 			).toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(eventTemplateController.getEventTemplate).toHaveBeenCalled();
 		});
 	});
@@ -124,7 +124,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.createEventTemplate
 			).toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.updateEventTemplate
 			).toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.deleteEventTemplate
 			).toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.activateEventTemplate
 			).toHaveBeenCalled();
@@ -213,7 +213,7 @@ describe('EventTemplateRouter', () => {
 			});
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminMiddleware).toHaveBeenCalled();
+			expect(adminAuthMiddleware).toHaveBeenCalled();
 			expect(
 				eventTemplateController.deactivateEventTemplate
 			).toHaveBeenCalled();

@@ -1,15 +1,5 @@
 {
 	"referral": "27306789",
-	"userState": {
-		"stars": 0,
-		"state": {
-			"totalStars": 100,
-			"stardustCount": 45445,
-			"darkMatterCount": 41,
-			"ownedGalaxiesCount": 1,
-			"ownedNodesCount": 0
-		}
-	},
 	"galaxy": 
 		{
 			"starMin": 100,

@@ -12,7 +12,6 @@ const userStateService = require('./user-state-service');
 const { SYSTEM_USER_ID } = require('../config/constants');
 const { GALAXY_LIMIT_FOR_USER } = require('../config/constants');
 
-
 class GalaxyService {
 	async getUserGalaxies(userId, transaction) {
 		const t = transaction || (await sequelize.transaction());
@@ -156,7 +155,6 @@ class GalaxyService {
 		}
 	}
 
-
 	async deleteGalaxy(userId, seed) {
 		const t = await sequelize.transaction();
 
@@ -190,8 +188,6 @@ class GalaxyService {
 			throw ApiError.Internal(`Failed to delete galaxy: ${err.message}`);
 		}
 	}
-
-	
 }
 
 module.exports = new GalaxyService();

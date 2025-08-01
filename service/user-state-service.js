@@ -4,6 +4,7 @@
 const { UserState, User } = require('../models/models');
 const logger = require('./logger-service');
 const ApiError = require('../exceptions/api-error');
+const { ERROR_CODES } = require('../config/error-codes');
 const sequelize = require('../db');
 const { Op } = require('sequelize');
 const {
@@ -73,6 +74,7 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
+			logger.debug('getUserState on start', { userId });
 			// Get basic user state
 			let userState = await UserState.findOne({
 				where: { userId: userId },
@@ -87,17 +89,31 @@ class UserStateService {
 				if (shouldCommit) {
 					await t.commit();
 				}
+
+				logger.debug('getUserState completed successfully', { userId });
 				return userState.toJSON();
 			}
 			if (shouldCommit) {
 				await t.commit();
 			}
+
+			logger.debug('getUserState - user state not found', { userId });
 			return userState;
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			throw ApiError.Internal(`Failed to get user state: ${err.message}`);
+
+			logger.error('Failed to get user state', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			throw ApiError.Internal(
+				`Failed to get user state: ${err.message}`,
+				ERROR_CODES.USER_STATE.STATE_NOT_FOUND
+			);
 		}
 	}
 
@@ -105,6 +121,7 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
+			logger.debug('createUserState on start', { userId });
 			await this.updateStreak(userState);
 			logger.debug('createUserState', userId, userState);
 			// Create new state for new user
@@ -114,10 +131,10 @@ class UserStateService {
 					userId: userId,
 					stardust: userState.stardust || 0,
 					darkMatter: userState.darkMatter || 0,
-					tgStars: userState.tgStars || 0,
+					stars: userState.stars || 0,
 					lockedStardust: userState.lockedStardust || 0,
 					lockedDarkMatter: userState.lockedDarkMatter || 0,
-					lockedTgStars: userState.lockedTgStars || 0,
+					lockedStars: userState.lockedStars || 0,
 					lastDailyBonus: userState.lastDailyBonus || null,
 					lastLoginDate: userState.lastLoginDate || null,
 					currentStreak: userState.currentStreak || 0,
@@ -130,13 +147,23 @@ class UserStateService {
 			if (shouldCommit) {
 				await t.commit();
 			}
+
+			logger.debug('createUserState completed successfully', { userId });
 			return stateNew[0].toJSON();
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
+
+			logger.error('Failed to create user state', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw ApiError.Internal(
-				`Failed to create/update user state: ${err.message}`
+				`Failed to create/update user state: ${err.message}`,
+				ERROR_CODES.USER_STATE.STATE_NOT_FOUND
 			);
 		}
 	}
@@ -146,6 +173,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
+			logger.debug('updateUserState on start', { userId });
 			const stateData = await UserState.findOne({
 				where: { userId: userId },
 				transaction: t,
@@ -166,6 +194,10 @@ class UserStateService {
 					userState.entropyVelocity !== undefined
 						? userState.entropyVelocity
 						: stateData.entropyVelocity;
+				// Ensure stateHistory is initialized
+				if (!stateData.stateHistory) {
+					stateData.stateHistory = [];
+				}
 				stateData.stateHistory.push({
 					timestamp: new Date(),
 					state: stateData.toJSON(),
@@ -186,6 +218,11 @@ class UserStateService {
 				if (shouldCommit) {
 					await t.commit();
 				}
+
+				logger.debug(
+					'updateUserState completed successfully - updated existing state',
+					{ userId }
+				);
 				return responseObj;
 			}
 
@@ -217,13 +254,25 @@ class UserStateService {
 				await t.commit();
 			}
 
+			logger.debug(
+				'updateUserState completed successfully - created new state',
+				{ userId }
+			);
 			return { userId, userState: stateNew.toJSON() };
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
+
+			logger.error('Failed to update user state', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw ApiError.Internal(
-				`Failed to update user state: ${err.message}`
+				`Failed to update user state: ${err.message}`,
+				ERROR_CODES.USER_STATE.STATE_NOT_FOUND
 			);
 		}
 	}
@@ -233,6 +282,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
+			logger.debug('leaderboard on start', { userId });
 			// Get user data and position in the leaderboard
 			let userRating = null;
 			let userData = null;
@@ -329,6 +379,12 @@ class UserStateService {
 			if (shouldCommit) {
 				await t.commit();
 			}
+
+			logger.debug('leaderboard completed successfully', {
+				userId,
+				userRating,
+				leaderboardSize: users.length,
+			});
 			return {
 				leaderboard: users,
 				userRating: userRating,
@@ -337,8 +393,16 @@ class UserStateService {
 			if (shouldCommit) {
 				await t.rollback();
 			}
+
+			logger.error('Failed to get leaderboard', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			throw ApiError.Internal(
-				`Failed to get leaderboard: ${err.message}`
+				`Failed to get leaderboard: ${err.message}`,
+				ERROR_CODES.USER_STATE.STATE_NOT_FOUND
 			);
 		}
 	}
@@ -348,6 +412,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
+			logger.debug('getUserResources on start', { userId });
 			const userState = await UserState.findOne({
 				where: { userId },
 				transaction: t,
@@ -357,175 +422,50 @@ class UserStateService {
 				if (shouldCommit) {
 					await t.rollback();
 				}
-				throw ApiError.NotFound('User state not found');
+				logger.debug('User state not found for resources', { userId });
+				throw ApiError.NotFound(
+					`User state not found: ${userId}`,
+					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
+				);
 			}
 
 			// Extract resources from user state
 			const resources = {
 				stardust: userState.stardust || 0,
 				darkMatter: userState.darkMatter || 0,
-				tgStars: userState.tgStars || 0,
 				stars: userState.stars || 0,
 				tonToken: userState.tonToken || 0,
 				lastDailyBonus: userState.lastDailyBonus || null,
 				lockedResources: {
 					stardust: userState.lockedStardust || 0,
 					darkMatter: userState.lockedDarkMatter || 0,
-					tgStars: userState.lockedTgStars || 0,
+					stars: userState.lockedStars || 0,
 				},
 			};
 
 			if (shouldCommit) {
 				await t.commit();
 			}
+
+			logger.debug('getUserResources completed successfully', { userId });
 			return resources;
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			if (err instanceof ApiError) {
-				throw err;
-			}
-			throw ApiError.Internal(
-				`Failed to get user resources: ${err.message}`
-			);
-		}
-	}
 
-	async claimDailyBonus(userId, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-
-		try {
-			const userState = await UserState.findOne({
-				where: { userId },
-				transaction: t,
+			logger.error('Failed to get user resources', {
+				userId,
+				error: err.message,
+				stack: err.stack,
 			});
 
-			if (!userState) {
-				if (shouldCommit) {
-					await t.rollback();
-				}
-				throw ApiError.NotFound('User state not found');
-			}
-
-			const now = new Date();
-			const today = new Date(
-				now.getFullYear(),
-				now.getMonth(),
-				now.getDate()
-			);
-
-			// Check if bonus was already claimed today
-			if (userState.lastDailyBonus) {
-				const lastClaim = new Date(userState.lastDailyBonus);
-				const lastClaimDate = new Date(
-					lastClaim.getFullYear(),
-					lastClaim.getMonth(),
-					lastClaim.getDate()
-				);
-
-				if (lastClaimDate.getTime() === today.getTime()) {
-					if (shouldCommit) {
-						await t.rollback();
-					}
-					throw ApiError.BadRequest(
-						'Daily bonus already claimed today'
-					);
-				}
-			}
-
-			// Calculate bonus based on streak
-			const baseBonus = DAILY_BONUS_STARDUST; // Base stardust bonus
-			const streakMultiplier = Math.min(userState.currentStreak || 1, 7); // Max 7x multiplier
-			const bonusAmount = baseBonus * streakMultiplier;
-
-			// Add bonus to user's stardust
-			userState.stardust = (userState.stardust || 0) + bonusAmount;
-			userState.lastDailyBonus = now;
-
-			await userState.save({ transaction: t });
-
-			if (shouldCommit) {
-				await t.commit();
-			}
-
-			return {
-				bonus: {
-					stardust: bonusAmount,
-					streakMultiplier: streakMultiplier,
-					baseAmount: baseBonus,
-				},
-				newBalance: {
-					stardust: userState.stardust,
-					darkMatter: userState.darkMatter || 0,
-					tgStars: userState.tgStars || 0,
-				},
-				nextClaimAvailable: new Date(
-					today.getTime() + 24 * 60 * 60 * 1000
-				), // Tomorrow
-			};
-		} catch (err) {
-			if (shouldCommit) {
-				await t.rollback();
-			}
 			if (err instanceof ApiError) {
 				throw err;
 			}
 			throw ApiError.Internal(
-				`Failed to claim daily bonus: ${err.message}`
-			);
-		}
-	}
-
-	async farming(userId, offers, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		const result = [];
-		try {
-			if (offers.length > 0) {
-				for (const offer of offers) {
-					const offerData = {
-						sellerId: SYSTEM_USER_ID,
-						buyerId: userId,
-						price: offer.price,
-						currency: offer.currency,
-						itemId: 0,
-						itemType: 'farming',
-						amount: offer.amount,
-						resource: offer.resource,
-						offerType: 'SYSTEM',
-						status: 'PENDING',
-					};
-
-					const {
-						offerOut,
-						marketTransaction,
-						payment,
-						transferStars,
-					} = await marketService.registerFarmingReward(offerData);
-					result.push({
-						offerOut,
-						marketTransaction,
-						payment,
-						transferStars,
-					});
-				}
-			}
-
-			if (shouldCommit) {
-				await t.commit();
-			}
-			return {
-				result,
-			};
-		} catch (err) {
-			if (shouldCommit) {
-				await t.rollback();
-			}
-			logger.error('Error in createSystemGalaxyWithOffer', err);
-			throw ApiError.Internal(
-				`Failed to create system galaxy with offer: ${err.message}`
+				`Failed to get user resources: ${err.message}`,
+				ERROR_CODES.USER_STATE.STATE_NOT_FOUND
 			);
 		}
 	}

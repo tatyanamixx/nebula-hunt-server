@@ -34,173 +34,14 @@ describe('Game Service', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('registerUpgradePayment', () => {
-		const mockParams = {
-			userId: 123,
-			nodeId: 456,
-			amount: 100,
-			resource: 'stardust',
-		};
-
-		beforeEach(() => {
-			// Mock UserState.findOne
-			UserState.findOne.mockResolvedValue({
-				id: 1,
-				userId: 123,
-				stardust: 200,
-				update: jest.fn(),
-			});
-
-			// Mock MarketOffer.create
-			MarketOffer.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-			});
-
-			// Mock MarketTransaction.create
-			MarketTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-
-			// Mock PaymentTransaction.create
-			PaymentTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-		});
-
-		it('should register upgrade payment successfully', async () => {
-			const result = await gameService.registerUpgradePayment(mockParams);
-
-			expect(result).toEqual({
-				success: true,
-				message: 'Resource transferred to the system for an upgrade',
-				nodeId: 456,
-				resource: 'stardust',
-				amount: 100,
-			});
-
-			expect(mockTransaction.commit).toHaveBeenCalled();
-		});
-
-		it('should throw error when user state not found', async () => {
-			UserState.findOne.mockResolvedValue(null);
-
-			await expect(
-				gameService.registerUpgradePayment(mockParams)
-			).rejects.toThrow(ApiError);
-		});
-
-		it('should throw error when insufficient resources', async () => {
-			UserState.findOne.mockResolvedValue({
-				id: 1,
-				userId: 123,
-				stardust: 50, // Less than required
-				update: jest.fn(),
-			});
-
-			await expect(
-				gameService.registerUpgradePayment(mockParams)
-			).rejects.toThrow(ApiError);
-		});
+	// Mock MarketTransaction.create
+	MarketTransaction.create.mockResolvedValue({
+		id: 1,
 	});
 
-	describe('registerTaskReward', () => {
-		const mockParams = {
-			userId: 123,
-			taskId: 789,
-			amount: 50,
-			resource: 'darkMatter',
-		};
-
-		beforeEach(() => {
-			// Mock UserState.findOne
-			UserState.findOne.mockResolvedValue({
-				id: 1,
-				userId: 123,
-				darkMatter: 0,
-				update: jest.fn(),
-			});
-
-			// Mock MarketOffer.create
-			MarketOffer.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-			});
-
-			// Mock MarketTransaction.create
-			MarketTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-
-			// Mock PaymentTransaction.create
-			PaymentTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-		});
-
-		it('should register task reward successfully', async () => {
-			const result = await gameService.registerTaskReward(mockParams);
-
-			expect(result).toEqual({
-				success: true,
-				message:
-					'Resource transferred to the user for completing a task',
-				taskId: 789,
-				resource: 'darkMatter',
-				amount: 50,
-			});
-
-			expect(mockTransaction.commit).toHaveBeenCalled();
-		});
-	});
-
-	describe('registerEventReward', () => {
-		const mockParams = {
-			userId: 123,
-			eventId: 999,
-			amount: 25,
-			resource: 'tgStars',
-		};
-
-		beforeEach(() => {
-			// Mock UserState.findOne
-			UserState.findOne.mockResolvedValue({
-				id: 1,
-				userId: 123,
-				tgStars: 0,
-				update: jest.fn(),
-			});
-
-			// Mock MarketOffer.create
-			MarketOffer.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-			});
-
-			// Mock MarketTransaction.create
-			MarketTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-
-			// Mock PaymentTransaction.create
-			PaymentTransaction.create.mockResolvedValue({
-				id: 1,
-			});
-		});
-
-		it('should register event reward successfully', async () => {
-			const result = await gameService.registerEventReward(mockParams);
-
-			expect(result).toEqual({
-				success: true,
-				message: 'Resource transferred to the user for an event',
-				eventId: 999,
-				resource: 'tgStars',
-				amount: 25,
-			});
-
-			expect(mockTransaction.commit).toHaveBeenCalled();
-		});
+	// Mock PaymentTransaction.create
+	PaymentTransaction.create.mockResolvedValue({
+		id: 1,
 	});
 
 	describe('registerFarmingReward', () => {
@@ -588,5 +429,177 @@ describe('Game Service', () => {
 				).rejects.toThrow(ApiError);
 			});
 		});
+	});
+});
+
+describe('claimDailyReward', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should claim daily reward successfully for first time user', async () => {
+		const userId = 123;
+		const mockUserState = {
+			id: 1,
+			userId: userId,
+			stardust: 100,
+			darkMatter: 50,
+			stars: 25,
+			lastDailyBonus: null,
+			currentStreak: 0,
+			maxStreak: 0
+		};
+
+		const mockUpdatedUserState = {
+			...mockUserState,
+			stardust: 200,
+			darkMatter: 75,
+			lastDailyBonus: new Date(),
+			currentStreak: 1,
+			maxStreak: 1
+		};
+
+		const mockMarketResult = {
+			offer: { id: 1 },
+			marketTransaction: { id: 1, status: 'COMPLETED' }
+		};
+
+		const userStateService = require('../../service/user-state-service');
+		const marketService = require('../../service/market-service');
+
+		userStateService.getUserState.mockResolvedValue(mockUserState);
+		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
+		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
+		marketService.registerOffer.mockResolvedValue(mockMarketResult);
+
+		const result = await gameService.claimDailyReward(userId);
+
+		expect(result.success).toBe(true);
+		expect(result.data.currentStreak).toBe(1);
+		expect(result.data.maxStreak).toBe(1);
+		expect(result.data.rewards).toHaveLength(2); // stardust and darkmatter
+		expect(marketService.registerOffer).toHaveBeenCalledTimes(2);
+	});
+
+	it('should claim daily reward with streak continuation', async () => {
+		const userId = 123;
+		const yesterday = new Date();
+		yesterday.setDate(yesterday.getDate() - 1);
+		
+		const mockUserState = {
+			id: 1,
+			userId: userId,
+			stardust: 100,
+			darkMatter: 50,
+			stars: 25,
+			lastDailyBonus: yesterday,
+			currentStreak: 2,
+			maxStreak: 2
+		};
+
+		const mockUpdatedUserState = {
+			...mockUserState,
+			stardust: 300,
+			darkMatter: 100,
+			lastDailyBonus: new Date(),
+			currentStreak: 3,
+			maxStreak: 3
+		};
+
+		const mockMarketResult = {
+			offer: { id: 1 },
+			marketTransaction: { id: 1, status: 'COMPLETED' }
+		};
+
+		const userStateService = require('../../service/user-state-service');
+		const marketService = require('../../service/market-service');
+
+		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
+		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
+		marketService.registerOffer.mockResolvedValue(mockMarketResult);
+
+		const result = await gameService.claimDailyReward(userId);
+
+		expect(result.success).toBe(true);
+		expect(result.data.currentStreak).toBe(3);
+		expect(result.data.rewards).toHaveLength(1); // only darkmatter on day 3
+		expect(marketService.registerOffer).toHaveBeenCalledTimes(1);
+	});
+
+	it('should reset streak when claiming after missing a day', async () => {
+		const userId = 123;
+		const twoDaysAgo = new Date();
+		twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+		
+		const mockUserState = {
+			id: 1,
+			userId: userId,
+			stardust: 100,
+			darkMatter: 50,
+			stars: 25,
+			lastDailyBonus: twoDaysAgo,
+			currentStreak: 5,
+			maxStreak: 5
+		};
+
+		const mockUpdatedUserState = {
+			...mockUserState,
+			stardust: 200,
+			darkMatter: 75,
+			lastDailyBonus: new Date(),
+			currentStreak: 1,
+			maxStreak: 5
+		};
+
+		const mockMarketResult = {
+			offer: { id: 1 },
+			marketTransaction: { id: 1, status: 'COMPLETED' }
+		};
+
+		const userStateService = require('../../service/user-state-service');
+		const marketService = require('../../service/market-service');
+
+		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
+		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
+		marketService.registerOffer.mockResolvedValue(mockMarketResult);
+
+		const result = await gameService.claimDailyReward(userId);
+
+		expect(result.success).toBe(true);
+		expect(result.data.currentStreak).toBe(1);
+		expect(result.data.maxStreak).toBe(5);
+		expect(result.data.rewards).toHaveLength(2); // stardust and darkmatter
+	});
+
+	it('should throw error if daily reward already claimed today', async () => {
+		const userId = 123;
+		const today = new Date();
+		
+		const mockUserState = {
+			id: 1,
+			userId: userId,
+			stardust: 100,
+			darkMatter: 50,
+			stars: 25,
+			lastDailyBonus: today,
+			currentStreak: 1,
+			maxStreak: 1
+		};
+
+		const userStateService = require('../../service/user-state-service');
+
+		userStateService.getUserState.mockResolvedValue(mockUserState);
+
+		await expect(gameService.claimDailyReward(userId)).rejects.toThrow('Daily reward already claimed today');
+	});
+
+	it('should handle database errors gracefully', async () => {
+		const userId = 123;
+		
+		const userStateService = require('../../service/user-state-service');
+
+		userStateService.getUserState.mockRejectedValue(new Error('Database connection failed'));
+
+		await expect(gameService.claimDailyReward(userId)).rejects.toThrow('Failed to claim daily reward: Database connection failed');
 	});
 });

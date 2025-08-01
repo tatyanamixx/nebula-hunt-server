@@ -3,6 +3,7 @@
  * updated by Claude on 15.07.2025
  */
 const taskTemplateService = require('../service/task-template-service');
+const TaskTemplateDTO = require('../dtos/task-template-dto');
 const ApiError = require('../exceptions/api-error');
 
 class TaskTemplateController {
@@ -21,10 +22,28 @@ class TaskTemplateController {
 				);
 			}
 
+			// Валидируем JSONB поля
+			const validationErrors =
+				TaskTemplateDTO.validateJsonbFields(taskData);
+			if (Object.keys(validationErrors).length > 0) {
+				return res.status(400).json({
+					success: false,
+					message: 'Validation errors',
+					errors: validationErrors,
+				});
+			}
+
+			// Преобразуем данные из веб-формы в формат для базы данных
+			const formattedTaskData = TaskTemplateDTO.fromFormFormat(taskData);
+
 			const result = await taskTemplateService.createTaskTemplates(
-				taskData
+				formattedTaskData
 			);
-			return res.json(result);
+
+			// Преобразуем результат обратно в формат для веб-форм
+			const formattedResult = TaskTemplateDTO.toFormFormatArray(result);
+
+			return res.json(formattedResult);
 		} catch (err) {
 			next(err);
 		}
@@ -39,8 +58,21 @@ class TaskTemplateController {
 	async getTaskTemplates(req, res, next) {
 		try {
 			const tasks = await taskTemplateService.getTaskTemplates();
-			return res.json(tasks);
+
+			// Преобразуем в формат для веб-форм
+			const formattedTasks = TaskTemplateDTO.toFormFormatArray(tasks);
+
+			console.log(
+				'TaskTemplateController.getTaskTemplates - Sending response:',
+				formattedTasks.length,
+				'tasks'
+			);
+			return res.json(formattedTasks);
 		} catch (err) {
+			console.error(
+				'TaskTemplateController.getTaskTemplates - Error:',
+				err
+			);
 			next(err);
 		}
 	}
@@ -55,7 +87,11 @@ class TaskTemplateController {
 		try {
 			const { slug } = req.params;
 			const task = await taskTemplateService.getTaskTemplateBySlug(slug);
-			return res.json(task);
+
+			// Преобразуем в формат для веб-форм
+			const formattedTask = TaskTemplateDTO.toFormFormat(task);
+
+			return res.json(formattedTask);
 		} catch (err) {
 			next(err);
 		}
@@ -71,10 +107,28 @@ class TaskTemplateController {
 		try {
 			const taskData = req.body;
 
+			// Валидируем JSONB поля
+			const validationErrors =
+				TaskTemplateDTO.validateJsonbFields(taskData);
+			if (Object.keys(validationErrors).length > 0) {
+				return res.status(400).json({
+					success: false,
+					message: 'Validation errors',
+					errors: validationErrors,
+				});
+			}
+
+			// Преобразуем данные из веб-формы в формат для базы данных
+			const formattedTaskData = TaskTemplateDTO.fromFormFormat(taskData);
+
 			const result = await taskTemplateService.updateTaskTemplate(
-				taskData
+				formattedTaskData
 			);
-			return res.json(result);
+
+			// Преобразуем результат обратно в формат для веб-форм
+			const formattedResult = TaskTemplateDTO.toFormFormat(result);
+
+			return res.json(formattedResult);
 		} catch (err) {
 			next(err);
 		}

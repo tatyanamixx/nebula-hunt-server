@@ -1,6 +1,6 @@
 const taskTemplateController = require('../../controllers/task-template-controller');
 const authMiddleware = require('../../middlewares/auth-middleware');
-const adminMiddleware = require('../../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../../middlewares/admin-auth-middleware');
 const telegramAuthMiddleware = require('../../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../../middlewares/rate-limit-middleware');
 
@@ -55,7 +55,7 @@ describe('Task Template Router', () => {
 			'/',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.getAllTaskTemplates
 		);
@@ -70,7 +70,7 @@ describe('Task Template Router', () => {
 			'/:taskId',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.getTaskTemplate
 		);
@@ -85,7 +85,7 @@ describe('Task Template Router', () => {
 			'/',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.createTaskTemplate
 		);
@@ -100,7 +100,7 @@ describe('Task Template Router', () => {
 			'/:taskId',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.updateTaskTemplate
 		);
@@ -115,7 +115,7 @@ describe('Task Template Router', () => {
 			'/:taskId',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.deleteTaskTemplate
 		);
@@ -130,7 +130,7 @@ describe('Task Template Router', () => {
 			'/:taskId/activate',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.activateTaskTemplate
 		);
@@ -145,7 +145,7 @@ describe('Task Template Router', () => {
 			'/:taskId/deactivate',
 			telegramAuthMiddleware,
 			authMiddleware,
-			adminMiddleware,
+			adminAuthMiddleware,
 			'mocked-rate-limit',
 			taskTemplateController.deactivateTaskTemplate
 		);

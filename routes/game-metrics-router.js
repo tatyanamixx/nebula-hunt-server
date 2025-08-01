@@ -3,7 +3,7 @@
  */
 const Router = require('express').Router;
 const gameMetricsController = require('../controllers/game-metrics-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 const router = Router();
@@ -16,7 +16,7 @@ const router = Router();
  */
 router.get(
 	'/retention',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.retention
 );
@@ -34,7 +34,7 @@ router.get(
  */
 router.get(
 	'/arpu',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.arpu
 );
@@ -52,7 +52,7 @@ router.get(
  */
 router.get(
 	'/ltv',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.ltv
 );
@@ -70,7 +70,7 @@ router.get(
  */
 router.get(
 	'/kfactor',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.kfactor
 );
@@ -88,7 +88,7 @@ router.get(
  */
 router.get(
 	'/conversion',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.conversion
 );
@@ -106,7 +106,7 @@ router.get(
  */
 router.get(
 	'/update-active-users',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	gameMetricsController.updateActiveUsers
 );

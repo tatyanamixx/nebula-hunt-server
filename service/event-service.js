@@ -8,6 +8,7 @@ const {
 	UserEventSetting,
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
+const { ERROR_CODES } = require('../config/error-codes');
 const sequelize = require('../db');
 const logger = require('./logger-service');
 const { Op } = require('sequelize');
@@ -15,72 +16,139 @@ const marketService = require('./market-service');
 
 class EventService {
 	/**
-	 * Initialize events for a new user
+	 * Initialize events for a new user using findOrCreate
 	 * @param {number} userId - User ID
 	 * @param {Object} t - Transaction
 	 * @returns {Promise<Object>} Initialized user event settings
 	 */
 	async initializeUserEvents(userId, t) {
 		const transaction = t || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		logger.debug('initializeUserEvents on start', {
-			userId,
-		});
+		const shouldCommit = !t;
+
+		logger.debug('initializeUserEvents on start', { userId });
+
 		try {
+			// Get available events
 			const availableEvents = await EventTemplate.findAll({
 				where: { active: true },
 				transaction: transaction,
 			});
+
 			if (availableEvents.length === 0) {
-				logger.debug('no available events');
+				logger.debug('No available events found', { userId });
 				if (shouldCommit && !transaction.finished) {
 					await transaction.commit();
 				}
 				return null;
 			}
+
+			// Initialize user events using findOrCreate
+			const initializedEvents = [];
 			for (const event of availableEvents) {
-				const userEvent = await UserEvent.findOrCreate({
-					where: { userId, eventId: event.id },
-					defaults: {
+				try {
+					const [userEvent, created] = await UserEvent.findOrCreate({
+						where: { userId, eventTemplateId: event.id },
+						defaults: {
+							userId,
+							eventTemplateId: event.id,
+							status: 'ACTIVE',
+							triggeredAt: new Date(),
+							expiresAt: null,
+							effects: event.effect.multipliers || {},
+						},
+						transaction: transaction,
+					});
+
+					if (created) {
+						logger.debug('Created new user event', {
+							userId,
+							eventTemplateId: event.id,
+							eventSlug: event.slug,
+						});
+					} else {
+						logger.debug('User event already exists', {
+							userId,
+							eventTemplateId: event.id,
+							eventSlug: event.slug,
+						});
+					}
+
+					// Add to result regardless of whether it was created or already existed
+					initializedEvents.push({
+						...userEvent.toJSON(),
+						event: event.toJSON(),
+					});
+				} catch (eventError) {
+					logger.error('Error creating user event', {
 						userId,
-						eventId: event.id,
-						status: 'ACTIVE',
-						triggeredAt: new Date(),
-						expiresAt: null,
-						effects: event.effect.multipliers || {},
-					},
-				});
+						eventTemplateId: event.id,
+						eventSlug: event.slug,
+						error: eventError.message,
+					});
+					throw ApiError.Internal(
+						`Failed to create user event for template ${event.slug}: ${eventError.message}`,
+						ERROR_CODES.EVENT.EVENT_TEMPLATE_NOT_FOUND
+					);
+				}
 			}
 
-			// Create default event settings for the user
-			const userEventSettings = await UserEventSetting.create(
-				{
-					userId,
-					eventMultipliers: {
-						production: 1.0,
-						chaos: 1.0,
-						stability: 1.0,
-						entropy: 1.0,
-						rewards: 1.0,
+			// Create default event settings for the user using findOrCreate
+			const [userEventSettings, settingsCreated] =
+				await UserEventSetting.findOrCreate({
+					where: { userId },
+					defaults: {
+						userId,
+						eventMultipliers: {
+							production: 1.0,
+							chaos: 1.0,
+							stability: 1.0,
+							entropy: 1.0,
+							rewards: 1.0,
+						},
+						lastEventCheck: new Date(),
+						eventCooldowns: {},
+						enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+						disabledEvents: [],
+						priorityEvents: [],
 					},
-					lastEventCheck: new Date(),
-					eventCooldowns: {},
-					enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-					disabledEvents: [],
-					priorityEvents: [],
-				},
-				{ transaction: transaction }
-			);
+					transaction: transaction,
+				});
+
+			if (settingsCreated) {
+				logger.debug('Created new user event settings', { userId });
+			} else {
+				logger.debug('User event settings already exist', { userId });
+			}
+
 			if (shouldCommit && !transaction.finished) {
 				await transaction.commit();
 			}
+
+			logger.debug('User events initialized successfully', {
+				userId,
+				eventsCreated: initializedEvents.length,
+				settingsCreated,
+			});
+
 			return userEventSettings;
 		} catch (err) {
 			if (shouldCommit && !transaction.finished) {
 				await transaction.rollback();
 			}
+
+			logger.error('Failed to initialize user events', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to initialize user events: ${err.message}`
+				`Failed to initialize user events: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -94,20 +162,21 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('checkAndTriggerEvents on start', { userId });
+
 			const userEvents = await this.initializeUserEvents(userId, t);
-			logger.debug('userEvents', userEvents);
+			logger.debug('User events initialized', {
+				userId,
+				userEvents: !!userEvents,
+			});
 
 			const now = new Date();
 
-			// Get or create user event settings
-			let userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (!userEventSettings) {
-				userEventSettings = await UserEventSetting.create(
-					{
+			// Get or create user event settings using findOrCreate
+			const [userEventSettings, settingsCreated] =
+				await UserEventSetting.findOrCreate({
+					where: { userId },
+					defaults: {
 						userId,
 						eventMultipliers: {
 							production: 1.0,
@@ -122,14 +191,22 @@ class EventService {
 						disabledEvents: [],
 						priorityEvents: [],
 					},
-					{ transaction: t }
-				);
+					transaction: t,
+				});
+
+			if (settingsCreated) {
+				logger.debug('Created new user event settings', { userId });
 			}
 
 			// Get all available events
 			const availableEvents = await EventTemplate.findAll({
 				where: { active: true },
 				transaction: t,
+			});
+
+			logger.debug('Available events found', {
+				userId,
+				availableEventsCount: availableEvents.length,
 			});
 
 			// Get active user events
@@ -141,7 +218,13 @@ class EventService {
 				transaction: t,
 			});
 
+			logger.debug('Active user events found', {
+				userId,
+				activeEventsCount: activeUserEvents.length,
+			});
+
 			// Check and update existing event statuses
+			let expiredEventsCount = 0;
 			for (const userEvent of activeUserEvents) {
 				// Check if event has expired
 				if (userEvent.expiresAt && userEvent.expiresAt <= now) {
@@ -160,57 +243,82 @@ class EventService {
 						}
 						await userEventSettings.save({ transaction: t });
 					}
+
+					expiredEventsCount++;
+					logger.debug('Event expired', {
+						userId,
+						eventTemplateId: userEvent.eventTemplateId,
+						expiresAt: userEvent.expiresAt,
+					});
 				}
 			}
 
 			// Check and trigger new events
 			const triggeredEvents = [];
 			for (const event of availableEvents) {
-				const shouldTrigger = await this.shouldEventTrigger(
-					event,
-					userId,
-					now,
-					userEventSettings,
-					t
-				);
-
-				if (shouldTrigger) {
-					const duration = event.effect.duration || 0;
-					const expiresAt =
-						duration > 0
-							? new Date(now.getTime() + duration * 1000)
-							: null;
-
-					const newEvent = await UserEvent.create(
-						{
-							userId,
-							eventId: event.id,
-							status: 'ACTIVE',
-							triggeredAt: now,
-							expiresAt: expiresAt,
-							effects: event.effect.multipliers || {},
-							progress: {},
-						},
-						{ transaction: t }
+				try {
+					const shouldTrigger = await this.shouldEventTrigger(
+						event,
+						userId,
+						now,
+						userEventSettings,
+						t
 					);
 
-					// Apply event effects
-					if (newEvent.effects) {
-						for (const [key, value] of Object.entries(
-							newEvent.effects
-						)) {
-							if (userEventSettings.eventMultipliers[key]) {
-								userEventSettings.eventMultipliers[key] *=
-									value;
-							}
-						}
-						await userEventSettings.save({ transaction: t });
-					}
+					if (shouldTrigger) {
+						const duration = event.effect.duration || 0;
+						const expiresAt =
+							duration > 0
+								? new Date(now.getTime() + duration * 1000)
+								: null;
 
-					triggeredEvents.push({
-						...newEvent.toJSON(),
-						event: event.toJSON(),
+						const newEvent = await UserEvent.create(
+							{
+								userId,
+								eventTemplateId: event.id,
+								status: 'ACTIVE',
+								triggeredAt: now,
+								expiresAt: expiresAt,
+								effects: event.effect.multipliers || {},
+								progress: {},
+							},
+							{ transaction: t }
+						);
+
+						// Apply event effects
+						if (newEvent.effects) {
+							for (const [key, value] of Object.entries(
+								newEvent.effects
+							)) {
+								if (userEventSettings.eventMultipliers[key]) {
+									userEventSettings.eventMultipliers[key] *=
+										value;
+								}
+							}
+							await userEventSettings.save({ transaction: t });
+						}
+
+						triggeredEvents.push({
+							...newEvent.toJSON(),
+							event: event.toJSON(),
+						});
+
+						logger.debug('Event triggered', {
+							userId,
+							eventId: event.id,
+							eventSlug: event.slug,
+							duration,
+							expiresAt,
+						});
+					}
+				} catch (eventError) {
+					logger.error('Error checking/triggering event', {
+						userId,
+						eventId: event.id,
+						eventSlug: event.slug,
+						error: eventError.message,
 					});
+					// Continue with other events instead of failing completely
 				}
 			}
 
@@ -219,11 +327,31 @@ class EventService {
 			await userEventSettings.save({ transaction: t });
 
 			await t.commit();
+
+			logger.debug('checkAndTriggerEvents completed successfully', {
+				userId,
+				triggeredEventsCount: triggeredEvents.length,
+				expiredEventsCount,
+				activeEventsCount: activeUserEvents.length,
+			});
+
 			return { triggeredEvents, activeEvents: activeUserEvents };
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to check and trigger events', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to check and trigger events: ${err.message}`
+				`Failed to check and trigger events: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -413,6 +541,8 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getActiveUserEvents on start', { userId });
+
 			const activeEvents = await UserEvent.findAll({
 				where: {
 					userId,
@@ -434,12 +564,35 @@ class EventService {
 				transaction: t,
 			});
 
+			const result = activeEvents.map((userEvent) => ({
+				...userEvent.toJSON(),
+				event: userEvent.eventtemplate?.toJSON(),
+			}));
+
 			await t.commit();
-			return activeEvents;
+
+			logger.debug('getActiveUserEvents completed successfully', {
+				userId,
+				activeEventsCount: result.length,
+			});
+
+			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get active user events', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get active events: ${err.message}`
+				`Failed to get active events: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -453,6 +606,8 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getAllUserEvents on start', { userId });
+
 			const [
 				activeEvents,
 				completedEvents,
@@ -527,18 +682,49 @@ class EventService {
 				}),
 			]);
 
+			const result = {
+				active: activeEvents.map((event) => ({
+					...event.toJSON(),
+					event: event.eventtemplate?.toJSON(),
+				})),
+				completed: completedEvents.map((event) => ({
+					...event.toJSON(),
+					event: event.eventtemplate?.toJSON(),
+				})),
+				expired: expiredEvents.map((event) => ({
+					...event.toJSON(),
+					event: event.eventtemplate?.toJSON(),
+				})),
+				settings: userEventSettings ? userEventSettings.toJSON() : {},
+			};
+
 			await t.commit();
 
-			return {
-				active: activeEvents,
-				completed: completedEvents,
-				expired: expiredEvents,
-				settings: userEventSettings || {},
-			};
+			logger.debug('getAllUserEvents completed successfully', {
+				userId,
+				activeCount: result.active.length,
+				completedCount: result.completed.length,
+				expiredCount: result.expired.length,
+				hasSettings: !!userEventSettings,
+			});
+
+			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get all user events', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get user events: ${err.message}`
+				`Failed to get user events: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -553,6 +739,8 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('triggerEvent on start', { userId, slug });
+
 			const now = new Date();
 
 			// Check if event exists
@@ -562,8 +750,14 @@ class EventService {
 			});
 
 			if (!event) {
-				await t.rollback();
-				throw ApiError.NotFound('Event not found');
+				logger.debug('triggerEvent - event template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Event template not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_TEMPLATE_NOT_FOUND
+				);
 			}
 
 			// Check if event is already active
@@ -577,19 +771,22 @@ class EventService {
 			});
 
 			if (existingEvent) {
-				await t.rollback();
-				throw ApiError.BadRequest('Event is already active');
+				logger.debug('triggerEvent - event already active', {
+					userId,
+					slug,
+					eventId: event.id,
+				});
+				throw ApiError.BadRequest(
+					`Event is already active: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_ALREADY_ACTIVE
+				);
 			}
 
-			// Get user event settings
-			let userEventSettings = await UserEventSetting.findOne({
-				where: { userId },
-				transaction: t,
-			});
-
-			if (!userEventSettings) {
-				userEventSettings = await UserEventSetting.create(
-					{
+			// Get or create user event settings using findOrCreate
+			const [userEventSettings, settingsCreated] =
+				await UserEventSetting.findOrCreate({
+					where: { userId },
+					defaults: {
 						userId,
 						eventMultipliers: {
 							production: 1.0,
@@ -604,8 +801,11 @@ class EventService {
 						disabledEvents: [],
 						priorityEvents: [],
 					},
-					{ transaction: t }
-				);
+					transaction: t,
+				});
+
+			if (settingsCreated) {
+				logger.debug('Created new user event settings', { userId });
 			}
 
 			// Create user event
@@ -638,16 +838,36 @@ class EventService {
 
 			await t.commit();
 
+			logger.debug('triggerEvent completed successfully', {
+				userId,
+				slug,
+				eventId: newEvent.id,
+				duration,
+				expiresAt,
+			});
+
 			return {
 				...newEvent.toJSON(),
 				event: event.toJSON(),
 			};
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to trigger event', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to trigger event: ${err.message}`);
+
+			throw ApiError.Internal(
+				`Failed to trigger event: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
@@ -661,14 +881,26 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
-			// Find the user event
+			logger.debug('completeEvent on start', { userId, slug });
+
+			// Find the event template
 			const event = await EventTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!event) {
-				throw ApiError.NotFound('Event not found');
+				logger.debug('completeEvent - event template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Event template not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_TEMPLATE_NOT_FOUND
+				);
 			}
+
+			// Find the user event
 			const userEvent = await UserEvent.findOne({
 				where: {
 					userId,
@@ -679,13 +911,15 @@ class EventService {
 			});
 
 			if (!userEvent) {
-				await t.rollback();
-				throw ApiError.NotFound('Active event not found');
-			}
-
-			if (!event) {
-				await t.rollback();
-				throw ApiError.NotFound('Event template not found');
+				logger.debug('completeEvent - active event not found', {
+					userId,
+					slug,
+					eventId: event.id,
+				});
+				throw ApiError.NotFound(
+					`Active event not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_NOT_FOUND
+				);
 			}
 
 			// Get user event settings
@@ -695,8 +929,13 @@ class EventService {
 			});
 
 			if (!userEventSettings) {
-				await t.rollback();
-				throw ApiError.NotFound('User event settings not found');
+				logger.debug('completeEvent - user event settings not found', {
+					userId,
+				});
+				throw ApiError.NotFound(
+					`User event settings not found for user: ${userId}`,
+					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
+				);
 			}
 
 			// Remove event effects
@@ -715,6 +954,7 @@ class EventService {
 			await userEvent.save({ transaction: t });
 
 			// Apply rewards if any
+			let rewardsApplied = {};
 			if (event.effect.rewards) {
 				const userState = await UserState.findOne({
 					where: { userId },
@@ -722,23 +962,45 @@ class EventService {
 				});
 
 				if (userState) {
+					const oldValues = {
+						stardust: userState.stardust,
+						darkMatter: userState.darkMatter,
+						stars: userState.stars,
+					};
+
 					// Apply resource rewards
 					if (event.effect.rewards.stardust) {
 						userState.stardust += event.effect.rewards.stardust;
+						rewardsApplied.stardust = event.effect.rewards.stardust;
 					}
 					if (event.effect.rewards.darkMatter) {
 						userState.darkMatter += event.effect.rewards.darkMatter;
+						rewardsApplied.darkMatter =
+							event.effect.rewards.darkMatter;
 					}
-					if (event.effect.rewards.tgStars) {
-						userState.tgStars += event.effect.rewards.tgStars;
+					if (event.effect.rewards.stars) {
+						userState.stars += event.effect.rewards.stars;
+						rewardsApplied.stars = event.effect.rewards.stars;
 					}
 
 					await userState.save({ transaction: t });
+
+					logger.debug('Rewards applied to user state', {
+						userId,
+						rewardsApplied,
+						oldValues,
+						newValues: {
+							stardust: userState.stardust,
+							darkMatter: userState.darkMatter,
+							stars: userState.stars,
+						},
+					});
 				}
 			}
 
 			// Set cooldown if specified
-			if (event.triggerConfig.cooldown) {
+			let cooldownSet = false;
+			if (event.triggerConfig?.cooldown) {
 				const cooldownMs = this.parseInterval(
 					event.triggerConfig.cooldown
 				);
@@ -750,9 +1012,25 @@ class EventService {
 				};
 
 				await userEventSettings.save({ transaction: t });
+				cooldownSet = true;
+
+				logger.debug('Event cooldown set', {
+					userId,
+					eventId: event.id,
+					cooldownMs,
+					cooldownUntil,
+				});
 			}
 
 			await t.commit();
+
+			logger.debug('completeEvent completed successfully', {
+				userId,
+				slug,
+				eventId: userEvent.id,
+				rewardsApplied: Object.keys(rewardsApplied).length > 0,
+				cooldownSet,
+			});
 
 			return {
 				...userEvent.toJSON(),
@@ -760,10 +1038,22 @@ class EventService {
 			};
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to complete event', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to complete event: ${err.message}`);
+
+			throw ApiError.Internal(
+				`Failed to complete event: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
@@ -777,13 +1067,25 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('cancelEvent on start', { userId, slug });
+
+			// Find the event template
 			const event = await EventTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!event) {
-				throw ApiError.NotFound('Event not found');
+				logger.debug('cancelEvent - event template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Event template not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_TEMPLATE_NOT_FOUND
+				);
 			}
+
 			// Find the user event
 			const userEvent = await UserEvent.findOne({
 				where: {
@@ -795,8 +1097,15 @@ class EventService {
 			});
 
 			if (!userEvent) {
-				await t.rollback();
-				throw ApiError.NotFound('Active event not found');
+				logger.debug('cancelEvent - active event not found', {
+					userId,
+					slug,
+					eventId: event.id,
+				});
+				throw ApiError.NotFound(
+					`Active event not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_NOT_FOUND
+				);
 			}
 
 			// Get user event settings
@@ -806,8 +1115,13 @@ class EventService {
 			});
 
 			if (!userEventSettings) {
-				await t.rollback();
-				throw ApiError.NotFound('User event settings not found');
+				logger.debug('cancelEvent - user event settings not found', {
+					userId,
+				});
+				throw ApiError.NotFound(
+					`User event settings not found for user: ${userId}`,
+					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
+				);
 			}
 
 			// Remove event effects
@@ -826,13 +1140,31 @@ class EventService {
 
 			await t.commit();
 
+			logger.debug('cancelEvent completed successfully', {
+				userId,
+				slug,
+				eventId: userEvent.id,
+			});
+
 			return userEvent;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to cancel event', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to cancel event: ${err.message}`);
+
+			throw ApiError.Internal(
+				`Failed to cancel event: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
@@ -846,13 +1178,26 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug('getUserEvent on start', { userId, slug });
+
+			// Find the event template
 			const event = await EventTemplate.findOne({
 				where: { slug },
 				transaction: t,
 			});
+
 			if (!event) {
-				throw ApiError.NotFound('Event not found');
+				logger.debug('getUserEvent - event template not found', {
+					userId,
+					slug,
+				});
+				throw ApiError.NotFound(
+					`Event template not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_TEMPLATE_NOT_FOUND
+				);
 			}
+
+			// Find the user event
 			const userEvent = await UserEvent.findOne({
 				where: {
 					userId,
@@ -877,18 +1222,50 @@ class EventService {
 			});
 
 			if (!userEvent) {
-				await t.rollback();
-				throw ApiError.NotFound('Event not found');
+				logger.debug('getUserEvent - user event not found', {
+					userId,
+					slug,
+					eventId: event.id,
+				});
+				throw ApiError.NotFound(
+					`User event not found: ${slug}`,
+					ERROR_CODES.EVENT.EVENT_NOT_FOUND
+				);
 			}
 
+			const result = {
+				...userEvent.toJSON(),
+				event: userEvent.eventtemplate?.toJSON(),
+			};
+
 			await t.commit();
-			return userEvent;
+
+			logger.debug('getUserEvent completed successfully', {
+				userId,
+				slug,
+				eventId: userEvent.id,
+				status: userEvent.status,
+			});
+
+			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get user event', {
+				userId,
+				slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to get user event: ${err.message}`);
+
+			throw ApiError.Internal(
+				`Failed to get user event: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
+			);
 		}
 	}
 
@@ -901,38 +1278,56 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
-			let settings = await UserEventSetting.findOne({
+			logger.debug('getUserEventSettings on start', { userId });
+
+			const [settings, created] = await UserEventSetting.findOrCreate({
 				where: { userId },
+				defaults: {
+					userId,
+					eventMultipliers: {
+						production: 1.0,
+						chaos: 1.0,
+						stability: 1.0,
+						entropy: 1.0,
+						rewards: 1.0,
+					},
+					lastEventCheck: new Date(),
+					eventCooldowns: {},
+					enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+					disabledEvents: [],
+					priorityEvents: [],
+				},
 				transaction: t,
 			});
 
-			if (!settings) {
-				settings = await UserEventSetting.create(
-					{
-						userId,
-						eventMultipliers: {
-							production: 1.0,
-							chaos: 1.0,
-							stability: 1.0,
-							entropy: 1.0,
-							rewards: 1.0,
-						},
-						lastEventCheck: new Date(),
-						eventCooldowns: {},
-						enabledTypes: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
-						disabledEvents: [],
-						priorityEvents: [],
-					},
-					{ transaction: t }
-				);
+			if (created) {
+				logger.debug('Created new user event settings', { userId });
 			}
 
 			await t.commit();
+
+			logger.debug('getUserEventSettings completed successfully', {
+				userId,
+				settingsCreated: created,
+			});
+
 			return settings;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get user event settings', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get user event settings: ${err.message}`
+				`Failed to get user event settings: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -947,30 +1342,50 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
-			let settings = await UserEventSetting.findOne({
+			logger.debug('updateUserEventSettings on start', {
+				userId,
+				settingsData,
+			});
+
+			const [settings, created] = await UserEventSetting.findOrCreate({
 				where: { userId },
+				defaults: {
+					userId,
+					...settingsData,
+					lastEventCheck: new Date(),
+				},
 				transaction: t,
 			});
 
-			if (!settings) {
-				settings = await UserEventSetting.create(
-					{
-						userId,
-						...settingsData,
-						lastEventCheck: new Date(),
-					},
-					{ transaction: t }
-				);
-			} else {
+			if (!created) {
 				await settings.update(settingsData, { transaction: t });
 			}
 
 			await t.commit();
+
+			logger.debug('updateUserEventSettings completed successfully', {
+				userId,
+				settingsCreated: created,
+			});
+
 			return settings;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to update user event settings', {
+				userId,
+				settingsData,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to update user event settings: ${err.message}`
+				`Failed to update user event settings: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -984,49 +1399,90 @@ class EventService {
 		const t = await sequelize.transaction();
 
 		try {
-			const [activeCount, completedCount, expiredCount, settings] =
-				await Promise.all([
-					UserEvent.count({
-						where: {
-							userId,
-							status: 'ACTIVE',
-						},
-						transaction: t,
-					}),
-					UserEvent.count({
-						where: {
-							userId,
-							status: 'COMPLETED',
-						},
-						transaction: t,
-					}),
-					UserEvent.count({
-						where: {
-							userId,
-							status: 'EXPIRED',
-						},
-						transaction: t,
-					}),
-					UserEventSetting.findOne({
-						where: { userId },
-						transaction: t,
-					}),
-				]);
+			logger.debug('getUserEventStats on start', { userId });
 
-			await t.commit();
+			const [
+				activeCount,
+				completedCount,
+				expiredCount,
+				cancelledCount,
+				settings,
+			] = await Promise.all([
+				UserEvent.count({
+					where: {
+						userId,
+						status: 'ACTIVE',
+					},
+					transaction: t,
+				}),
+				UserEvent.count({
+					where: {
+						userId,
+						status: 'COMPLETED',
+					},
+					transaction: t,
+				}),
+				UserEvent.count({
+					where: {
+						userId,
+						status: 'EXPIRED',
+					},
+					transaction: t,
+				}),
+				UserEvent.count({
+					where: {
+						userId,
+						status: 'CANCELLED',
+					},
+					transaction: t,
+				}),
+				UserEventSetting.findOne({
+					where: { userId },
+					transaction: t,
+				}),
+			]);
 
-			return {
+			const total =
+				activeCount + completedCount + expiredCount + cancelledCount;
+
+			const result = {
 				active: activeCount,
 				completed: completedCount,
 				expired: expiredCount,
-				cancelled: 0, // Add this if you track cancelled events
-				total: activeCount + completedCount + expiredCount,
+				cancelled: cancelledCount,
+				total,
 				multipliers: settings ? settings.eventMultipliers : {},
 			};
+
+			await t.commit();
+
+			logger.debug('getUserEventStats completed successfully', {
+				userId,
+				activeCount,
+				completedCount,
+				expiredCount,
+				cancelledCount,
+				total,
+				hasSettings: !!settings,
+			});
+
+			return result;
 		} catch (err) {
 			await t.rollback();
+
+			logger.error('Failed to get user event stats', {
+				userId,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			if (err instanceof ApiError) {
+				throw err;
+			}
+
 			throw ApiError.Internal(
-				`Failed to get user event stats: ${err.message}`
+				`Failed to get user event stats: ${err.message}`,
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}

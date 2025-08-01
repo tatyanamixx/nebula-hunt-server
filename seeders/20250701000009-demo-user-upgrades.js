@@ -10,7 +10,7 @@ module.exports = {
 				{
 					id: 1,
 					userId: 123456789,
-					nodeId: 'basic_mining',
+					upgradeNodeTemplateId: 1, // basic_mining
 					level: 3,
 					progress: 75,
 					targetProgress: 100,
@@ -37,7 +37,7 @@ module.exports = {
 				{
 					id: 2,
 					userId: 123456789,
-					nodeId: 'energy_efficiency',
+					upgradeNodeTemplateId: 2, // energy_efficiency
 					level: 1,
 					progress: 50,
 					targetProgress: 100,
@@ -54,7 +54,7 @@ module.exports = {
 				{
 					id: 3,
 					userId: 987654321,
-					nodeId: 'basic_mining',
+					upgradeNodeTemplateId: 1, // basic_mining
 					level: 5,
 					progress: 100,
 					targetProgress: 100,
@@ -91,7 +91,7 @@ module.exports = {
 				{
 					id: 4,
 					userId: 987654321,
-					nodeId: 'improved_mining',
+					upgradeNodeTemplateId: 3, // improved_mining
 					level: 2,
 					progress: 30,
 					targetProgress: 100,
@@ -113,7 +113,7 @@ module.exports = {
 				{
 					id: 5,
 					userId: 987654321,
-					nodeId: 'energy_efficiency',
+					upgradeNodeTemplateId: 2, // energy_efficiency
 					level: 3,
 					progress: 100,
 					targetProgress: 100,

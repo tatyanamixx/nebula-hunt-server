@@ -25,6 +25,10 @@ const ERROR_CODES = {
 		INVALID_SEED_FORMAT: 'VAL_006',
 		INVALID_PRICE_FORMAT: 'VAL_007',
 		INVALID_CURRENCY: 'VAL_008',
+		INVALID_FARMING_DATA: 'VAL_009',
+		INVALID_RESOURCE: 'VAL_010',
+		INVALID_AMOUNT: 'VAL_011',
+		DUPLICATE_RESOURCE: 'VAL_012',
 	},
 
 	// Ошибки галактик
@@ -82,6 +86,7 @@ const ERROR_CODES = {
 		TASK_ALREADY_COMPLETED: 'TSK_002',
 		TASK_TEMPLATE_NOT_FOUND: 'TSK_003',
 		INVALID_TASK_PROGRESS: 'TSK_004',
+		TASK_TEMPLATE_INACTIVE: 'TSK_005',
 	},
 
 	// Ошибки событий
@@ -92,12 +97,28 @@ const ERROR_CODES = {
 		EVENT_EXPIRED: 'EVT_004',
 	},
 
+	// Ошибки игровой механики
+	GAME: {
+		DAILY_REWARD_ALREADY_CLAIMED: 'GAM_001',
+		INVALID_REWARD_DATA: 'GAM_002',
+		REWARD_PROCESSING_FAILED: 'GAM_003',
+	},
+
 	// Ошибки пакетов
 	PACKAGE: {
 		PACKAGE_NOT_FOUND: 'PKG_001',
 		PACKAGE_ALREADY_PURCHASED: 'PKG_002',
 		PACKAGE_TEMPLATE_NOT_FOUND: 'PKG_003',
 		PACKAGE_EXPIRED: 'PKG_004',
+	},
+
+	// Комиссии
+	COMMISSION: {
+		COMMISSION_NOT_FOUND: 'COM_001',
+		COMMISSION_ALREADY_EXISTS: 'COM_002',
+		COMMISSION_TEMPLATE_NOT_FOUND: 'COM_003',
+		COMMISSION_EXPIRED: 'COM_004',
+		INVALID_COMMISSION_DATA: 'COM_005',
 	},
 
 	// Системные ошибки
@@ -139,6 +160,10 @@ const ERROR_DESCRIPTIONS = {
 	VAL_006: 'Invalid galaxy seed format',
 	VAL_007: 'Invalid price format',
 	VAL_008: 'Invalid currency specified',
+	VAL_009: 'Invalid farming data format',
+	VAL_010: 'Invalid resource type specified',
+	VAL_011: 'Invalid amount value',
+	VAL_012: 'Duplicate resource in farming data',
 
 	// Галактики
 	GAL_001: 'Galaxy not found',
@@ -191,11 +216,23 @@ const ERROR_DESCRIPTIONS = {
 	EVT_003: 'Event template not found',
 	EVT_004: 'Event has expired',
 
+	// Игровая механика
+	GAM_001: 'Daily reward already claimed today',
+	GAM_002: 'Invalid reward data provided',
+	GAM_003: 'Failed to process reward',
+
 	// Пакеты
 	PKG_001: 'Package not found',
 	PKG_002: 'Package already purchased',
 	PKG_003: 'Package template not found',
 	PKG_004: 'Package has expired',
+
+	// Комиссии
+	COM_001: 'Commission not found',
+	COM_002: 'Commission already exists',
+	COM_003: 'Commission template not found',
+	COM_004: 'Commission has expired',
+	COM_005: 'Invalid commission data provided',
 
 	// Системные
 	SYS_001: 'Database operation failed',

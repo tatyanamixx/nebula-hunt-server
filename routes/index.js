@@ -30,6 +30,7 @@ const upgradeTemplateRouter = require('./upgrade-template-router');
 const packageTemplateRouter = require('./package-template-router');
 const artifactTemplateRouter = require('./artifact-template-router');
 const templateViewRouter = require('./template-view-router');
+const commissionTemplateRouter = require('./commission-template-router');
 
 router.use('/auth', authRouter);
 router.use('/state', userStateRouter);
@@ -52,6 +53,7 @@ router.use('/package-templates', packageTemplateRouter);
 router.use('/game-metrics', gameMetricsRouter);
 router.use('/metrics', prometheusRouter);
 router.use('/artifact-templates', artifactTemplateRouter);
+router.use('/commission-templates', commissionTemplateRouter);
 router.use('/admin-users', adminUserRouter);
 router.use('/template-views', templateViewRouter);
 

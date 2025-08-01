@@ -5,7 +5,6 @@
 const Router = require('express').Router;
 const router = new Router();
 const adminController = require('../controllers/admin-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
 const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 

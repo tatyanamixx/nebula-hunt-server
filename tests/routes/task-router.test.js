@@ -62,13 +62,13 @@ describe('Task Router', () => {
 	let app;
 	let authMiddleware;
 	let telegramAuthMiddleware;
-	let adminMiddleware;
+	let adminAuthMiddleware;
 
 	beforeEach(() => {
 		// Получаем моки middleware
 		authMiddleware = require('../../middlewares/auth-middleware');
 		telegramAuthMiddleware = require('../../middlewares/telegram-auth-middleware');
-		adminMiddleware = require('../../middlewares/admin-middleware');
+		adminAuthMiddleware = require('../../middlewares/admin-auth-middleware');
 
 		// Сбрасываем моки перед каждым тестом
 		jest.clearAllMocks();

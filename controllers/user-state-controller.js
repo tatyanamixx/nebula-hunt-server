@@ -26,19 +26,7 @@ class UserStateController {
 		}
 	}
 
-	async claimDailyBonus(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const result = await userStateService.claimDailyBonus(userId);
-			logger.info('Daily bonus claimed', {
-				userId: userId,
-				bonus: result.bonus,
-			});
-			return res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
+	
 
 	async updateUserState(req, res, next) {
 		try {
@@ -67,23 +55,7 @@ class UserStateController {
 			next(e);
 		}
 	}
-
-	async farming(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const offers = req.body;
-			const result = await userStateService.farming(userId, offers);
-			logger.info({
-				message: 'Farming rewards registered',
-				userId: userId,
-				offers: offers,
-				result: result,
-			});
-			return res.json(result);
-		} catch (e) {
-			next(e);
-		}
-	}
+	
 }
 
 module.exports = new UserStateController();

@@ -4,13 +4,13 @@
 const Router = require('express').Router;
 const router = new Router();
 const packageTemplateController = require('../controllers/package-template-controller');
-const adminMiddleware = require('../middlewares/admin-middleware');
+const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
 // Get all package templates
 router.get(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	packageTemplateController.getAllPackageTemplates
 );
@@ -18,7 +18,7 @@ router.get(
 // Get a specific package template
 router.get(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60),
 	packageTemplateController.getPackageTemplate
 );
@@ -26,7 +26,7 @@ router.get(
 // Create a new package template
 router.post(
 	'/',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	packageTemplateController.createPackageTemplates
 );
@@ -34,7 +34,7 @@ router.post(
 // Update a package template
 router.put(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	packageTemplateController.updatePackageTemplate
 );
@@ -42,7 +42,7 @@ router.put(
 // Delete a package template
 router.delete(
 	'/:slug',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(10, 60),
 	packageTemplateController.deletePackageTemplate
 );
@@ -50,7 +50,7 @@ router.delete(
 // Toggle a package template status
 router.put(
 	'/:slug/toggle',
-	adminMiddleware,
+	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60),
 	packageTemplateController.togglePackageTemplateStatus
 );
