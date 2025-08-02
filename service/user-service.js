@@ -160,13 +160,10 @@ class UserService {
 					SYSTEM_USER_ID
 				);
 				const result = await this.createSystemUser(t);
-				logger.info(
-					'System user and state created successfully',
-					{
-						userId: result.systemUser[0].id,
-						stateId: result.systemUserState[0].id
-					}
-				);
+				logger.info('System user and state created successfully', {
+					userId: result.systemUser[0].id,
+					stateId: result.systemUserState[0].id,
+				});
 			} else {
 				logger.debug(
 					'System user already exists with ID:',

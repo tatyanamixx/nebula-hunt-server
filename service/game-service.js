@@ -33,7 +33,7 @@ class GameService {
 	 * @param {string} resource - Resource name
 	 * @returns {BigInt} Farming id
 	 */
-	getFarmingId(resource) {
+	getResourceId(resource) {
 		switch (resource) {
 			case 'stardust':
 				return 1n;
@@ -41,6 +41,10 @@ class GameService {
 				return 2n;
 			case 'stars':
 				return 3n;
+			case 'tgStars':
+				return 4n;
+			case 'tonToken':
+				return 5n;
 			default:
 				throw ApiError.BadRequest('Invalid resource for farming');
 		}
@@ -132,7 +136,7 @@ class GameService {
 					buyerId: userId,
 					txType: 'FARMING_REWARD',
 					itemType: 'resource', // Используем 'resource' вместо 'farming'
-					itemId: this.getFarmingId(offer.resource),
+					itemId: this.getResourceId(offer.resource),
 					price: 0, // Free from system user
 					currency: 'tonToken',
 					amount: offer.amount,
@@ -763,39 +767,71 @@ class GameService {
 				}
 
 				// Check if current day is in the allowed days array
-				if (condition.days && condition.days.includes(currentStreak)) {
-					const rewardAmount = Math.floor(
-						reward.amount * (reward.multiplier || 1) * currentStreak
-					);
+				if (condition.days && condition.days.length > 0) {
+					// Find the maximum day in the days array
+					const maxDay = Math.max(...condition.days);
 
-					const offerData = {
-						sellerId: SYSTEM_USER_ID,
-						buyerId: userId,
-						price: 0, // Daily rewards are free
-						currency: 'stardust', // Not used for free rewards
-						itemId: userTask.id, // Use 0 for system rewards (no specific item)
-						itemType: 'task', // Use 'resource' type for daily rewards
-						amount: rewardAmount,
-						resource: reward.type,
-						offerType: 'SYSTEM',
-						txType: 'DAILY_REWARD',
-					};
+					// Calculate the effective streak for reward calculation
+					// If currentStreak exceeds maxDay, cycle back to the beginning
+					let effectiveStreak = currentStreak;
+					if (currentStreak > maxDay) {
+						// Calculate which day in the cycle we should be on
+						const cyclePosition =
+							((currentStreak - 1) % maxDay) + 1;
+						effectiveStreak = cyclePosition;
+					}
 
-					const result = await marketService.registerOffer(
-						offerData,
-						t
-					);
-					processedRewards.push({
-						resource: reward.type,
-						amount: rewardAmount,
-						transactionId: result.marketTransaction.id,
-						taskSlug: taskTemplate.slug,
-					});
+					// Check if the effective streak is in the allowed days array
+					if (condition.days.includes(effectiveStreak)) {
+						const rewardAmount = Math.floor(
+							reward.amount *
+								(reward.multiplier || 1) *
+								effectiveStreak
+						);
 
-					// Mark task as completed for today
-					userTask.completed = true;
-					userTask.completedAt = now;
-					await userTask.save({ transaction: t });
+						const offerData = {
+							sellerId: SYSTEM_USER_ID,
+							buyerId: userId,
+							price: 0, // Daily rewards are free
+							currency: 'stardust', // Not used for free rewards
+							itemId: userTask.id, // Use 0 for system rewards (no specific item)
+							itemType: 'task', // Use 'resource' type for daily rewards
+							amount: rewardAmount,
+							resource: reward.type,
+							offerType: 'SYSTEM',
+							txType: 'DAILY_REWARD',
+						};
+
+						const result = await marketService.registerOffer(
+							offerData,
+							t
+						);
+						processedRewards.push({
+							resource: reward.type,
+							amount: rewardAmount,
+							transactionId: result.marketTransaction.id,
+							taskSlug: taskTemplate.slug,
+							effectiveStreak: effectiveStreak, // Add this for debugging
+						});
+
+						// Mark task as completed for today
+						userTask.completed = true;
+						userTask.completedAt = now;
+						await userTask.save({ transaction: t });
+
+						logger.debug(
+							'Daily reward processed with cycling logic',
+							{
+								userId,
+								taskSlug: taskTemplate.slug,
+								currentStreak,
+								effectiveStreak,
+								maxDay,
+								rewardAmount,
+								conditionDays: condition.days,
+							}
+						);
+					}
 				}
 			}
 

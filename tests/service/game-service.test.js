@@ -45,59 +45,188 @@ describe('Game Service', () => {
 	});
 
 	describe('registerFarmingReward', () => {
-		const mockOfferData = {
-			sellerId: -1, // SYSTEM_USER_ID
-			buyerId: 123,
-			itemType: 'resource',
-			itemId: 'stardust_75',
-			price: 0,
-			currency: 'tonToken',
-			offerType: 'SYSTEM',
-			amount: 75,
-			resource: 'stardust',
-		};
+		const mockOfferData = [
+			{
+				resource: 'stardust',
+				amount: 75,
+			},
+			{
+				resource: 'darkMatter',
+				amount: 25,
+			},
+		];
+
+		const mockUserId = 123;
 
 		beforeEach(() => {
-			// Mock UserState.findOne
-			UserState.findOne.mockResolvedValue({
+			// Mock userStateService.getUserState
+			userStateService.getUserState.mockResolvedValue({
 				id: 1,
-				userId: 123,
-				stardust: 0,
+				userId: mockUserId,
+				stardust: 75,
+				darkMatter: 25,
+				stars: 100,
 				update: jest.fn(),
 			});
 
-			// Mock MarketOffer.create
-			MarketOffer.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-				save: jest.fn(),
-			});
-
-			// Mock MarketTransaction.create
-			MarketTransaction.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-				save: jest.fn(),
-			});
-
-			// Mock PaymentTransaction.create
-			PaymentTransaction.create.mockResolvedValue({
-				id: 1,
-				update: jest.fn(),
-				save: jest.fn(),
+			// Mock marketService.registerOffer
+			marketService.registerOffer.mockResolvedValue({
+				offer: {
+					id: 1,
+					update: jest.fn(),
+					save: jest.fn(),
+				},
+				marketTransaction: {
+					id: 1,
+					update: jest.fn(),
+					save: jest.fn(),
+				},
 			});
 		});
 
 		it('should register farming reward successfully', async () => {
 			const result = await gameService.registerFarmingReward(
+				mockUserId,
 				mockOfferData
 			);
 
 			expect(result).toEqual({
 				success: true,
-				message: 'Resource transferred to the user for farming',
-				offerData: mockOfferData,
+				message: 'Farming rewards transferred to user successfully',
+				data: {
+					rewards: [
+						{
+							resource: 'stardust',
+							amount: 75,
+							success: true,
+							offerId: 1,
+							marketTransactionId: 1,
+						},
+						{
+							resource: 'darkMatter',
+							amount: 25,
+							success: true,
+							offerId: 1,
+							marketTransactionId: 1,
+						},
+					],
+					userState: {
+						stardust: 75,
+						darkMatter: 25,
+						stars: 100,
+					},
+				},
 			});
+
+			// Verify marketService.registerOffer was called twice (once for each resource)
+			expect(marketService.registerOffer).toHaveBeenCalledTimes(2);
+
+			// Verify first call for stardust
+			expect(marketService.registerOffer).toHaveBeenNthCalledWith(
+				1,
+				{
+					sellerId: -1, // SYSTEM_USER_ID
+					buyerId: mockUserId,
+					txType: 'FARMING_REWARD',
+					itemType: 'resource',
+					itemId: 'stardust_75',
+					price: 0,
+					currency: 'tonToken',
+					amount: 75,
+					resource: 'stardust',
+					offerType: 'SYSTEM',
+				},
+				expect.any(Object)
+			);
+
+			// Verify second call for darkMatter
+			expect(marketService.registerOffer).toHaveBeenNthCalledWith(
+				2,
+				{
+					sellerId: -1, // SYSTEM_USER_ID
+					buyerId: mockUserId,
+					txType: 'FARMING_REWARD',
+					itemType: 'resource',
+					itemId: 'darkMatter_25',
+					price: 0,
+					currency: 'tonToken',
+					amount: 25,
+					resource: 'darkMatter',
+					offerType: 'SYSTEM',
+				},
+				expect.any(Object)
+			);
+		});
+
+		it('should throw error for invalid farming data structure', async () => {
+			const invalidData = { resource: 'stardust', amount: 75 };
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow(
+				'Farming data must be an array with exactly 2 elements'
+			);
+		});
+
+		it('should throw error for missing required fields', async () => {
+			const invalidData = [
+				{ resource: 'stardust' }, // missing amount
+				{ resource: 'darkMatter', amount: 25 },
+			];
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow(
+				'Each farming reward must have resource and amount'
+			);
+		});
+
+		it('should throw error for invalid resource type', async () => {
+			const invalidData = [
+				{ resource: 'invalid', amount: 75 },
+				{ resource: 'darkMatter', amount: 25 },
+			];
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow(
+				'Invalid resource: invalid. Must be one of: stardust, darkMatter'
+			);
+		});
+
+		it('should throw error for negative amount', async () => {
+			const invalidData = [
+				{ resource: 'stardust', amount: -75 },
+				{ resource: 'darkMatter', amount: 25 },
+			];
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow('Amount must be positive for resource: stardust');
+		});
+
+		it('should throw error for duplicate resources', async () => {
+			const invalidData = [
+				{ resource: 'stardust', amount: 75 },
+				{ resource: 'stardust', amount: 25 },
+			];
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow('Duplicate resource: stardust');
+		});
+
+		it('should throw error for missing required resources', async () => {
+			const invalidData = [
+				{ resource: 'stardust', amount: 75 },
+				{ resource: 'stars', amount: 25 },
+			];
+
+			await expect(
+				gameService.registerFarmingReward(mockUserId, invalidData)
+			).rejects.toThrow(
+				'Farming data must include both stardust and darkMatter'
+			);
 		});
 	});
 
@@ -447,7 +576,7 @@ describe('claimDailyReward', () => {
 			stars: 25,
 			lastDailyBonus: null,
 			currentStreak: 0,
-			maxStreak: 0
+			maxStreak: 0,
 		};
 
 		const mockUpdatedUserState = {
@@ -456,20 +585,24 @@ describe('claimDailyReward', () => {
 			darkMatter: 75,
 			lastDailyBonus: new Date(),
 			currentStreak: 1,
-			maxStreak: 1
+			maxStreak: 1,
 		};
 
 		const mockMarketResult = {
 			offer: { id: 1 },
-			marketTransaction: { id: 1, status: 'COMPLETED' }
+			marketTransaction: { id: 1, status: 'COMPLETED' },
 		};
 
 		const userStateService = require('../../service/user-state-service');
 		const marketService = require('../../service/market-service');
 
 		userStateService.getUserState.mockResolvedValue(mockUserState);
-		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
-		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
+		userStateService.updateUserState.mockResolvedValue(
+			mockUpdatedUserState
+		);
+		userStateService.getUserState
+			.mockResolvedValueOnce(mockUserState)
+			.mockResolvedValueOnce(mockUpdatedUserState);
 		marketService.registerOffer.mockResolvedValue(mockMarketResult);
 
 		const result = await gameService.claimDailyReward(userId);
@@ -485,7 +618,7 @@ describe('claimDailyReward', () => {
 		const userId = 123;
 		const yesterday = new Date();
 		yesterday.setDate(yesterday.getDate() - 1);
-		
+
 		const mockUserState = {
 			id: 1,
 			userId: userId,
@@ -494,7 +627,7 @@ describe('claimDailyReward', () => {
 			stars: 25,
 			lastDailyBonus: yesterday,
 			currentStreak: 2,
-			maxStreak: 2
+			maxStreak: 2,
 		};
 
 		const mockUpdatedUserState = {
@@ -503,19 +636,23 @@ describe('claimDailyReward', () => {
 			darkMatter: 100,
 			lastDailyBonus: new Date(),
 			currentStreak: 3,
-			maxStreak: 3
+			maxStreak: 3,
 		};
 
 		const mockMarketResult = {
 			offer: { id: 1 },
-			marketTransaction: { id: 1, status: 'COMPLETED' }
+			marketTransaction: { id: 1, status: 'COMPLETED' },
 		};
 
 		const userStateService = require('../../service/user-state-service');
 		const marketService = require('../../service/market-service');
 
-		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
-		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
+		userStateService.getUserState
+			.mockResolvedValueOnce(mockUserState)
+			.mockResolvedValueOnce(mockUpdatedUserState);
+		userStateService.updateUserState.mockResolvedValue(
+			mockUpdatedUserState
+		);
 		marketService.registerOffer.mockResolvedValue(mockMarketResult);
 
 		const result = await gameService.claimDailyReward(userId);
@@ -530,7 +667,7 @@ describe('claimDailyReward', () => {
 		const userId = 123;
 		const twoDaysAgo = new Date();
 		twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-		
+
 		const mockUserState = {
 			id: 1,
 			userId: userId,
@@ -539,7 +676,7 @@ describe('claimDailyReward', () => {
 			stars: 25,
 			lastDailyBonus: twoDaysAgo,
 			currentStreak: 5,
-			maxStreak: 5
+			maxStreak: 5,
 		};
 
 		const mockUpdatedUserState = {
@@ -548,19 +685,23 @@ describe('claimDailyReward', () => {
 			darkMatter: 75,
 			lastDailyBonus: new Date(),
 			currentStreak: 1,
-			maxStreak: 5
+			maxStreak: 5,
 		};
 
 		const mockMarketResult = {
 			offer: { id: 1 },
-			marketTransaction: { id: 1, status: 'COMPLETED' }
+			marketTransaction: { id: 1, status: 'COMPLETED' },
 		};
 
 		const userStateService = require('../../service/user-state-service');
 		const marketService = require('../../service/market-service');
 
-		userStateService.getUserState.mockResolvedValueOnce(mockUserState).mockResolvedValueOnce(mockUpdatedUserState);
-		userStateService.updateUserState.mockResolvedValue(mockUpdatedUserState);
+		userStateService.getUserState
+			.mockResolvedValueOnce(mockUserState)
+			.mockResolvedValueOnce(mockUpdatedUserState);
+		userStateService.updateUserState.mockResolvedValue(
+			mockUpdatedUserState
+		);
 		marketService.registerOffer.mockResolvedValue(mockMarketResult);
 
 		const result = await gameService.claimDailyReward(userId);
@@ -574,7 +715,7 @@ describe('claimDailyReward', () => {
 	it('should throw error if daily reward already claimed today', async () => {
 		const userId = 123;
 		const today = new Date();
-		
+
 		const mockUserState = {
 			id: 1,
 			userId: userId,
@@ -583,23 +724,29 @@ describe('claimDailyReward', () => {
 			stars: 25,
 			lastDailyBonus: today,
 			currentStreak: 1,
-			maxStreak: 1
+			maxStreak: 1,
 		};
 
 		const userStateService = require('../../service/user-state-service');
 
 		userStateService.getUserState.mockResolvedValue(mockUserState);
 
-		await expect(gameService.claimDailyReward(userId)).rejects.toThrow('Daily reward already claimed today');
+		await expect(gameService.claimDailyReward(userId)).rejects.toThrow(
+			'Daily reward already claimed today'
+		);
 	});
 
 	it('should handle database errors gracefully', async () => {
 		const userId = 123;
-		
+
 		const userStateService = require('../../service/user-state-service');
 
-		userStateService.getUserState.mockRejectedValue(new Error('Database connection failed'));
+		userStateService.getUserState.mockRejectedValue(
+			new Error('Database connection failed')
+		);
 
-		await expect(gameService.claimDailyReward(userId)).rejects.toThrow('Failed to claim daily reward: Database connection failed');
+		await expect(gameService.claimDailyReward(userId)).rejects.toThrow(
+			'Failed to claim daily reward: Database connection failed'
+		);
 	});
 });

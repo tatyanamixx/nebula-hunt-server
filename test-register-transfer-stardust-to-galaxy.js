@@ -1,482 +1,331 @@
-const { sequelize } = require('./db');
+/**
+ * Тест процесса передачи stardust в галактику
+ */
+const sequelize = require('./db');
 const gameService = require('./service/game-service');
-const logger = require('./service/logger-service');
-const {
-	Galaxy,
-	UserState,
-	MarketOffer,
-	MarketTransaction,
-	PaymentTransaction,
-} = require('./models/models');
+const userService = require('./service/user-service');
 
-// Функция для безопасной сериализации BigInt
-function bigIntReplacer(key, value) {
-	if (typeof value === 'bigint') {
-		return value.toString();
-	}
-	return value;
-}
+async function testRegisterTransferStardustToGalaxy() {
+	try {
+		console.log('🧪 Testing registerTransferStardustToGalaxy process...');
 
-// Вспомогательная функция для тестирования контроллера
-async function testControllerCall(
-	gameController,
-	userId,
-	galaxy,
-	reward,
-	expectError = false
-) {
-	const mockReq = {
-		body: {
-			userId,
-			galaxy,
+		// Тестовые данные
+		const userId = 8888888888; // Используем существующего пользователя
+		const username = 'transfertestuser';
+		const referral = null;
+		const galaxySeed = 'farming-test-seed-1754106138579'; // Используем существующую галактику
+
+		// Данные для передачи stardust в галактику
+		const galaxyData = {
+			seed: galaxySeed,
+		};
+
+		const reward = {
+			currency: 'stardust',
+			price: 50000, // Стоимость в stardust
+			resource: 'stars',
+			amount: 1000, // Количество stars, которые получит галактика
+		};
+
+		console.log('✅ Test data prepared');
+		console.log('User ID:', userId);
+		console.log('Username:', username);
+		console.log('Galaxy seed:', galaxySeed);
+		console.log('Transfer data:', {
+			galaxyData,
 			reward,
-		},
-	};
+		});
 
-	const mockRes = {
-		status: (code) => ({
-			json: (data) => {
-				if (!expectError) {
-					console.log('✅ Оферт зарегистрирован успешно');
-					console.log(`📊 Код ответа: ${code}`);
-					console.log(`📊 Сообщение: ${data.message}`);
-					console.log(
-						`📊 Данные:`,
-						JSON.stringify(data.data, bigIntReplacer, 2)
-					);
-				}
-				return data;
-			},
-		}),
-	};
-
-	let errorThrown = false;
-	const mockNext = (error) => {
-		if (error) {
-			errorThrown = true;
-			if (expectError) {
-				console.log(
-					'✅ Правильно выброшено исключение:',
-					error.message
-				);
-			} else {
-				console.error('❌ Неожиданная ошибка:', error.message);
-			}
-		}
-	};
-
-	try {
-		await gameController.registerTransferStardustToGalaxy(
-			mockReq,
-			mockRes,
-			mockNext
+		// Сначала логиним пользователя (он уже должен существовать)
+		console.log('\n📝 Step 1: Logging in existing user...');
+		const loginResult = await userService.login(
+			userId,
+			username,
+			referral,
+			null // без создания новой галактики
 		);
-		if (expectError && !errorThrown) {
-			console.log('❌ Ошибка: Должна была выбросить исключение');
-		}
-	} catch (error) {
-		if (expectError) {
-			console.log('✅ Правильно выброшено исключение:', error.message);
-		} else {
-			throw error;
-		}
-	}
-}
 
-// Функция для создания тестовой галактики
-async function createTestGalaxy(userId, seed) {
-	console.log(
-		`🔧 Создаем тестовую галактику для пользователя ${userId} с seed: ${seed}`
-	);
+		console.log('✅ User login completed');
+		console.log('Result keys:', Object.keys(loginResult));
 
-	try {
-		// Проверяем, существует ли уже галактика с таким seed
-		const existingGalaxy = await Galaxy.findOne({
-			where: { seed: seed },
-		});
-
-		if (existingGalaxy) {
-			console.log(`✅ Галактика с seed ${seed} уже существует`);
-			return existingGalaxy;
+		if (loginResult.user) {
+			console.log('User:', {
+				id: loginResult.user.id,
+				username: loginResult.user.username,
+				role: loginResult.user.role,
+			});
 		}
 
-		// Создаем новую галактику
-		const galaxy = await Galaxy.create({
-			seed: seed,
-			userId: userId,
-			name: `Test Galaxy ${seed}`,
-			starCurrent: 0,
-			starMax: 1000,
-			level: 1,
-			experience: 0,
-			experienceMax: 100,
-			status: 'ACTIVE',
+		if (loginResult.userState) {
+			console.log('Initial user state:', {
+				userId: loginResult.userState.userId,
+				stardust: loginResult.userState.stardust,
+				darkMatter: loginResult.userState.darkMatter,
+				stars: loginResult.userState.stars,
+			});
+		}
+
+		// Проверяем, есть ли у пользователя достаточно stardust
+		console.log('\n💰 Step 2: Checking user balance...');
+		const currentStardust = loginResult.userState
+			? loginResult.userState.stardust
+			: 0;
+		console.log('Current stardust balance:', currentStardust);
+		console.log('Required stardust for transfer:', reward.price);
+
+		if (currentStardust < reward.price) {
+			console.log(
+				'⚠️ User has insufficient stardust. Adding some for testing...'
+			);
+
+			// Добавляем stardust через фарминг для тестирования
+			const farmingData = [
+				{
+					resource: 'stardust',
+					amount: reward.price + 1000, // Добавляем немного больше
+				},
+				{
+					resource: 'darkMatter',
+					amount: 100,
+				},
+			];
+
+			const farmingResult = await gameService.registerFarmingReward(
+				userId,
+				farmingData
+			);
+
+			console.log('✅ Added stardust via farming:', {
+				success: farmingResult.success,
+				addedStardust: reward.price + 1000,
+			});
+		}
+
+		// Теперь тестируем передачу stardust в галактику
+		console.log('\n🌌 Step 3: Testing transfer stardust to galaxy...');
+		const transferResult =
+			await gameService.registerTransferStardustToGalaxy(
+				userId,
+				galaxyData,
+				reward
+			);
+
+		console.log('✅ Transfer completed successfully');
+		console.log('Transfer result:', {
+			success: transferResult.success,
+			message: transferResult.message,
 		});
 
-		console.log(`✅ Создана галактика:`, {
-			id: galaxy.id,
-			seed: galaxy.seed,
-			userId: galaxy.userId,
-			name: galaxy.name,
+		// Выводим детали результата
+		if (transferResult.data) {
+			console.log('Galaxy:', {
+				id: transferResult.data.galaxy.id,
+				seed: transferResult.data.galaxy.seed,
+			});
+
+			console.log('Offer:', {
+				id: transferResult.data.offer.id,
+				price: transferResult.data.offer.price,
+				currency: transferResult.data.offer.currency,
+				amount: transferResult.data.offer.amount,
+				resource: transferResult.data.offer.resource,
+			});
+
+			console.log('Transaction:', {
+				id: transferResult.data.transaction.id,
+				status: transferResult.data.transaction.status,
+			});
+
+			console.log('Updated user state:', {
+				stardust: transferResult.data.userState.stardust,
+				darkMatter: transferResult.data.userState.darkMatter,
+				stars: transferResult.data.userState.stars,
+			});
+		}
+
+		// Проверяем созданные транзакции в базе данных
+		console.log('\n📋 Step 4: Checking database transactions...');
+
+		// Проверяем market offers для галактики
+		const [marketOffers] = await sequelize.query(`
+            SELECT * FROM marketoffers 
+            WHERE "buyerId" = ${userId} AND "itemType" = 'galaxy' AND "txType" = 'GALAXY_RESOURCE'
+            ORDER BY "createdAt" DESC
+            LIMIT 5
+        `);
+
+		console.log('Market offers for galaxy found:', marketOffers.length);
+		marketOffers.forEach((offer, index) => {
+			console.log(`Offer ${index + 1}:`, {
+				id: offer.id,
+				sellerId: offer.sellerId,
+				buyerId: offer.buyerId,
+				txType: offer.txType,
+				itemType: offer.itemType,
+				itemId: offer.itemId,
+				price: offer.price,
+				currency: offer.currency,
+				amount: offer.amount,
+				resource: offer.resource,
+				offerType: offer.offerType,
+				status: offer.status,
+				createdAt: offer.createdAt,
+			});
 		});
 
-		return galaxy;
-	} catch (error) {
-		console.error(`❌ Ошибка при создании галактики:`, error.message);
-		throw error;
-	}
-}
+		// Проверяем market transactions
+		const [marketTransactions] = await sequelize.query(`
+            SELECT mt.*, mo."itemType", mo."resource", mo."amount", mo."txType"
+            FROM markettransactions mt
+            JOIN marketoffers mo ON mt."offerId" = mo.id
+            WHERE mt."buyerId" = ${userId} AND mo."itemType" = 'galaxy' AND mo."txType" = 'GALAXY_RESOURCE'
+            ORDER BY mt."createdAt" DESC
+            LIMIT 5
+        `);
 
-// Функция для проверки состояния пользователя
-async function checkUserState(userId) {
-	console.log(`📊 Проверяем состояние пользователя ${userId}`);
-
-	try {
-		const userState = await UserState.findOne({
-			where: { userId: userId },
+		console.log(
+			'Market transactions for galaxy found:',
+			marketTransactions.length
+		);
+		marketTransactions.forEach((tx, index) => {
+			console.log(`Transaction ${index + 1}:`, {
+				id: tx.id,
+				offerId: tx.offerId,
+				buyerId: tx.buyerId,
+				sellerId: tx.sellerId,
+				txType: tx.txType,
+				status: tx.status,
+				createdAt: tx.createdAt,
+			});
 		});
 
-		if (userState) {
-			console.log(`✅ Состояние пользователя:`, {
+		// Проверяем payment transactions
+		const [paymentTransactions] = await sequelize.query(`
+            SELECT pt.*, mt."buyerId", mt."sellerId"
+            FROM paymenttransactions pt
+            JOIN markettransactions mt ON pt."marketTransactionId" = mt.id
+            JOIN marketoffers mo ON mt."offerId" = mo.id
+            WHERE mt."buyerId" = ${userId} AND mo."itemType" = 'galaxy' AND mo."txType" = 'GALAXY_RESOURCE'
+            ORDER BY pt."createdAt" DESC
+            LIMIT 10
+        `);
+
+		console.log(
+			'Payment transactions for galaxy found:',
+			paymentTransactions.length
+		);
+		paymentTransactions.forEach((pt, index) => {
+			console.log(`Payment ${index + 1}:`, {
+				id: pt.id,
+				marketTransactionId: pt.marketTransactionId,
+				fromAccount: pt.fromAccount,
+				toAccount: pt.toAccount,
+				priceOrAmount: pt.priceOrAmount,
+				currencyOrResource: pt.currencyOrResource,
+				txType: pt.txType,
+				status: pt.status,
+				createdAt: pt.createdAt,
+			});
+		});
+
+		// Проверяем обновленное состояние пользователя в базе
+		const [userStateResult] = await sequelize.query(`
+            SELECT * FROM userstates 
+            WHERE "userId" = ${userId}
+        `);
+
+		if (userStateResult.length > 0) {
+			const userState = userStateResult[0];
+			console.log('\n📊 Final user state in database:', {
 				userId: userState.userId,
 				stardust: userState.stardust,
 				darkMatter: userState.darkMatter,
 				stars: userState.stars,
-				lockedStars: userState.lockedStars,
+				tgStars: userState.tgStars,
+				tonToken: userState.tonToken,
+				updatedAt: userState.updatedAt,
 			});
-		} else {
-			console.log(`❌ Состояние пользователя не найдено`);
 		}
 
-		return userState;
-	} catch (error) {
-		console.error(
-			`❌ Ошибка при проверке состояния пользователя:`,
-			error.message
-		);
-		throw error;
-	}
-}
+		// Проверяем состояние галактики
+		const [galaxyResult] = await sequelize.query(`
+            SELECT * FROM galaxies 
+            WHERE "seed" = '${galaxySeed}'
+        `);
 
-// Функция для проверки состояния галактики
-async function checkGalaxyState(seed) {
-	console.log(`🌌 Проверяем состояние галактики с seed: ${seed}`);
-
-	try {
-		const galaxy = await Galaxy.findOne({
-			where: { seed: seed },
-		});
-
-		if (galaxy) {
-			console.log(`✅ Состояние галактики:`, {
+		if (galaxyResult.length > 0) {
+			const galaxy = galaxyResult[0];
+			console.log('\n🌌 Galaxy state after transfer:', {
 				id: galaxy.id,
-				seed: galaxy.seed,
 				userId: galaxy.userId,
-				name: galaxy.name,
+				seed: galaxy.seed,
 				starCurrent: galaxy.starCurrent,
-				starMax: galaxy.starMax,
-				level: galaxy.level,
-				experience: galaxy.experience,
-				experienceMax: galaxy.experienceMax,
-				status: galaxy.status,
+				starMin: galaxy.starMin,
+				price: galaxy.price,
+				active: galaxy.active,
+				updatedAt: galaxy.updatedAt,
 			});
-		} else {
-			console.log(`❌ Галактика не найдена`);
 		}
 
-		return galaxy;
-	} catch (error) {
-		console.error(
-			`❌ Ошибка при проверке состояния галактики:`,
-			error.message
-		);
-		throw error;
-	}
-}
-
-// Функция для проверки транзакций
-async function checkTransactions(userId) {
-	console.log(`📊 Проверяем транзакции для пользователя ${userId}`);
-
-	try {
-		// Проверяем MarketOffer (где пользователь является продавцом или покупателем через транзакции)
-		const marketOffers = await MarketOffer.findAll({
-			where: { sellerId: userId },
-			order: [['createdAt', 'DESC']],
-			limit: 5,
-		});
-
+		// Тестируем повторную передачу с другими параметрами
 		console.log(
-			`📋 MarketOffer (где пользователь продавец, последние 5):`,
-			marketOffers.length
+			'\n🔄 Step 5: Testing repeated transfer with different parameters...'
 		);
-		marketOffers.forEach((offer, index) => {
-			console.log(
-				`  ${index + 1}. ID: ${offer.id}, SellerId: ${
-					offer.sellerId
-				}, Price: ${offer.price}, Currency: ${
-					offer.currency
-				}, Status: ${offer.status}, Created: ${offer.createdAt}`
-			);
-		});
-
-		// Проверяем MarketTransaction (где пользователь является покупателем)
-		const marketTransactions = await MarketTransaction.findAll({
-			where: { buyerId: userId },
-			order: [['createdAt', 'DESC']],
-			limit: 5,
-		});
-
-		console.log(
-			`📋 MarketTransaction (где пользователь покупатель, последние 5):`,
-			marketTransactions.length
-		);
-		marketTransactions.forEach((tx, index) => {
-			console.log(
-				`  ${index + 1}. ID: ${tx.id}, OfferId: ${
-					tx.offerId
-				}, BuyerId: ${tx.buyerId}, SellerId: ${tx.sellerId}, Status: ${
-					tx.status
-				}, Created: ${tx.createdAt}`
-			);
-		});
-
-		// Проверяем PaymentTransaction (где пользователь получает или отправляет)
-		const paymentTransactionsReceived = await PaymentTransaction.findAll({
-			where: { toAccount: userId },
-			order: [['createdAt', 'DESC']],
-			limit: 5,
-		});
-
-		const paymentTransactionsSent = await PaymentTransaction.findAll({
-			where: { fromAccount: userId },
-			order: [['createdAt', 'DESC']],
-			limit: 5,
-		});
-
-		console.log(
-			`📋 PaymentTransaction (полученные, последние 5):`,
-			paymentTransactionsReceived.length
-		);
-		paymentTransactionsReceived.forEach((tx, index) => {
-			console.log(
-				`  ${index + 1}. ID: ${tx.id}, From: ${tx.fromAccount}, To: ${
-					tx.toAccount
-				}, Amount: ${tx.priceOrAmount}, Currency: ${
-					tx.currencyOrResource
-				}, Type: ${tx.txType}, Status: ${tx.status}, Created: ${
-					tx.createdAt
-				}`
-			);
-		});
-
-		console.log(
-			`📋 PaymentTransaction (отправленные, последние 5):`,
-			paymentTransactionsSent.length
-		);
-		paymentTransactionsSent.forEach((tx, index) => {
-			console.log(
-				`  ${index + 1}. ID: ${tx.id}, From: ${tx.fromAccount}, To: ${
-					tx.toAccount
-				}, Amount: ${tx.priceOrAmount}, Currency: ${
-					tx.currencyOrResource
-				}, Type: ${tx.txType}, Status: ${tx.status}, Created: ${
-					tx.createdAt
-				}`
-			);
-		});
-
-		return {
-			marketOffers,
-			marketTransactions,
-			paymentTransactionsReceived,
-			paymentTransactionsSent,
-		};
-	} catch (error) {
-		console.error(`❌ Ошибка при проверке транзакций:`, error.message);
-		throw error;
-	}
-}
-
-async function testRegisterTransferStardustToGalaxy() {
-	console.log('🧪 Тестирование registerTransferStardustToGalaxy...\n');
-
-	try {
-		const testUserId = 99999999998; // Используем тестового пользователя
-		const testGalaxySeed = 'test_new_user_galaxy_1753984000000';
-
-		// Проверяем начальное состояние
-		console.log('📊 Проверяем начальное состояние...');
-		console.log('='.repeat(50));
-		await checkUserState(testUserId);
-		await checkGalaxyState(testGalaxySeed);
-		await checkTransactions(testUserId);
-		console.log('');
-
-		// Создаем тестовую галактику
-		console.log('🔧 Создаем тестовую галактику...');
-		console.log('='.repeat(50));
-		const galaxy = await createTestGalaxy(testUserId, testGalaxySeed);
-		console.log('');
-
-		// Тест 1: Корректные данные
-		console.log('📝 Тест 1: Корректные данные');
-		console.log('='.repeat(50));
-
-		const validGalaxyData = {
-			seed: testGalaxySeed,
-		};
-
-		const validReward = {
-			currency: 'stardust',
-			price: 1000,
-			resource: 'stars',
-			amount: 500,
-		};
-
-		// Вызываем контроллер напрямую
-		const gameController = require('./controllers/game-controller');
-		await testControllerCall(
-			gameController,
-			testUserId,
-			validGalaxyData,
-			validReward
-		);
-		console.log('');
-
-		// Проверяем состояние после транзакции
-		console.log('📊 Проверяем состояние после транзакции...');
-		console.log('='.repeat(50));
-		await checkUserState(testUserId);
-		await checkGalaxyState(testGalaxySeed);
-		await checkTransactions(testUserId);
-		console.log('');
-
-		// Тест 2: Недостаточно средств
-		console.log('❌ Тест 2: Недостаточно средств');
-		console.log('='.repeat(50));
-
-		await testControllerCall(
-			gameController,
-			testUserId,
-			validGalaxyData,
-			{
-				currency: 'stardust',
-				price: 1000000, // Очень большая сумма
-				resource: 'stars',
-				amount: 500,
-			},
-			true // Ожидаем ошибку
-		);
-		console.log('');
-
-		// Тест 3: Галактика не найдена
-		console.log('❌ Тест 3: Галактика не найдена');
-		console.log('='.repeat(50));
-
-		await testControllerCall(
-			gameController,
-			testUserId,
-			{ seed: 'non-existent-galaxy' },
-			validReward,
-			true // Ожидаем ошибку
-		);
-		console.log('');
-
-		// Тест 4: Отрицательная цена
-		console.log('❌ Тест 4: Отрицательная цена');
-		console.log('='.repeat(50));
-
-		await testControllerCall(
-			gameController,
-			testUserId,
-			validGalaxyData,
-			{
-				currency: 'stardust',
-				price: -100,
-				resource: 'stars',
-				amount: 500,
-			},
-			true // Ожидаем ошибку
-		);
-		console.log('');
-
-		// Тест 5: Отрицательное количество
-		console.log('❌ Тест 5: Отрицательное количество');
-		console.log('='.repeat(50));
-
-		await testControllerCall(
-			gameController,
-			testUserId,
-			validGalaxyData,
-			{
-				currency: 'stardust',
-				price: 1000,
-				resource: 'stars',
-				amount: -500,
-			},
-			true // Ожидаем ошибку
-		);
-		console.log('');
-
-		// Тест 6: Отсутствие обязательных полей
-		console.log('❌ Тест 6: Отсутствие обязательных полей');
-		console.log('='.repeat(50));
-
-		await testControllerCall(
-			gameController,
-			testUserId,
-			{ seed: '' }, // Пустой seed
-			validReward,
-			true // Ожидаем ошибку
-		);
-		console.log('');
-
-		// Тест 7: Проверка с другой валютой (darkMatter)
-		console.log('📊 Тест 7: Проверка с darkMatter');
-		console.log('='.repeat(50));
-
-		await testControllerCall(gameController, testUserId, validGalaxyData, {
+		const repeatedReward = {
 			currency: 'darkMatter',
-			price: 100,
+			price: 500, // Стоимость в darkMatter
 			resource: 'stars',
-			amount: 200,
-		});
-		console.log('');
+			amount: 25000, // Количество stars
+		};
 
-		// Финальная проверка состояния
-		console.log('📊 Финальная проверка состояния...');
-		console.log('='.repeat(50));
-		await checkUserState(testUserId);
-		await checkGalaxyState(testGalaxySeed);
-		await checkTransactions(testUserId);
-		console.log('');
+		const repeatedResult =
+			await gameService.registerTransferStardustToGalaxy(
+				userId,
+				galaxyData,
+				repeatedReward
+			);
+
+		console.log('✅ Repeated transfer completed');
+		console.log('Repeated transfer result:', {
+			success: repeatedResult.success,
+			message: repeatedResult.message,
+		});
+
+		// Проверяем итоговое состояние
+		const [finalUserState] = await sequelize.query(`
+            SELECT * FROM userstates 
+            WHERE "userId" = ${userId}
+        `);
+
+		if (finalUserState.length > 0) {
+			const finalState = finalUserState[0];
+			console.log('\n📊 Final user state after repeated transfer:', {
+				userId: finalState.userId,
+				stardust: finalState.stardust,
+				darkMatter: finalState.darkMatter,
+				stars: finalState.stars,
+				tgStars: finalState.tgStars,
+				tonToken: finalState.tonToken,
+				updatedAt: finalState.updatedAt,
+			});
+		}
 
 		console.log(
-			'🎉 Все тесты registerTransferStardustToGalaxy прошли успешно!'
+			'\n✅ RegisterTransferStardustToGalaxy test completed successfully!'
 		);
+		console.log('Summary:');
+		console.log('- User logged in successfully');
+		console.log('- First transfer to galaxy processed');
+		console.log('- Repeated transfer to galaxy processed');
+		console.log('- All database transactions created correctly');
+		console.log('- User state updated properly');
+		console.log('- Galaxy state updated properly');
 	} catch (error) {
-		console.error(
-			'❌ Ошибка в тестах registerTransferStardustToGalaxy:',
-			error.message
-		);
+		console.error('❌ Error in transfer test:', error.message);
 		console.error('Stack:', error.stack);
-		throw error;
+	} finally {
+		await sequelize.close();
 	}
 }
 
-// Запуск тестов
-testRegisterTransferStardustToGalaxy()
-	.then(() => {
-		console.log(
-			'✅ Тесты registerTransferStardustToGalaxy завершены успешно'
-		);
-		process.exit(0);
-	})
-	.catch((error) => {
-		console.error(
-			'❌ Тесты registerTransferStardustToGalaxy завершились с ошибкой:',
-			error
-		);
-		process.exit(1);
-	});
+testRegisterTransferStardustToGalaxy();

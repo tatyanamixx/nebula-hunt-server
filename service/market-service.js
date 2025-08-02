@@ -885,7 +885,7 @@ class MarketService {
 						}
 					);
 				}
-				await this.transferResource(offer, buyerId, transaction);
+				//await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'artifact':
 				await Artifact.update(
@@ -897,10 +897,10 @@ class MarketService {
 						transaction,
 					}
 				);
-				await this.transferResource(offer, buyerId, transaction);
+				//await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'resource':
-				await this.transferResource(offer, buyerId, transaction);
+				//await this.transferResource(offer, buyerId, transaction);
 				break;
 			case 'package':
 				// For system packages (from the game), create a new record for the buyer
@@ -1860,10 +1860,10 @@ class MarketService {
 				);
 			}
 
-			// Transfer item ownership if needed (for galaxies, artifacts, etc.)
-			//if (offer.itemType === 'galaxy' || offer.itemType === 'artifact') {
-			//	await this.transferItemOwnership(offer, offer.buyerId, t);
-			//}
+			//Transfer item ownership if needed (for galaxies, artifacts, etc.)
+			if (offer.itemType === 'galaxy' || offer.itemType === 'artifact') {
+				await this.transferItemOwnership(offer, offer.buyerId, t);
+			}
 
 			const txOffer = await MarketOffer.create(
 				{
