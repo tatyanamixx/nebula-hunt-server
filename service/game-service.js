@@ -283,66 +283,20 @@ class GameService {
 		}
 
 		// Add resource to buyer
-		await this.addCurrency(buyerId, resourceType, amount, transaction);
+		await marketService.addCurrency(
+			buyerId,
+			resourceType,
+			amount,
+			transaction
+		);
 
 		logger.debug(
 			`Resource ${resourceType} transferred from ${sellerId} to ${buyerId}: ${amount}`
 		);
 	}
 
-	async addCurrency(userId, currency, amount, transaction) {
-		const userState = await UserState.findOne({
-			where: { userId },
-			transaction,
-		});
-
-		if (!userState) {
-			throw ApiError.BadRequest(
-				`User state not found for user ${userId}`
-			);
-		}
-
-		const currentAmount = userState[currency] || 0;
-		await userState.update(
-			{
-				[currency]: currentAmount + amount,
-			},
-			{ transaction }
-		);
-
-		logger.debug(`Currency ${currency} added to user ${userId}: ${amount}`);
-	}
-
-	async deductCurrency(userId, currency, amount, transaction) {
-		const userState = await UserState.findOne({
-			where: { userId },
-			transaction,
-		});
-
-		if (!userState) {
-			throw ApiError.BadRequest(
-				`User state not found for user ${userId}`
-			);
-		}
-
-		const currentAmount = userState[currency] || 0;
-		if (currentAmount < amount) {
-			throw ApiError.BadRequest(
-				`Insufficient ${currency}. Required: ${amount}, Available: ${currentAmount}`
-			);
-		}
-
-		await userState.update(
-			{
-				[currency]: currentAmount - amount,
-			},
-			{ transaction }
-		);
-
-		logger.debug(
-			`Currency ${currency} deducted from user ${userId}: ${amount}`
-		);
-	}
+	// Currency management methods are now handled by marketService
+	// Use marketService.addCurrency() and marketService.deductCurrency() instead
 
 	/**
 	 * Create a galaxy with an offer
@@ -645,6 +599,84 @@ class GameService {
 	}
 
 	/**
+	 * Register generated galaxy when previous galaxy is filled with stars
+	 * @param {BigInt} userId - User ID from initdata
+	 * @param {Object} galaxyData - Galaxy data {seed: string, starMin?: number, starCurrent?: number, price?: number, particleCount?: number, onParticleCountChange?: boolean, galaxyProperties?: Object}
+	 * @param {Object} transaction - Database transaction
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async registerGeneratedGalaxy(userId, galaxyData, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+
+		logger.debug('registerGeneratedGalaxy', {
+			userId,
+			galaxyData,
+		});
+
+		try {
+			// Validate input data
+			if (!galaxyData || !galaxyData.seed) {
+				throw ApiError.BadRequest(
+					'Galaxy seed is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Prepare offer data with zero price and tgStars currency
+			const offer = {
+				price: 0,
+				currency: 'tgStars',
+			};
+
+			// Use existing createGalaxyWithOffer method
+			const result = await this.createGalaxyWithOffer(
+				galaxyData,
+				userId,
+				offer,
+				t
+			);
+
+			if (shouldCommit && !t.finished) {
+				await t.commit();
+			}
+
+			logger.info('Generated galaxy registered successfully', {
+				userId,
+				galaxyId: result.galaxy.id,
+				galaxySeed: galaxyData.seed,
+			});
+
+			return {
+				success: true,
+				message: 'Generated galaxy registered successfully',
+				data: {
+					galaxy: result.galaxy,
+					userState: result.userState,
+					marketOffer: result.marketOffer,
+				},
+			};
+		} catch (err) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error('Failed to register generated galaxy', {
+				userId,
+				galaxyData,
+				error: err.message,
+			});
+
+			throw err instanceof ApiError
+				? err
+				: ApiError.Internal(
+						`Failed to register generated galaxy: ${err.message}`,
+						ERROR_CODES.SYSTEM.DATABASE_ERROR
+				  );
+		}
+	}
+
+	/**
 	 * Claim daily reward for user
 	 * @param {BigInt} userId - User ID
 	 * @param {Object} transaction - Sequelize transaction
@@ -898,6 +930,64 @@ class GameService {
 						`Failed to claim daily reward: ${err.message}`,
 						ERROR_CODES.SYSTEM.DATABASE_ERROR
 				  );
+		}
+	}
+
+	/**
+	 * Register captured galaxy with tgStars offer
+	 * @param {BigInt} userId - User ID from initdata
+	 * @param {Object} galaxyData - Galaxy data {seed: string, starMin?: number, starCurrent?: number, price?: number, particleCount?: number, onParticleCountChange?: boolean, galaxyProperties?: Object}
+	 * @param {Object} offer - Offer data {price: number, currency: string}
+	 * @param {Object} transaction - Database transaction
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async registerCapturedGalaxy(userId, galaxyData, offer, transaction) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+
+		logger.debug('registerCapturedGalaxy called', {
+			userId,
+			galaxyData,
+			offer,
+		});
+
+		try {
+			// Prepare offer data for createGalaxyWithOffer
+			const offerData = {
+				buyerId: userId,
+				price: offer.price,
+				currency: offer.currency,
+			};
+
+			// Call the base method
+			const result = await this.createGalaxyWithOffer(
+				galaxyData,
+				userId,
+				offerData,
+				t
+			);
+
+			if (shouldCommit) {
+				await t.commit();
+			}
+
+			logger.info('Captured galaxy registered successfully', {
+				userId,
+				galaxySeed: galaxyData.seed,
+				price: offer.price,
+				currency: offer.currency,
+				galaxyId: result.galaxy?.id,
+			});
+
+			return {
+				success: true,
+				data: result,
+			};
+		} catch (error) {
+			if (shouldCommit) {
+				await t.rollback();
+			}
+			throw error;
 		}
 	}
 }

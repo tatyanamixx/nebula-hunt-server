@@ -61,6 +61,123 @@ Login with email (first step of 2FA authentication).
 }
 ```
 
+### Google OAuth Authentication
+
+```
+POST /admin/oauth/google
+```
+
+Authenticate admin using Google OAuth.
+
+**Request Body:**
+
+```json
+{
+	"code": "google_oauth_code"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Google OAuth successful",
+	"email": "admin@example.com",
+	"id": 123,
+	"role": "ADMIN",
+	"requires2FA": true
+}
+```
+
+### Google OAuth 2FA Verification
+
+```
+POST /admin/oauth/2fa/verify
+```
+
+Verify 2FA after Google OAuth authentication.
+
+**Request Body:**
+
+```json
+{
+	"email": "admin@example.com",
+	"otp": "123456"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "2FA verification successful",
+	"email": "admin@example.com",
+	"id": 123,
+	"role": "ADMIN",
+	"accessToken": "jwt_token",
+	"refreshToken": "refresh_token"
+}
+```
+
+### Admin Login with Password
+
+```
+POST /admin/login/password
+```
+
+Login with email and password (first step of 2FA authentication).
+
+**Request Body:**
+
+```json
+{
+	"email": "admin@example.com",
+	"password": "password123"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Password verification successful",
+	"email": "admin@example.com",
+	"id": 123,
+	"role": "ADMIN",
+	"requires2FA": true
+}
+```
+
+### Admin Password 2FA Verification
+
+```
+POST /admin/login/password/2fa/verify
+```
+
+Verify 2FA after password authentication.
+
+**Request Body:**
+
+```json
+{
+	"email": "admin@example.com",
+	"otp": "123456"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "2FA verification successful",
+	"email": "admin@example.com",
+	"id": 123,
+	"role": "ADMIN",
+	"accessToken": "jwt_token",
+	"refreshToken": "refresh_token"
+}
+```
+
 ### Admin 2FA Verification
 
 ```
@@ -148,6 +265,12 @@ POST /admin/logout
 
 Logout admin and invalidate tokens.
 
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
 **Request Body:**
 
 ```json
@@ -164,33 +287,406 @@ Logout admin and invalidate tokens.
 }
 ```
 
-## User API
-
-### User Registration
+### Complete 2FA Setup
 
 ```
-POST /auth/registration
+POST /admin/2fa/complete
 ```
 
-Register a new user through Telegram WebApp.
+Complete 2FA setup for admin registration.
+
+**Request Body:**
+
+```json
+{
+	"email": "admin@example.com",
+	"otp": "123456"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "2FA setup completed",
+	"email": "admin@example.com",
+	"id": 123,
+	"role": "ADMIN",
+	"accessToken": "jwt_token",
+	"refreshToken": "refresh_token"
+}
+```
+
+### Setup 2FA for Existing Admin
+
+```
+POST /admin/2fa/setup
+```
+
+Setup 2FA for an existing admin account.
 
 **Headers:**
 
 ```
-Authorization: Bearer <telegram_init_data>
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"message": "2FA setup initiated",
+	"google2faSecret": "JBSWY3DPEHPK3PXP",
+	"otpAuthUrl": "otpauth://totp/Nebulahunt%20Admin%20(admin@example.com)?secret=JBSWY3DPEHPK3PXP&issuer=Nebulahunt"
+}
+```
+
+### Disable 2FA
+
+```
+POST /admin/2fa/disable
+```
+
+Disable 2FA for admin account.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
 ```
 
 **Request Body:**
 
 ```json
 {
-	"referral": "123456789",
-	"galaxy": {
-		"name": "My Galaxy",
-		"description": "A beautiful galaxy"
-	}
+	"otp": "123456"
 }
 ```
+
+**Response:**
+
+```json
+{
+	"message": "2FA disabled successfully"
+}
+```
+
+### Get 2FA Info
+
+```
+GET /admin/2fa/info
+```
+
+Get 2FA information including QR code and secret.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"google2faSecret": "JBSWY3DPEHPK3PXP",
+	"otpAuthUrl": "otpauth://totp/Nebulahunt%20Admin%20(admin@example.com)?secret=JBSWY3DPEHPK3PXP&issuer=Nebulahunt"
+}
+```
+
+### Get Current Admin Info
+
+```
+GET /admin/me
+```
+
+Get current admin information.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"id": 123,
+	"email": "admin@example.com",
+	"role": "ADMIN",
+	"has2FA": true,
+	"createdAt": "2025-01-01T00:00:00.000Z"
+}
+```
+
+### Get 2FA QR Code for Login
+
+```
+GET /admin/2fa/qr/:email
+```
+
+Get 2FA QR code for login (no authentication required).
+
+**Response:**
+
+```json
+{
+	"google2faSecret": "JBSWY3DPEHPK3PXP",
+	"otpAuthUrl": "otpauth://totp/Nebulahunt%20Admin%20(admin@example.com)?secret=JBSWY3DPEHPK3PXP&issuer=Nebulahunt"
+}
+```
+
+### Admin Registration via Invite
+
+```
+POST /admin/register
+```
+
+Register admin using invite token.
+
+**Request Body:**
+
+```json
+{
+	"email": "newadmin@example.com",
+	"password": "password123",
+	"inviteToken": "invite_token_here"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Admin registered successfully",
+	"email": "newadmin@example.com",
+	"id": 124,
+	"role": "ADMIN"
+}
+```
+
+### Send Admin Invite
+
+```
+POST /admin/invite
+```
+
+Send invite to new admin.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"email": "newadmin@example.com",
+	"role": "ADMIN"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Invite sent successfully",
+	"inviteToken": "invite_token_here"
+}
+```
+
+### Validate Invite Token
+
+```
+GET /admin/invite/validate
+```
+
+Validate admin invite token.
+
+**Query Parameters:**
+
+```
+?token=invite_token_here
+```
+
+**Response:**
+
+```json
+{
+	"valid": true,
+	"email": "newadmin@example.com",
+	"role": "ADMIN"
+}
+```
+
+### Get All Invites
+
+```
+GET /admin/invites
+```
+
+Get all admin invites.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+[
+	{
+		"id": 1,
+		"email": "newadmin@example.com",
+		"role": "ADMIN",
+		"status": "PENDING",
+		"createdAt": "2025-01-01T00:00:00.000Z"
+	}
+]
+```
+
+### Get Admin Stats
+
+```
+GET /admin/stats
+```
+
+Get admin statistics.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"totalAdmins": 5,
+	"activeAdmins": 3,
+	"totalInvites": 10,
+	"pendingInvites": 2
+}
+```
+
+### Refresh Admin Token
+
+```
+POST /admin/refresh
+```
+
+Refresh admin JWT token.
+
+**Request Body:**
+
+```json
+{
+	"refreshToken": "refresh_token_here"
+}
+```
+
+**Response:**
+
+```json
+{
+	"accessToken": "new_jwt_token",
+	"refreshToken": "new_refresh_token"
+}
+```
+
+### Change Password
+
+```
+POST /admin/password/change
+```
+
+Change admin password.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"currentPassword": "old_password",
+	"newPassword": "new_password"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Password changed successfully"
+}
+```
+
+### Force Change Password
+
+```
+POST /admin/password/force-change
+```
+
+Force admin to change password.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"adminId": 123,
+	"newPassword": "new_password"
+}
+```
+
+**Response:**
+
+```json
+{
+	"message": "Password force changed successfully"
+}
+```
+
+### Get Password Info
+
+```
+GET /admin/password/info
+```
+
+Get password information for admin.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"lastChanged": "2025-01-01T00:00:00.000Z",
+	"expiresAt": "2025-04-01T00:00:00.000Z",
+	"requiresChange": false
+}
+```
+
+## User API
 
 ### User Login
 
@@ -205,14 +701,6 @@ Login user through Telegram WebApp.
 ```
 Authorization: Bearer <telegram_init_data>
 ```
-
-### User Logout
-
-```
-POST /auth/logout
-```
-
-Logout user and invalidate tokens.
 
 ### Refresh Token
 
@@ -332,57 +820,6 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### Create Galaxy with Offer
-
-```
-POST /api/game/galaxy-with-offer
-```
-
-Create a galaxy with an offer.
-
-**Headers:**
-
-```
-Authorization: Bearer <access_token>
-```
-
-**Request Body:**
-
-```json
-{
-	"galaxyData": {
-		"seed": "galaxy_seed_123",
-		"name": "My Galaxy",
-		"description": "A beautiful galaxy"
-	},
-	"offer": {
-		"buyerId": 123,
-		"price": 1000,
-		"currency": "tonToken"
-	}
-}
-```
-
-**Response:**
-
-```json
-{
-	"success": true,
-	"data": {
-		"galaxy": {
-			"id": 1,
-			"seed": "galaxy_seed_123",
-			"name": "My Galaxy"
-		},
-		"offer": {
-			"id": 1,
-			"price": 1000,
-			"currency": "tonToken"
-		}
-	}
-}
-```
-
 ### Create Galaxy for Sale
 
 ```
@@ -480,6 +917,134 @@ Authorization: Bearer <access_token>
 		"galaxy": {
 			"id": 3,
 			"seed": "galaxy_seed_789"
+		}
+	}
+}
+```
+
+### Register Generated Galaxy
+
+```
+POST /api/game/register-generated-galaxy
+```
+
+Register generated galaxy when previous galaxy is filled with stars. Creates a new galaxy with zero price in tgStars currency.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"galaxyData": {
+		"seed": "galaxy_seed_123",
+		"starMin": 100,
+		"starCurrent": 100,
+		"price": 1000,
+		"particleCount": 100,
+		"onParticleCountChange": true,
+		"galaxyProperties": {
+			"type": "spiral",
+			"size": "medium"
+		}
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Generated galaxy registered successfully",
+	"data": {
+		"galaxy": {
+			"id": 4,
+			"seed": "galaxy_seed_123",
+			"userId": 123,
+			"starMin": 100,
+			"starCurrent": 100,
+			"price": 1000,
+			"particleCount": 100,
+			"active": true
+		},
+		"userState": {
+			"stardust": 5000,
+			"darkMatter": 2000,
+			"stars": 1500
+		},
+		"marketOffer": {
+			"offer": {
+				"id": 4,
+				"price": 0,
+				"currency": "tgStars",
+				"status": "COMPLETED"
+			},
+			"marketTransaction": {
+				"id": 4,
+				"status": "COMPLETED"
+			}
+		}
+	}
+}
+```
+
+### Register Captured Galaxy
+
+```
+POST /api/game/register-captured-galaxy
+```
+
+Register a captured galaxy with tgStars offer.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"galaxyData": {
+		"seed": "captured_galaxy_seed_123",
+		"starMin": 100,
+		"starCurrent": 100,
+		"price": 1000,
+		"particleCount": 100,
+		"onParticleCountChange": true,
+		"galaxyProperties": {
+			"type": "spiral",
+			"size": "medium"
+		}
+	},
+	"offer": {
+		"price": 500,
+		"currency": "tgStars"
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Captured galaxy registered successfully",
+	"data": {
+		"galaxy": {
+			"id": 1,
+			"seed": "captured_galaxy_seed_123"
+		},
+		"offer": {
+			"id": 1,
+			"price": 500,
+			"currency": "tgStars"
 		}
 	}
 }

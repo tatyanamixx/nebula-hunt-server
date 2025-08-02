@@ -24,19 +24,6 @@ router.post(
 );
 
 /**
- * @route POST /api/game/galaxy-with-offer
- * @desc Create galaxy with offer
- * @access Private
- */
-router.post(
-	'/galaxy-with-offer',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(20, 60), // 20 requests per hour
-	authMiddleware,
-	gameController.createGalaxyWithOffer
-);
-
-/**
  * @route POST /api/game/galaxy-for-sale
  * @desc Create galaxy for sale
  * @access Private
@@ -73,6 +60,32 @@ router.post(
 	rateLimitMiddleware(5, 60), // 5 requests per hour for daily rewards
 	authMiddleware,
 	gameController.claimDailyReward
+);
+
+/**
+ * @route POST /api/game/register-generated-galaxy
+ * @desc Register generated galaxy when previous galaxy is filled with stars
+ * @access Private
+ */
+router.post(
+	'/register-generated-galaxy',
+	validateTelegramWebAppData,
+	rateLimitMiddleware(10, 60), // 10 requests per hour
+	authMiddleware,
+	gameController.registerGeneratedGalaxy
+);
+
+/**
+ * @route POST /api/game/register-captured-galaxy
+ * @desc Register captured galaxy with tgStars offer
+ * @access Private
+ */
+router.post(
+	'/register-captured-galaxy',
+	validateTelegramWebAppData,
+	rateLimitMiddleware(20, 60), // 20 requests per hour
+	authMiddleware,
+	gameController.registerCapturedGalaxy
 );
 
 module.exports = router;

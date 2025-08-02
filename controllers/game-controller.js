@@ -102,59 +102,6 @@ class GameController {
 	}
 
 	/**
-	 * Create galaxy with offer
-	 * @param {Object} req - Express request object
-	 * @param {Object} res - Express response object
-	 * @param {Function} next - Express next function
-	 */
-	async createGalaxyWithOffer(req, res, next) {
-		try {
-			const { galaxyData, offer } = req.body;
-
-			// Validate required fields
-			if (!galaxyData || !offer) {
-				throw ApiError.BadRequest(
-					'Missing required fields: galaxyData, offer'
-				);
-			}
-
-			if (!galaxyData.seed) {
-				throw ApiError.BadRequest('Galaxy seed is required');
-			}
-
-			if (!offer.buyerId || !offer.price || !offer.currency) {
-				throw ApiError.BadRequest(
-					'Offer must have buyerId, price, and currency'
-				);
-			}
-
-			// Validate price is positive
-			if (offer.price <= 0) {
-				throw ApiError.BadRequest('Price must be positive');
-			}
-
-			const result = await gameService.createGalaxyWithOffer(
-				galaxyData,
-				offer
-			);
-
-			logger.info('Galaxy with offer created successfully', {
-				seed: galaxyData.seed,
-				buyerId: offer.buyerId,
-				price: offer.price,
-				currency: offer.currency,
-			});
-
-			res.status(200).json({
-				success: true,
-				data: result,
-			});
-		} catch (error) {
-			next(error);
-		}
-	}
-
-	/**
 	 * Create galaxy for sale
 	 * @param {Object} req - Express request object
 	 * @param {Object} res - Express response object
@@ -351,6 +298,150 @@ class GameController {
 			logger.error('Failed to claim daily reward', {
 				userId: req.initData?.id,
 				error: error.message,
+			});
+			next(error);
+		}
+	}
+
+	/**
+	 * Register generated galaxy when previous galaxy is filled with stars
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async registerGeneratedGalaxy(req, res, next) {
+		try {
+			const userId = req.initData.id;
+			const { galaxyData } = req.body;
+
+			logger.debug('registerGeneratedGalaxy request', {
+				userId,
+				galaxyData,
+			});
+
+			// Validate required fields
+			if (!galaxyData) {
+				throw ApiError.BadRequest(
+					'galaxyData is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Validate galaxy data structure
+			if (!galaxyData.seed) {
+				throw ApiError.BadRequest(
+					'Galaxy seed is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			const result = await gameService.registerGeneratedGalaxy(
+				userId,
+				galaxyData
+			);
+
+			logger.info('Generated galaxy registered successfully', {
+				userId,
+				galaxySeed: galaxyData.seed,
+				galaxyId: result.data?.galaxy?.id,
+			});
+
+			res.status(200).json({
+				success: true,
+				message: 'Generated galaxy registered successfully',
+				data: result.data,
+			});
+		} catch (error) {
+			logger.error('Failed to register generated galaxy', {
+				userId: req.initData?.id,
+				error: error.message,
+				galaxyData: req.body?.galaxyData,
+			});
+			next(error);
+		}
+	}
+
+	/**
+	 * Register captured galaxy with tgStars offer
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async registerCapturedGalaxy(req, res, next) {
+		try {
+			const userId = req.initData.id;
+			const { galaxyData, offer } = req.body;
+
+			logger.debug('registerCapturedGalaxy request', {
+				userId,
+				galaxyData,
+				offer,
+			});
+
+			// Validate required fields
+			if (!galaxyData) {
+				throw ApiError.BadRequest(
+					'galaxyData is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			if (!offer) {
+				throw ApiError.BadRequest(
+					'offer is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Validate galaxy data structure
+			if (!galaxyData.seed) {
+				throw ApiError.BadRequest(
+					'Galaxy seed is required',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Validate offer structure
+			if (!offer.price || !offer.currency) {
+				throw ApiError.BadRequest(
+					'Offer must have price and currency',
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Validate price is positive
+			if (offer.price <= 0) {
+				throw ApiError.BadRequest(
+					'Price must be positive',
+					ERROR_CODES.VALIDATION.INVALID_AMOUNT
+				);
+			}
+
+			const result = await gameService.registerCapturedGalaxy(
+				userId,
+				galaxyData,
+				offer
+			);
+
+			logger.info('Captured galaxy registered successfully', {
+				userId,
+				galaxySeed: galaxyData.seed,
+				price: offer.price,
+				currency: offer.currency,
+				galaxyId: result.data?.galaxy?.id,
+			});
+
+			res.status(200).json({
+				success: true,
+				message: 'Captured galaxy registered successfully',
+				data: result.data,
+			});
+		} catch (error) {
+			logger.error('Failed to register captured galaxy', {
+				userId: req.initData?.id,
+				error: error.message,
+				galaxyData: req.body?.galaxyData,
+				offer: req.body?.offer,
 			});
 			next(error);
 		}
