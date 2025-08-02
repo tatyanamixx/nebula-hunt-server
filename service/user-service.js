@@ -99,6 +99,7 @@ class UserService {
 		try {
 			// Create system user
 			const systemUser = await User.findOrCreate({
+				where: { id: SYSTEM_USER_ID },
 				transaction: t,
 				defaults: {
 					id: SYSTEM_USER_ID,
@@ -110,8 +111,32 @@ class UserService {
 			});
 			logger.debug('systemUser', systemUser);
 
+			// Create system user state
+			const systemUserState = await UserState.findOrCreate({
+				where: { userId: SYSTEM_USER_ID },
+				transaction: t,
+				defaults: {
+					userId: SYSTEM_USER_ID,
+					stardust: 0,
+					darkMatter: 0,
+					stars: 0,
+					tgStars: 0,
+					tonToken: 0,
+					lockedStardust: 0,
+					lockedDarkMatter: 0,
+					lockedStars: 0,
+					lastDailyBonus: null,
+					lastLoginDate: null,
+					currentStreak: 0,
+					maxStreak: 0,
+					streakUpdatedAt: null,
+					stateHistory: [],
+				},
+			});
+			logger.debug('systemUserState', systemUserState);
+
 			if (shouldCommit) await t.commit();
-			return systemUser;
+			return { systemUser, systemUserState };
 		} catch (err) {
 			if (!t.finished && shouldCommit) await t.rollback();
 			throw ApiError.withCode(
@@ -134,7 +159,14 @@ class UserService {
 					'System user not found, creating with ID:',
 					SYSTEM_USER_ID
 				);
-				await this.createSystemUser(t);
+				const result = await this.createSystemUser(t);
+				logger.info(
+					'System user and state created successfully',
+					{
+						userId: result.systemUser[0].id,
+						stateId: result.systemUserState[0].id
+					}
+				);
 			} else {
 				logger.debug(
 					'System user already exists with ID:',
