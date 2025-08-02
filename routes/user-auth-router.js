@@ -20,7 +20,7 @@ const { ERROR_CODES } = require('../config/error-codes');
 
 router.post(
 	'/login',
-	[telegramAuthMiddleware, rateLimitMiddleware(30, 60)],
+	[telegramAuthMiddleware, rateLimitMiddleware(30, 60), // 30 requests per hour],
 	userController.login
 );
 
@@ -81,7 +81,7 @@ router.get(
 	'/refresh',
 	[
 		telegramAuthMiddleware,
-		rateLimitMiddleware(30, 60),
+		rateLimitMiddleware(30, 60), // 30 requests per hour,
 		refreshTokenMiddleware,
 	],
 	userController.refresh
@@ -141,7 +141,7 @@ router.get(
 
 router.get(
 	'/friends',
-	[telegramAuthMiddleware, rateLimitMiddleware(60, 60), authMiddleware],
+	[telegramAuthMiddleware, rateLimitMiddleware(60, 60), // 60 requests per hour, authMiddleware],
 	userController.getFriends
 );
 

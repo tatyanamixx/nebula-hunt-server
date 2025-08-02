@@ -11,7 +11,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	upgradeTemplateController.getAllUpgradeNodeTemplates
 );
 
@@ -19,7 +19,7 @@ router.get(
 router.get(
 	'/:slug',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	upgradeTemplateController.getUpgradeNodeTemplate
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.post(
 	'/',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	upgradeTemplateController.createUpgradeTemplates
 );
 
@@ -35,7 +35,7 @@ router.post(
 router.put(
 	'/:slug',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	upgradeTemplateController.updateUpgradeNodeTemplate
 );
 
@@ -43,7 +43,7 @@ router.put(
 router.delete(
 	'/:slug',
 	adminAuthMiddleware,
-	rateLimitMiddleware(10, 60),
+	rateLimitMiddleware(10, 60), // 10 requests per hour,
 	upgradeTemplateController.deleteUpgradeNodeTemplate
 );
 
@@ -51,7 +51,7 @@ router.delete(
 router.post(
 	'/:slug/activate',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	upgradeTemplateController.toggleUpgradeNodeTemplateActive
 );
 
@@ -59,7 +59,7 @@ router.post(
 router.get(
 	'/stats',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	upgradeTemplateController.getUpgradeNodeTemplatesStats
 );
 

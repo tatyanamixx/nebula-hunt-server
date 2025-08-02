@@ -18,7 +18,7 @@ const router = express.Router();
 router.post(
 	'/farming-reward',
 	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
 	gameController.registerFarmingReward
 );
@@ -31,7 +31,7 @@ router.post(
 router.post(
 	'/galaxy-with-offer',
 	validateTelegramWebAppData,
-	rateLimitMiddleware(20, 60),
+	rateLimitMiddleware(20, 60), // 20 requests per hour
 	authMiddleware,
 	gameController.createGalaxyWithOffer
 );
@@ -44,7 +44,7 @@ router.post(
 router.post(
 	'/galaxy-for-sale',
 	validateTelegramWebAppData,
-	rateLimitMiddleware(20, 60),
+	rateLimitMiddleware(20, 60), // 20 requests per hour
 	authMiddleware,
 	gameController.createGalaxyForSale
 );
@@ -57,7 +57,7 @@ router.post(
 router.post(
 	'/register-transfer-stardust-to-galaxy',
 	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
 	gameController.registerTransferStardustToGalaxy
 );
@@ -70,7 +70,7 @@ router.post(
 router.post(
 	'/daily-reward',
 	validateTelegramWebAppData,
-	rateLimitMiddleware(5, 60), // Limit to 5 requests per minute for daily rewards
+	rateLimitMiddleware(5, 60), // 5 requests per hour for daily rewards
 	authMiddleware,
 	gameController.claimDailyReward
 );

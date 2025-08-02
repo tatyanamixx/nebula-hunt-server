@@ -11,29 +11,29 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 // Google OAuth аутентификация для администраторов
 router.post(
 	'/oauth/google',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.googleOAuth
 );
 router.post(
 	'/oauth/2fa/verify',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.oauth2FAVerify
 );
 
 // Admin login (email + 2FA) - устаревший метод
-router.post('/login', rateLimitMiddleware(100, 60), adminController.loginAdmin); // DEBUG: увеличен с 10 до 100
+router.post('/login', rateLimitMiddleware(100, 60), // 100 requests per hour, adminController.loginAdmin); // 100 requests per hour
 
 // Admin login with password
 router.post(
 	'/login/password',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.loginWithPassword
 );
 
 // Admin password 2FA verification
 router.post(
 	'/login/password/2fa/verify',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.password2FAVerify
 );
 
@@ -41,7 +41,7 @@ router.post(
 router.post(
 	'/logout',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.logoutAdmin
 );
 
@@ -49,7 +49,7 @@ router.post(
 router.post(
 	'/init',
 
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.initAdmin
 );
 
@@ -57,21 +57,21 @@ router.post(
 router.post(
 	'/2fa/verify',
 
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.verify2FA
 );
 
 // Initialize supervisor (legacy)
 router.post(
 	'/supervisor/init',
-	rateLimitMiddleware(10, 3600), // DEBUG: увеличен с 1 до 10
+	rateLimitMiddleware(10, 3600), // 10 requests per 60 hours (2.5 days)
 	adminController.initSupervisor
 );
 
 // Complete 2FA setup (for registration)
 router.post(
 	'/2fa/complete',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.complete2FA
 );
 
@@ -79,7 +79,7 @@ router.post(
 router.post(
 	'/2fa/setup',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.setup2FA
 );
 
@@ -87,7 +87,7 @@ router.post(
 router.post(
 	'/2fa/disable',
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.disable2FA
 );
 
@@ -95,7 +95,7 @@ router.post(
 router.get(
 	'/2fa/info',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.get2FAInfo
 );
 
@@ -103,21 +103,21 @@ router.get(
 router.get(
 	'/me',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60),
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getCurrentAdmin
 );
 
 // Get 2FA QR code for login (no auth required)
 router.get(
 	'/2fa/qr/:email',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.get2FAQRForLogin
 );
 
 // Admin registration via invite
 router.post(
 	'/register',
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.registerAdmin
 );
 
@@ -125,14 +125,14 @@ router.post(
 router.post(
 	'/invite',
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.sendInvite
 );
 
 // Validate invite token
 router.get(
 	'/invite/validate',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.validateInvite
 );
 
@@ -140,7 +140,7 @@ router.get(
 router.get(
 	'/invites',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getInvites
 );
 
@@ -148,14 +148,14 @@ router.get(
 router.get(
 	'/stats',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getStats
 );
 
 // Refresh admin JWT token
 router.post(
 	'/refresh',
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.refreshToken
 );
 
@@ -163,21 +163,21 @@ router.post(
 router.post(
 	'/password/change',
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.changePassword
 );
 
 router.post(
 	'/password/force-change',
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // DEBUG: увеличен с 5 до 50
+	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.forceChangePassword
 );
 
 router.get(
 	'/password/info',
 	adminAuthMiddleware,
-	rateLimitMiddleware(100, 60), // DEBUG: увеличен с 10 до 100
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getPasswordInfo
 );
 

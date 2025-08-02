@@ -19,7 +19,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,
 	taskController.getUserTasks
 );
@@ -28,7 +28,7 @@ router.get(
 router.get(
 	'/active',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,
 	taskController.getActiveTasks
 );
@@ -37,7 +37,7 @@ router.get(
 router.get(
 	'/completed',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,
 	taskController.getCompletedTasks
 );
@@ -46,7 +46,7 @@ router.get(
 router.get(
 	'/stats',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,
 	taskController.getTaskStats
 );
@@ -55,7 +55,7 @@ router.get(
 router.get(
 	'/:slug',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,
 	taskController.getUserTask
 );
@@ -64,7 +64,7 @@ router.get(
 router.post(
 	'/:slug/complete',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	authMiddleware,
 	taskController.completeTask
 );
@@ -72,7 +72,7 @@ router.post(
 router.post(
 	'/initialize',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	authMiddleware,
 	taskController.initializeUserTasks
 );

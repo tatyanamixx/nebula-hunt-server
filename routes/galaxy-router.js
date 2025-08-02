@@ -32,7 +32,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/galaxies',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
 	galaxyController.getUserGalaxies
 );
@@ -58,7 +58,7 @@ router.get(
 router.get(
 	'/:seed',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
 	galaxyController.getUserGalaxy
 );
@@ -78,7 +78,7 @@ router.get(
 router.get(
 	'/show',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60),
+	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
 	galaxyController.getShowGalaxies
 );
@@ -108,7 +108,7 @@ router.get(
 router.post(
 	'/create',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(10, 60),
+	rateLimitMiddleware(10, 60), // 10 requests per hour
 	authMiddleware,
 	galaxyController.createGalaxyWithOffer
 );
@@ -128,7 +128,7 @@ router.post(
 router.post(
 	'/daily-bonus',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
 	gameController.claimDailyReward
 );
@@ -160,7 +160,7 @@ router.post(
 router.post(
 	'/transferstars',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60),
+	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
 	galaxyController.transferStarsToUserGalaxy
 );
@@ -187,7 +187,7 @@ router.delete(
 	'/:seed',
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(10, 60),
+	rateLimitMiddleware(10, 60), // 10 requests per hour
 	galaxyController.deleteUserGalaxy
 );
 
