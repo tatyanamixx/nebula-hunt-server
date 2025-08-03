@@ -427,6 +427,8 @@ class UserService {
 						darkMatter: userState.lockedDarkMatter,
 						stars: userState.lockedStars,
 					},
+					playerParameters: userState.playerParameters,
+					lastBotNotification: userState.lastBotNotification,
 					createdAt: userState.createdAt,
 					updatedAt: userState.updatedAt,
 				},

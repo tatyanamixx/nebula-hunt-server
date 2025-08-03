@@ -702,6 +702,198 @@ Login user through Telegram WebApp.
 Authorization: Bearer <telegram_init_data>
 ```
 
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Login successful",
+	"data": {
+		"auth": {
+			"accessToken": "jwt_access_token",
+			"refreshToken": "jwt_refresh_token",
+			"expiresAt": "2025-08-01T12:00:00.000Z",
+			"user": {
+				"id": 123,
+				"role": "USER"
+			}
+		},
+		"userState": {
+			"id": 456,
+			"userId": 123,
+			"resources": {
+				"stardust": 5000,
+				"darkMatter": 2000,
+				"stars": 1500,
+				"lastDailyBonus": "2025-07-31T00:00:00.000Z"
+			},
+			"lockedResources": {
+				"stardust": 0,
+				"darkMatter": 0,
+				"stars": 0
+			},
+			"playerParameters": {
+				"stardustProduction": 0,
+				"starDiscount": 0,
+				"darkMatterChance": 0,
+				"stardustMultiplier": 0,
+				"galaxyExplorer": 0,
+				"darkMatterSynthesis": 0,
+				"bulkCreation": 0,
+				"stellarMarket": 0,
+				"cosmicHarmony": 0,
+				"overflowProtection": 0,
+				"quantumInstability": 0,
+				"voidResonance": 0,
+				"stellarForge": 0
+			},
+			"lastBotNotification": {
+				"lastBotNotificationTime": null,
+				"lastBotNotificationToday": {
+					"date": null,
+					"count": 0
+				}
+			},
+			"createdAt": "2025-07-01T00:00:00.000Z",
+			"updatedAt": "2025-07-31T12:00:00.000Z"
+		},
+		"galaxies": [
+			{
+				"id": 1,
+				"userId": 123,
+				"starMin": 100,
+				"starCurrent": 100,
+				"price": 1000,
+				"seed": "galaxy_seed_123",
+				"particleCount": 100,
+				"onParticleCountChange": true,
+				"galaxyProperties": {
+					"type": "spiral",
+					"size": "medium"
+				},
+				"active": true,
+				"createdAt": "2025-07-01T00:00:00.000Z",
+				"updatedAt": "2025-07-31T12:00:00.000Z"
+			}
+		],
+		"artifacts": [],
+		"gameData": {
+			"upgradeTree": {
+				"initialized": []
+			},
+			"activeEvents": [],
+			"activeTasks": [],
+			"completedTasks": [],
+			"eventHistory": [],
+			"taskHistory": []
+		}
+	}
+}
+```
+
+### User Registration
+
+```
+POST /auth/register
+```
+
+Register new user through Telegram WebApp. This endpoint is typically called automatically when a new user first accesses the game.
+
+**Headers:**
+
+```
+Authorization: Bearer <telegram_init_data>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Registration successful",
+	"data": {
+		"auth": {
+			"accessToken": "jwt_access_token",
+			"refreshToken": "jwt_refresh_token",
+			"expiresAt": "2025-08-01T12:00:00.000Z",
+			"user": {
+				"id": 123,
+				"role": "USER"
+			}
+		},
+		"userState": {
+			"id": 456,
+			"userId": 123,
+			"resources": {
+				"stardust": 1000,
+				"darkMatter": 500,
+				"stars": 100,
+				"lastDailyBonus": null
+			},
+			"lockedResources": {
+				"stardust": 0,
+				"darkMatter": 0,
+				"stars": 0
+			},
+			"playerParameters": {
+				"stardustProduction": 0,
+				"starDiscount": 0,
+				"darkMatterChance": 0,
+				"stardustMultiplier": 0,
+				"galaxyExplorer": 0,
+				"darkMatterSynthesis": 0,
+				"bulkCreation": 0,
+				"stellarMarket": 0,
+				"cosmicHarmony": 0,
+				"overflowProtection": 0,
+				"quantumInstability": 0,
+				"voidResonance": 0,
+				"stellarForge": 0
+			},
+			"lastBotNotification": {
+				"lastBotNotificationTime": null,
+				"lastBotNotificationToday": {
+					"date": null,
+					"count": 0
+				}
+			},
+			"createdAt": "2025-07-31T12:00:00.000Z",
+			"updatedAt": "2025-07-31T12:00:00.000Z"
+		},
+		"galaxies": [
+			{
+				"id": 1,
+				"userId": 123,
+				"starMin": 100,
+				"starCurrent": 100,
+				"price": 1000,
+				"seed": "galaxy_seed_123",
+				"particleCount": 100,
+				"onParticleCountChange": true,
+				"galaxyProperties": {
+					"type": "spiral",
+					"size": "medium"
+				},
+				"active": true,
+				"createdAt": "2025-07-31T12:00:00.000Z",
+				"updatedAt": "2025-07-31T12:00:00.000Z"
+			}
+		],
+		"artifacts": [],
+		"gameData": {
+			"upgradeTree": {
+				"initialized": []
+			},
+			"activeEvents": [],
+			"activeTasks": [],
+			"completedTasks": [],
+			"eventHistory": [],
+			"taskHistory": []
+		}
+	}
+}
+```
+
 ### Refresh Token
 
 ```
@@ -724,6 +916,46 @@ Get current user state and game data.
 
 ```
 Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"data": {
+		"resources": {
+			"stardust": 5000,
+			"darkMatter": 2000,
+			"stars": 1500,
+			"lockedStardust": 0,
+			"lockedDarkMatter": 0,
+			"lockedStars": 0
+		},
+		"playerParameters": {
+			"stardustProduction": 0,
+			"starDiscount": 0,
+			"darkMatterChance": 0,
+			"stardustMultiplier": 0,
+			"galaxyExplorer": 0,
+			"darkMatterSynthesis": 0,
+			"bulkCreation": 0,
+			"stellarMarket": 0,
+			"cosmicHarmony": 0,
+			"overflowProtection": 0,
+			"quantumInstability": 0,
+			"voidResonance": 0,
+			"stellarForge": 0
+		},
+		"lastBotNotification": {
+			"lastBotNotificationTime": null,
+			"lastBotNotificationToday": {
+				"date": null,
+				"count": 0
+			}
+		}
+	}
+}
 ```
 
 ### Get Galaxies
@@ -975,7 +1207,29 @@ Authorization: Bearer <access_token>
 		"userState": {
 			"stardust": 5000,
 			"darkMatter": 2000,
-			"stars": 1500
+			"stars": 1500,
+			"playerParameters": {
+				"stardustProduction": 0,
+				"starDiscount": 0,
+				"darkMatterChance": 0,
+				"stardustMultiplier": 0,
+				"galaxyExplorer": 0,
+				"darkMatterSynthesis": 0,
+				"bulkCreation": 0,
+				"stellarMarket": 0,
+				"cosmicHarmony": 0,
+				"overflowProtection": 0,
+				"quantumInstability": 0,
+				"voidResonance": 0,
+				"stellarForge": 0
+			},
+			"lastBotNotification": {
+				"lastBotNotificationTime": null,
+				"lastBotNotificationToday": {
+					"date": null,
+					"count": 0
+				}
+			}
 		},
 		"marketOffer": {
 			"offer": {
@@ -1093,7 +1347,29 @@ Authorization: Bearer <access_token>
 		"userState": {
 			"stardust": 1000,
 			"darkMatter": 250,
-			"stars": 50
+			"stars": 50,
+			"playerParameters": {
+				"stardustProduction": 0,
+				"starDiscount": 0,
+				"darkMatterChance": 0,
+				"stardustMultiplier": 0,
+				"galaxyExplorer": 0,
+				"darkMatterSynthesis": 0,
+				"bulkCreation": 0,
+				"stellarMarket": 0,
+				"cosmicHarmony": 0,
+				"overflowProtection": 0,
+				"quantumInstability": 0,
+				"voidResonance": 0,
+				"stellarForge": 0
+			},
+			"lastBotNotification": {
+				"lastBotNotificationTime": null,
+				"lastBotNotificationToday": {
+					"date": null,
+					"count": 0
+				}
+			}
 		}
 	}
 }

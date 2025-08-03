@@ -22,6 +22,8 @@ module.exports = class UserStateDto {
 	lastLoginDate;
 	streakUpdatedAt;
 	stateHistory;
+	playerParameters;
+	lastBotNotification;
 	createdAt;
 	updatedAt;
 
@@ -45,6 +47,28 @@ module.exports = class UserStateDto {
 		this.lastLoginDate = model.lastLoginDate;
 		this.streakUpdatedAt = model.streakUpdatedAt;
 		this.stateHistory = model.stateHistory || [];
+		this.playerParameters = model.playerParameters || {
+			stardustProduction: 0,
+			starDiscount: 0,
+			darkMatterChance: 0,
+			stardustMultiplier: 0,
+			galaxyExplorer: 0,
+			darkMatterSynthesis: 0,
+			bulkCreation: 0,
+			stellarMarket: 0,
+			cosmicHarmony: 0,
+			overflowProtection: 0,
+			quantumInstability: 0,
+			voidResonance: 0,
+			stellarForge: 0,
+		};
+		this.lastBotNotification = model.lastBotNotification || {
+			lastBotNotificationTime: null,
+			lastBotNotificationToday: {
+				date: null,
+				count: 0,
+			},
+		};
 		this.createdAt = model.createdAt;
 		this.updatedAt = model.updatedAt;
 	}

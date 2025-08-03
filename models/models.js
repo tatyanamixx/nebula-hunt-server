@@ -69,6 +69,36 @@ const UserState = sequelize.define(
 			allowNull: true,
 			defaultValue: 0,
 		},
+		playerParameters: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			defaultValue: {
+				stardustProduction: 0,
+				starDiscount: 0,
+				darkMatterChance: 0,
+				stardustMultiplier: 0,
+				galaxyExplorer: 0,
+				darkMatterSynthesis: 0,
+				bulkCreation: 0,
+				stellarMarket: 0,
+				cosmicHarmony: 0,
+				overflowProtection: 0,
+				quantumInstability: 0,
+				voidResonance: 0,
+				stellarForge: 0,
+			},
+		},
+		lastBotNotification: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			defaultValue: {
+				lastBotNotificationTime: null,
+				lastBotNotificationToday: {
+					date: null,
+					count: 0,
+				},
+			},
+		},
 	},
 	{
 		indexes: [

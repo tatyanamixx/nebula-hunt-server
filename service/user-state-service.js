@@ -441,6 +441,28 @@ class UserStateService {
 					darkMatter: userState.lockedDarkMatter || 0,
 					stars: userState.lockedStars || 0,
 				},
+				playerParameters: userState.playerParameters || {
+					stardustProduction: 0,
+					starDiscount: 0,
+					darkMatterChance: 0,
+					stardustMultiplier: 0,
+					galaxyExplorer: 0,
+					darkMatterSynthesis: 0,
+					bulkCreation: 0,
+					stellarMarket: 0,
+					cosmicHarmony: 0,
+					overflowProtection: 0,
+					quantumInstability: 0,
+					voidResonance: 0,
+					stellarForge: 0,
+				},
+				lastBotNotification: userState.lastBotNotification || {
+					lastBotNotificationTime: null,
+					lastBotNotificationToday: {
+						date: null,
+						count: 0,
+					},
+				},
 			};
 
 			if (shouldCommit) {
