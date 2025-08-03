@@ -109,14 +109,6 @@ module.exports = {
 			},
 		});
 
-		// Индексы для admins
-		await queryInterface.addIndex('admins', ['email'], {
-			name: 'admins_email_idx',
-		});
-		await queryInterface.addIndex('admins', ['google_id'], {
-			name: 'admins_google_id_idx',
-		});
-
 		// 2. Создаем таблицу admintokens
 		await queryInterface.createTable('admintokens', {
 			id: {
@@ -128,12 +120,6 @@ module.exports = {
 			adminId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'admins',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			refreshToken: {
 				type: Sequelize.TEXT,
@@ -153,14 +139,6 @@ module.exports = {
 			},
 		});
 
-		// Индексы для admintokens
-		await queryInterface.addIndex('admintokens', ['refreshToken'], {
-			name: 'admintoken_refresh_token_idx',
-		});
-		await queryInterface.addIndex('admintokens', ['adminId'], {
-			name: 'admintoken_admin_id_idx',
-		});
-
 		// 3. Создаем таблицу admininvites
 		await queryInterface.createTable('admininvites', {
 			id: {
@@ -172,12 +150,6 @@ module.exports = {
 			adminId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'admins',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			email: {
 				type: Sequelize.STRING,
@@ -199,8 +171,8 @@ module.exports = {
 			},
 			used: {
 				type: Sequelize.BOOLEAN,
-				allowNull: false,
 				defaultValue: false,
+				allowNull: false,
 			},
 			usedAt: {
 				type: Sequelize.DATE,
@@ -226,16 +198,99 @@ module.exports = {
 			},
 		});
 
-		// Индексы для admininvites
-		await queryInterface.addIndex('admininvites', ['email'], {
-			name: 'admininvite_email_idx',
-		});
-		await queryInterface.addIndex('admininvites', ['adminId'], {
-			name: 'admininvite_admin_id_idx',
-		});
+		// Создаем индексы
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admin_email_idx ON admins ("email");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admin_google_id_idx ON admins ("google_id");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admintoken_refresh_token_idx ON admintokens ("refreshToken");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admintoken_admin_id_idx ON admintokens ("adminId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admininvite_email_idx ON admininvites ("email");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS admininvite_admin_id_idx ON admininvites ("adminId");
+		`);
+
+		// Создаем отложенные внешние ключи
+		await queryInterface.sequelize.query(`
+			ALTER TABLE admintokens 
+			ADD CONSTRAINT admintokens_admin_id_fkey 
+			FOREIGN KEY ("adminId") 
+			REFERENCES admins(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE admininvites 
+			ADD CONSTRAINT admininvites_admin_id_fkey 
+			FOREIGN KEY ("adminId") 
+			REFERENCES admins(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE admininvites 
+			ADD CONSTRAINT admininvites_used_by_fkey 
+			FOREIGN KEY ("usedBy") 
+			REFERENCES admins(id) 
+			ON UPDATE CASCADE 
+			ON DELETE SET NULL 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
 	},
 
 	async down(queryInterface, Sequelize) {
+		// Удаляем отложенные ограничения
+		await queryInterface.removeConstraint(
+			'admininvites',
+			'admininvites_used_by_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'admininvites',
+			'admininvites_admin_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'admintokens',
+			'admintokens_admin_id_fkey'
+		);
+
+		// Удаляем индексы
+		await queryInterface.removeIndex(
+			'admininvites',
+			'admininvite_admin_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'admininvites',
+			'admininvite_email_idx'
+		);
+		await queryInterface.removeIndex(
+			'admintokens',
+			'admintoken_admin_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'admintokens',
+			'admintoken_refresh_token_idx'
+		);
+		await queryInterface.removeIndex('admins', 'admin_google_id_idx');
+		await queryInterface.removeIndex('admins', 'admin_email_idx');
+
+		// Удаляем таблицы
 		await queryInterface.dropTable('admininvites');
 		await queryInterface.dropTable('admintokens');
 		await queryInterface.dropTable('admins');

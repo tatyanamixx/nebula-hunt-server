@@ -21,7 +21,7 @@ router.post(
 );
 
 // Admin login (email + 2FA) - устаревший метод
-router.post('/login', rateLimitMiddleware(100, 60), // 100 requests per hour, adminController.loginAdmin); // 100 requests per hour
+router.post('/login', rateLimitMiddleware(100, 60),adminController.loginAdmin); // 100 requests per hour
 
 // Admin login with password
 router.post(

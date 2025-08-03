@@ -14,22 +14,10 @@ module.exports = {
 			userId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'users',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			upgradeNodeTemplateId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'upgradenodetemplates',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			level: {
 				type: Sequelize.INTEGER,
@@ -83,21 +71,6 @@ module.exports = {
 			},
 		});
 
-		// Индексы для userupgrades
-		await queryInterface.addIndex('userupgrades', ['userId'], {
-			name: 'userupgrades_user_id_idx',
-		});
-		await queryInterface.addIndex(
-			'userupgrades',
-			['upgradeNodeTemplateId'],
-			{
-				name: 'userupgrades_upgrade_node_id_idx',
-			}
-		);
-		await queryInterface.addIndex('userupgrades', ['completed'], {
-			name: 'userupgrades_completed_idx',
-		});
-
 		// 2. Создаем таблицу usertasks
 		await queryInterface.createTable('usertasks', {
 			id: {
@@ -109,22 +82,10 @@ module.exports = {
 			userId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'users',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			taskTemplateId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'tasktemplates',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			completed: {
 				type: Sequelize.BOOLEAN,
@@ -157,20 +118,6 @@ module.exports = {
 			},
 		});
 
-		// Индексы для usertasks
-		await queryInterface.addIndex('usertasks', ['userId'], {
-			name: 'usertasks_user_id_idx',
-		});
-		await queryInterface.addIndex('usertasks', ['taskTemplateId'], {
-			name: 'usertasks_task_template_id_idx',
-		});
-		await queryInterface.addIndex('usertasks', ['completed'], {
-			name: 'usertasks_completed_idx',
-		});
-		await queryInterface.addIndex('usertasks', ['active'], {
-			name: 'usertasks_active_idx',
-		});
-
 		// 3. Создаем таблицу userevents
 		await queryInterface.createTable('userevents', {
 			id: {
@@ -182,22 +129,10 @@ module.exports = {
 			userId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'users',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			eventTemplateId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'eventtemplates',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			status: {
 				type: Sequelize.ENUM(
@@ -246,23 +181,6 @@ module.exports = {
 			},
 		});
 
-		// Индексы для userevents
-		await queryInterface.addIndex('userevents', ['userId'], {
-			name: 'userevents_user_id_idx',
-		});
-		await queryInterface.addIndex('userevents', ['eventTemplateId'], {
-			name: 'userevents_event_template_id_idx',
-		});
-		await queryInterface.addIndex('userevents', ['status'], {
-			name: 'userevents_status_idx',
-		});
-		await queryInterface.addIndex('userevents', ['expiresAt'], {
-			name: 'userevents_expires_at_idx',
-		});
-		await queryInterface.addIndex('userevents', ['triggeredAt'], {
-			name: 'userevents_triggered_at_idx',
-		});
-
 		// 4. Создаем таблицу usereventsettings
 		await queryInterface.createTable('usereventsettings', {
 			id: {
@@ -273,14 +191,8 @@ module.exports = {
 			},
 			userId: {
 				type: Sequelize.BIGINT,
-				allowNull: false,
 				unique: true,
-				references: {
-					model: 'users',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
+				allowNull: false,
 			},
 			eventMultipliers: {
 				type: Sequelize.JSONB,
@@ -336,38 +248,21 @@ module.exports = {
 			},
 		});
 
-		// Индексы для usereventsettings
-		await queryInterface.addIndex('usereventsettings', ['userId'], {
-			unique: true,
-			name: 'usereventsettings_user_id_idx',
-		});
-
 		// 5. Создаем таблицу packagestore
 		await queryInterface.createTable('packagestore', {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
+				autoIncrement: true,
 				allowNull: false,
 			},
 			userId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'users',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			packageTemplateId: {
 				type: Sequelize.BIGINT,
 				allowNull: false,
-				references: {
-					model: 'packagetemplates',
-					key: 'id',
-				},
-				onUpdate: 'CASCADE',
-				onDelete: 'CASCADE',
 			},
 			amount: {
 				type: Sequelize.INTEGER,
@@ -418,16 +313,248 @@ module.exports = {
 			},
 		});
 
-		// Индексы для packagestore
-		await queryInterface.addIndex('packagestore', ['userId'], {
-			name: 'packagestore_user_id_idx',
-		});
-		await queryInterface.addIndex('packagestore', ['packageTemplateId'], {
-			name: 'packagestore_package_template_id_idx',
-		});
+		// Создаем индексы
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userupgrades_user_id_idx ON userupgrades ("userId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userupgrades_upgrade_node_template_id_idx ON userupgrades ("upgradeNodeTemplateId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS usertasks_user_id_idx ON usertasks ("userId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS usertasks_task_template_id_idx ON usertasks ("taskTemplateId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS usertasks_completed_idx ON usertasks ("completed");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS usertasks_active_idx ON usertasks ("active");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userevents_user_id_idx ON userevents ("userId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userevents_event_template_id_idx ON userevents ("eventTemplateId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userevents_status_idx ON userevents ("status");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userevents_expires_at_idx ON userevents ("expiresAt");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS userevents_triggered_at_idx ON userevents ("triggeredAt");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS usereventsettings_user_id_idx ON usereventsettings ("userId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_user_id_idx ON packagestore ("userId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_package_template_id_idx ON packagestore ("packageTemplateId");
+		`);
+
+		// Создаем отложенные внешние ключи
+		await queryInterface.sequelize.query(`
+			ALTER TABLE userupgrades 
+			ADD CONSTRAINT userupgrades_user_id_fkey 
+			FOREIGN KEY ("userId") 
+			REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE userupgrades 
+			ADD CONSTRAINT userupgrades_upgrade_node_template_id_fkey 
+			FOREIGN KEY ("upgradeNodeTemplateId") 
+			REFERENCES upgradenodetemplates(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE usertasks 
+			ADD CONSTRAINT usertasks_user_id_fkey 
+			FOREIGN KEY ("userId") 
+			REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE usertasks 
+			ADD CONSTRAINT usertasks_task_template_id_fkey 
+			FOREIGN KEY ("taskTemplateId") 
+			REFERENCES tasktemplates(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE userevents 
+			ADD CONSTRAINT userevents_user_id_fkey 
+			FOREIGN KEY ("userId") 
+			REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE userevents 
+			ADD CONSTRAINT userevents_event_template_id_fkey 
+			FOREIGN KEY ("eventTemplateId") 
+			REFERENCES eventtemplates(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE usereventsettings 
+			ADD CONSTRAINT usereventsettings_user_id_fkey 
+			FOREIGN KEY ("userId") 
+			REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE packagestore 
+			ADD CONSTRAINT packagestore_user_id_fkey 
+			FOREIGN KEY ("userId") 
+			REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
+
+		await queryInterface.sequelize.query(`
+			ALTER TABLE packagestore 
+			ADD CONSTRAINT packagestore_package_template_id_fkey 
+			FOREIGN KEY ("packageTemplateId") 
+			REFERENCES packagetemplates(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE 
+			DEFERRABLE INITIALLY DEFERRED;
+		`);
 	},
 
 	async down(queryInterface, Sequelize) {
+		// Удаляем отложенные ограничения
+		await queryInterface.removeConstraint(
+			'packagestore',
+			'packagestore_package_template_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'packagestore',
+			'packagestore_user_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'usereventsettings',
+			'usereventsettings_user_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'userevents',
+			'userevents_event_template_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'userevents',
+			'userevents_user_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'usertasks',
+			'usertasks_task_template_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'usertasks',
+			'usertasks_user_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'userupgrades',
+			'userupgrades_upgrade_node_template_id_fkey'
+		);
+		await queryInterface.removeConstraint(
+			'userupgrades',
+			'userupgrades_user_id_fkey'
+		);
+
+		// Удаляем индексы
+		await queryInterface.removeIndex(
+			'packagestore',
+			'packagestore_package_template_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'packagestore',
+			'packagestore_user_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'usereventsettings',
+			'usereventsettings_user_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'userevents',
+			'userevents_triggered_at_idx'
+		);
+		await queryInterface.removeIndex(
+			'userevents',
+			'userevents_expires_at_idx'
+		);
+		await queryInterface.removeIndex('userevents', 'userevents_status_idx');
+		await queryInterface.removeIndex(
+			'userevents',
+			'userevents_event_template_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'userevents',
+			'userevents_user_id_idx'
+		);
+		await queryInterface.removeIndex('usertasks', 'usertasks_active_idx');
+		await queryInterface.removeIndex(
+			'usertasks',
+			'usertasks_completed_idx'
+		);
+		await queryInterface.removeIndex(
+			'usertasks',
+			'usertasks_task_template_id_idx'
+		);
+		await queryInterface.removeIndex('usertasks', 'usertasks_user_id_idx');
+		await queryInterface.removeIndex(
+			'userupgrades',
+			'userupgrades_completed_idx'
+		);
+		await queryInterface.removeIndex(
+			'userupgrades',
+			'userupgrades_upgrade_node_template_id_idx'
+		);
+		await queryInterface.removeIndex(
+			'userupgrades',
+			'userupgrades_user_id_idx'
+		);
+
+		// Удаляем таблицы
 		await queryInterface.dropTable('packagestore');
 		await queryInterface.dropTable('usereventsettings');
 		await queryInterface.dropTable('userevents');

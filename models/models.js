@@ -458,6 +458,7 @@ const ArtifactTemplate = sequelize.define(
 			allowNull: false,
 			comment: 'Base chance for this artifact to be found (0.0 to 1.0)',
 		},
+		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 	},
 	{
 		indexes: [

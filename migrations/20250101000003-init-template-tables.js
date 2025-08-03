@@ -3,109 +3,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
-		// 1. Создаем таблицу artifacttemplates
-		await queryInterface.createTable('artifacttemplates', {
-			id: {
-				type: Sequelize.BIGINT,
-				primaryKey: true,
-				autoIncrement: true,
-				allowNull: false,
-			},
-			slug: {
-				type: Sequelize.STRING,
-				unique: true,
-				allowNull: false,
-			},
-			name: {
-				type: Sequelize.STRING,
-				allowNull: true,
-			},
-			description: {
-				type: Sequelize.JSONB,
-				defaultValue: {
-					en: '',
-					ru: '',
-				},
-				allowNull: false,
-				comment: 'Localized artifact descriptions',
-			},
-			rarity: {
-				type: Sequelize.ENUM(
-					'COMMON',
-					'UNCOMMON',
-					'RARE',
-					'EPIC',
-					'LEGENDARY'
-				),
-				defaultValue: 'COMMON',
-				allowNull: false,
-			},
-			image: {
-				type: Sequelize.STRING,
-				allowNull: true,
-			},
-			effects: {
-				type: Sequelize.JSONB,
-				defaultValue: {},
-				allowNull: false,
-				comment: 'Например: { chaos: 0.1, stability: -0.2 }',
-			},
-			limited: {
-				type: Sequelize.BOOLEAN,
-				defaultValue: false,
-				allowNull: false,
-			},
-			limitedCount: {
-				type: Sequelize.INTEGER,
-				defaultValue: 0,
-				allowNull: false,
-			},
-			limitedDuration: {
-				type: Sequelize.INTEGER,
-				defaultValue: 0,
-				allowNull: false,
-			},
-			limitedDurationType: {
-				type: Sequelize.ENUM('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'),
-				defaultValue: 'HOUR',
-				allowNull: false,
-			},
-			limitedDurationValue: {
-				type: Sequelize.INTEGER,
-				defaultValue: 0,
-				allowNull: false,
-			},
-			baseChance: {
-				type: Sequelize.FLOAT,
-				defaultValue: 0.01,
-				allowNull: false,
-				comment:
-					'Base chance for this artifact to be found (0.0 to 1.0)',
-			},
-			createdAt: {
-				type: Sequelize.DATE,
-				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-			},
-			updatedAt: {
-				type: Sequelize.DATE,
-				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-			},
-		});
-
-		// Индексы для artifacttemplates
-		await queryInterface.addIndex('artifacttemplates', ['slug'], {
-			name: 'artifacttemplate_slug_idx',
-		});
-		await queryInterface.addIndex('artifacttemplates', ['rarity'], {
-			name: 'artifacttemplate_rarity_idx',
-		});
-		await queryInterface.addIndex('artifacttemplates', ['limited'], {
-			name: 'artifacttemplate_limited_idx',
-		});
-
-		// 2. Создаем таблицу upgradenodetemplates
+		// 1. Создаем таблицу upgradenodetemplates
 		await queryInterface.createTable('upgradenodetemplates', {
 			id: {
 				type: Sequelize.BIGINT,
@@ -231,12 +129,7 @@ module.exports = {
 			},
 		});
 
-		// Индексы для upgradenodetemplates
-		await queryInterface.addIndex('upgradenodetemplates', ['slug'], {
-			name: 'upgradenodetemplate_slug_idx',
-		});
-
-		// 3. Создаем таблицу tasktemplates
+		// 2. Создаем таблицу tasktemplates
 		await queryInterface.createTable('tasktemplates', {
 			id: {
 				type: Sequelize.BIGINT,
@@ -298,12 +191,7 @@ module.exports = {
 			},
 		});
 
-		// Индексы для tasktemplates
-		await queryInterface.addIndex('tasktemplates', ['slug'], {
-			name: 'tasktemplate_slug_idx',
-		});
-
-		// 4. Создаем таблицу eventtemplates
+		// 3. Создаем таблицу eventtemplates
 		await queryInterface.createTable('eventtemplates', {
 			id: {
 				type: Sequelize.BIGINT,
@@ -391,12 +279,7 @@ module.exports = {
 			},
 		});
 
-		// Индексы для eventtemplates
-		await queryInterface.addIndex('eventtemplates', ['slug'], {
-			name: 'eventtemplate_slug_idx',
-		});
-
-		// 5. Создаем таблицу packagetemplates
+		// 4. Создаем таблицу packagetemplates
 		await queryInterface.createTable('packagetemplates', {
 			id: {
 				type: Sequelize.BIGINT,
@@ -478,34 +361,47 @@ module.exports = {
 			},
 		});
 
-		// Индексы для packagetemplates
-		await queryInterface.addIndex('packagetemplates', ['slug'], {
-			name: 'packagetemplate_slug_idx',
-		});
+		// Создаем индексы
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS upgradenodetemplate_slug_idx ON upgradenodetemplates ("slug");
+		`);
 
-		// Добавляем foreign key для artifacts -> artifacttemplates
-		await queryInterface.addConstraint('artifacts', {
-			fields: ['artifactTemplateId'],
-			type: 'foreign key',
-			name: 'artifacts_artifact_template_id_fkey',
-			references: {
-				table: 'artifacttemplates',
-				field: 'id',
-			},
-			onDelete: 'CASCADE',
-			onUpdate: 'CASCADE',
-		});
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS tasktemplate_slug_idx ON tasktemplates ("slug");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS eventtemplate_slug_idx ON eventtemplates ("slug");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagetemplate_slug_idx ON packagetemplates ("slug");
+		`);
 	},
 
 	async down(queryInterface, Sequelize) {
-		await queryInterface.removeConstraint(
-			'artifacts',
-			'artifacts_artifact_template_id_fkey'
+		// Удаляем индексы
+		await queryInterface.removeIndex(
+			'packagetemplates',
+			'packagetemplate_slug_idx'
 		);
+		await queryInterface.removeIndex(
+			'eventtemplates',
+			'eventtemplate_slug_idx'
+		);
+		await queryInterface.removeIndex(
+			'tasktemplates',
+			'tasktemplate_slug_idx'
+		);
+		await queryInterface.removeIndex(
+			'upgradenodetemplates',
+			'upgradenodetemplate_slug_idx'
+		);
+
+		// Удаляем таблицы
 		await queryInterface.dropTable('packagetemplates');
 		await queryInterface.dropTable('eventtemplates');
 		await queryInterface.dropTable('tasktemplates');
 		await queryInterface.dropTable('upgradenodetemplates');
-		await queryInterface.dropTable('artifacttemplates');
 	},
 };

@@ -5,7 +5,7 @@
 /* created by Tatyana Mikhniukevich on 06.07.2025 */
 
 // ID системного пользователя (большое число, чтобы не конфликтовать с обычными пользователями)
-const SYSTEM_USER_ID = 99999999999;
+const SYSTEM_USER_ID = 1000000000000000;
 const SYSTEM_USER_USERNAME = 'SYSTEM';
 
 // Количество пользователей в таблице лидеров
