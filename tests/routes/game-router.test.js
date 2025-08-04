@@ -99,43 +99,12 @@ describe('Game Router', () => {
 		});
 	});
 
-	describe('POST /api/game/galaxy-for-sale', () => {
-		it('should call createGalaxyForSale controller', async () => {
-			const gameController = require('../../controllers/game-controller');
-			gameController.createGalaxyForSale.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
-
-			const response = await request(app)
-				.post('/api/game/galaxy-for-sale')
-				.send({
-					galaxyData: {
-						seed: 'test-seed-123',
-						starMin: 100,
-						starCurrent: 150,
-					},
-					offer: {
-						buyerId: 123,
-						price: 1000,
-						currency: 'tonToken',
-					},
-				});
-
-			expect(response.status).toBe(200);
-			expect(gameController.createGalaxyForSale).toHaveBeenCalled();
-		});
-	});
-
 	describe('POST /api/game/daily-reward', () => {
 		it('should call claimDailyReward controller method', async () => {
 			const gameController = require('../../controllers/game-controller');
-			gameController.claimDailyReward.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
+			gameController.claimDailyReward.mockImplementation((req, res) => {
+				res.status(200).json({ success: true });
+			});
 
 			const response = await request(app)
 				.post('/api/game/daily-reward')
@@ -149,11 +118,9 @@ describe('Game Router', () => {
 
 		it('should require authentication', async () => {
 			const gameController = require('../../controllers/game-controller');
-			gameController.claimDailyReward.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
+			gameController.claimDailyReward.mockImplementation((req, res) => {
+				res.status(200).json({ success: true });
+			});
 
 			const response = await request(app)
 				.post('/api/game/daily-reward')
@@ -164,11 +131,9 @@ describe('Game Router', () => {
 
 		it('should require Telegram init data', async () => {
 			const gameController = require('../../controllers/game-controller');
-			gameController.claimDailyReward.mockImplementation(
-				(req, res) => {
-					res.status(200).json({ success: true });
-				}
-			);
+			gameController.claimDailyReward.mockImplementation((req, res) => {
+				res.status(200).json({ success: true });
+			});
 
 			const response = await request(app)
 				.post('/api/game/daily-reward')

@@ -9,20 +9,16 @@ const logger = require('../service/logger-service');
 
 class GameController {
 	/**
-	 * Register farming reward for internal currency
+	 * Register farming reward
 	 * @param {Object} req - Express request object
 	 * @param {Object} res - Express response object
 	 * @param {Function} next - Express next function
 	 */
 	async registerFarmingReward(req, res, next) {
 		try {
-			const userId = req.initData.id;
 			const { offerData } = req.body;
 
-			logger.debug('registerFarmingReward request', {
-				userId,
-				offerData,
-			});
+			logger.debug('registerFarmingReward request', { offerData });
 
 			// Validate required fields
 			if (!offerData) {
@@ -32,117 +28,14 @@ class GameController {
 				);
 			}
 
-			// Validate array structure
-			if (!Array.isArray(offerData)) {
-				throw ApiError.BadRequest(
-					'offerData must be an array',
-					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
-				);
-			}
-
-			// Validate array length (must be exactly 2 elements)
-			if (offerData.length !== 2) {
-				throw ApiError.BadRequest(
-					'offerData must contain exactly 2 elements: stardust and darkMatter',
-					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
-				);
-			}
-
-			// Basic validation for each offer (detailed validation is in service)
-			for (const offer of offerData) {
-				if (!offer || typeof offer !== 'object') {
-					throw ApiError.BadRequest(
-						'Each farming reward must be an object',
-						ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
-					);
-				}
-
-				if (!offer.resource || !offer.amount) {
-					throw ApiError.BadRequest(
-						'Each farming reward must have resource and amount',
-						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-					);
-				}
-
-				if (typeof offer.amount !== 'number' || offer.amount <= 0) {
-					throw ApiError.BadRequest(
-						'Amount must be a positive number',
-						ERROR_CODES.VALIDATION.INVALID_AMOUNT
-					);
-				}
-			}
-
 			const result = await gameService.registerFarmingReward(
-				userId,
+				req.user.id,
 				offerData
 			);
 
 			logger.info('Farming reward registered successfully', {
-				userId,
-				offerCount: offerData.length,
-				rewards: offerData.map((o) => ({
-					resource: o.resource,
-					amount: o.amount,
-				})),
-			});
-
-			res.status(200).json({
-				success: true,
-				message: 'Farming rewards registered successfully',
-				data: result,
-			});
-		} catch (error) {
-			logger.error('Failed to register farming reward', {
-				userId: req.initData?.id,
-				error: error.message,
-				offerData: req.body?.offerData,
-			});
-			next(error);
-		}
-	}
-
-	/**
-	 * Create galaxy for sale
-	 * @param {Object} req - Express request object
-	 * @param {Object} res - Express response object
-	 * @param {Function} next - Express next function
-	 */
-	async createGalaxyForSale(req, res, next) {
-		try {
-			const { galaxyData, offer } = req.body;
-
-			// Validate required fields
-			if (!galaxyData || !offer) {
-				throw ApiError.BadRequest(
-					'Missing required fields: galaxyData, offer'
-				);
-			}
-
-			if (!galaxyData.seed) {
-				throw ApiError.BadRequest('Galaxy seed is required');
-			}
-
-			if (!offer.buyerId || !offer.price || !offer.currency) {
-				throw ApiError.BadRequest(
-					'Offer must have buyerId, price, and currency'
-				);
-			}
-
-			// Validate price is positive
-			if (offer.price <= 0) {
-				throw ApiError.BadRequest('Price must be positive');
-			}
-
-			const result = await gameService.createGalaxyForSale(
-				galaxyData,
-				offer
-			);
-
-			logger.info('Galaxy for sale created successfully', {
-				seed: galaxyData.seed,
-				buyerId: offer.buyerId,
-				price: offer.price,
-				currency: offer.currency,
+				userId: req.user.id,
+				offerData,
 			});
 
 			res.status(200).json({

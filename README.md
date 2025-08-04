@@ -144,24 +144,37 @@ npm run seed:undo
 
 ### Основные эндпоинты
 
--   `GET /api/health` - Проверка здоровья сервера
--   `POST /api/auth/register` - Регистрация пользователя
--   `POST /api/auth/login` - Вход пользователя
--   `GET /api/user/profile` - Профиль пользователя
+-   `GET /health` - Проверка здоровья сервера
+-   `POST /api/auth/login` - Универсальный вход/регистрация через Telegram
+-   `GET /api/auth/refresh` - Обновление сессии
+-   `GET /api/state` - Состояние пользователя
 -   `GET /api/galaxies` - Список галактик пользователя
--   `GET /api/artifacts` - Список артефактов
--   `GET /api/upgrades` - Дерево улучшений
--   `GET /api/tasks` - Задания пользователя
--   `GET /api/events` - События пользователя
+-   `GET /api/artifacts` - Список артефактов пользователя
+-   `GET /api/upgrades` - Список улучшений пользователя
+-   `GET /api/tasks` - Список заданий пользователя
+-   `GET /api/events` - Список событий пользователя
 -   `GET /api/market/offers` - Предложения на рынке
 
 ### Game API эндпоинты
 
- -   `POST /api/game/farming-reward` - Регистрация наград за фарминг
- -   `POST /api/game/galaxy-with-offer` - Создание галактики с предложением
- -   `POST /api/game/galaxy-for-sale` - Создание галактики для продажи
- -   `POST /api/game/register-transfer-stardust-to-galaxy` - Регистрация передачи звездной пыли в галактику
- -   `POST /api/game/daily-reward` - Получение ежедневной награды
+-   `POST /api/game/farming-reward` - Регистрация наград за фарминг
+-   `POST /api/game/register-transfer-stardust-to-galaxy` - Регистрация передачи звездной пыли в галактику
+-   `POST /api/game/daily-reward` - Получение ежедневной награды
+
+### Административные эндпоинты
+
+-   `POST /api/admin/init` - Инициализация администратора
+-   `GET /api/admin/users` - Список пользователей (только для админов)
+-   `GET /api/admin/statistics` - Статистика (только для админов)
+
+### Шаблоны (только для админов)
+
+-   `GET /api/task-templates` - Шаблоны заданий
+-   `GET /api/event-templates` - Шаблоны событий
+-   `GET /api/upgrade-templates` - Шаблоны улучшений
+-   `GET /api/package-templates` - Шаблоны пакетов
+-   `GET /api/artifact-templates` - Шаблоны артефактов
+-   `GET /api/commission-templates` - Шаблоны комиссий
 
 ### Документация API
 

@@ -24,19 +24,6 @@ router.post(
 );
 
 /**
- * @route POST /api/game/galaxy-for-sale
- * @desc Create galaxy for sale
- * @access Private
- */
-router.post(
-	'/galaxy-for-sale',
-	validateTelegramWebAppData,
-	rateLimitMiddleware(20, 60), // 20 requests per hour
-	authMiddleware,
-	gameController.createGalaxyForSale
-);
-
-/**
  * @route POST /api/game/register-transfer-stardust-to-galaxy
  * @desc Register transfer stardust to galaxy - create offer for galaxy purchase
  * @access Private

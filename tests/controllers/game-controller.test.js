@@ -104,7 +104,9 @@ describe('Game Controller', () => {
 
 			expect(mockNext).toHaveBeenCalled();
 			const error = mockNext.mock.calls[0][0];
-			expect(error.message).toContain('offerData must contain exactly 2 elements');
+			expect(error.message).toContain(
+				'offerData must contain exactly 2 elements'
+			);
 		});
 	});
 
@@ -118,7 +120,9 @@ describe('Game Controller', () => {
 		};
 
 		beforeEach(() => {
-			gameService.createGalaxyAsGift.mockResolvedValue(mockServiceResponse);
+			gameService.createGalaxyAsGift.mockResolvedValue(
+				mockServiceResponse
+			);
 		});
 
 		it('should create galaxy with offer successfully', async () => {
@@ -128,45 +132,15 @@ describe('Game Controller', () => {
 				offer: { buyerId: 123, price: 100, currency: 'tonToken' },
 			};
 
-			await gameController.createGalaxyWithOffer(mockReq, mockRes, mockNext);
+			await gameController.createGalaxyWithOffer(
+				mockReq,
+				mockRes,
+				mockNext
+			);
 
 			expect(gameService.createGalaxyAsGift).toHaveBeenCalledWith(
 				{ seed: 'test-seed', name: 'Test Galaxy' },
 				123,
-				{ buyerId: 123, price: 100, currency: 'tonToken' }
-			);
-			expect(mockRes.status).toHaveBeenCalledWith(200);
-			expect(mockRes.json).toHaveBeenCalledWith({
-				success: true,
-				data: mockServiceResponse.data,
-			});
-		});
-	});
-
-	describe('createGalaxyForSale', () => {
-		const mockServiceResponse = {
-			success: true,
-			data: {
-				galaxy: { id: 1, seed: 'test-seed' },
-				offer: { id: 1, price: 100 },
-			},
-		};
-
-		beforeEach(() => {
-			gameService.createGalaxyForSale.mockResolvedValue(mockServiceResponse);
-		});
-
-		it('should create galaxy for sale successfully', async () => {
-			mockReq.initData = { id: 123 };
-			mockReq.body = {
-				galaxyData: { seed: 'test-seed', name: 'Test Galaxy' },
-				offer: { buyerId: 123, price: 100, currency: 'tonToken' },
-			};
-
-			await gameController.createGalaxyForSale(mockReq, mockRes, mockNext);
-
-			expect(gameService.createGalaxyForSale).toHaveBeenCalledWith(
-				{ seed: 'test-seed', name: 'Test Galaxy' },
 				{ buyerId: 123, price: 100, currency: 'tonToken' }
 			);
 			expect(mockRes.status).toHaveBeenCalledWith(200);
@@ -188,7 +162,9 @@ describe('Game Controller', () => {
 		};
 
 		beforeEach(() => {
-			gameService.registerTransferStardustToGalaxy.mockResolvedValue(mockServiceResponse);
+			gameService.registerTransferStardustToGalaxy.mockResolvedValue(
+				mockServiceResponse
+			);
 		});
 
 		it('should register transfer stardust to galaxy successfully', async () => {
@@ -203,9 +179,15 @@ describe('Game Controller', () => {
 				},
 			};
 
-			await gameController.registerTransferStardustToGalaxy(mockReq, mockRes, mockNext);
+			await gameController.registerTransferStardustToGalaxy(
+				mockReq,
+				mockRes,
+				mockNext
+			);
 
-			expect(gameService.registerTransferStardustToGalaxy).toHaveBeenCalledWith(
+			expect(
+				gameService.registerTransferStardustToGalaxy
+			).toHaveBeenCalledWith(
 				123,
 				{ seed: 'test-seed' },
 				{
@@ -235,15 +217,15 @@ describe('Game Controller', () => {
 					{
 						resource: 'darkMatter',
 						amount: 150,
-						transactionId: 123
-					}
+						transactionId: 123,
+					},
 				],
 				userState: {
 					stardust: 1000,
 					darkMatter: 250,
-					stars: 50
-				}
-			}
+					stars: 50,
+				},
+			},
 		};
 
 		beforeEach(() => {
@@ -261,7 +243,7 @@ describe('Game Controller', () => {
 			expect(mockRes.json).toHaveBeenCalledWith({
 				success: true,
 				message: 'Daily reward claimed successfully',
-				data: mockServiceResponse.data
+				data: mockServiceResponse.data,
 			});
 			expect(mockNext).not.toHaveBeenCalled();
 		});
@@ -283,7 +265,9 @@ describe('Game Controller', () => {
 			mockReq.initData = null;
 			mockReq.body = {};
 
-			gameService.claimDailyReward.mockRejectedValue(new Error('User not found'));
+			gameService.claimDailyReward.mockRejectedValue(
+				new Error('User not found')
+			);
 
 			await gameController.claimDailyReward(mockReq, mockRes, mockNext);
 

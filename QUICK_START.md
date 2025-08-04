@@ -33,7 +33,7 @@ psql -U postgres -c "CREATE DATABASE nebulahunt_dev;"
 
 ```bash
 # Скопируйте пример конфигурации
-cp env.example .env
+cp env.development.example .env
 
 # Отредактируйте .env файл
 # Минимальные настройки для разработки:
@@ -41,7 +41,7 @@ cp env.example .env
 
 ```env
 NODE_ENV=development
-PORT=3001
+PORT=5000
 DB_HOST_DEV=localhost
 DB_PORT_DEV=5432
 DB_NAME_DEV=nebulahunt_dev
@@ -79,9 +79,9 @@ npm start
 
 ## ✅ Проверка работы
 
-1. **Health check**: http://localhost:3001/health
-2. **API документация**: http://localhost:3001/api-docs
-3. **Prometheus метрики**: http://localhost:3001/metrics
+1. **Health check**: http://localhost:5000/health
+2. **API документация**: http://localhost:5000/api-docs
+3. **Prometheus метрики**: http://localhost:5000/metrics
 
 ## 🔧 Настройка аутентификации
 
@@ -108,7 +108,7 @@ npm start
 
 ```bash
 # Через API (замените YOUR_ADMIN_ID на ваш Telegram ID)
-curl -X POST http://localhost:3001/api/admin/init \
+curl -X POST http://localhost:5000/api/admin/init \
   -H "Content-Type: application/json" \
   -d '{
     "adminId": YOUR_ADMIN_ID,
@@ -122,10 +122,96 @@ curl -X POST http://localhost:3001/api/admin/init \
 
 ```env
 # В .env файле фронтенда
-VITE_API_URL=http://localhost:3001/api
+VITE_API_URL=http://localhost:5000/api
 VITE_DEV_MODE=true
 VITE_MOCK_API=false
 ```
+
+## 🔗 Актуальные API эндпоинты
+
+### Аутентификация
+
+-   `POST /api/auth/login` - Универсальный вход/регистрация через Telegram
+-   `GET /api/auth/refresh` - Обновление сессии
+
+### Состояние пользователя
+
+-   `GET /api/state` - Получение состояния пользователя
+-   `PUT /api/state` - Обновление состояния пользователя
+
+### Галактики
+
+-   `GET /api/galaxies` - Список галактик пользователя
+-   `POST /api/galaxies` - Создание новой галактики
+-   `GET /api/galaxies/:id` - Получение галактики по ID
+-   `PUT /api/galaxies/:id` - Обновление галактики
+-   `DELETE /api/galaxies/:id` - Удаление галактики
+
+### Артефакты
+
+-   `GET /api/artifacts` - Список артефактов пользователя
+-   `POST /api/artifacts` - Создание артефакта
+-   `GET /api/artifacts/:id` - Получение артефакта по ID
+-   `PUT /api/artifacts/:id` - Обновление артефакта
+-   `DELETE /api/artifacts/:id` - Удаление артефакта
+
+### Задания
+
+-   `GET /api/tasks` - Список заданий пользователя
+-   `POST /api/tasks/:id/complete` - Завершение задания
+-   `GET /api/tasks/:id/progress` - Прогресс задания
+
+### События
+
+-   `GET /api/events` - Список событий пользователя
+-   `POST /api/events/:id/trigger` - Активация события
+-   `GET /api/events/:id/progress` - Прогресс события
+
+### Улучшения
+
+-   `GET /api/upgrades` - Список улучшений пользователя
+-   `POST /api/upgrades/:id/upgrade` - Улучшение узла
+-   `GET /api/upgrades/tree` - Дерево улучшений
+
+### Рынок
+
+-   `GET /api/market/offers` - Список предложений на рынке
+-   `POST /api/market/offers` - Создание предложения
+-   `GET /api/market/offers/:id` - Получение предложения
+-   `PUT /api/market/offers/:id` - Обновление предложения
+-   `DELETE /api/market/offers/:id` - Отмена предложения
+-   `POST /api/market/offers/:id/buy` - Покупка предложения
+
+### Пакеты
+
+-   `GET /api/packages` - Список доступных пакетов
+-   `POST /api/packages/:id/purchase` - Покупка пакета
+
+### Игровая механика
+
+-   `POST /api/game/farming-reward` - Регистрация наград за фарминг
+-   `POST /api/game/register-transfer-stardust-to-galaxy` - Передача звездной пыли в галактику
+-   `POST /api/game/daily-reward` - Получение ежедневной награды
+
+### Административные эндпоинты
+
+-   `POST /api/admin/init` - Инициализация администратора
+-   `GET /api/admin/users` - Список пользователей (только для админов)
+-   `GET /api/admin/statistics` - Статистика (только для админов)
+
+### Шаблоны (только для админов)
+
+-   `GET /api/task-templates` - Шаблоны заданий
+-   `GET /api/event-templates` - Шаблоны событий
+-   `GET /api/upgrade-templates` - Шаблоны улучшений
+-   `GET /api/package-templates` - Шаблоны пакетов
+-   `GET /api/artifact-templates` - Шаблоны артефактов
+-   `GET /api/commission-templates` - Шаблоны комиссий
+
+### Метрики и мониторинг
+
+-   `GET /api/game-metrics` - Игровые метрики
+-   `GET /api/metrics` - Prometheus метрики
 
 ## 🐛 Troubleshooting
 
@@ -177,7 +263,7 @@ npm run env:check
 
 ## 📚 Дополнительная документация
 
--   [Полная документация](SERVER_CONFIG.md)
+-   [Полная документация](README.md)
 -   [API документация](docs/api.md)
 -   [Архитектура](docs/architecture.md)
 -   [Безопасность](docs/security.md)
