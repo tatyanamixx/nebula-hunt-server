@@ -11,117 +11,6 @@ module.exports = {
 		// Примечание: userstates ресурсы (stardust, darkMatter, stars, tgStars, tonToken)
 		// могут иметь отрицательные значения, поэтому не добавляем проверки на положительность
 
-		// Проверка на положительные значения цен
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE marketoffers 
-				ADD CONSTRAINT check_positive_price 
-				CHECK (price > 0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_positive_price already exists');
-		}
-
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE packagetemplates 
-				ADD CONSTRAINT check_positive_package_price 
-				CHECK (price > 0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log(
-				'⚠️ Constraint check_positive_package_price already exists'
-			);
-		}
-
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE paymenttransactions 
-				ADD CONSTRAINT check_positive_amount 
-				CHECK ("priceOrAmount" > 0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_positive_amount already exists');
-		}
-
-		// Проверка на корректные уровни апгрейдов
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE userupgrades 
-				ADD CONSTRAINT check_valid_level 
-				CHECK (level >= 0 AND progress >= 0 AND "targetProgress" > 0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_valid_level already exists');
-		}
-
-		// Проверка на корректные значения шансов
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE artifacttemplates 
-				ADD CONSTRAINT check_base_chance_range 
-				CHECK ("baseChance" >= 0.0 AND "baseChance" <= 1.0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_base_chance_range already exists');
-		}
-
-		// Проверка на корректные значения комиссий
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE marketcommissions 
-				ADD CONSTRAINT check_commission_rate 
-				CHECK (rate >= 0.0 AND rate <= 1.0);
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_commission_rate already exists');
-		}
-
-		// Проверка на корректные даты
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE userevents 
-				ADD CONSTRAINT check_event_dates 
-				CHECK ("triggeredAt" <= COALESCE("expiresAt", "triggeredAt"));
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_event_dates already exists');
-		}
-
-		try {
-			await queryInterface.sequelize.query(`
-				ALTER TABLE admininvites 
-				ADD CONSTRAINT check_invite_dates 
-				CHECK ("expiresAt" > "createdAt");
-			`);
-		} catch (error) {
-			if (!error.message.includes('already exists')) {
-				throw error;
-			}
-			console.log('⚠️ Constraint check_invite_dates already exists');
-		}
-
 		// Проверка на корректные значения ENUM
 		try {
 			await queryInterface.sequelize.query(`
@@ -790,19 +679,7 @@ module.exports = {
 		}
 
 		// Удаляем проверки целостности
-		const constraints = [
-			'check_positive_price',
-			'check_positive_package_price',
-			'check_positive_amount',
-			'check_valid_level',
-			'check_stability_range',
-			'check_base_chance_range',
-			'check_commission_rate',
-			'check_event_dates',
-			'check_invite_dates',
-			'check_valid_role',
-			'check_valid_admin_role',
-		];
+		const constraints = ['check_valid_role', 'check_valid_admin_role'];
 
 		for (const constraintName of constraints) {
 			try {
