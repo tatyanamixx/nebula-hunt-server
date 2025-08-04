@@ -176,11 +176,20 @@ VITE_MOCK_API=false
 ### Рынок
 
 -   `GET /api/market/offers` - Список предложений на рынке
+-   `GET /api/market/offers/:offerId` - Получение предложения по ID
 -   `POST /api/market/offers` - Создание предложения
--   `GET /api/market/offers/:id` - Получение предложения
--   `PUT /api/market/offers/:id` - Обновление предложения
--   `DELETE /api/market/offers/:id` - Отмена предложения
--   `POST /api/market/offers/:id/buy` - Покупка предложения
+-   `POST /api/market/offers/:offerId/cancel` - Отмена предложения
+-   `POST /api/market/offers/:offerId/buy` - Покупка предложения
+-   `GET /api/market/transactions` - Транзакции пользователя
+
+### Комиссии рынка (только для админов)
+
+-   `GET /api/commission-templates` - Список шаблонов комиссий
+-   `GET /api/commission-templates/stats` - Статистика шаблонов комиссий
+-   `GET /api/commission-templates/:currency` - Получение шаблона комиссии по валюте
+-   `POST /api/commission-templates` - Создание шаблонов комиссий
+-   `PUT /api/commission-templates/:currency` - Обновление шаблона комиссии
+-   `DELETE /api/commission-templates/:currency` - Удаление шаблона комиссии
 
 ### Пакеты
 
