@@ -192,12 +192,59 @@ VITE_MOCK_API=false
 -   `POST /api/game/farming-reward` - Регистрация наград за фарминг
 -   `POST /api/game/register-transfer-stardust-to-galaxy` - Передача звездной пыли в галактику
 -   `POST /api/game/daily-reward` - Получение ежедневной награды
+-   `POST /api/game/register-generated-galaxy` - Регистрация сгенерированной галактики
+-   `POST /api/game/register-captured-galaxy` - Регистрация захваченной галактики
 
 ### Административные эндпоинты
 
 -   `POST /api/admin/init` - Инициализация администратора
--   `GET /api/admin/users` - Список пользователей (только для админов)
--   `GET /api/admin/statistics` - Статистика (только для админов)
+-   `POST /api/admin/login` - Вход администратора через пароль
+-   `POST /api/admin/login/password` - Вход администратора через пароль
+-   `POST /api/admin/oauth/google` - Вход через Google OAuth
+-   `POST /api/admin/register` - Регистрация администратора через приглашение
+-   `GET /api/admin/me` - Информация о текущем администраторе
+-   `POST /api/admin/logout` - Выход администратора
+-   `POST /api/admin/refresh` - Обновление токена администратора
+
+### Управление пользователями (только для админов)
+
+-   `GET /api/admin-users/users` - Список пользователей
+-   `GET /api/admin-users/users/:userId` - Получение пользователя по ID
+-   `GET /api/admin-users/users/stats` - Статистика пользователей
+-   `POST /api/admin-users/users/:userId/block` - Блокировка пользователя
+-   `POST /api/admin-users/users/:userId/unblock` - Разблокировка пользователя
+-   `PATCH /api/admin-users/users/:userId/block` - Переключение статуса блокировки
+-   `PATCH /api/admin-users/users/:userId/role` - Обновление роли пользователя
+-   `DELETE /api/admin-users/users/:userId` - Удаление пользователя
+
+### 2FA для администраторов
+
+-   `POST /api/admin/2fa/setup` - Настройка 2FA
+-   `POST /api/admin/2fa/verify` - Проверка 2FA
+-   `POST /api/admin/2fa/complete` - Завершение настройки 2FA
+-   `POST /api/admin/2fa/disable` - Отключение 2FA
+-   `GET /api/admin/2fa/info` - Информация о 2FA
+-   `GET /api/admin/2fa/qr/:email` - QR код для входа
+
+### Управление паролями
+
+-   `POST /api/admin/password/change` - Смена пароля
+-   `POST /api/admin/password/force-change` - Принудительная смена пароля
+-   `GET /api/admin/password/info` - Информация о пароле
+-   `GET /api/admin/password-reset/validate/:token` - Проверка токена сброса пароля
+-   `POST /api/admin/password-reset/reset` - Сброс пароля
+-   `POST /api/admin/password-reset/resend` - Повторная отправка уведомления о сбросе
+-   `GET /api/admin/password-reset/status/:adminId` - Статус пароля администратора
+
+### Приглашения администраторов
+
+-   `POST /api/admin/invite` - Отправка приглашения
+-   `GET /api/admin/invite/validate` - Проверка токена приглашения
+-   `GET /api/admin/invites` - Список приглашений
+
+### Статистика
+
+-   `GET /api/admin/stats` - Общая статистика
 
 ### Шаблоны (только для админов)
 
@@ -207,6 +254,25 @@ VITE_MOCK_API=false
 -   `GET /api/package-templates` - Шаблоны пакетов
 -   `GET /api/artifact-templates` - Шаблоны артефактов
 -   `GET /api/commission-templates` - Шаблоны комиссий
+
+### Просмотр шаблонов с данными пользователя
+
+-   `GET /api/template-views/upgrades` - Апгрейды пользователя с данными шаблонов
+-   `GET /api/template-views/upgrades/:upgradeId` - Конкретный апгрейд с данными шаблона
+-   `GET /api/template-views/upgrades/stats` - Статистика апгрейдов
+-   `GET /api/template-views/tasks` - Задачи пользователя с данными шаблонов
+-   `GET /api/template-views/tasks/:taskId` - Конкретная задача с данными шаблона
+-   `GET /api/template-views/tasks/stats` - Статистика задач
+-   `GET /api/template-views/events` - События пользователя с данными шаблонов
+-   `GET /api/template-views/events/:eventId` - Конкретное событие с данными шаблона
+-   `GET /api/template-views/events/stats` - Статистика событий
+-   `GET /api/template-views/packages` - Пакеты пользователя с данными шаблонов
+-   `GET /api/template-views/packages/:packageId` - Конкретный пакет с данными шаблона
+-   `GET /api/template-views/packages/stats` - Статистика пакетов
+-   `GET /api/template-views/artifacts` - Артефакты пользователя с данными шаблонов
+-   `GET /api/template-views/artifacts/:artifactId` - Конкретный артефакт с данными шаблона
+-   `GET /api/template-views/artifacts/stats` - Статистика артефактов
+-   `GET /api/template-views/stats` - Общая статистика пользователя
 
 ### Метрики и мониторинг
 
