@@ -1,69 +1,67 @@
-const axios = require('axios');
-const crypto = require('crypto');
+const axios = require("axios");
+const crypto = require("crypto");
 
 // Конфигурация
-const BASE_URL = 'http://localhost:5000';
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'your_bot_token_here';
+const BASE_URL = "http://localhost:3002";
+const BOT_TOKEN = process.env.BOT_TOKEN || "your_bot_token_here";
 
 // Функция для создания Telegram WebApp initData
 function createTelegramInitData(userId, username) {
-	const initData = {
-		query_id: 'test_query_id',
-		user: {
-			id: userId,
-			is_bot: false,
-			first_name: 'Test',
-			last_name: 'User',
-			username: username,
-			language_code: 'en',
-		},
-		auth_date: Math.floor(Date.now() / 1000),
-		hash: 'test_hash',
+	const userData = {
+		id: userId,
+		is_bot: false,
+		first_name: "Test",
+		last_name: "User",
+		username: username,
+		language_code: "en",
 	};
 
-	// Создаем строку для подписи
-	const dataCheckString = Object.keys(initData)
-		.filter((key) => key !== 'hash')
-		.sort()
-		.map((key) => `${key}=${initData[key]}`)
-		.join('\n');
+	const auth_date = Math.floor(Date.now() / 1000);
+
+	// Создаем строку для подписи в правильном формате
+	const dataCheckString = `auth_date=${auth_date}\nuser=${JSON.stringify(
+		userData
+	)}`;
 
 	// Создаем HMAC подпись
 	const secretKey = crypto
-		.createHmac('sha256', 'WebAppData')
+		.createHmac("sha256", "WebAppData")
 		.update(BOT_TOKEN)
 		.digest();
 	const hash = crypto
-		.createHmac('sha256', secretKey)
+		.createHmac("sha256", secretKey)
 		.update(dataCheckString)
-		.digest('hex');
+		.digest("hex");
 
-	initData.hash = hash;
+	// Создаем URL-encoded строку
+	const initDataString = `auth_date=${auth_date}&user=${encodeURIComponent(
+		JSON.stringify(userData)
+	)}&hash=${hash}`;
 
-	return initData;
+	return initDataString;
 }
 
 // Функция для тестирования registration endpoint
 async function testUserRegistration() {
 	try {
-		console.log('🧪 Testing User Registration endpoint...\n');
+		console.log("🧪 Testing User Registration endpoint...\n");
 
 		// Тест 1: Успешная регистрация
-		console.log('📝 Test 1: Successful user registration...');
+		console.log("📝 Test 1: Successful user registration...");
 		const userId = 123456789;
-		const username = 'testuser123';
+		const username = "testuser123";
 
 		const initData = createTelegramInitData(userId, username);
 
 		const registrationData = {
-			referral: '123456',
+			referral: "123456",
 			galaxy: {
-				name: 'Test Galaxy',
-				description: 'A test galaxy for registration',
+				name: "Test Galaxy",
+				description: "A test galaxy for registration",
 			},
 		};
 
-		console.log('Registration data:', {
+		console.log("Registration data:", {
 			userId,
 			username,
 			referral: registrationData.referral,
@@ -71,51 +69,44 @@ async function testUserRegistration() {
 		});
 
 		const response = await axios.post(
-			`${BASE_URL}/api/auth/registration`,
+			`${BASE_URL}/api/auth/login`,
 			registrationData,
 			{
 				headers: {
-					'Content-Type': 'application/json',
-					'X-Telegram-Init-Data': JSON.stringify(initData),
+					"Content-Type": "application/json",
+					"X-Telegram-Init-Data": initData,
 				},
 			}
 		);
 
-		console.log('✅ Registration successful:');
-		console.log('   Status:', response.status);
-		console.log('   User ID:', response.data.user?.id);
-		console.log('   Username:', response.data.user?.username);
-		console.log('   Has refresh token:', !!response.data.refreshToken);
-		console.log('   Has user state:', !!response.data.userState);
-		console.log('   Has user galaxy:', !!response.data.userGalaxy);
+		console.log("✅ Registration successful:");
+		console.log("   Status:", response.status);
+		console.log("   User ID:", response.data.user?.id);
+		console.log("   Username:", response.data.user?.username);
+		console.log("   Has refresh token:", !!response.data.refreshToken);
+		console.log("   Has user state:", !!response.data.userState);
+		console.log("   Has user galaxy:", !!response.data.userGalaxy);
 
 		// Тест 2: Попытка повторной регистрации (должна вернуть ошибку)
-		console.log('\n📝 Test 2: Duplicate registration attempt...');
+		console.log("\n📝 Test 2: Duplicate registration attempt...");
 		try {
-			await axios.post(
-				`${BASE_URL}/api/auth/registration`,
-				registrationData,
-				{
-					headers: {
-						'Content-Type': 'application/json',
-						'X-Telegram-Init-Data': JSON.stringify(initData),
-					},
-				}
-			);
-			console.log('❌ Should have failed with duplicate user error');
+			await axios.post(`${BASE_URL}/api/auth/login`, registrationData, {
+				headers: {
+					"Content-Type": "application/json",
+					"X-Telegram-Init-Data": initData,
+				},
+			});
+			console.log("❌ Should have failed with duplicate user error");
 		} catch (error) {
-			if (
-				error.response?.status === 400 ||
-				error.response?.status === 409
-			) {
-				console.log('✅ Correctly failed with duplicate user error');
+			if (error.response?.status === 400 || error.response?.status === 409) {
+				console.log("✅ Correctly failed with duplicate user error");
 				console.log(
-					'   Error message:',
-					error.response.data?.message || 'Unknown error'
+					"   Error message:",
+					error.response.data?.message || "Unknown error"
 				);
 			} else {
 				console.log(
-					'❌ Unexpected error:',
+					"❌ Unexpected error:",
 					error.response?.status,
 					error.response?.data
 				);
@@ -123,17 +114,17 @@ async function testUserRegistration() {
 		}
 
 		// Тест 3: Регистрация с неверным referral форматом
-		console.log('\n📝 Test 3: Invalid referral format...');
+		console.log("\n📝 Test 3: Invalid referral format...");
 		const invalidReferralData = {
-			referral: 'invalid_referral',
+			referral: "invalid_referral",
 			galaxy: {
-				name: 'Test Galaxy 2',
-				description: 'Another test galaxy',
+				name: "Test Galaxy 2",
+				description: "Another test galaxy",
 			},
 		};
 
 		const newUserId = 987654321;
-		const newUsername = 'testuser456';
+		const newUsername = "testuser456";
 		const newInitData = createTelegramInitData(newUserId, newUsername);
 
 		try {
@@ -142,22 +133,22 @@ async function testUserRegistration() {
 				invalidReferralData,
 				{
 					headers: {
-						'Content-Type': 'application/json',
-						'X-Telegram-Init-Data': JSON.stringify(newInitData),
+						"Content-Type": "application/json",
+						"X-Telegram-Init-Data": JSON.stringify(newInitData),
 					},
 				}
 			);
-			console.log('❌ Should have failed with invalid referral format');
+			console.log("❌ Should have failed with invalid referral format");
 		} catch (error) {
 			if (error.response?.status === 400) {
-				console.log('✅ Correctly failed with invalid referral format');
+				console.log("✅ Correctly failed with invalid referral format");
 				console.log(
-					'   Error message:',
-					error.response.data?.message || 'Unknown error'
+					"   Error message:",
+					error.response.data?.message || "Unknown error"
 				);
 			} else {
 				console.log(
-					'❌ Unexpected error:',
+					"❌ Unexpected error:",
 					error.response?.status,
 					error.response?.data
 				);
@@ -165,31 +156,24 @@ async function testUserRegistration() {
 		}
 
 		// Тест 4: Регистрация без Telegram данных
-		console.log('\n📝 Test 4: Registration without Telegram data...');
+		console.log("\n📝 Test 4: Registration without Telegram data...");
 		try {
-			await axios.post(
-				`${BASE_URL}/api/auth/registration`,
-				registrationData,
-				{
-					headers: {
-						'Content-Type': 'application/json',
-					},
-				}
-			);
-			console.log('❌ Should have failed without Telegram data');
+			await axios.post(`${BASE_URL}/api/auth/login`, registrationData, {
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+			console.log("❌ Should have failed without Telegram data");
 		} catch (error) {
-			if (
-				error.response?.status === 401 ||
-				error.response?.status === 400
-			) {
-				console.log('✅ Correctly failed without Telegram data');
+			if (error.response?.status === 401 || error.response?.status === 400) {
+				console.log("✅ Correctly failed without Telegram data");
 				console.log(
-					'   Error message:',
-					error.response.data?.message || 'Unknown error'
+					"   Error message:",
+					error.response.data?.message || "Unknown error"
 				);
 			} else {
 				console.log(
-					'❌ Unexpected error:',
+					"❌ Unexpected error:",
 					error.response?.status,
 					error.response?.data
 				);
@@ -197,9 +181,9 @@ async function testUserRegistration() {
 		}
 
 		// Тест 5: Регистрация с минимальными данными
-		console.log('\n📝 Test 5: Registration with minimal data...');
+		console.log("\n📝 Test 5: Registration with minimal data...");
 		const minimalUserId = 555666777;
-		const minimalUsername = 'minimaluser';
+		const minimalUsername = "minimaluser";
 		const minimalInitData = createTelegramInitData(
 			minimalUserId,
 			minimalUsername
@@ -213,31 +197,31 @@ async function testUserRegistration() {
 				minimalData,
 				{
 					headers: {
-						'Content-Type': 'application/json',
-						'X-Telegram-Init-Data': JSON.stringify(minimalInitData),
+						"Content-Type": "application/json",
+						"X-Telegram-Init-Data": JSON.stringify(minimalInitData),
 					},
 				}
 			);
 
-			console.log('✅ Minimal registration successful:');
-			console.log('   Status:', minimalResponse.status);
-			console.log('   User ID:', minimalResponse.data.user?.id);
-			console.log('   Username:', minimalResponse.data.user?.username);
+			console.log("✅ Minimal registration successful:");
+			console.log("   Status:", minimalResponse.status);
+			console.log("   User ID:", minimalResponse.data.user?.id);
+			console.log("   Username:", minimalResponse.data.user?.username);
 		} catch (error) {
 			console.log(
-				'❌ Minimal registration failed:',
+				"❌ Minimal registration failed:",
 				error.response?.status,
 				error.response?.data
 			);
 		}
 
-		console.log('\n🎉 User registration testing completed successfully!');
+		console.log("\n🎉 User registration testing completed successfully!");
 		return true;
 	} catch (error) {
-		console.error('❌ Error testing user registration:', error.message);
+		console.error("❌ Error testing user registration:", error.message);
 		if (error.response) {
-			console.error('   Status:', error.response.status);
-			console.error('   Data:', error.response.data);
+			console.error("   Status:", error.response.status);
+			console.error("   Data:", error.response.data);
 		}
 		return false;
 	}
@@ -246,50 +230,50 @@ async function testUserRegistration() {
 // Функция для тестирования login endpoint
 async function testUserLogin() {
 	try {
-		console.log('\n🧪 Testing User Login endpoint...\n');
+		console.log("\n🧪 Testing User Login endpoint...\n");
 
 		// Сначала регистрируем пользователя
 		const userId = 111222333;
-		const username = 'logintestuser';
+		const username = "logintestuser";
 		const initData = createTelegramInitData(userId, username);
 
 		// Регистрация
 		await axios.post(
-			`${BASE_URL}/api/auth/registration`,
+			`${BASE_URL}/api/auth/login`,
 			{},
 			{
 				headers: {
-					'Content-Type': 'application/json',
-					'X-Telegram-Init-Data': JSON.stringify(initData),
+					"Content-Type": "application/json",
+					"X-Telegram-Init-Data": initData,
 				},
 			}
 		);
 
 		// Тест login
-		console.log('📝 Testing login for registered user...');
+		console.log("📝 Testing login for registered user...");
 		const loginResponse = await axios.post(
 			`${BASE_URL}/api/auth/login`,
 			{},
 			{
 				headers: {
-					'Content-Type': 'application/json',
-					'X-Telegram-Init-Data': JSON.stringify(initData),
+					"Content-Type": "application/json",
+					"X-Telegram-Init-Data": initData,
 				},
 			}
 		);
 
-		console.log('✅ Login successful:');
-		console.log('   Status:', loginResponse.status);
-		console.log('   User ID:', loginResponse.data.user?.id);
-		console.log('   Username:', loginResponse.data.user?.username);
-		console.log('   Has refresh token:', !!loginResponse.data.refreshToken);
+		console.log("✅ Login successful:");
+		console.log("   Status:", loginResponse.status);
+		console.log("   User ID:", loginResponse.data.user?.id);
+		console.log("   Username:", loginResponse.data.user?.username);
+		console.log("   Has refresh token:", !!loginResponse.data.refreshToken);
 
 		return true;
 	} catch (error) {
-		console.error('❌ Error testing user login:', error.message);
+		console.error("❌ Error testing user login:", error.message);
 		if (error.response) {
-			console.error('   Status:', error.response.status);
-			console.error('   Data:', error.response.data);
+			console.error("   Status:", error.response.status);
+			console.error("   Data:", error.response.data);
 		}
 		return false;
 	}
@@ -297,17 +281,15 @@ async function testUserLogin() {
 
 // Основная функция
 async function main() {
-	console.log('🚀 Starting User Registration and Login Tests...\n');
+	console.log("🚀 Starting User Registration and Login Tests...\n");
 
 	// Проверяем, что сервер запущен
 	try {
 		await axios.get(`${BASE_URL}/health`);
-		console.log('✅ Server is running');
+		console.log("✅ Server is running");
 	} catch (error) {
-		console.error(
-			'❌ Server is not running. Please start the server first.'
-		);
-		console.error('   Run: npm start');
+		console.error("❌ Server is not running. Please start the server first.");
+		console.error("   Run: npm start");
 		process.exit(1);
 	}
 
@@ -315,19 +297,17 @@ async function main() {
 	const registrationResult = await testUserRegistration();
 	const loginResult = await testUserLogin();
 
-	console.log('\n📊 Test Results:');
+	console.log("\n📊 Test Results:");
 	console.log(
-		'   Registration tests:',
-		registrationResult ? '✅ PASSED' : '❌ FAILED'
+		"   Registration tests:",
+		registrationResult ? "✅ PASSED" : "❌ FAILED"
 	);
-	console.log('   Login tests:', loginResult ? '✅ PASSED' : '❌ FAILED');
+	console.log("   Login tests:", loginResult ? "✅ PASSED" : "❌ FAILED");
 
 	if (registrationResult && loginResult) {
-		console.log('\n🎉 All tests passed successfully!');
+		console.log("\n🎉 All tests passed successfully!");
 	} else {
-		console.log(
-			'\n⚠️  Some tests failed. Check the output above for details.'
-		);
+		console.log("\n⚠️  Some tests failed. Check the output above for details.");
 		process.exit(1);
 	}
 }

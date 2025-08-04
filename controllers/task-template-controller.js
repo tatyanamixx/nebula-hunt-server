@@ -2,11 +2,35 @@
  * created by Tatyana Mikhniukevich on 09.06.2025
  * updated by Claude on 15.07.2025
  */
-const taskTemplateService = require('../service/task-template-service');
-const TaskTemplateDTO = require('../dtos/task-template-dto');
-const ApiError = require('../exceptions/api-error');
+const taskTemplateService = require("../service/task-template-service");
+const TaskTemplateDTO = require("../dtos/task-template-dto");
+const ApiError = require("../exceptions/api-error");
 
 class TaskTemplateController {
+	/**
+	 * Get all task templates (public endpoint for client)
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 */
+	async getPublicTaskTemplates(req, res, next) {
+		try {
+			const templates = await taskTemplateService.getTaskTemplates();
+
+			// Return only active templates for public access
+			const activeTemplates = templates.filter(
+				(template) => template.active === true
+			);
+
+			res.json({
+				success: true,
+				data: activeTemplates,
+			});
+		} catch (e) {
+			next(e);
+		}
+	}
+
 	/**
 	 * Create a new task template
 	 * @param {Object} req - Request object
@@ -18,17 +42,16 @@ class TaskTemplateController {
 			const taskData = req.body;
 			if (!taskData) {
 				return next(
-					ApiError.BadRequest('Invalid request: task data required')
+					ApiError.BadRequest("Invalid request: task data required")
 				);
 			}
 
 			// Валидируем JSONB поля
-			const validationErrors =
-				TaskTemplateDTO.validateJsonbFields(taskData);
+			const validationErrors = TaskTemplateDTO.validateJsonbFields(taskData);
 			if (Object.keys(validationErrors).length > 0) {
 				return res.status(400).json({
 					success: false,
-					message: 'Validation errors',
+					message: "Validation errors",
 					errors: validationErrors,
 				});
 			}
@@ -63,16 +86,13 @@ class TaskTemplateController {
 			const formattedTasks = TaskTemplateDTO.toFormFormatArray(tasks);
 
 			console.log(
-				'TaskTemplateController.getTaskTemplates - Sending response:',
+				"TaskTemplateController.getTaskTemplates - Sending response:",
 				formattedTasks.length,
-				'tasks'
+				"tasks"
 			);
 			return res.json(formattedTasks);
 		} catch (err) {
-			console.error(
-				'TaskTemplateController.getTaskTemplates - Error:',
-				err
-			);
+			console.error("TaskTemplateController.getTaskTemplates - Error:", err);
 			next(err);
 		}
 	}
@@ -108,12 +128,11 @@ class TaskTemplateController {
 			const taskData = req.body;
 
 			// Валидируем JSONB поля
-			const validationErrors =
-				TaskTemplateDTO.validateJsonbFields(taskData);
+			const validationErrors = TaskTemplateDTO.validateJsonbFields(taskData);
 			if (Object.keys(validationErrors).length > 0) {
 				return res.status(400).json({
 					success: false,
-					message: 'Validation errors',
+					message: "Validation errors",
 					errors: validationErrors,
 				});
 			}
@@ -161,9 +180,7 @@ class TaskTemplateController {
 		try {
 			const { slug } = req.params;
 
-			const result = await taskTemplateService.toggleTaskTemplateStatus(
-				slug
-			);
+			const result = await taskTemplateService.toggleTaskTemplateStatus(slug);
 			return res.json(result);
 		} catch (err) {
 			next(err);

@@ -1,11 +1,11 @@
 /**
  * created by Tatyana Mikhniukevich on 09.06.2025
  */
-const { TaskTemplate } = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const { ERROR_CODES } = require('../config/error-codes');
-const sequelize = require('../db');
-const logger = require('./logger-service');
+const { TaskTemplate } = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const { ERROR_CODES } = require("../config/error-codes");
+const sequelize = require("../db");
+const logger = require("./logger-service");
 
 class TaskTemplateService {
 	/**
@@ -18,7 +18,7 @@ class TaskTemplateService {
 
 		try {
 			// Set transaction to defer constraints
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
 			});
 
@@ -35,11 +35,11 @@ class TaskTemplateService {
 					!task.icon
 				) {
 					await t.rollback();
-					logger.debug('Invalid task template data structure', {
+					logger.debug("Invalid task template data structure", {
 						task,
 					});
 					throw ApiError.BadRequest(
-						'Invalid task template data structure',
+						"Invalid task template data structure",
 						ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
 					);
 				}
@@ -54,16 +54,15 @@ class TaskTemplateService {
 					icon: task.icon,
 					active: task.active ?? true,
 					sortOrder: task.sortOrder || 0,
+					category: task.category || "general",
 				};
 
 				// Use findOrCreate to handle duplicates
-				const [taskTemplate, created] = await TaskTemplate.findOrCreate(
-					{
-						where: { slug: task.slug },
-						defaults: taskData,
-						transaction: t,
-					}
-				);
+				const [taskTemplate, created] = await TaskTemplate.findOrCreate({
+					where: { slug: task.slug },
+					defaults: taskData,
+					transaction: t,
+				});
 
 				// If template already exists, update it
 				if (!created) {
@@ -74,7 +73,7 @@ class TaskTemplateService {
 			}
 
 			// Set constraints back to immediate before commit
-			await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 				transaction: t,
 			});
 
@@ -100,7 +99,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to create task templates', {
+			logger.error("Failed to create task templates", {
 				tasks: tasks.length,
 				error: err.message,
 				stack: err.stack,
@@ -126,13 +125,13 @@ class TaskTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('getTaskTemplates on start');
+			logger.debug("getTaskTemplates on start");
 			const tasks = await TaskTemplate.findAll({
-				order: [['sortOrder', 'ASC']],
+				order: [["sortOrder", "ASC"]],
 				transaction: t,
 			});
 
-			logger.debug('getTaskTemplates found tasks', {
+			logger.debug("getTaskTemplates found tasks", {
 				count: tasks.length,
 			});
 
@@ -154,7 +153,7 @@ class TaskTemplateService {
 				};
 			});
 
-			logger.debug('getTaskTemplates completed successfully', {
+			logger.debug("getTaskTemplates completed successfully", {
 				count: plainTasks.length,
 			});
 
@@ -162,7 +161,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to get task templates', {
+			logger.error("Failed to get task templates", {
 				error: err.message,
 				stack: err.stack,
 			});
@@ -183,7 +182,7 @@ class TaskTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('getTaskTemplateBySlug on start', { slug });
+			logger.debug("getTaskTemplateBySlug on start", { slug });
 
 			const task = await TaskTemplate.findOne({
 				where: { slug },
@@ -192,7 +191,7 @@ class TaskTemplateService {
 
 			if (!task) {
 				await t.rollback();
-				logger.debug('Task template not found', { slug });
+				logger.debug("Task template not found", { slug });
 				throw ApiError.NotFound(
 					`Task template not found: ${slug}`,
 					ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
@@ -217,7 +216,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to get task template by slug', {
+			logger.error("Failed to get task template by slug", {
 				slug,
 				error: err.message,
 				stack: err.stack,
@@ -244,12 +243,12 @@ class TaskTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('updateTaskTemplate on start', {
+			logger.debug("updateTaskTemplate on start", {
 				slug: updateData.slug,
 			});
 
 			// Set transaction to defer constraints
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
 			});
 
@@ -260,7 +259,7 @@ class TaskTemplateService {
 
 			if (!task) {
 				await t.rollback();
-				logger.debug('Task template not found for update', {
+				logger.debug("Task template not found for update", {
 					slug: updateData.slug,
 				});
 				throw ApiError.NotFound(
@@ -272,7 +271,7 @@ class TaskTemplateService {
 			await task.update(updateData, { transaction: t });
 
 			// Set constraints back to immediate before commit
-			await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 				transaction: t,
 			});
 
@@ -294,7 +293,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to update task template', {
+			logger.error("Failed to update task template", {
 				slug: updateData.slug,
 				error: err.message,
 				stack: err.stack,
@@ -320,10 +319,10 @@ class TaskTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('deleteTaskTemplate on start', { slug });
+			logger.debug("deleteTaskTemplate on start", { slug });
 
 			// Set transaction to defer constraints
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
 			});
 
@@ -334,7 +333,7 @@ class TaskTemplateService {
 
 			if (!task) {
 				await t.rollback();
-				logger.debug('Task template not found for deletion', { slug });
+				logger.debug("Task template not found for deletion", { slug });
 				throw ApiError.NotFound(
 					`Task template not found: ${slug}`,
 					ERROR_CODES.TASK.TASK_TEMPLATE_NOT_FOUND
@@ -344,7 +343,7 @@ class TaskTemplateService {
 			await task.destroy({ transaction: t });
 
 			// Set constraints back to immediate before commit
-			await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 				transaction: t,
 			});
 
@@ -356,7 +355,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to delete task template', {
+			logger.error("Failed to delete task template", {
 				slug,
 				error: err.message,
 				stack: err.stack,
@@ -383,10 +382,10 @@ class TaskTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('toggleTaskTemplateStatus on start', { slug });
+			logger.debug("toggleTaskTemplateStatus on start", { slug });
 
 			// Set transaction to defer constraints
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
 			});
 
@@ -397,7 +396,7 @@ class TaskTemplateService {
 
 			if (!task) {
 				await t.rollback();
-				logger.debug('Task template not found for status toggle', {
+				logger.debug("Task template not found for status toggle", {
 					slug,
 				});
 				throw ApiError.NotFound(
@@ -410,7 +409,7 @@ class TaskTemplateService {
 			await task.save({ transaction: t });
 
 			// Set constraints back to immediate before commit
-			await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 				transaction: t,
 			});
 
@@ -432,7 +431,7 @@ class TaskTemplateService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to toggle task template status', {
+			logger.error("Failed to toggle task template status", {
 				slug,
 				error: err.message,
 				stack: err.stack,

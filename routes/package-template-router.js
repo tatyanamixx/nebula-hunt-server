@@ -1,15 +1,22 @@
 /**
  * created by Claude on 15.07.2025
  */
-const Router = require('express').Router;
+const Router = require("express").Router;
 const router = new Router();
-const packageTemplateController = require('../controllers/package-template-controller');
-const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const packageTemplateController = require("../controllers/package-template-controller");
+const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
-// Get all package templates
+// Public endpoint for client to get package templates
 router.get(
-	'/',
+	"/public",
+	rateLimitMiddleware(100, 60), // 100 requests per hour
+	packageTemplateController.getPublicPackageTemplates
+);
+
+// Get all package templates (admin only)
+router.get(
+	"/",
 	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	packageTemplateController.getAllPackageTemplates
@@ -17,7 +24,7 @@ router.get(
 
 // Get a specific package template
 router.get(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	packageTemplateController.getPackageTemplate
@@ -25,7 +32,7 @@ router.get(
 
 // Create a new package template
 router.post(
-	'/',
+	"/",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	packageTemplateController.createPackageTemplates
@@ -33,7 +40,7 @@ router.post(
 
 // Update a package template
 router.put(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	packageTemplateController.updatePackageTemplate
@@ -41,7 +48,7 @@ router.put(
 
 // Delete a package template
 router.delete(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(10, 60), // 10 requests per hour,
 	packageTemplateController.deletePackageTemplate
@@ -49,7 +56,7 @@ router.delete(
 
 // Toggle a package template status
 router.put(
-	'/:slug/toggle',
+	"/:slug/toggle",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	packageTemplateController.togglePackageTemplateStatus

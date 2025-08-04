@@ -2,11 +2,35 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * updated by Claude on 15.07.2025
  */
-const packageTemplateService = require('../service/package-template-service');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const ApiError = require('../exceptions/api-error');
+const packageTemplateService = require("../service/package-template-service");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const ApiError = require("../exceptions/api-error");
 
 class PackageTemplateController {
+	/**
+	 * Get all package templates (public endpoint for client)
+	 * @param {Object} req - Request object
+	 * @param {Object} res - Response object
+	 * @param {Function} next - Next middleware function
+	 */
+	async getPublicPackageTemplates(req, res, next) {
+		try {
+			const templates = await packageTemplateService.getAllTemplates();
+
+			// Return only active templates for public access
+			const activeTemplates = templates.filter(
+				(template) => template.status === true
+			);
+
+			res.json({
+				success: true,
+				data: activeTemplates,
+			});
+		} catch (e) {
+			next(e);
+		}
+	}
+
 	/**
 	 * Get all package templates
 	 * @param {Object} req - Request object
@@ -32,9 +56,7 @@ class PackageTemplateController {
 		try {
 			const { slug } = req.params;
 
-			const template = await packageTemplateService.getTemplateBySlug(
-				slug
-			);
+			const template = await packageTemplateService.getTemplateBySlug(slug);
 
 			res.json(template);
 		} catch (e) {
@@ -110,9 +132,7 @@ class PackageTemplateController {
 		try {
 			const { slug } = req.params;
 
-			const template = await packageTemplateService.toggleTemplateStatus(
-				slug
-			);
+			const template = await packageTemplateService.toggleTemplateStatus(slug);
 
 			res.json(template);
 		} catch (e) {
