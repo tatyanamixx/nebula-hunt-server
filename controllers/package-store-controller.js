@@ -22,18 +22,18 @@ class PackageStoreController {
 	}
 
 	/**
-	 * Get a specific package by ID for the authenticated user
+	 * Get a specific package by slug for the authenticated user
 	 * @param {Object} req - Request object
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function
 	 */
-	async getUserPackageById(req, res, next) {
+	async getUserPackageBySlug(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { packageId } = req.params;
+			const { slug } = req.params;
 
-			const packageItem = await packageStoreService.getUserPackageById(
-				packageId,
+			const packageItem = await packageStoreService.getUserPackageBySlug(
+				slug,
 				userId
 			);
 			return res.json(packageItem);
@@ -51,17 +51,15 @@ class PackageStoreController {
 	async usePackage(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const { packageId } = req.params;
+			const { slug } = req.params;
 
-			const result = await packageStoreService.usePackage(
-				packageId,
-				userId
-			);
+			const result = await packageStoreService.usePackage(slug, userId);
 			return res.json({
 				success: true,
 				message: 'Package used successfully',
 				userState: result.userState,
 				package: result.package,
+				marketResult: result.marketResult,
 			});
 		} catch (error) {
 			next(error);

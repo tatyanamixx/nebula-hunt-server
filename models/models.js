@@ -839,7 +839,8 @@ const PaymentTransaction = sequelize.define(
 				'TG_STARS_TRANSFER',
 				'STARDUST_TRANSFER',
 				'DARK_MATTER_TRANSFER',
-				'DAILY_REWARD'
+				'DAILY_REWARD',
+				'PACKAGE_REWARD'
 			),
 			allowNull: false,
 		},

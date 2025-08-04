@@ -8,9 +8,11 @@ const {
 } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const { ERROR_CODES } = require('../config/error-codes');
+const { SYSTEM_USER_ID } = require('../config/constants');
 const sequelize = require('../db');
 const logger = require('./logger-service');
 const { Op } = require('sequelize');
+const marketService = require('./market-service');
 
 class PackageStoreService {
 	/**
@@ -202,16 +204,16 @@ class PackageStoreService {
 	}
 
 	/**
-	 * Get user package by ID
-	 * @param {string} slug - Package ID
+	 * Get user package by slug
+	 * @param {string} slug - Package slug
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Object>} - Package
 	 */
-	async getUserPackageById(slug, userId) {
+	async getUserPackageBySlug(slug, userId) {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('getUserPackageById on start', { userId, slug });
+			logger.debug('getUserPackageBySlug on start', { userId, slug });
 
 			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
@@ -221,7 +223,7 @@ class PackageStoreService {
 
 			if (!packageTemplate) {
 				logger.debug(
-					'getUserPackageById - package template not found',
+					'getUserPackageBySlug - package template not found',
 					{
 						userId,
 						slug,
@@ -259,7 +261,7 @@ class PackageStoreService {
 			});
 
 			if (!packageItem) {
-				logger.debug('getUserPackageById - package not found', {
+				logger.debug('getUserPackageBySlug - package not found', {
 					userId,
 					slug,
 					packageTemplateId: packageTemplate.id,
@@ -277,7 +279,7 @@ class PackageStoreService {
 
 			await t.commit();
 
-			logger.debug('getUserPackageById completed successfully', {
+			logger.debug('getUserPackageBySlug completed successfully', {
 				userId,
 				slug,
 				packageId: packageItem.id,
@@ -287,7 +289,7 @@ class PackageStoreService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to get user package by ID', {
+			logger.error('Failed to get user package by slug', {
 				userId,
 				slug,
 				error: err.message,
@@ -358,59 +360,28 @@ class PackageStoreService {
 				);
 			}
 
-			// Получаем состояние пользователя
+			// Создаем offer для регистрации изменений в состоянии через registerOffer
+			const offerData = {
+				sellerId: SYSTEM_USER_ID, // Системный аккаунт
+				buyerId: userId,
+				price: packageTemplate.price,
+				currency: packageTemplate.currency,
+				resource: packageTemplate.resource,
+				amount: packageTemplate.amount,
+				itemType: 'package',
+				itemId: packageItem.id, // userPackageStoreId
+				offerType: 'SYSTEM',
+				txType: 'PACKAGE_REWARD',
+			};
+
+			// Используем registerOffer для регистрации изменений в состоянии
+			const result = await marketService.registerOffer(offerData, t);
+
+			// Получаем обновленное состояние пользователя
 			const userState = await UserState.findOne({
 				where: { userId },
 				transaction: t,
 			});
-
-			if (!userState) {
-				logger.debug('usePackage - user state not found', {
-					userId,
-				});
-				throw ApiError.NotFound(
-					`User state not found for user: ${userId}`,
-					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
-				);
-			}
-
-			// Добавляем ресурсы к состоянию пользователя
-			const oldValues = {
-				stardust: userState.stardust,
-				darkMatter: userState.darkMatter,
-				stars: userState.stars,
-			};
-
-			switch (packageItem.resource) {
-				case 'stardust':
-					userState.stardust += packageItem.amount;
-					break;
-				case 'darkMatter':
-					userState.darkMatter += packageItem.amount;
-					break;
-				case 'stars':
-					userState.stars += packageItem.amount;
-					break;
-				default:
-					logger.error('usePackage - invalid resource type', {
-						userId,
-						slug,
-						resource: packageItem.resource,
-					});
-					throw ApiError.BadRequest(
-						`Invalid resource type: ${packageItem.resource}`,
-						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-					);
-			}
-
-			// Помечаем пакет как использованный
-			packageItem.isUsed = true;
-
-			// Сохраняем изменения
-			await Promise.all([
-				userState.save({ transaction: t }),
-				packageItem.save({ transaction: t }),
-			]);
 
 			await t.commit();
 
@@ -418,19 +389,17 @@ class PackageStoreService {
 				userId,
 				slug,
 				packageId: packageItem.id,
-				resource: packageItem.resource,
-				amount: packageItem.amount,
-				oldValues,
-				newValues: {
-					stardust: userState.stardust,
-					darkMatter: userState.darkMatter,
-					stars: userState.stars,
-				},
+				resource: packageTemplate.resource,
+				amount: packageTemplate.amount,
+				price: packageTemplate.price,
+				currency: packageTemplate.currency,
+				marketResult: result,
 			});
 
 			return {
-				userState,
+				userState: userState,
 				package: packageItem,
+				marketResult: result,
 			};
 		} catch (err) {
 			await t.rollback();

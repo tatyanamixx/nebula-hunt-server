@@ -32,19 +32,19 @@ router.get(
 
 /**
  * @swagger
- * /packages/{packageId}:
+ * /packages/{slug}:
  *   get:
- *     summary: Get a specific package by ID for the authenticated user
+ *     summary: Get a specific package by slug for the authenticated user
  *     tags: [Packages]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: packageId
+ *         name: slug
  *         schema:
  *           type: string
  *         required: true
- *         description: Package ID
+ *         description: Package slug
  *     responses:
  *       200:
  *         description: Package details
@@ -54,16 +54,16 @@ router.get(
  *         description: Package not found
  */
 router.get(
-	'/:packageId',
+	'/:slug',
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60),
 	authMiddleware,
-	packageStoreController.getUserPackageById
+	packageStoreController.getUserPackageBySlug
 );
 
 /**
  * @swagger
- * /packages/{packageId}/use:
+ * /packages/{slug}/use:
  *   post:
  *     summary: Use a package to add resources to user state
  *     tags: [Packages]
@@ -71,11 +71,11 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: packageId
+ *         name: slug
  *         schema:
  *           type: string
  *         required: true
- *         description: Package ID
+ *         description: Package slug
  *     responses:
  *       200:
  *         description: Package used successfully
@@ -85,7 +85,7 @@ router.get(
  *         description: Package not found or already used
  */
 router.post(
-	'/:packageId/use',
+	'/:slug/use',
 	telegramAuthMiddleware,
 	rateLimitMiddleware(20),
 	authMiddleware,

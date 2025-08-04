@@ -4,6 +4,7 @@
 const { TaskTemplate, UserState, UserTask } = require('../models/models');
 const ApiError = require('../exceptions/api-error');
 const { ERROR_CODES } = require('../config/error-codes');
+const { SYSTEM_USER_ID } = require('../config/constants');
 const sequelize = require('../db');
 const marketService = require('./market-service');
 const logger = require('./logger-service');
@@ -438,8 +439,32 @@ class TaskService {
 			const now = new Date();
 			userTask.completed = true;
 			userTask.completedAt = now;
-			userTask.reward = userTask.tasktemplate.reward;
+			userTask.reward = taskTemplate.reward;
 			await userTask.save({ transaction: t });
+
+			// Создаем offer для регистрации изменений в состоянии через registerOffer
+			const reward = taskTemplate.reward;
+			const offerData = {
+				sellerId: SYSTEM_USER_ID, // Системный аккаунт
+				buyerId: userId,
+				price: 0, // Задачи не имеют цены
+				currency: reward.type, // Используем тип награды как валюту
+				resource: reward.type, // Используем тип награды как ресурс
+				amount: reward.amount,
+				itemType: 'task',
+				itemId: userTask.id, // userTaskId
+				offerType: 'SYSTEM',
+				txType: 'TASK_REWARD',
+			};
+
+			// Используем registerOffer для регистрации изменений в состоянии
+			const result = await marketService.registerOffer(offerData, t);
+
+			// Получаем обновленное состояние пользователя
+			const userState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
 
 			if (shouldCommit && !t.finished) {
 				await t.commit();
@@ -449,9 +474,16 @@ class TaskService {
 				userId,
 				slug,
 				taskId: userTask.id,
+				reward: reward,
+				marketResult: result,
 			});
 
-			return { success: true, userTask };
+			return {
+				success: true,
+				userTask,
+				userState: userState,
+				marketResult: result,
+			};
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
 				await t.rollback();

@@ -72,22 +72,6 @@ class TaskController {
 		}
 	}
 
-	async completeTask(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const { slug } = req.params;
-
-			if (!slug) {
-				return next(ApiError.BadRequest('Task ID is required'));
-			}
-
-			const result = await taskService.completeTask(userId, slug);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
-
 	async initializeUserTasks(req, res, next) {
 		try {
 			const userId = req.initdata.id;

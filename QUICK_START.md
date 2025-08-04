@@ -194,7 +194,8 @@ VITE_MOCK_API=false
 ### Пакеты
 
 -   `GET /api/packages` - Список доступных пакетов
--   `POST /api/packages/:id/purchase` - Покупка пакета
+-   `GET /api/packages/:slug` - Получение пакета по slug
+-   `POST /api/packages/:slug/use` - Использование пакета
 
 ### Игровая механика
 
