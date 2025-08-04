@@ -72,15 +72,7 @@ class TaskController {
 		}
 	}
 
-	async initializeUserTasks(req, res, next) {
-		try {
-			const userId = req.initdata.id;
-			const result = await taskService.initializeUserTasks(userId);
-			return res.json(result);
-		} catch (err) {
-			next(err);
-		}
-	}
+
 }
 
 module.exports = new TaskController();

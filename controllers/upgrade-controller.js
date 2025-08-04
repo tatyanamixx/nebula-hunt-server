@@ -6,23 +6,6 @@ const ApiError = require('../exceptions/api-error');
 
 class UpgradeController {
 	/**
-	 * Get all upgrades for a user
-	 * @param {Object} req - Request object
-	 * @param {Object} res - Response object
-	 * @param {Function} next - Next middleware function
-	 * @returns {Promise<void>}
-	 */
-	async getUserUpgrades(req, res, next) {
-		try {
-			const userId = req.user.id;
-			const upgrades = await upgradeService.getUserUpgrades(userId);
-			return res.json(upgrades);
-		} catch (e) {
-			next(e);
-		}
-	}
-
-	/**
 	 * Get a specific upgrade for a user
 	 * @param {Object} req - Request object
 	 * @param {Object} res - Response object
@@ -49,7 +32,7 @@ class UpgradeController {
 	}
 
 	/**
-	 * Get all available upgrades for a user
+	 * Get all upgrades for a user (existing, new, and available)
 	 * @param {Object} req - Request object
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function

@@ -8,18 +8,11 @@ const authMiddleware = require('../middlewares/auth-middleware');
 const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
 const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 
-// Get all upgrades for the user
+
+
+// Get all upgrades for the user (existing, new, and available)
 router.get(
 	'/',
-	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
-	authMiddleware,
-	upgradeController.getUserUpgrades
-);
-
-// Get all available upgrades for the user
-router.get(
-	'/available',
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	authMiddleware,

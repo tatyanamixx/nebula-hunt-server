@@ -163,170 +163,7 @@ describe('TaskService', () => {
 		});
 	});
 
-	describe('initializeUserTasks', () => {
-		it('should initialize user tasks successfully', async () => {
-			// Подготавливаем тестовые данные
-			const userId = 123456789;
-			const tasks = [
-				{
-					id: 'task1',
-					title: { en: 'Test Task 1', ru: 'Тестовое задание 1' },
-					description: { en: 'Description 1', ru: 'Описание 1' },
-					reward: 100,
-					condition: { targetProgress: 100 },
-					icon: 'icon1',
-					active: true,
-					toJSON: function () {
-						return {
-							id: this.id,
-							title: this.title,
-							description: this.description,
-							reward: this.reward,
-							condition: this.condition,
-							icon: this.icon,
-							active: this.active,
-						};
-					},
-				},
-				{
-					id: 'task2',
-					title: { en: 'Test Task 2', ru: 'Тестовое задание 2' },
-					description: { en: 'Description 2', ru: 'Описание 2' },
-					reward: 200,
-					condition: { targetProgress: 200 },
-					icon: 'icon2',
-					active: true,
-					toJSON: function () {
-						return {
-							id: this.id,
-							title: this.title,
-							description: this.description,
-							reward: this.reward,
-							condition: this.condition,
-							icon: this.icon,
-							active: this.active,
-						};
-					},
-				},
-			];
 
-			// Мокаем получение активных задач
-			TaskTemplate.findAll.mockResolvedValue(tasks);
-
-			// Мокаем создание пользовательских задач
-			UserTask.create.mockImplementation((data) =>
-				Promise.resolve({
-					...data,
-					toJSON: () => data,
-				})
-			);
-
-			// Мокаем получение состояния пользователя
-			const userState = {
-				state: {},
-				save: jest.fn().mockResolvedValue({}),
-			};
-			UserState.findOne.mockResolvedValue(userState);
-
-			// Вызываем тестируемый метод
-			const result = await taskService.initializeUserTasks(userId);
-
-			// Проверяем, что транзакция была создана
-			expect(sequelize.transaction).toHaveBeenCalled();
-
-			// Проверяем, что TaskTemplate.findAll был вызван с правильными параметрами
-			expect(TaskTemplate.findAll).toHaveBeenCalledWith({
-				where: { active: true },
-				transaction,
-			});
-
-			// Проверяем, что UserTask.create был вызван для каждой задачи
-			expect(UserTask.create).toHaveBeenCalledTimes(2);
-			expect(UserTask.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					userId,
-					taskId: 'task1',
-				}),
-				{ transaction }
-			);
-			expect(UserTask.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					userId,
-					taskId: 'task2',
-				}),
-				{ transaction }
-			);
-
-			// Проверяем, что UserState.findOne был вызван с правильными параметрами
-			expect(UserState.findOne).toHaveBeenCalledWith({
-				where: { userId },
-				transaction,
-			});
-
-			// Проверяем, что состояние пользователя было обновлено
-			expect(userState.save).toHaveBeenCalledWith({ transaction });
-
-			// Проверяем, что транзакция была подтверждена
-			expect(mockCommit).toHaveBeenCalled();
-			expect(mockRollback).not.toHaveBeenCalled();
-
-			// Проверяем результат
-			expect(result).toHaveProperty('tasks');
-			expect(result.tasks).toHaveLength(2);
-		});
-
-		it('should handle no active tasks', async () => {
-			// Подготавливаем тестовые данные
-			const userId = 123456789;
-
-			// Мокаем отсутствие активных задач
-			TaskTemplate.findAll.mockResolvedValue([]);
-
-			// Вызываем тестируемый метод
-			const result = await taskService.initializeUserTasks(userId);
-
-			// Проверяем, что транзакция была создана
-			expect(sequelize.transaction).toHaveBeenCalled();
-
-			// Проверяем, что TaskTemplate.findAll был вызван с правильными параметрами
-			expect(TaskTemplate.findAll).toHaveBeenCalledWith({
-				where: { active: true },
-				transaction,
-			});
-
-			// Проверяем, что UserTask.create не был вызван
-			expect(UserTask.create).not.toHaveBeenCalled();
-
-			// Проверяем, что транзакция была подтверждена
-			expect(mockCommit).toHaveBeenCalled();
-			expect(mockRollback).not.toHaveBeenCalled();
-
-			// Проверяем результат
-			expect(result).toHaveProperty('tasks');
-			expect(result.tasks).toHaveLength(0);
-		});
-
-		it('should handle database error', async () => {
-			// Подготавливаем тестовые данные
-			const userId = 123456789;
-
-			// Мокаем ошибку при получении активных задач
-			const errorMessage = 'Database error';
-			TaskTemplate.findAll.mockRejectedValue(new Error(errorMessage));
-
-			// Вызываем тестируемый метод и ожидаем ошибку
-			await expect(
-				taskService.initializeUserTasks(userId)
-			).rejects.toThrow(errorMessage);
-
-			// Проверяем, что транзакция была создана
-			expect(sequelize.transaction).toHaveBeenCalled();
-
-			// Проверяем, что транзакция была отменена
-			expect(mockRollback).toHaveBeenCalled();
-			expect(mockCommit).not.toHaveBeenCalled();
-		});
-	});
 
 	describe('getUserTasks', () => {
 		it('should get user tasks successfully', async () => {
@@ -677,6 +514,148 @@ describe('TaskService', () => {
 			expect(result).toHaveProperty('active', 1);
 			expect(result).toHaveProperty('overallProgress');
 			expect(result).toHaveProperty('lastUpdate');
+		});
+	});
+
+	describe('getUserTask', () => {
+		it('should get user task with initialization logic', async () => {
+			// Подготавливаем тестовые данные
+			const userId = 123;
+			const slug = 'task1';
+			
+			// Мокаем шаблоны задач
+			const taskTemplates = [
+				{
+					id: 1,
+					slug: 'task1',
+					active: true,
+					toJSON: () => ({ id: 1, slug: 'task1', active: true }),
+				},
+			];
+			TaskTemplate.findAll.mockResolvedValue(taskTemplates);
+
+			// Мокаем существующие задачи пользователя
+			const existingUserTasks = [];
+			UserTask.findAll.mockResolvedValue(existingUserTasks);
+
+			// Мокаем findOrCreate для создания новых задач
+			UserTask.findOrCreate.mockResolvedValue([
+				{
+					id: 1,
+					userId,
+					taskTemplateId: 1,
+					completed: false,
+					active: true,
+					toJSON: () => ({ id: 1, userId, taskTemplateId: 1, completed: false, active: true }),
+				},
+				true, // created
+			]);
+
+			// Мокаем поиск конкретной задачи
+			const userTask = {
+				id: 1,
+				userId,
+				taskTemplateId: 1,
+				completed: false,
+				active: true,
+				tasktemplate: {
+					id: 1,
+					slug: 'task1',
+					title: { en: 'Task 1', ru: 'Задание 1' },
+					description: { en: 'Description 1', ru: 'Описание 1' },
+					reward: 100,
+					condition: { targetProgress: 100 },
+					icon: 'icon1',
+					active: true,
+				},
+			};
+			UserTask.findOne.mockResolvedValue(userTask);
+
+			// Мокаем состояние пользователя
+			const userState = {
+				state: { ownedTasksCount: 0, activeTasksCount: 0 },
+				save: jest.fn(),
+			};
+			UserState.findOne.mockResolvedValue(userState);
+
+			// Вызываем метод сервиса
+			const result = await taskService.getUserTask(userId, slug);
+
+			// Проверяем, что транзакция была создана
+			expect(sequelize.transaction).toHaveBeenCalled();
+
+			// Проверяем, что TaskTemplate.findAll был вызван для инициализации
+			expect(TaskTemplate.findAll).toHaveBeenCalledWith({
+				transaction: expect.anything(),
+			});
+
+			// Проверяем, что UserTask.findAll был вызван для получения существующих задач
+			expect(UserTask.findAll).toHaveBeenCalledWith({
+				where: { userId },
+				transaction: expect.anything(),
+			});
+
+			// Проверяем, что UserTask.findOrCreate был вызван для создания новых задач
+			expect(UserTask.findOrCreate).toHaveBeenCalled();
+
+			// Проверяем, что UserState.findOne был вызван для обновления счетчиков
+			expect(UserState.findOne).toHaveBeenCalledWith({
+				where: { userId },
+				transaction: expect.anything(),
+			});
+
+			// Проверяем, что транзакция была подтверждена
+			expect(mockCommit).toHaveBeenCalled();
+			expect(mockRollback).not.toHaveBeenCalled();
+
+			// Проверяем результат
+			expect(result).toHaveProperty('id', 1);
+			expect(result).toHaveProperty('slug', 'task1');
+			expect(result).toHaveProperty('task');
+		});
+
+		it('should handle task template not found', async () => {
+			// Подготавливаем тестовые данные
+			const userId = 123;
+			const slug = 'nonexistent';
+
+			// Мокаем отсутствие шаблона задачи
+			TaskTemplate.findOne.mockResolvedValue(null);
+
+			// Вызываем метод сервиса и ожидаем ошибку
+			await expect(
+				taskService.getUserTask(userId, slug)
+			).rejects.toThrow('Task template not found');
+
+			// Проверяем, что транзакция была отменена
+			expect(mockRollback).toHaveBeenCalled();
+			expect(mockCommit).not.toHaveBeenCalled();
+		});
+
+		it('should handle user task not found', async () => {
+			// Подготавливаем тестовые данные
+			const userId = 123;
+			const slug = 'task1';
+
+			// Мокаем шаблон задачи
+			const taskTemplate = {
+				id: 1,
+				slug: 'task1',
+				active: true,
+			};
+			TaskTemplate.findOne.mockResolvedValue(taskTemplate);
+
+			// Мокаем отсутствие задачи пользователя
+			UserTask.findOne.mockResolvedValue(null);
+
+			// Вызываем метод сервиса и ожидаем ошибку
+			await expect(
+				taskService.getUserTask(userId, slug)
+			).rejects.toThrow('User task not found');
+
+			// Проверяем, что транзакция была отменена
+			expect(mockRollback).toHaveBeenCalled();
+			expect(mockCommit).not.toHaveBeenCalled();
 		});
 	});
 

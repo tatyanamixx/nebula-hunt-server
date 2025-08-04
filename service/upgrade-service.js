@@ -176,48 +176,6 @@ class UpgradeService {
 	}
 
 	/**
-	 * Get all upgrades for a user
-	 * @param {number} userId - User ID
-	 * @returns {Promise<Array>} User upgrades
-	 */
-	async getUserUpgrades(userId) {
-		try {
-			const userUpgrades = await UserUpgrade.findAll({
-				where: { userId },
-				include: [
-					{
-						model: UpgradeNodeTemplate,
-						attributes: [
-							'id',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'active',
-							'conditions',
-							'children',
-							'weight',
-						],
-					},
-				],
-			});
-
-			return userUpgrades;
-		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get user upgrades: ${err.message}`
-			);
-		}
-	}
-
-	/**
 	 * Get a specific upgrade for a user
 	 * @param {number} userId - User ID
 	 * @param {string} slug - Upgrade node ID
@@ -278,22 +236,71 @@ class UpgradeService {
 	}
 
 	/**
-	 * Get all available upgrades for a user
+	 * Get all upgrades for a user (existing, new, and available)
+	 * This method initializes and activates upgrades as needed
 	 * @param {number} userId - User ID
-	 * @returns {Promise<Array>} Available upgrades
+	 * @returns {Promise<Array>} All user upgrades with template data
 	 */
 	async getAvailableUpgrades(userId) {
+		const transaction = await sequelize.transaction();
 		try {
-			// Get all active upgrade nodes
-			const upgradeNodes = await UpgradeNodeTemplate.findAll({
-				where: {
-					active: true,
-				},
+			logger.debug('getAvailableUpgrades: starting for user', { userId });
+
+			// Check if user has any upgrades
+			const existingUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+				transaction,
 			});
 
-			// Get all user upgrades
+			// If user has no upgrades, initialize the upgrade tree
+			if (existingUpgrades.length === 0) {
+				logger.debug(
+					'getAvailableUpgrades: no existing upgrades, initializing tree',
+					{ userId }
+				);
+				await this.initializeUserUpgradeTree(userId, transaction);
+			}
+
+			// Activate any new upgrade nodes that should be available
+			logger.debug('getAvailableUpgrades: activating new nodes', {
+				userId,
+			});
+			await this.activateUserUpgradeNodes(userId, transaction);
+
+			// Get all user upgrades with template data
 			const userUpgrades = await UserUpgrade.findAll({
 				where: { userId },
+				include: [
+					{
+						model: UpgradeNodeTemplate,
+						attributes: [
+							'id',
+							'slug',
+							'name',
+							'description',
+							'maxLevel',
+							'basePrice',
+							'effectPerLevel',
+							'priceMultiplier',
+							'category',
+							'icon',
+							'stability',
+							'instability',
+							'modifiers',
+							'active',
+							'conditions',
+							'children',
+							'weight',
+						],
+					},
+				],
+				transaction,
+			});
+
+			// Get all active upgrade nodes to check for available upgrades
+			const allActiveNodes = await UpgradeNodeTemplate.findAll({
+				where: { active: true },
+				transaction,
 			});
 
 			// Create a map of user upgrades for quick lookup
@@ -302,9 +309,9 @@ class UpgradeService {
 				userUpgradeMap[upgrade.upgradeNodeTemplateId] = upgrade;
 			});
 
-			// Filter upgrade nodes based on availability
-			const availableUpgrades = upgradeNodes.filter((node) => {
-				// If the user already has this upgrade, it's available
+			// Find upgrades that are available but not yet created for the user
+			const availableUpgrades = allActiveNodes.filter((node) => {
+				// If user already has this upgrade, it's available
 				if (userUpgradeMap[node.id]) {
 					return true;
 				}
@@ -326,50 +333,74 @@ class UpgradeService {
 								!parentUpgrade ||
 								!parentUpgrade.completed ||
 								parentUpgrade.level <
-									node.conditions.parentLevel
+									(node.conditions.parentLevel || 1)
 							) {
 								return false;
 							}
 						}
 					}
-
-					// Add more condition checks here as needed
 				}
 
 				// If no conditions or all conditions are met, the upgrade is available
 				return true;
 			});
 
-			// Map available upgrades to include user progress if exists
-			return availableUpgrades.map((node) => {
-				const userUpgrade = userUpgradeMap[node.id];
-				if (userUpgrade) {
-					return {
+			// Combine existing user upgrades with available upgrades that don't exist yet
+			const result = [];
+
+			// Add existing user upgrades
+			userUpgrades.forEach((userUpgrade) => {
+				result.push({
+					...userUpgrade.upgradeNodeTemplate.toJSON(),
+					userProgress: {
+						id: userUpgrade.id,
+						level: userUpgrade.level,
+						progress: userUpgrade.progress,
+						targetProgress: userUpgrade.targetProgress,
+						completed: userUpgrade.completed,
+						stability: userUpgrade.stability,
+						instability: userUpgrade.instability,
+						progressHistory: userUpgrade.progressHistory,
+						lastProgressUpdate: userUpgrade.lastProgressUpdate,
+					},
+				});
+			});
+
+			// Add available upgrades that don't exist yet
+			availableUpgrades.forEach((node) => {
+				if (!userUpgradeMap[node.id]) {
+					result.push({
 						...node.toJSON(),
 						userProgress: {
-							level: userUpgrade.level,
-							progress: userUpgrade.progress,
-							targetProgress: userUpgrade.targetProgress,
-							completed: userUpgrade.completed,
-							stability: userUpgrade.stability,
-							instability: userUpgrade.instability,
-						},
-					};
-				} else {
-					return {
-						...node.toJSON(),
-						userProgress: {
+							id: null,
 							level: 0,
 							progress: 0,
 							targetProgress: 100,
 							completed: false,
-							stability: 0,
-							instability: 0,
+							stability: node.stability || 0,
+							instability: node.instability || 0,
+							progressHistory: [],
+							lastProgressUpdate: null,
 						},
-					};
+					});
 				}
 			});
+
+			await transaction.commit();
+			logger.debug('getAvailableUpgrades: completed successfully', {
+				userId,
+				totalUpgrades: result.length,
+				existingUpgrades: userUpgrades.length,
+				availableUpgrades: availableUpgrades.length,
+			});
+
+			return result;
 		} catch (err) {
+			await transaction.rollback();
+			logger.error('getAvailableUpgrades: failed', {
+				userId,
+				error: err.message,
+			});
 			throw ApiError.Internal(
 				`Failed to get available upgrades: ${err.message}`
 			);

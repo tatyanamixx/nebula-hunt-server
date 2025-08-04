@@ -1459,6 +1459,12 @@ class MarketService {
 		const t = await sequelize.transaction();
 
 		try {
+			// Initialize packages for user if userId is provided
+			if (userId) {
+				const packageStoreService = require('./package-store-service');
+				await packageStoreService.initializePackageStore(userId, t);
+			}
+
 			// Get system package offers
 			const offers = await MarketOffer.findAll({
 				where: {
@@ -1468,11 +1474,6 @@ class MarketService {
 				},
 				transaction: t,
 			});
-
-			// If the user ID is specified, initialize the packages based on active templates
-			if (userId) {
-				await packageStoreService.initializePackageStore(userId, t);
-			}
 
 			await t.commit();
 			return offers;

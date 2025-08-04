@@ -145,10 +145,14 @@ class PackageStoreService {
 		try {
 			logger.debug('getUserPackages on start', { userId });
 
+			// Initialize packages for user using the existing method
+			await this.initializePackageStore(userId, t);
+
+			// Get all user packages with template information
 			const packages = await PackageStore.findAll({
 				where: {
 					userId,
-					status: 'ACTIVE',
+					status: true,
 				},
 				include: [
 					{
@@ -163,10 +167,15 @@ class PackageStoreService {
 							'price',
 							'currency',
 							'status',
+							'icon',
+							'sortOrder',
+							'isPromoted',
+							'labelKey',
+							'validUntil',
 						],
 					},
 				],
-				order: [['createdAt', 'DESC']],
+				order: [['sortOrder', 'ASC']],
 				transaction: t,
 			});
 
@@ -254,6 +263,11 @@ class PackageStoreService {
 							'price',
 							'currency',
 							'status',
+							'icon',
+							'sortOrder',
+							'isPromoted',
+							'labelKey',
+							'validUntil',
 						],
 					},
 				],

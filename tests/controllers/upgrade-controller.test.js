@@ -15,6 +15,7 @@ jest.mock('../../service/upgrade-service', () => ({
 	getUpgradeProgress: jest.fn(),
 	initializeUserUpgradeTree: jest.fn(),
 	getUserUpgradeStats: jest.fn(),
+	getAvailableUpgrades: jest.fn(),
 }));
 
 describe('UpgradeController', () => {
@@ -330,6 +331,68 @@ describe('UpgradeController', () => {
 			// Проверяем, что ответ был отправлен с правильными данными
 			expect(res.json).toHaveBeenCalledWith(mockResult);
 			expect(next).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAvailableUpgrades', () => {
+		it('should return all upgrades successfully', async () => {
+			// Подготавливаем тестовые данные
+			const userId = req.initdata.id;
+			const mockUpgrades = [
+				{
+					id: 1,
+					slug: 'stardust_production',
+					name: 'Stardust Production',
+					userProgress: {
+						id: 1,
+						level: 2,
+						progress: 50,
+						completed: false,
+					},
+				},
+				{
+					id: 2,
+					slug: 'dark_matter_synthesis',
+					name: 'Dark Matter Synthesis',
+					userProgress: {
+						id: null,
+						level: 0,
+						progress: 0,
+						completed: false,
+					},
+				},
+			];
+
+			// Устанавливаем мок для сервиса
+			upgradeService.getAvailableUpgrades.mockResolvedValue(mockUpgrades);
+
+			// Вызываем тестируемый метод
+			await upgradeController.getAvailableUpgrades(req, res, next);
+
+			// Проверяем, что сервис был вызван с правильными параметрами
+			expect(upgradeService.getAvailableUpgrades).toHaveBeenCalledWith(
+				userId
+			);
+
+			// Проверяем, что ответ был отправлен с правильными данными
+			expect(res.json).toHaveBeenCalledWith(mockUpgrades);
+			expect(next).not.toHaveBeenCalled();
+		});
+
+		it('should handle service error', async () => {
+			// Мокаем ошибку от сервиса
+			const errorMessage = 'Failed to get available upgrades';
+			upgradeService.getAvailableUpgrades.mockRejectedValue(
+				new Error(errorMessage)
+			);
+
+			// Вызываем метод контроллера
+			await upgradeController.getAvailableUpgrades(req, res, next);
+
+			// Проверяем, что next был вызван с ошибкой
+			expect(next).toHaveBeenCalled();
+			const error = next.mock.calls[0][0];
+			expect(error.message).toBe(errorMessage);
 		});
 	});
 

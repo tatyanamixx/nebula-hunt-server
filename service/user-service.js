@@ -98,51 +98,31 @@ class UserService {
 		const shouldCommit = !transaction;
 		try {
 			// Create system user
-			const systemUser = await User.findOrCreate({
+			const [systemUser, created] = await User.findOrCreate({
 				where: { id: SYSTEM_USER_ID },
-				transaction: t,
 				defaults: {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
-					referral: 0,
 					role: 'SYSTEM',
-					blocked: false,
+					referral: 0,
 				},
-			});
-			logger.debug('systemUser', systemUser);
-
-			// Create system user state
-			const systemUserState = await UserState.findOrCreate({
-				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
-				defaults: {
-					userId: SYSTEM_USER_ID,
-					stardust: 0,
-					darkMatter: 0,
-					stars: 0,
-					tgStars: 0,
-					tonToken: 0,
-					lockedStardust: 0,
-					lockedDarkMatter: 0,
-					lockedStars: 0,
-					lastDailyBonus: null,
-					lastLoginDate: null,
-					currentStreak: 0,
-					maxStreak: 0,
-					streakUpdatedAt: null,
-					stateHistory: [],
-				},
 			});
-			logger.debug('systemUserState', systemUserState);
+
+			if (created) {
+				logger.info('System user created successfully');
+			} else {
+				logger.debug('System user already exists');
+			}
 
 			if (shouldCommit) await t.commit();
-			return { systemUser, systemUserState };
+			return systemUser;
 		} catch (err) {
 			if (!t.finished && shouldCommit) await t.rollback();
 			throw ApiError.withCode(
 				500,
 				`Failed to create system user: ${err.message}`,
-				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -161,8 +141,7 @@ class UserService {
 				);
 				const result = await this.createSystemUser(t);
 				logger.info('System user and state created successfully', {
-					userId: result.systemUser[0].id,
-					stateId: result.systemUserState[0].id,
+					userId: result.id,
 				});
 			} else {
 				logger.debug(
@@ -254,127 +233,6 @@ class UserService {
 		}
 	}
 
-	async initializeUser(userId, transaction) {
-		const t = transaction || (await sequelize.transaction());
-		const shouldCommit = !transaction;
-		try {
-			// 5. Инициализируем дерево апгрейдов
-			const initializedUpgrades =
-				await upgradeService.initializeUserUpgradeTree(userId, t);
-			logger.debug('initializedUpgrades', { initializedUpgrades });
-
-			// 6. Активируем доступные узлы апгрейдов
-			const activatedUpgrades =
-				await upgradeService.activateUserUpgradeNodes(userId, t);
-			logger.debug('activatedUpgrades', { activatedUpgrades });
-
-			// 7. Получаем все апгрейды пользователя с шаблонами (в рамках транзакции)
-			const allUserUpgrades = await UserUpgrade.findAll({
-				where: { userId },
-				include: [
-					{
-						model: UpgradeNodeTemplate,
-						attributes: [
-							'id',
-							'slug',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'active',
-							'conditions',
-							'children',
-							'weight',
-						],
-					},
-				],
-				transaction: t,
-			});
-			logger.debug('allUserUpgrades', { allUserUpgrades });
-
-			// Добавляем информацию о шаблонах к инициализированным апгрейдам
-			const initializedWithTemplates = initializedUpgrades.map(
-				(upgrade) => {
-					const userUpgradeWithTemplate = allUserUpgrades.find(
-						(u) => Number(u.id) === Number(upgrade.id)
-					);
-					const template =
-						userUpgradeWithTemplate?.upgradenodetemplate;
-					return {
-						...upgrade.toJSON(),
-						slug: template?.slug || null,
-						template: template ? template.toJSON() : null,
-					};
-				}
-			);
-
-			// Добавляем информацию о шаблонах к активированным апгрейдам
-			const activatedWithTemplates = activatedUpgrades.map((upgrade) => {
-				const userUpgradeWithTemplate = allUserUpgrades.find(
-					(u) => Number(u.id) === Number(upgrade.id)
-				);
-				const template = userUpgradeWithTemplate?.upgradenodetemplate;
-				return {
-					...upgrade.toJSON(),
-					slug: template?.slug || null,
-					template: template ? template.toJSON() : null,
-				};
-			});
-
-			// Структурируем данные апгрейдов
-			const upgradeTree = {
-				initialized: initializedWithTemplates,
-				activated: activatedWithTemplates,
-				total: allUserUpgrades.length,
-			};
-			logger.debug('upgradeTree', { upgradeTree });
-			logger.debug('initializedWithTemplates', {
-				initializedWithTemplates,
-			});
-			logger.debug('activatedWithTemplates', { activatedWithTemplates });
-
-			// 8. Инициализируем события пользователя
-			const userEvents = await eventService.initializeUserEvents(
-				userId,
-				t
-			);
-			logger.debug('userEvents', { userEvents });
-
-			// 9. Инициализируем список задач пользователя
-			const userTasks = await taskService.initializeUserTasks(userId, t);
-			logger.debug('userTasks', { userTasks });
-
-			// 10. Получаем системные пакеты услуг
-			const packageOffers =
-				await packageStoreService.initializePackageStore(userId, t);
-			logger.debug('packageOffers', { packageOffers });
-
-			const result = {
-				upgradeTree,
-				userEvents,
-				userTasks,
-				packageOffers,
-			};
-
-			if (shouldCommit) await t.commit();
-			return result;
-		} catch (err) {
-			if (!t.finished && shouldCommit) await t.rollback();
-			throw ApiError.withCode(
-				500,
-				`Failed to initialize user: ${err.message}`,
-				ERROR_CODES.SYSTEM.DATABASE_ERROR
-			);
-		}
-	}
-
 	/**
 	 * Формирует единый структурированный ответ для клиента
 	 * @param {Object} tokens - Токены аутентификации
@@ -455,163 +313,6 @@ class UserService {
 					userId: artifact.userId,
 					// Добавьте другие поля артефакта по необходимости
 				})),
-
-				// Игровые данные
-				gameData: {
-					// Дерево улучшений
-					upgradeTree: {
-						initialized: userData.upgradeTree.initialized.map(
-							(upgrade) => ({
-								id: upgrade.id,
-								userId: upgrade.userId,
-								upgradeNodeTemplateId:
-									upgrade.upgradeNodeTemplateId,
-								level: upgrade.level,
-								progress: upgrade.progress,
-								targetProgress: upgrade.targetProgress,
-								completed: upgrade.completed,
-								progressHistory: upgrade.progressHistory,
-								lastProgressUpdate: upgrade.lastProgressUpdate,
-								stability: upgrade.stability,
-								instability: upgrade.instability,
-								slug: upgrade.slug,
-								template: {
-									id: upgrade.template.id,
-									slug: upgrade.template.slug,
-									name: upgrade.template.name,
-									description: upgrade.template.description,
-									maxLevel: upgrade.template.maxLevel,
-									basePrice: upgrade.template.basePrice,
-									effectPerLevel:
-										upgrade.template.effectPerLevel,
-									priceMultiplier:
-										upgrade.template.priceMultiplier,
-									currency: upgrade.template.currency,
-									category: upgrade.template.category,
-									icon: upgrade.template.icon,
-									stability: upgrade.template.stability,
-									instability: upgrade.template.instability,
-									modifiers: upgrade.template.modifiers,
-									active: upgrade.template.active,
-									conditions: upgrade.template.conditions,
-									delayedUntil: upgrade.template.delayedUntil,
-									children: upgrade.template.children,
-									weight: upgrade.template.weight,
-									createdAt: upgrade.template.createdAt,
-									updatedAt: upgrade.template.updatedAt,
-								},
-								createdAt: upgrade.createdAt,
-								updatedAt: upgrade.updatedAt,
-							})
-						),
-						activated: userData.upgradeTree.activated.map(
-							(upgrade) => ({
-								id: upgrade.id,
-								userId: upgrade.userId,
-								upgradeNodeTemplateId:
-									upgrade.upgradeNodeTemplateId,
-								level: upgrade.level,
-								progress: upgrade.progress,
-								targetProgress: upgrade.targetProgress,
-								completed: upgrade.completed,
-								progressHistory: upgrade.progressHistory,
-								lastProgressUpdate: upgrade.lastProgressUpdate,
-								stability: upgrade.stability,
-								instability: upgrade.instability,
-								slug: upgrade.slug,
-								template: upgrade.template,
-								createdAt: upgrade.createdAt,
-								updatedAt: upgrade.updatedAt,
-							})
-						),
-						total: userData.upgradeTree.total,
-					},
-
-					// События пользователя
-					userEvents: userData.userEvents
-						? {
-								id: userData.userEvents.id,
-								userId: userData.userEvents.userId,
-								eventMultipliers:
-									userData.userEvents.eventMultipliers,
-								lastEventCheck:
-									userData.userEvents.lastEventCheck,
-								eventCooldowns:
-									userData.userEvents.eventCooldowns,
-								enabledTypes: userData.userEvents.enabledTypes,
-								disabledEvents:
-									userData.userEvents.disabledEvents,
-								priorityEvents:
-									userData.userEvents.priorityEvents,
-								createdAt: userData.userEvents.createdAt,
-								updatedAt: userData.userEvents.updatedAt,
-						  }
-						: null,
-
-					// Задачи пользователя
-					userTasks: {
-						tasks: userData.userTasks.tasks.map((task) => ({
-							id: task.id,
-							userId: task.userId,
-							taskTemplateId: task.taskTemplateId,
-							completed: task.completed,
-							reward: task.reward,
-							active: task.active,
-							completedAt: task.completedAt,
-							slug: task.slug,
-							task: {
-								id: task.task.id,
-								slug: task.task.slug,
-								title: task.task.title,
-								description: task.task.description,
-								reward: task.task.reward,
-								condition: task.task.condition,
-								icon: task.task.icon,
-								active: task.task.active,
-								sortOrder: task.task.sortOrder,
-								createdAt: task.task.createdAt,
-								updatedAt: task.task.updatedAt,
-							},
-							createdAt: task.createdAt,
-							updatedAt: task.updatedAt,
-						})),
-						reward: userData.userTasks.reward,
-					},
-
-					// Пакеты в магазине
-					packageOffers: userData.packageOffers.map((pkg) => ({
-						id: pkg.id,
-						userId: pkg.userId,
-						packageTemplateId: pkg.packageTemplateId,
-						amount: pkg.amount,
-						resource: pkg.resource,
-						price: pkg.price,
-						currency: pkg.currency,
-						status: pkg.status,
-						isUsed: pkg.isUsed,
-						isLocked: pkg.isLocked,
-						package: {
-							id: pkg.package.id,
-							slug: pkg.package.slug,
-							name: pkg.package.name,
-							description: pkg.package.description,
-							amount: pkg.package.amount,
-							resource: pkg.package.resource,
-							price: pkg.package.price,
-							currency: pkg.package.currency,
-							status: pkg.package.status,
-							icon: pkg.package.icon,
-							sortOrder: pkg.package.sortOrder,
-							labelKey: pkg.package.labelKey,
-							isPromoted: pkg.package.isPromoted,
-							validUntil: pkg.package.validUntil,
-							createdAt: pkg.package.createdAt,
-							updatedAt: pkg.package.updatedAt,
-						},
-						createdAt: pkg.createdAt,
-						updatedAt: pkg.updatedAt,
-					})),
-				},
 
 				// Метаданные
 				metadata: {
@@ -707,12 +408,6 @@ class UserService {
 						transaction: transaction,
 					});
 
-				// Инициализируем пользователя (создаем апгрейды, события, задачи)
-				const userData = await this.initializeUser(
-					user.id,
-					transaction
-				);
-
 				// Создаём галактику для пользователя после коммита основной транзакции
 				let userGalaxy = null;
 				let userStateNew = userState.toJSON();
@@ -794,7 +489,6 @@ class UserService {
 					userStateNew,
 					userGalaxies,
 					userArtifacts,
-					userData,
 					!!userGalaxy
 				);
 
@@ -814,12 +508,6 @@ class UserService {
 							transaction
 						),
 					]);
-
-				// Проверяем и инициализируем state, если его нет
-				const userData = await this.initializeUser(
-					user.id,
-					transaction
-				);
 
 				// Генерируем и сохраняем новые токены
 				const tokens = tokenService.generateTokens({ ...userDto });
@@ -844,7 +532,7 @@ class UserService {
 					userState,
 					userGalaxies,
 					userArtifacts,
-					userData,
+
 					false // galaxyCreated = false для существующих пользователей
 				);
 			}

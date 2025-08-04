@@ -743,10 +743,6 @@ class GameService {
 			// Get user's daily login tasks
 			const { UserTask, TaskTemplate } = require('../models/models');
 
-			// First, initialize user tasks if needed
-			const taskService = require('./task-service');
-			await taskService.initializeUserTasks(userId, t);
-
 			// Then get the daily tasks
 			const dailyTasks = await UserTask.findAll({
 				include: [

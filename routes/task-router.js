@@ -69,12 +69,4 @@ router.post(
 	taskController.completeTask
 );
 
-router.post(
-	'/initialize',
-	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
-	authMiddleware,
-	taskController.initializeUserTasks
-);
-
 module.exports = router;

@@ -777,15 +777,10 @@ Authorization: Bearer <telegram_init_data>
 			}
 		],
 		"artifacts": [],
-		"gameData": {
-			"upgradeTree": {
-				"initialized": []
-			},
-			"activeEvents": [],
-			"activeTasks": [],
-			"completedTasks": [],
-			"eventHistory": [],
-			"taskHistory": []
+		"metadata": {
+			"galaxyCreated": false,
+			"timestamp": "2025-07-31T12:00:00.000Z",
+			"version": "1.0.0"
 		}
 	}
 }
@@ -880,15 +875,10 @@ Authorization: Bearer <telegram_init_data>
 			}
 		],
 		"artifacts": [],
-		"gameData": {
-			"upgradeTree": {
-				"initialized": []
-			},
-			"activeEvents": [],
-			"activeTasks": [],
-			"completedTasks": [],
-			"eventHistory": [],
-			"taskHistory": []
+		"metadata": {
+			"galaxyCreated": true,
+			"timestamp": "2025-07-31T12:00:00.000Z",
+			"version": "1.0.0"
 		}
 	}
 }
@@ -903,6 +893,10 @@ GET /auth/refresh
 Refresh access token using refresh token from cookies.
 
 ## Game API
+
+> **Note:** Task initialization is now handled automatically by the `GET /tasks/:slug` endpoint. The previous `POST /tasks/initialize` endpoint has been removed as its functionality has been integrated into the task retrieval endpoints.
+>
+> **Important:** The login response no longer includes task, event, or upgrade data. These are now retrieved separately through their respective endpoints to improve performance and reduce response size.
 
 ### Get User State
 
@@ -978,12 +972,224 @@ Authorization: Bearer <access_token>
 GET /tasks
 ```
 
-Get user's tasks.
+Get all user's tasks.
 
 **Headers:**
 
 ```
 Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"tasks": [
+		{
+			"id": 1,
+			"userId": 123,
+			"taskTemplateId": 1,
+			"completed": false,
+			"reward": 100,
+			"active": true,
+			"completedAt": null,
+			"slug": "daily_login",
+			"task": {
+				"id": 1,
+				"slug": "daily_login",
+				"title": { "en": "Daily Login", "ru": "Ежедневный вход" },
+				"description": {
+					"en": "Login daily",
+					"ru": "Входите ежедневно"
+				},
+				"reward": 100,
+				"condition": { "type": "daily_login" },
+				"icon": "📅",
+				"active": true,
+				"sortOrder": 1
+			},
+			"createdAt": "2025-01-01T00:00:00.000Z",
+			"updatedAt": "2025-01-01T00:00:00.000Z"
+		}
+	],
+	"reward": {
+		"total": 100,
+		"claimed": 0
+	}
+}
+```
+
+### Get Active Tasks
+
+```
+GET /tasks/active
+```
+
+Get all active tasks for the user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"tasks": [
+		{
+			"id": 1,
+			"userId": 123,
+			"taskTemplateId": 1,
+			"completed": false,
+			"reward": 100,
+			"active": true,
+			"completedAt": null,
+			"slug": "daily_login",
+			"task": {
+				"id": 1,
+				"slug": "daily_login",
+				"title": { "en": "Daily Login", "ru": "Ежедневный вход" },
+				"description": {
+					"en": "Login daily",
+					"ru": "Входите ежедневно"
+				},
+				"reward": 100,
+				"condition": { "type": "daily_login" },
+				"icon": "📅",
+				"active": true,
+				"sortOrder": 1
+			},
+			"createdAt": "2025-01-01T00:00:00.000Z",
+			"updatedAt": "2025-01-01T00:00:00.000Z"
+		}
+	]
+}
+```
+
+### Get Completed Tasks
+
+```
+GET /tasks/completed
+```
+
+Get all completed tasks for the user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"tasks": [
+		{
+			"id": 2,
+			"userId": 123,
+			"taskTemplateId": 2,
+			"completed": true,
+			"reward": 200,
+			"active": false,
+			"completedAt": "2025-01-01T12:00:00.000Z",
+			"slug": "collect_stardust",
+			"task": {
+				"id": 2,
+				"slug": "collect_stardust",
+				"title": {
+					"en": "Collect Stardust",
+					"ru": "Собрать звездную пыль"
+				},
+				"description": {
+					"en": "Collect 1000 stardust",
+					"ru": "Соберите 1000 звездной пыли"
+				},
+				"reward": 200,
+				"condition": {
+					"type": "resource_threshold",
+					"amount": 1000,
+					"resource": "stardust"
+				},
+				"icon": "⭐",
+				"active": true,
+				"sortOrder": 2
+			},
+			"createdAt": "2025-01-01T00:00:00.000Z",
+			"updatedAt": "2025-01-01T12:00:00.000Z"
+		}
+	]
+}
+```
+
+### Get Task Statistics
+
+```
+GET /tasks/stats
+```
+
+Get task statistics for the user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"totalTasks": 10,
+	"activeTasks": 5,
+	"completedTasks": 3,
+	"totalReward": 500,
+	"claimedReward": 300
+}
+```
+
+### Get Specific Task
+
+```
+GET /tasks/:slug
+```
+
+Get a specific task by slug. This endpoint automatically initializes user tasks if needed and handles task activation/deactivation based on template status.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"id": 1,
+	"userId": 123,
+	"taskTemplateId": 1,
+	"completed": false,
+	"reward": 100,
+	"active": true,
+	"completedAt": null,
+	"slug": "daily_login",
+	"task": {
+		"id": 1,
+		"slug": "daily_login",
+		"title": { "en": "Daily Login", "ru": "Ежедневный вход" },
+		"description": { "en": "Login daily", "ru": "Входите ежедневно" },
+		"reward": 100,
+		"condition": { "type": "daily_login" },
+		"icon": "📅",
+		"active": true,
+		"sortOrder": 1
+	},
+	"createdAt": "2025-01-01T00:00:00.000Z",
+	"updatedAt": "2025-01-01T00:00:00.000Z"
+}
 ```
 
 ### Complete Task
@@ -998,6 +1204,178 @@ Complete a specific task.
 
 ```
 Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Task completed successfully",
+	"data": {
+		"task": {
+			"id": 1,
+			"userId": 123,
+			"taskTemplateId": 1,
+			"completed": true,
+			"reward": 100,
+			"active": false,
+			"completedAt": "2025-01-01T12:00:00.000Z",
+			"slug": "daily_login"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 100
+		},
+		"userState": {
+			"stardust": 1100,
+			"darkMatter": 500,
+			"stars": 100
+		}
+	}
+}
+```
+
+## Package API
+
+### Get User Packages
+
+```
+GET /packages
+```
+
+Get all packages for the authenticated user. This endpoint automatically initializes user packages if needed.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+[
+	{
+		"id": 1,
+		"userId": 123,
+		"packageTemplateId": 1,
+		"used": false,
+		"usedAt": null,
+		"active": true,
+		"slug": "starter_pack",
+		"packageTemplate": {
+			"id": 1,
+			"slug": "starter_pack",
+			"title": { "en": "Starter Pack", "ru": "Стартовый пакет" },
+			"description": {
+				"en": "Welcome package",
+				"ru": "Приветственный пакет"
+			},
+			"rewards": {
+				"stardust": 1000,
+				"darkMatter": 500,
+				"stars": 100
+			},
+			"icon": "🎁",
+			"active": true,
+			"sortOrder": 1
+		},
+		"createdAt": "2025-01-01T00:00:00.000Z",
+		"updatedAt": "2025-01-01T00:00:00.000Z"
+	}
+]
+```
+
+### Get Specific Package
+
+```
+GET /packages/:slug
+```
+
+Get a specific package by slug for the authenticated user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"id": 1,
+	"userId": 123,
+	"packageTemplateId": 1,
+	"used": false,
+	"usedAt": null,
+	"active": true,
+	"slug": "starter_pack",
+	"packageTemplate": {
+		"id": 1,
+		"slug": "starter_pack",
+		"title": { "en": "Starter Pack", "ru": "Стартовый пакет" },
+		"description": {
+			"en": "Welcome package",
+			"ru": "Приветственный пакет"
+		},
+		"rewards": {
+			"stardust": 1000,
+			"darkMatter": 500,
+			"stars": 100
+		},
+		"icon": "🎁",
+		"active": true,
+		"sortOrder": 1
+	},
+	"createdAt": "2025-01-01T00:00:00.000Z",
+	"updatedAt": "2025-01-01T00:00:00.000Z"
+}
+```
+
+### Use Package
+
+```
+POST /packages/:slug/use
+```
+
+Use a package to add resources to user state.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Package used successfully",
+	"data": {
+		"package": {
+			"id": 1,
+			"userId": 123,
+			"packageTemplateId": 1,
+			"used": true,
+			"usedAt": "2025-01-01T12:00:00.000Z",
+			"active": false,
+			"slug": "starter_pack"
+		},
+		"rewards": {
+			"stardust": 1000,
+			"darkMatter": 500,
+			"stars": 100
+		},
+		"userState": {
+			"stardust": 2000,
+			"darkMatter": 1000,
+			"stars": 200
+		}
+	}
+}
 ```
 
 ### Register Farming Reward
@@ -1679,6 +2057,251 @@ Authorization: Bearer <access_token>
 	"message": "Task template deleted successfully",
 	"data": {
 		"slug": "daily_login_stardust"
+	}
+}
+```
+
+## Upgrade API
+
+### Get All Upgrades
+
+```
+GET /upgrades
+```
+
+Get all upgrades for the authenticated user (existing, new, and available). This endpoint automatically initializes and activates upgrades as needed.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+[
+	{
+		"id": 1,
+		"slug": "stardust_production",
+		"name": "Stardust Production",
+		"description": "Increase stardust production",
+		"maxLevel": 10,
+		"basePrice": 100,
+		"effectPerLevel": 10,
+		"priceMultiplier": 1.5,
+		"category": "production",
+		"icon": "⭐",
+		"active": true,
+		"userProgress": {
+			"id": 1,
+			"level": 2,
+			"progress": 50,
+			"targetProgress": 100,
+			"completed": false,
+			"stability": 0,
+			"instability": 0,
+			"progressHistory": [
+				{
+					"timestamp": 1640995200000,
+					"progress": 0,
+					"level": 0
+				}
+			],
+			"lastProgressUpdate": "2025-01-01T00:00:00.000Z"
+		}
+	},
+	{
+		"id": 2,
+		"slug": "dark_matter_synthesis",
+		"name": "Dark Matter Synthesis",
+		"description": "Unlock dark matter synthesis",
+		"maxLevel": 5,
+		"basePrice": 500,
+		"effectPerLevel": 20,
+		"priceMultiplier": 2.0,
+		"category": "advanced",
+		"icon": "🌌",
+		"active": true,
+		"userProgress": {
+			"id": null,
+			"level": 0,
+			"progress": 0,
+			"targetProgress": 100,
+			"completed": false,
+			"stability": 0,
+			"instability": 0,
+			"progressHistory": [],
+			"lastProgressUpdate": null
+		}
+	}
+]
+```
+
+### Get Specific Upgrade
+
+```
+GET /upgrades/:upgradeId
+```
+
+Get a specific upgrade for the authenticated user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"id": 1,
+	"slug": "stardust_production",
+	"name": "Stardust Production",
+	"description": "Increase stardust production",
+	"maxLevel": 10,
+	"basePrice": 100,
+	"effectPerLevel": 10,
+	"priceMultiplier": 1.5,
+	"category": "production",
+	"icon": "⭐",
+	"active": true,
+	"userProgress": {
+		"id": 1,
+		"level": 2,
+		"progress": 50,
+		"targetProgress": 100,
+		"completed": false,
+		"stability": 0,
+		"instability": 0
+	}
+}
+```
+
+### Purchase Upgrade
+
+```
+POST /upgrades/purchase/:upgradeId
+```
+
+Purchase an upgrade for the authenticated user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Upgrade purchased successfully",
+	"data": {
+		"upgrade": {
+			"id": 1,
+			"level": 3,
+			"progress": 0,
+			"completed": false
+		},
+		"userState": {
+			"stardust": 800,
+			"darkMatter": 500,
+			"stars": 100
+		}
+	}
+}
+```
+
+### Update Upgrade Progress
+
+```
+PUT /upgrades/:upgradeId/progress
+```
+
+Update progress for a user upgrade.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+
+```json
+{
+	"progress": 75
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Progress updated successfully",
+	"data": {
+		"upgrade": {
+			"id": 1,
+			"level": 2,
+			"progress": 75,
+			"targetProgress": 100,
+			"completed": false
+		}
+	}
+}
+```
+
+### Get Upgrade Statistics
+
+```
+GET /upgrades/stats
+```
+
+Get upgrade statistics for the authenticated user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"totalUpgrades": 10,
+	"completedUpgrades": 3,
+	"totalLevels": 25,
+	"totalSpent": 1500
+}
+```
+
+### Reset Upgrades
+
+```
+POST /upgrades/reset
+```
+
+Reset all upgrades for the authenticated user.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "All upgrades reset successfully",
+	"data": {
+		"resetUpgrades": 10
 	}
 }
 ```
