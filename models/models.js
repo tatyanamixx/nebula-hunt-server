@@ -53,6 +53,29 @@ const UserState = sequelize.define(
 			allowNull: false,
 			defaultValue: 0,
 		},
+		lastLoginDate: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+			comment: "Date of the last login (YYYY-MM-DD)",
+		},
+		currentStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: "Number of consecutive days logged in",
+		},
+		maxStreak: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			comment: "Maximum streak achieved",
+		},
+		streakUpdatedAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: "Timestamp of the last streak update",
+		},
+		chaosLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		stabilityLevel: { type: DataTypes.FLOAT, defaultValue: 0.0 },
+		entropyVelocity: { type: DataTypes.FLOAT, defaultValue: 0.0 },
 		lastDailyBonus: { type: DataTypes.DATE, allowNull: true },
 		lockedStardust: {
 			type: DataTypes.BIGINT,

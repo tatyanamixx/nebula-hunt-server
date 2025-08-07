@@ -1,15 +1,15 @@
 /**
  * created by Tatyana Mikhniukevich on 01.06.2025
  */
-const Router = require('express').Router;
+const Router = require("express").Router;
 const router = new Router();
-const userController = require('../controllers/user-controller');
-const { body } = require('express-validator');
-const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
-const authMiddleware = require('../middlewares/auth-middleware');
-const refreshTokenMiddleware = require('../middlewares/refresh-token-middleware');
-const { ERROR_CODES } = require('../config/error-codes');
+const userController = require("../controllers/user-controller");
+const { body } = require("express-validator");
+const telegramAuthMiddleware = require("../middlewares/telegram-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
+const authMiddleware = require("../middlewares/auth-middleware");
+const refreshTokenMiddleware = require("../middlewares/refresh-token-middleware");
+const { ERROR_CODES } = require("../config/error-codes");
 
 /**
  * @swagger
@@ -19,8 +19,9 @@ const { ERROR_CODES } = require('../config/error-codes');
  */
 
 router.post(
-	'/login',
-	[telegramAuthMiddleware, rateLimitMiddleware(30, 60)], // 30 requests per hour
+	"/login",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(30, 60), // 30 requests per hour
 	userController.login
 );
 
@@ -78,12 +79,10 @@ router.post(
  */
 
 router.get(
-	'/refresh',
-	[
-		telegramAuthMiddleware,
-		rateLimitMiddleware(30, 60), // 30 requests per hour,
-		refreshTokenMiddleware,
-	],
+	"/refresh",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	refreshTokenMiddleware,
 	userController.refresh
 );
 
@@ -140,8 +139,10 @@ router.get(
  */
 
 router.get(
-	'/friends',
-	[telegramAuthMiddleware, rateLimitMiddleware(60, 60), authMiddleware], // 60 requests per hour
+	"/friends",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(60, 60), // 60 requests per hour
+	authMiddleware,
 	userController.getFriends
 );
 

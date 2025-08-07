@@ -1,15 +1,15 @@
 /**
  * created by Claude on 15.07.2025
  */
-const Router = require('express');
+const Router = require("express");
 const router = new Router();
-const eventTemplateController = require('../controllers/event-template-controller');
-const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const eventTemplateController = require("../controllers/event-template-controller");
+const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
 // Get all event templates
 router.get(
-	'/',
+	"/",
 	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	eventTemplateController.getAllEventTemplates
@@ -17,7 +17,7 @@ router.get(
 
 // Get a specific event template
 router.get(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour,
 	eventTemplateController.getEventTemplate
@@ -25,7 +25,7 @@ router.get(
 
 // Create a new event template
 router.post(
-	'/',
+	"/",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	eventTemplateController.createEventTemplates
@@ -33,7 +33,7 @@ router.post(
 
 // Update an event template
 router.put(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	eventTemplateController.updateEventTemplate
@@ -41,7 +41,7 @@ router.put(
 
 // Delete an event template
 router.delete(
-	'/:slug',
+	"/:slug",
 	adminAuthMiddleware,
 	rateLimitMiddleware(10, 60), // 10 requests per hour,
 	eventTemplateController.deleteEventTemplate
@@ -49,7 +49,7 @@ router.delete(
 
 // Toggle an event template status
 router.put(
-	'/:slug/toggle',
+	"/:slug/toggle",
 	adminAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour,
 	eventTemplateController.toggleEventTemplateStatus
