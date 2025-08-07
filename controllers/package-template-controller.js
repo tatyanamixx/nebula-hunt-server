@@ -8,23 +8,39 @@ const ApiError = require("../exceptions/api-error");
 
 class PackageTemplateController {
 	/**
-	 * Get all package templates (public endpoint for client)
+	 * Get active store packages for client (public endpoint)
 	 * @param {Object} req - Request object
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function
 	 */
-	async getPublicPackageTemplates(req, res, next) {
+	async getStorePackages(req, res, next) {
 		try {
 			const templates = await packageTemplateService.getAllTemplates();
 
-			// Return only active templates for public access
+			// Return only active templates for store
 			const activeTemplates = templates.filter(
 				(template) => template.status === true
 			);
 
+			// Transform to client format
+			const storePackages = activeTemplates.map((template) => ({
+				id: template.slug,
+				amount: template.amount,
+				price: template.price,
+				labelKey: template.labelKey,
+				icon: template.icon,
+				name: template.name,
+				description: template.description,
+				resource: template.resource,
+				currency: template.currency,
+				status: template.status,
+				sortOrder: template.sortOrder,
+				isPromoted: template.isPromoted,
+			}));
+
 			res.json({
 				success: true,
-				data: activeTemplates,
+				data: storePackages,
 			});
 		} catch (e) {
 			next(e);

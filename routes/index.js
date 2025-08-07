@@ -31,7 +31,6 @@ const packageTemplateRouter = require("./package-template-router");
 const artifactTemplateRouter = require("./artifact-template-router");
 const templateViewRouter = require("./template-view-router");
 const commissionTemplateRouter = require("./commission-template-router");
-const gameConstantsRouter = require("./game-constants");
 
 router.use("/auth", authRouter);
 router.use("/state", userStateRouter);
@@ -57,6 +56,5 @@ router.use("/artifact-templates", artifactTemplateRouter);
 router.use("/commission-templates", commissionTemplateRouter);
 router.use("/admin-users", adminUserRouter);
 router.use("/template-views", templateViewRouter);
-router.use("/game-constants", gameConstantsRouter);
 
 module.exports = router;

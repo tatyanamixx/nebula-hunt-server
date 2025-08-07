@@ -8,26 +8,27 @@ const ApiError = require("../exceptions/api-error");
 
 class TaskTemplateController {
 	/**
-	 * Get all task templates (public endpoint for client)
+	 * Get all task templates
 	 * @param {Object} req - Request object
 	 * @param {Object} res - Response object
 	 * @param {Function} next - Next middleware function
 	 */
-	async getPublicTaskTemplates(req, res, next) {
+	async getTaskTemplates(req, res, next) {
 		try {
-			const templates = await taskTemplateService.getTaskTemplates();
+			const tasks = await taskTemplateService.getTaskTemplates();
 
-			// Return only active templates for public access
-			const activeTemplates = templates.filter(
-				(template) => template.active === true
+			// Преобразуем в формат для веб-форм
+			const formattedTasks = TaskTemplateDTO.toFormFormatArray(tasks);
+
+			console.log(
+				"TaskTemplateController.getTaskTemplates - Sending response:",
+				formattedTasks.length,
+				"tasks"
 			);
-
-			res.json({
-				success: true,
-				data: activeTemplates,
-			});
-		} catch (e) {
-			next(e);
+			return res.json(formattedTasks);
+		} catch (err) {
+			console.error("TaskTemplateController.getTaskTemplates - Error:", err);
+			next(err);
 		}
 	}
 
@@ -68,31 +69,6 @@ class TaskTemplateController {
 
 			return res.json(formattedResult);
 		} catch (err) {
-			next(err);
-		}
-	}
-
-	/**
-	 * Get all task templates
-	 * @param {Object} req - Request object
-	 * @param {Object} res - Response object
-	 * @param {Function} next - Next middleware function
-	 */
-	async getTaskTemplates(req, res, next) {
-		try {
-			const tasks = await taskTemplateService.getTaskTemplates();
-
-			// Преобразуем в формат для веб-форм
-			const formattedTasks = TaskTemplateDTO.toFormFormatArray(tasks);
-
-			console.log(
-				"TaskTemplateController.getTaskTemplates - Sending response:",
-				formattedTasks.length,
-				"tasks"
-			);
-			return res.json(formattedTasks);
-		} catch (err) {
-			console.error("TaskTemplateController.getTaskTemplates - Error:", err);
 			next(err);
 		}
 	}

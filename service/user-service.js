@@ -8,39 +8,39 @@ const {
 	Galaxy,
 	UserUpgrade,
 	UpgradeNodeTemplate,
-} = require('../models/models');
-const tokenService = require('./token-service');
-const galaxyService = require('./galaxy-service');
-const userStateService = require('./user-state-service');
-const logger = require('./logger-service');
-const eventService = require('./event-service');
-const upgradeService = require('./upgrade-service');
-const taskService = require('./task-service');
-const UserDto = require('../dtos/user-dto');
-const UserStateDto = require('../dtos/user-state-dto');
-const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
-const { Op, where } = require('sequelize');
-const artifactService = require('./artifact-service');
-const prometheusService = require('./prometheus-service');
-const marketService = require('./market-service');
-const gameService = require('./game-service');
-const packageStoreService = require('./package-store-service');
+} = require("../models/models");
+const tokenService = require("./token-service");
+const galaxyService = require("./galaxy-service");
+const userStateService = require("./user-state-service");
+const logger = require("./logger-service");
+const eventService = require("./event-service");
+const upgradeService = require("./upgrade-service");
+const taskService = require("./task-service");
+const UserDto = require("../dtos/user-dto");
+const UserStateDto = require("../dtos/user-state-dto");
+const ApiError = require("../exceptions/api-error");
+const sequelize = require("../db");
+const { Op, where } = require("sequelize");
+const artifactService = require("./artifact-service");
+const prometheusService = require("./prometheus-service");
+const marketService = require("./market-service");
+const gameService = require("./game-service");
+const packageStoreService = require("./package-store-service");
 
-const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
-const { ERROR_CODES } = require('../config/error-codes');
+const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require("../config/constants");
+const { ERROR_CODES } = require("../config/error-codes");
 
 class UserService {
 	constructor() {
 		// Проверяем, что prometheusService импортирован корректно
 		if (!prometheusService) {
-			logger.warn('PrometheusService not imported correctly');
+			logger.warn("PrometheusService not imported correctly");
 		} else if (!prometheusService.incrementUserRegistration) {
 			logger.warn(
-				'PrometheusService.incrementUserRegistration method not found'
+				"PrometheusService.incrementUserRegistration method not found"
 			);
 		} else {
-			logger.debug('PrometheusService imported successfully');
+			logger.debug("PrometheusService imported successfully");
 		}
 	}
 
@@ -52,27 +52,24 @@ class UserService {
 	safeUpdatePrometheusMetric(metricType, options = {}) {
 		process.nextTick(() => {
 			try {
-				if (
-					!prometheusService ||
-					typeof prometheusService !== 'object'
-				) {
-					logger.debug('Prometheus service not available');
+				if (!prometheusService || typeof prometheusService !== "object") {
+					logger.debug("Prometheus service not available");
 					return;
 				}
 
 				switch (metricType) {
-					case 'userRegistration':
+					case "userRegistration":
 						if (
 							typeof prometheusService.incrementUserRegistration ===
-							'function'
+							"function"
 						) {
 							prometheusService.incrementUserRegistration();
 							logger.debug(
-								'User registration metric incremented successfully'
+								"User registration metric incremented successfully"
 							);
 						} else {
 							logger.debug(
-								'User registration metric method not available'
+								"User registration metric method not available"
 							);
 						}
 						break;
@@ -80,7 +77,7 @@ class UserService {
 						logger.debug(`Unknown metric type: ${metricType}`);
 				}
 			} catch (error) {
-				logger.warn('Failed to update Prometheus metric:', {
+				logger.warn("Failed to update Prometheus metric:", {
 					metricType,
 					error: error.message,
 					...options,
@@ -105,11 +102,11 @@ class UserService {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
 					referral: 0,
-					role: 'SYSTEM',
+					role: "SYSTEM",
 					blocked: false,
 				},
 			});
-			logger.debug('systemUser', systemUser);
+			logger.debug("systemUser", systemUser);
 
 			// Create system user state
 			const systemUserState = await UserState.findOrCreate({
@@ -133,7 +130,7 @@ class UserService {
 					stateHistory: [],
 				},
 			});
-			logger.debug('systemUserState', systemUserState);
+			logger.debug("systemUserState", systemUserState);
 
 			if (shouldCommit) await t.commit();
 			return { systemUser, systemUserState };
@@ -156,24 +153,21 @@ class UserService {
 			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 			if (!systemUser) {
 				logger.info(
-					'System user not found, creating with ID:',
+					"System user not found, creating with ID:",
 					SYSTEM_USER_ID
 				);
 				const result = await this.createSystemUser(t);
-				logger.info('System user and state created successfully', {
+				logger.info("System user and state created successfully", {
 					userId: result.systemUser[0].id,
 					stateId: result.systemUserState[0].id,
 				});
 			} else {
-				logger.debug(
-					'System user already exists with ID:',
-					systemUser.id
-				);
+				logger.debug("System user already exists with ID:", systemUser.id);
 			}
 			await t.commit();
 		} catch (err) {
 			if (!t.finished) await t.rollback();
-			logger.error('Failed to ensure system user exists:', err);
+			logger.error("Failed to ensure system user exists:", err);
 			throw ApiError.withCode(
 				500,
 				`Failed to ensure system user exists: ${err.message}`,
@@ -188,16 +182,16 @@ class UserService {
 		if (!userId || !username) {
 			throw ApiError.withCode(
 				400,
-				'Missing required user data (id or username)',
+				"Missing required user data (id or username)",
 				ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 			);
 		}
 
 		// Преобразуем referral в число, если это строка
-		if (typeof referral === 'string') {
+		if (typeof referral === "string") {
 			referral = BigInt(referral);
 		}
-		logger.debug('createUser on start', {
+		logger.debug("createUser on start", {
 			userId,
 			username,
 			referral,
@@ -211,7 +205,7 @@ class UserService {
 					id: userId,
 					username,
 					referral,
-					role: 'USER',
+					role: "USER",
 					blocked: false,
 				},
 				transaction: transaction,
@@ -238,7 +232,7 @@ class UserService {
 			}
 
 			// Проверяем на дублирование по уникальному ключу
-			if (err.name === 'SequelizeUniqueConstraintError') {
+			if (err.name === "SequelizeUniqueConstraintError") {
 				throw ApiError.withCode(
 					409,
 					`User with ID ${userId} already exists`,
@@ -261,12 +255,14 @@ class UserService {
 			// 5. Инициализируем дерево апгрейдов
 			const initializedUpgrades =
 				await upgradeService.initializeUserUpgradeTree(userId, t);
-			logger.debug('initializedUpgrades', { initializedUpgrades });
+			logger.debug("initializedUpgrades", { initializedUpgrades });
 
 			// 6. Активируем доступные узлы апгрейдов
-			const activatedUpgrades =
-				await upgradeService.activateUserUpgradeNodes(userId, t);
-			logger.debug('activatedUpgrades', { activatedUpgrades });
+			const activatedUpgrades = await upgradeService.activateUserUpgradeNodes(
+				userId,
+				t
+			);
+			logger.debug("activatedUpgrades", { activatedUpgrades });
 
 			// 7. Получаем все апгрейды пользователя с шаблонами (в рамках транзакции)
 			const allUserUpgrades = await UserUpgrade.findAll({
@@ -275,45 +271,42 @@ class UserService {
 					{
 						model: UpgradeNodeTemplate,
 						attributes: [
-							'id',
-							'slug',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'active',
-							'conditions',
-							'children',
-							'weight',
+							"id",
+							"slug",
+							"name",
+							"description",
+							"maxLevel",
+							"basePrice",
+							"effectPerLevel",
+							"priceMultiplier",
+							"category",
+							"icon",
+							"stability",
+							"instability",
+							"modifiers",
+							"active",
+							"conditions",
+							"children",
+							"weight",
 						],
 					},
 				],
 				transaction: t,
 			});
-			logger.debug('allUserUpgrades', { allUserUpgrades });
+			logger.debug("allUserUpgrades", { allUserUpgrades });
 
 			// Добавляем информацию о шаблонах к инициализированным апгрейдам
-			const initializedWithTemplates = initializedUpgrades.map(
-				(upgrade) => {
-					const userUpgradeWithTemplate = allUserUpgrades.find(
-						(u) => Number(u.id) === Number(upgrade.id)
-					);
-					const template =
-						userUpgradeWithTemplate?.upgradenodetemplate;
-					return {
-						...upgrade.toJSON(),
-						slug: template?.slug || null,
-						template: template ? template.toJSON() : null,
-					};
-				}
-			);
+			const initializedWithTemplates = initializedUpgrades.map((upgrade) => {
+				const userUpgradeWithTemplate = allUserUpgrades.find(
+					(u) => Number(u.id) === Number(upgrade.id)
+				);
+				const template = userUpgradeWithTemplate?.upgradenodetemplate;
+				return {
+					...upgrade.toJSON(),
+					slug: template?.slug || null,
+					template: template ? template.toJSON() : null,
+				};
+			});
 
 			// Добавляем информацию о шаблонах к активированным апгрейдам
 			const activatedWithTemplates = activatedUpgrades.map((upgrade) => {
@@ -334,27 +327,26 @@ class UserService {
 				activated: activatedWithTemplates,
 				total: allUserUpgrades.length,
 			};
-			logger.debug('upgradeTree', { upgradeTree });
-			logger.debug('initializedWithTemplates', {
+			logger.debug("upgradeTree", { upgradeTree });
+			logger.debug("initializedWithTemplates", {
 				initializedWithTemplates,
 			});
-			logger.debug('activatedWithTemplates', { activatedWithTemplates });
+			logger.debug("activatedWithTemplates", { activatedWithTemplates });
 
 			// 8. Инициализируем события пользователя
-			const userEvents = await eventService.initializeUserEvents(
-				userId,
-				t
-			);
-			logger.debug('userEvents', { userEvents });
+			const userEvents = await eventService.initializeUserEvents(userId, t);
+			logger.debug("userEvents", { userEvents });
 
 			// 9. Инициализируем список задач пользователя
 			const userTasks = await taskService.initializeUserTasks(userId, t);
-			logger.debug('userTasks', { userTasks });
+			logger.debug("userTasks", { userTasks });
 
 			// 10. Получаем системные пакеты услуг
-			const packageOffers =
-				await packageStoreService.initializePackageStore(userId, t);
-			logger.debug('packageOffers', { packageOffers });
+			const packageOffers = await packageStoreService.initializePackageStore(
+				userId,
+				t
+			);
+			logger.debug("packageOffers", { packageOffers });
 
 			const result = {
 				upgradeTree,
@@ -397,9 +389,7 @@ class UserService {
 	) {
 		return {
 			success: true,
-			message: galaxyCreated
-				? 'Registration successful'
-				: 'Login successful',
+			message: galaxyCreated ? "Registration successful" : "Login successful",
 			data: {
 				// Аутентификация
 				auth: {
@@ -464,8 +454,7 @@ class UserService {
 							(upgrade) => ({
 								id: upgrade.id,
 								userId: upgrade.userId,
-								upgradeNodeTemplateId:
-									upgrade.upgradeNodeTemplateId,
+								upgradeNodeTemplateId: upgrade.upgradeNodeTemplateId,
 								level: upgrade.level,
 								progress: upgrade.progress,
 								targetProgress: upgrade.targetProgress,
@@ -482,8 +471,7 @@ class UserService {
 									description: upgrade.template.description,
 									maxLevel: upgrade.template.maxLevel,
 									basePrice: upgrade.template.basePrice,
-									effectPerLevel:
-										upgrade.template.effectPerLevel,
+									effectPerLevel: upgrade.template.effectPerLevel,
 									priceMultiplier:
 										upgrade.template.priceMultiplier,
 									currency: upgrade.template.currency,
@@ -504,26 +492,23 @@ class UserService {
 								updatedAt: upgrade.updatedAt,
 							})
 						),
-						activated: userData.upgradeTree.activated.map(
-							(upgrade) => ({
-								id: upgrade.id,
-								userId: upgrade.userId,
-								upgradeNodeTemplateId:
-									upgrade.upgradeNodeTemplateId,
-								level: upgrade.level,
-								progress: upgrade.progress,
-								targetProgress: upgrade.targetProgress,
-								completed: upgrade.completed,
-								progressHistory: upgrade.progressHistory,
-								lastProgressUpdate: upgrade.lastProgressUpdate,
-								stability: upgrade.stability,
-								instability: upgrade.instability,
-								slug: upgrade.slug,
-								template: upgrade.template,
-								createdAt: upgrade.createdAt,
-								updatedAt: upgrade.updatedAt,
-							})
-						),
+						activated: userData.upgradeTree.activated.map((upgrade) => ({
+							id: upgrade.id,
+							userId: upgrade.userId,
+							upgradeNodeTemplateId: upgrade.upgradeNodeTemplateId,
+							level: upgrade.level,
+							progress: upgrade.progress,
+							targetProgress: upgrade.targetProgress,
+							completed: upgrade.completed,
+							progressHistory: upgrade.progressHistory,
+							lastProgressUpdate: upgrade.lastProgressUpdate,
+							stability: upgrade.stability,
+							instability: upgrade.instability,
+							slug: upgrade.slug,
+							template: upgrade.template,
+							createdAt: upgrade.createdAt,
+							updatedAt: upgrade.updatedAt,
+						})),
 						total: userData.upgradeTree.total,
 					},
 
@@ -534,15 +519,11 @@ class UserService {
 								userId: userData.userEvents.userId,
 								eventMultipliers:
 									userData.userEvents.eventMultipliers,
-								lastEventCheck:
-									userData.userEvents.lastEventCheck,
-								eventCooldowns:
-									userData.userEvents.eventCooldowns,
+								lastEventCheck: userData.userEvents.lastEventCheck,
+								eventCooldowns: userData.userEvents.eventCooldowns,
 								enabledTypes: userData.userEvents.enabledTypes,
-								disabledEvents:
-									userData.userEvents.disabledEvents,
-								priorityEvents:
-									userData.userEvents.priorityEvents,
+								disabledEvents: userData.userEvents.disabledEvents,
+								priorityEvents: userData.userEvents.priorityEvents,
 								createdAt: userData.userEvents.createdAt,
 								updatedAt: userData.userEvents.updatedAt,
 						  }
@@ -617,7 +598,7 @@ class UserService {
 				metadata: {
 					galaxyCreated: galaxyCreated,
 					timestamp: new Date().toISOString(),
-					version: '1.0.0',
+					version: "1.0.0",
 				},
 			},
 		};
@@ -635,7 +616,7 @@ class UserService {
 		const transaction = await sequelize.transaction();
 		try {
 			// Откладываем проверку всех deferrable ограничений в начале транзакции
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction,
 			});
 
@@ -648,7 +629,7 @@ class UserService {
 
 			// Если пользователь не существует, создаем нового пользователя
 			if (!user && userId) {
-				logger.debug('User not found, creating new user', {
+				logger.debug("User not found, creating new user", {
 					userId,
 					username: username || null,
 					referral: referral || null,
@@ -661,7 +642,7 @@ class UserService {
 						id: userId,
 						username: username || null,
 						referral: referral || 0,
-						role: 'USER',
+						role: "USER",
 					},
 					{
 						transaction: transaction,
@@ -676,7 +657,7 @@ class UserService {
 				await transaction.rollback();
 				throw ApiError.withCode(
 					404,
-					'User not found',
+					"User not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}
@@ -686,7 +667,7 @@ class UserService {
 				await transaction.rollback();
 				throw ApiError.withCode(
 					403,
-					'User account is blocked',
+					"User account is blocked",
 					ERROR_CODES.AUTH.USER_BLOCKED
 				);
 			}
@@ -695,23 +676,19 @@ class UserService {
 
 			// 2. Если это новый пользователь, выполняем инициализацию
 			if (isNewUser) {
-				logger.debug('Initializing new user', { userId });
+				logger.debug("Initializing new user", { userId });
 
 				// Инициализируем состояние пользователя
-				const [userState, createdUserState] =
-					await UserState.findOrCreate({
-						where: { userId: user.id },
-						defaults: {
-							userId: user.id,
-						},
-						transaction: transaction,
-					});
+				const [userState, createdUserState] = await UserState.findOrCreate({
+					where: { userId: user.id },
+					defaults: {
+						userId: user.id,
+					},
+					transaction: transaction,
+				});
 
 				// Инициализируем пользователя (создаем апгрейды, события, задачи)
-				const userData = await this.initializeUser(
-					user.id,
-					transaction
-				);
+				const userData = await this.initializeUser(user.id, transaction);
 
 				// Создаём галактику для пользователя после коммита основной транзакции
 				let userGalaxy = null;
@@ -726,18 +703,18 @@ class UserService {
 				);
 
 				// Коммитим всю транзакцию
-				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction,
 				});
 				await transaction.commit();
-				logger.debug('All registration data committed to database', {
+				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});
 
 				// Создаём галактику для пользователя после коммита основной транзакции
 				if (galaxyData && isNewUser) {
 					logger.debug(
-						'Creating galaxy as gift after main transaction commit',
+						"Creating galaxy as gift after main transaction commit",
 						{
 							galaxyData,
 						}
@@ -746,37 +723,33 @@ class UserService {
 						const galaxyTransaction = await sequelize.transaction();
 						const offer = {
 							price: 0,
-							currency: 'tonToken',
+							currency: "tonToken",
 						};
 						try {
-							const result =
-								await gameService.createGalaxyWithOffer(
-									galaxyData,
-									user.id,
-									offer,
-									galaxyTransaction
-								);
+							const result = await gameService.createGalaxyWithOffer(
+								galaxyData,
+								user.id,
+								offer,
+								galaxyTransaction
+							);
 
-							logger.debug('Galaxy creation result', result);
+							logger.debug("Galaxy creation result", result);
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
 
 							await galaxyTransaction.commit();
 						} catch (galaxyError) {
 							await galaxyTransaction.rollback();
-							logger.error(
-								'Failed to create galaxy',
-								galaxyError
-							);
+							logger.error("Failed to create galaxy", galaxyError);
 							// Don't fail the entire registration if galaxy creation fails
 						}
 					} catch (galaxyError) {
-						logger.error('Failed to create galaxy', galaxyError);
+						logger.error("Failed to create galaxy", galaxyError);
 						// Don't fail the entire registration if galaxy creation fails
 					}
 				} else if (isNewUser && !galaxyData) {
 					logger.debug(
-						'New user registered without galaxy data - galaxy will not be created',
+						"New user registered without galaxy data - galaxy will not be created",
 						{
 							userId: user.id,
 						}
@@ -798,28 +771,21 @@ class UserService {
 					!!userGalaxy
 				);
 
-				logger.debug('User registration response', response);
+				logger.debug("User registration response", response);
 				return response;
 			} else {
 				// 3. Для существующего пользователя выполняем логин
-				logger.debug('User exists, performing login', { userId });
+				logger.debug("User exists, performing login", { userId });
 
 				// Получаем состояние пользователя, галактики и артефакты
-				const [userState, userGalaxies, userArtifacts] =
-					await Promise.all([
-						userStateService.getUserState(userDto.id, transaction),
-						galaxyService.getUserGalaxies(userDto.id, transaction),
-						artifactService.getUserArtifacts(
-							userDto.id,
-							transaction
-						),
-					]);
+				const [userState, userGalaxies, userArtifacts] = await Promise.all([
+					userStateService.getUserState(userDto.id, transaction),
+					galaxyService.getUserGalaxies(userDto.id, transaction),
+					artifactService.getUserArtifacts(userDto.id, transaction),
+				]);
 
 				// Проверяем и инициализируем state, если его нет
-				const userData = await this.initializeUser(
-					user.id,
-					transaction
-				);
+				const userData = await this.initializeUser(user.id, transaction);
 
 				// Генерируем и сохраняем новые токены
 				const tokens = tokenService.generateTokens({ ...userDto });
@@ -830,7 +796,7 @@ class UserService {
 				);
 
 				// Устанавливаем ограничения обратно в немедленные перед коммитом
-				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction,
 				});
 
@@ -867,7 +833,7 @@ class UserService {
 			}
 
 			// Проверяем на дублирование по уникальному ключу
-			if (err.name === 'SequelizeUniqueConstraintError') {
+			if (err.name === "SequelizeUniqueConstraintError") {
 				throw ApiError.withCode(
 					409,
 					`User with ID ${userId} already exists`,
@@ -897,7 +863,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Refresh token is required',
+					"Refresh token is required",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -908,7 +874,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Invalid refresh token',
+					"Invalid refresh token",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -919,7 +885,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Refresh token not found in database',
+					"Refresh token not found in database",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -930,7 +896,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					404,
-					'User not found',
+					"User not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}
@@ -940,7 +906,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					403,
-					'User is blocked',
+					"User is blocked",
 					ERROR_CODES.AUTH.USER_BLOCKED
 				);
 			}
@@ -999,7 +965,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					400,
-					'User ID is required',
+					"User ID is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -1018,11 +984,11 @@ class UserService {
 			// Получаем список друзей (пользователей, которые указали данного пользователя как реферала)
 			const friends = await User.findAll({
 				where: { referral: userId },
-				attributes: ['id', 'username', 'referral', 'createdAt'],
+				attributes: ["id", "username", "referral", "createdAt"],
 				include: [
 					{
 						model: UserState,
-						attributes: ['state'],
+						attributes: ["state"],
 					},
 				],
 				transaction: t,
@@ -1071,7 +1037,7 @@ class UserService {
 			if (!systemUser) {
 				throw ApiError.withCode(
 					404,
-					'System user not found',
+					"System user not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}

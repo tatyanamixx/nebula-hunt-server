@@ -7,13 +7,6 @@ const packageTemplateController = require("../controllers/package-template-contr
 const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
 const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
-// Public endpoint for client to get package templates
-router.get(
-	"/public",
-	rateLimitMiddleware(100, 60), // 100 requests per hour
-	packageTemplateController.getPublicPackageTemplates
-);
-
 // Get all package templates (admin only)
 router.get(
 	"/",

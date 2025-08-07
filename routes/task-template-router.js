@@ -7,13 +7,6 @@ const taskTemplateController = require("../controllers/task-template-controller"
 const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
 const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
-// Public endpoint for client to get task templates
-router.get(
-	"/public",
-	rateLimitMiddleware(100, 60), // 100 requests per hour
-	taskTemplateController.getPublicTaskTemplates
-);
-
 // Get all task templates
 router.get(
 	"/",
