@@ -21,6 +21,7 @@ const gameService = require("./game-service");
 
 const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require("../config/constants");
 const { ERROR_CODES } = require("../config/error-codes");
+const GAME_CONSTANTS = require("../config/game-constants");
 
 class UserService {
 	constructor() {
@@ -320,7 +321,7 @@ class UserService {
 				})),
 
 				// Game constants (added to login response)
-				gameConstants: require("../config/constants").GAME_CONSTANTS,
+				gameConstants: GAME_CONSTANTS,
 
 				// Метаданные
 				metadata: {
