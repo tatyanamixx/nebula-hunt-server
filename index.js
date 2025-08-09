@@ -1,11 +1,11 @@
 /**
  * created by Tatyana Mikhniukevich on 04.05.2025
  */
-require('dotenv').config();
-const app = require('./app');
-const sequelize = require('./db');
-const loggerService = require('./service/logger-service');
-const { updateActiveUsers } = require('./service/game-metrics-service');
+require("dotenv").config();
+const app = require("./app");
+const sequelize = require("./db");
+const loggerService = require("./service/logger-service");
+const { updateActiveUsers } = require("./service/game-metrics-service");
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,9 +15,7 @@ let isInitialized = false;
 const start = async () => {
 	// Защита от повторного запуска
 	if (isInitialized) {
-		loggerService.warn(
-			'Server initialization already completed, skipping...'
-		);
+		loggerService.warn("Server initialization already completed, skipping...");
 		return;
 	}
 
@@ -25,23 +23,23 @@ const start = async () => {
 		await sequelize.authenticate();
 
 		// Инициализация системного пользователя
-		const userService = require('./service/user-service');
+		const userService = require("./service/user-service");
 		await userService.ensureSystemUserExists();
-		loggerService.info('System user initialized');
+		loggerService.info("System user initialized");
 
 		// Инициализация супервайзера
-		const { initSupervisor } = require('./scripts/init-supervisor');
+		const { initSupervisor } = require("./scripts/init-supervisor");
 		try {
 			const result = await initSupervisor();
 			if (result.skipped) {
 				loggerService.info(
-					'Supervisor initialization skipped (already completed)'
+					"Supervisor initialization skipped (already completed)"
 				);
 			} else {
-				loggerService.info('Supervisor initialized');
+				loggerService.info("Supervisor initialized");
 			}
 		} catch (error) {
-			loggerService.warn('Supervisor initialization failed:', {
+			loggerService.warn("Supervisor initialization failed:", {
 				error: error.message,
 			});
 		}
@@ -58,13 +56,13 @@ const start = async () => {
 			updateActiveUsers().catch(console.error);
 		}, 10 * 60 * 1000);
 
-		const prometheusService = require('./service/prometheus-service');
+		const prometheusService = require("./service/prometheus-service");
 		setInterval(() => {
 			prometheusService.updateDatabaseMetrics();
 		}, 10000);
 	} catch (e) {
-		loggerService.error('Failed to start server:', { error: e.message });
-		console.error('Failed to start server:', e);
+		loggerService.error("Failed to start server:", { error: e.message });
+		console.error("Failed to start server:", e);
 	}
 };
 

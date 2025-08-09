@@ -301,14 +301,30 @@ class UserService {
 				galaxies: galaxies.map((galaxy) => ({
 					id: galaxy.id,
 					userId: galaxy.userId,
+					name: galaxy.name,
+					seed: galaxy.seed,
+
+					// Звезды и ресурсы
 					starMin: galaxy.starMin,
 					starCurrent: galaxy.starCurrent,
+					maxStars: galaxy.maxStars,
+
+					// Временные метки
+					birthDate: galaxy.birthDate,
+					lastCollectTime: galaxy.lastCollectTime,
+
+					// Визуальные свойства
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+
+					// Игровые параметры
 					price: galaxy.price,
-					seed: galaxy.seed,
 					particleCount: galaxy.particleCount,
 					onParticleCountChange: galaxy.onParticleCountChange,
 					galaxyProperties: galaxy.galaxyProperties,
 					active: galaxy.active,
+
 					createdAt: galaxy.createdAt,
 					updatedAt: galaxy.updatedAt,
 				})),

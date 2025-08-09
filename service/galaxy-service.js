@@ -1,16 +1,16 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const { User, Galaxy } = require('../models/models');
-const logger = require('./logger-service');
-const ApiError = require('../exceptions/api-error');
-const { Op } = require('sequelize');
-const sequelize = require('../db');
-const { GALAXY_BASE_PRICE } = require('../config/constants');
-const marketService = require('./market-service');
-const userStateService = require('./user-state-service');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const { GALAXY_LIMIT_FOR_USER } = require('../config/constants');
+const { User, Galaxy } = require("../models/models");
+const logger = require("./logger-service");
+const ApiError = require("../exceptions/api-error");
+const { Op } = require("sequelize");
+const sequelize = require("../db");
+const { GALAXY_BASE_PRICE } = require("../config/constants");
+const marketService = require("./market-service");
+const userStateService = require("./user-state-service");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const { GALAXY_LIMIT_FOR_USER } = require("../config/constants");
 
 class GalaxyService {
 	async getUserGalaxies(userId, transaction) {
@@ -20,7 +20,7 @@ class GalaxyService {
 		try {
 			const galaxiesRaw = await Galaxy.findAll({
 				where: { userId },
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: t,
 			});
 
@@ -41,9 +41,7 @@ class GalaxyService {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			throw ApiError.Internal(
-				`Failed to get user galaxies: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get user galaxies: ${err.message}`);
 		}
 	}
 
@@ -89,7 +87,7 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'role', 'id'],
+						attributes: ["username", "role", "id"],
 					},
 				],
 				transaction: t,
@@ -113,9 +111,7 @@ class GalaxyService {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			throw ApiError.Internal(
-				`Failed to get show galaxies: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get show galaxies: ${err.message}`);
 		}
 	}
 
@@ -130,7 +126,7 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'id'],
+						attributes: ["username", "id"],
 					},
 				],
 				transaction: t,
@@ -167,7 +163,7 @@ class GalaxyService {
 			if (!galaxy) {
 				await t.rollback();
 				throw ApiError.GalaxyNotFound(
-					'Galaxy not found or not owned by user'
+					"Galaxy not found or not owned by user"
 				);
 			}
 
@@ -177,7 +173,7 @@ class GalaxyService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Galaxy deleted successfully',
+				message: "Galaxy deleted successfully",
 				galaxyId: galaxy.id,
 			};
 		} catch (err) {

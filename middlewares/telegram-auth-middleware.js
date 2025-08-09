@@ -10,7 +10,7 @@ const { parse, validate } = require("@telegram-apps/init-data-node");
 const logger = require("../service/logger-service");
 
 // Используем переменную для токена бота
-const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const botToken = process.env.BOT_TOKEN;
 
 /**
  * Декодирует initData из различных форматов
@@ -106,37 +106,64 @@ module.exports = function telegramAuthMiddleware(req, res, next) {
 			initDataPreview: initData.substring(0, 100) + "...",
 		});
 
-		// Валидируем данные
-		try {
-			validate(initData, botToken);
-			logger.debug("Telegram initData validation successful");
-		} catch (err) {
-			logger.error("Telegram validation error:", {
-				error: err.message,
-				source,
-				initDataLength: initData.length,
-			});
-			return next(
-				ApiError.TMAuthorizedError("Telegram auth: invalid signature")
+		// Проверяем на mock данные в development режиме
+		const isDevelopment = process.env.NODE_ENV === "development";
+		const isMockData =
+			initData.includes("mock_hash") ||
+			initData.includes('"id":10') ||
+			initData.includes("testuser");
+
+		if (isDevelopment && isMockData) {
+			logger.debug(
+				"Mock data detected in development mode, skipping validation"
 			);
+		} else {
+			// Валидируем данные
+			try {
+				validate(initData, botToken);
+				logger.debug("Telegram initData validation successful");
+			} catch (err) {
+				logger.error("Telegram validation error:", {
+					error: err.message,
+					source,
+					initDataLength: initData.length,
+				});
+				return next(
+					ApiError.TMAuthorizedError("Telegram auth: invalid signature")
+				);
+			}
 		}
 
 		// Парсим и сохраняем данные пользователя
 		try {
-			const parsedData = parse(initData);
-			req.initdata = parsedData.user;
+			let userData;
 
-			logger.debug("Telegram user data parsed successfully", {
-				userId: parsedData.user?.id,
-				username: parsedData.user?.username,
+			if (isDevelopment && isMockData) {
+				// Для mock данных парсим самостоятельно
+				const params = new URLSearchParams(initData);
+				const userParam = params.get("user");
+				if (userParam) {
+					userData = JSON.parse(userParam);
+					logger.debug("Mock user data parsed successfully", userData);
+				} else {
+					throw new Error("No user data in mock initData");
+				}
+			} else {
+				// Для реальных данных используем стандартный парсер
+				const parsedData = parse(initData);
+				userData = parsedData.user;
+			}
+
+			req.initdata = userData;
+
+			logger.debug("User data parsed successfully", {
+				userId: userData?.id,
+				username: userData?.username,
 				source,
-			});
-
-			logger.debug("Telegram user data parsed successfully", {
-				initData: req.initdata,
+				isMock: isDevelopment && isMockData,
 			});
 		} catch (parseError) {
-			logger.error("Error parsing Telegram initData:", parseError);
+			logger.error("Error parsing initData:", parseError);
 			return next(ApiError.TMAuthorizedError("Telegram auth: parsing error"));
 		}
 

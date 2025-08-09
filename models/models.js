@@ -380,13 +380,74 @@ const Galaxy = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
+
+		// === ОСНОВНЫЕ ПОЛЯ ===
+		name: {
+			type: DataTypes.STRING(255),
+			allowNull: true,
+			comment: "Автогенерируемое имя галактики",
+		},
+		seed: {
+			type: DataTypes.STRING,
+			unique: true,
+			allowNull: false,
+		},
+
+		// === ЗВЕЗДЫ И РЕСУРСЫ ===
 		starMin: { type: DataTypes.INTEGER, defaultValue: 100 },
-		starCurrent: { type: DataTypes.INTEGER, defaultValue: 100 },
+		starCurrent: {
+			type: DataTypes.INTEGER,
+			defaultValue: 1000,
+			comment: "Текущее количество звезд (синхронизировано с client.stars)",
+		},
+		maxStars: {
+			type: DataTypes.INTEGER,
+			defaultValue: 100000,
+			allowNull: false,
+			comment: "Максимальное количество звезд для галактики",
+		},
+
+		// === ВРЕМЕННЫЕ МЕТКИ ===
+		birthDate: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+			comment: "Дата создания галактики",
+		},
+		lastCollectTime: {
+			type: DataTypes.DATE,
+			defaultValue: DataTypes.NOW,
+			allowNull: false,
+			comment: "Время последнего сбора ресурсов",
+		},
+
+		// === ВИЗУАЛЬНЫЕ СВОЙСТВА ===
+		galaxyType: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			comment: "Тип галактики: spiral, elliptical, irregular, etc.",
+		},
+		colorPalette: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			comment: "Цветовая схема: nebula, aurora, cosmic, etc.",
+		},
+		backgroundType: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			comment: "Тип фона галактики",
+		},
+
+		// === ИГРОВЫЕ ПАРАМЕТРЫ ===
 		price: { type: DataTypes.INTEGER, defaultValue: 100 },
-		seed: { type: DataTypes.STRING, unique: true },
 		particleCount: { type: DataTypes.INTEGER, defaultValue: 100 },
 		onParticleCountChange: { type: DataTypes.BOOLEAN, defaultValue: true },
-		galaxyProperties: { type: DataTypes.JSONB },
+
+		// === ДОПОЛНИТЕЛЬНЫЕ СВОЙСТВА ===
+		galaxyProperties: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			comment: "Дополнительные свойства в JSON формате",
+		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 	},
 	{
@@ -398,6 +459,14 @@ const Galaxy = sequelize.define(
 			{
 				fields: ["userId"],
 				name: "galaxy_user_id_idx",
+			},
+			{
+				fields: ["galaxyType"],
+				name: "galaxy_type_idx",
+			},
+			{
+				fields: ["lastCollectTime"],
+				name: "galaxy_last_collect_idx",
 			},
 		],
 	}

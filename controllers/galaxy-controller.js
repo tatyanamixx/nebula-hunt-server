@@ -1,11 +1,11 @@
 /**
  * created by Tatyana Mikhniukevich on 29.05.2025
  */
-const galaxyService = require('../service/galaxy-service');
-const ApiError = require('../exceptions/api-error');
-const logger = require('../service/logger-service');
-const marketService = require('../service/market-service');
-const { Galaxy } = require('../models/models');
+const galaxyService = require("../service/galaxy-service");
+const ApiError = require("../exceptions/api-error");
+const logger = require("../service/logger-service");
+const marketService = require("../service/market-service");
+const { Galaxy } = require("../models/models");
 
 class GalaxyController {
 	async createGalaxyWithOffer(req, res, next) {
@@ -16,34 +16,33 @@ class GalaxyController {
 			// Валидация данных
 			if (!galaxyData || !offerData) {
 				return res.status(400).json({
-					message: 'Missing required data: galaxyData and offerData',
-					errorCode: 'VAL_005',
-					severity: 'LOW',
+					message: "Missing required data: galaxyData and offerData",
+					errorCode: "VAL_005",
+					severity: "LOW",
 				});
 			}
 
 			if (!galaxyData.seed || !galaxyData.galaxyProperties) {
 				return res.status(400).json({
 					message:
-						'Invalid galaxy data: seed and galaxyProperties are required',
-					errorCode: 'VAL_003',
-					severity: 'MEDIUM',
+						"Invalid galaxy data: seed and galaxyProperties are required",
+					errorCode: "VAL_003",
+					severity: "MEDIUM",
 				});
 			}
 
+			const result = await galaxyService.createGalaxyWithOffer(galaxyData, {
+				...offerData,
+				buyerId,
+			});
 
-			const result = await galaxyService.createGalaxyWithOffer(
-				galaxyData,
-				{ ...offerData, buyerId }
-			);
-
-			logger.info('System galaxy with offer created', {
+			logger.info("System galaxy with offer created", {
 				buyerId,
 				galaxyId: result.galaxy?.id,
 				offerId: result.offerOut?.id,
 			});
 
-			logger.debug('Galaxy controller response', result);
+			logger.debug("Galaxy controller response", result);
 
 			return res.json(result);
 		} catch (e) {
@@ -77,7 +76,7 @@ class GalaxyController {
 			const userId = req.initdata.id;
 			const seed = req.params.seed;
 			const result = await galaxyService.deleteGalaxy(userId, seed);
-			logger.info('Galaxy deleted', { userId, seed });
+			logger.info("Galaxy deleted", { userId, seed });
 			return res.json(result);
 		} catch (e) {
 			next(e);
@@ -96,7 +95,7 @@ class GalaxyController {
 
 			if (!galaxy) {
 				return res.status(404).json({
-					error: 'Galaxy not found or not owned by user',
+					error: "Galaxy not found or not owned by user",
 				});
 			}
 
@@ -106,7 +105,7 @@ class GalaxyController {
 				offerData
 			);
 
-			logger.info('Stars added to galaxy', {
+			logger.info("Stars added to galaxy", {
 				userId,
 				offerData,
 			});

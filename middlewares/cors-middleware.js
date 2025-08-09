@@ -2,19 +2,24 @@
  * Enhanced CORS middleware with better security
  * Created by Claude on 15.07.2025
  */
-const cors = require('cors');
-const logger = require('../service/logger-service');
+const cors = require("cors");
+const logger = require("../service/logger-service");
 
 // Get allowed origins from environment variables or use default
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl).split(',');
+const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl).split(",");
+
+console.log("🔍 CORS DEBUG:");
+console.log("  CLIENT_URL:", process.env.CLIENT_URL);
+console.log("  ALLOWED_ORIGINS:", process.env.ALLOWED_ORIGINS);
+console.log("  Final allowedOrigins:", allowedOrigins);
 
 // Create enhanced CORS configuration
 const corsOptions = {
 	origin: function (origin, callback) {
 		// Allow requests with no origin (like mobile apps, curl, etc)
 		if (!origin) {
-			logger.debug('CORS: Request with no origin');
+			logger.debug("CORS: Request with no origin");
 			return callback(null, true);
 		}
 
@@ -25,14 +30,12 @@ const corsOptions = {
 		}
 
 		// Origin not allowed
-		logger.warn(
-			`CORS: Blocked request from unauthorized origin: ${origin}`
-		);
-		return callback(new Error('CORS: Origin not allowed'), false);
+		logger.warn(`CORS: Blocked request from unauthorized origin: ${origin}`);
+		return callback(new Error("CORS: Origin not allowed"), false);
 	},
-	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-	allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-init-data'],
-	exposedHeaders: ['Content-Length', 'Content-Type'],
+	methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+	allowedHeaders: ["Content-Type", "Authorization", "x-telegram-init-data"],
+	exposedHeaders: ["Content-Length", "Content-Type"],
 	credentials: true,
 	maxAge: 86400, // 24 hours
 	preflightContinue: false,
@@ -44,6 +47,6 @@ const corsMiddleware = cors(corsOptions);
 
 // Wrapper for logging
 module.exports = function (req, res, next) {
-	logger.debug('Applying CORS policy');
+	logger.debug("Applying CORS policy");
 	return corsMiddleware(req, res, next);
 };
