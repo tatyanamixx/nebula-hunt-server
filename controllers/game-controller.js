@@ -2,10 +2,10 @@
  * Game Controller for game mechanics operations
  * Created by Claude on 15.07.2025
  */
-const gameService = require('../service/game-service');
-const ApiError = require('../exceptions/api-error');
-const { ERROR_CODES } = require('../config/error-codes');
-const logger = require('../service/logger-service');
+const gameService = require("../service/game-service");
+const ApiError = require("../exceptions/api-error");
+const { ERROR_CODES } = require("../config/error-codes");
+const logger = require("../service/logger-service");
 
 class GameController {
 	/**
@@ -18,12 +18,12 @@ class GameController {
 		try {
 			const { offerData } = req.body;
 
-			logger.debug('registerFarmingReward request', { offerData });
+			logger.debug("registerFarmingReward request", { offerData });
 
 			// Validate required fields
 			if (!offerData) {
 				throw ApiError.BadRequest(
-					'offerData is required',
+					"offerData is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -33,7 +33,7 @@ class GameController {
 				offerData
 			);
 
-			logger.info('Farming reward registered successfully', {
+			logger.info("Farming reward registered successfully", {
 				userId: req.user.id,
 				offerData,
 			});
@@ -62,32 +62,25 @@ class GameController {
 	 */
 	async registerTransferStardustToGalaxy(req, res, next) {
 		try {
-			const { userId, galaxy, reward } = req.body;
+			const { galaxy, reward } = req.body;
+			const userId = req.user.id;
 
-			logger.debug('registerTransferStardustToGalaxy request', {
+			logger.debug("registerTransferStardustToGalaxy request", {
 				userId,
 				galaxy,
 				reward,
 			});
 
-			// Validate required fields
-			if (!userId) {
-				throw ApiError.BadRequest(
-					'userId is required',
-					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-				);
-			}
-
 			if (!galaxy) {
 				throw ApiError.BadRequest(
-					'Galaxy data is required',
+					"Galaxy data is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
 
 			if (!reward) {
 				throw ApiError.BadRequest(
-					'Reward data is required',
+					"Reward data is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -95,7 +88,7 @@ class GameController {
 			// Validate galaxy data
 			if (!galaxy.seed) {
 				throw ApiError.BadRequest(
-					'Galaxy seed is required',
+					"Galaxy seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -108,7 +101,7 @@ class GameController {
 				!reward.amount
 			) {
 				throw ApiError.BadRequest(
-					'Reward must have currency, price, resource, and amount',
+					"Reward must have currency, price, resource, and amount",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -116,14 +109,14 @@ class GameController {
 			// Validate price and amount are positive
 			if (reward.price <= 0) {
 				throw ApiError.BadRequest(
-					'Price must be positive',
+					"Price must be positive",
 					ERROR_CODES.VALIDATION.INVALID_AMOUNT
 				);
 			}
 
 			if (reward.amount <= 0) {
 				throw ApiError.BadRequest(
-					'Amount must be positive',
+					"Amount must be positive",
 					ERROR_CODES.VALIDATION.INVALID_AMOUNT
 				);
 			}
@@ -134,7 +127,7 @@ class GameController {
 				reward
 			);
 
-			logger.info('Galaxy purchase offer registered successfully', {
+			logger.info("Galaxy purchase offer registered successfully", {
 				userId,
 				galaxySeed: galaxy.seed,
 				price: reward.price,
@@ -145,11 +138,11 @@ class GameController {
 
 			res.status(200).json({
 				success: true,
-				message: 'Galaxy purchase offer registered successfully',
+				message: "Galaxy purchase offer registered successfully",
 				data: result.data,
 			});
 		} catch (error) {
-			logger.error('Failed to register transfer stardust to galaxy', {
+			logger.error("Failed to register transfer stardust to galaxy", {
 				userId: req.body?.userId,
 				error: error.message,
 				galaxy: req.body?.galaxy,
@@ -169,13 +162,13 @@ class GameController {
 		try {
 			const userId = req.initData.id;
 
-			logger.debug('claimDailyReward request', {
+			logger.debug("claimDailyReward request", {
 				userId,
 			});
 
 			const result = await gameService.claimDailyReward(userId);
 
-			logger.info('Daily reward claimed successfully', {
+			logger.info("Daily reward claimed successfully", {
 				userId,
 				currentStreak: result.data.currentStreak,
 				maxStreak: result.data.maxStreak,
@@ -184,11 +177,11 @@ class GameController {
 
 			res.status(200).json({
 				success: true,
-				message: 'Daily reward claimed successfully',
+				message: "Daily reward claimed successfully",
 				data: result.data,
 			});
 		} catch (error) {
-			logger.error('Failed to claim daily reward', {
+			logger.error("Failed to claim daily reward", {
 				userId: req.initData?.id,
 				error: error.message,
 			});
@@ -207,7 +200,7 @@ class GameController {
 			const userId = req.initData.id;
 			const { galaxyData } = req.body;
 
-			logger.debug('registerGeneratedGalaxy request', {
+			logger.debug("registerGeneratedGalaxy request", {
 				userId,
 				galaxyData,
 			});
@@ -215,7 +208,7 @@ class GameController {
 			// Validate required fields
 			if (!galaxyData) {
 				throw ApiError.BadRequest(
-					'galaxyData is required',
+					"galaxyData is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -223,7 +216,7 @@ class GameController {
 			// Validate galaxy data structure
 			if (!galaxyData.seed) {
 				throw ApiError.BadRequest(
-					'Galaxy seed is required',
+					"Galaxy seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -233,7 +226,7 @@ class GameController {
 				galaxyData
 			);
 
-			logger.info('Generated galaxy registered successfully', {
+			logger.info("Generated galaxy registered successfully", {
 				userId,
 				galaxySeed: galaxyData.seed,
 				galaxyId: result.data?.galaxy?.id,
@@ -241,11 +234,11 @@ class GameController {
 
 			res.status(200).json({
 				success: true,
-				message: 'Generated galaxy registered successfully',
+				message: "Generated galaxy registered successfully",
 				data: result.data,
 			});
 		} catch (error) {
-			logger.error('Failed to register generated galaxy', {
+			logger.error("Failed to register generated galaxy", {
 				userId: req.initData?.id,
 				error: error.message,
 				galaxyData: req.body?.galaxyData,
@@ -265,7 +258,7 @@ class GameController {
 			const userId = req.initData.id;
 			const { galaxyData, offer } = req.body;
 
-			logger.debug('registerCapturedGalaxy request', {
+			logger.debug("registerCapturedGalaxy request", {
 				userId,
 				galaxyData,
 				offer,
@@ -274,14 +267,14 @@ class GameController {
 			// Validate required fields
 			if (!galaxyData) {
 				throw ApiError.BadRequest(
-					'galaxyData is required',
+					"galaxyData is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
 
 			if (!offer) {
 				throw ApiError.BadRequest(
-					'offer is required',
+					"offer is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -289,7 +282,7 @@ class GameController {
 			// Validate galaxy data structure
 			if (!galaxyData.seed) {
 				throw ApiError.BadRequest(
-					'Galaxy seed is required',
+					"Galaxy seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -297,7 +290,7 @@ class GameController {
 			// Validate offer structure
 			if (!offer.price || !offer.currency) {
 				throw ApiError.BadRequest(
-					'Offer must have price and currency',
+					"Offer must have price and currency",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -305,7 +298,7 @@ class GameController {
 			// Validate price is positive
 			if (offer.price <= 0) {
 				throw ApiError.BadRequest(
-					'Price must be positive',
+					"Price must be positive",
 					ERROR_CODES.VALIDATION.INVALID_AMOUNT
 				);
 			}
@@ -316,7 +309,7 @@ class GameController {
 				offer
 			);
 
-			logger.info('Captured galaxy registered successfully', {
+			logger.info("Captured galaxy registered successfully", {
 				userId,
 				galaxySeed: galaxyData.seed,
 				price: offer.price,
@@ -326,11 +319,11 @@ class GameController {
 
 			res.status(200).json({
 				success: true,
-				message: 'Captured galaxy registered successfully',
+				message: "Captured galaxy registered successfully",
 				data: result.data,
 			});
 		} catch (error) {
-			logger.error('Failed to register captured galaxy', {
+			logger.error("Failed to register captured galaxy", {
 				userId: req.initData?.id,
 				error: error.message,
 				galaxyData: req.body?.galaxyData,

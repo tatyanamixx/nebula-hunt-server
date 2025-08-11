@@ -58,7 +58,7 @@ class UserController {
 			const result = await userService.login(id, username, referral, galaxy);
 			logger.debug("User login result", { result });
 
-			res.cookie("refreshToken", result.refreshToken, {
+			res.cookie("refreshToken", result.data.auth.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
 			});
@@ -75,7 +75,7 @@ class UserController {
 			const userData = await userService.refresh(refreshToken);
 
 			// Устанавливаем новый refresh token в cookies
-			res.cookie("refreshToken", userData.refreshToken, {
+			res.cookie("refreshToken", userData.data.auth.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production", // HTTPS только в production

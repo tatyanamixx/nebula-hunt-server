@@ -184,6 +184,46 @@ class GalaxyService {
 			throw ApiError.Internal(`Failed to delete galaxy: ${err.message}`);
 		}
 	}
+
+	async updateGalaxy(seed, updates, userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const galaxy = await Galaxy.findOne({
+				where: { seed, userId },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				await t.rollback();
+				throw ApiError.GalaxyNotFound(
+					"Galaxy not found or not owned by user"
+				);
+			}
+
+			// Обновляем только разрешенные поля
+			const allowedFields = ["lastCollectTime"];
+			const filteredUpdates = {};
+
+			for (const [key, value] of Object.entries(updates)) {
+				if (allowedFields.includes(key)) {
+					filteredUpdates[key] = value;
+				}
+			}
+
+			// Применяем обновления
+			await galaxy.update(filteredUpdates, { transaction: t });
+
+			await t.commit();
+			return galaxy.toJSON();
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to update galaxy: ${err.message}`);
+		}
+	}
 }
 
 module.exports = new GalaxyService();

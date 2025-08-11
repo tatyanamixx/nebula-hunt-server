@@ -2,13 +2,13 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * updated by Claude on 15.07.2025
  */
-const Router = require('express').Router;
+const Router = require("express").Router;
 const router = new Router();
-const galaxyController = require('../controllers/galaxy-controller');
-const gameController = require('../controllers/game-controller');
-const authMiddleware = require('../middlewares/auth-middleware');
-const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const galaxyController = require("../controllers/galaxy-controller");
+const gameController = require("../controllers/game-controller");
+const authMiddleware = require("../middlewares/auth-middleware");
+const telegramAuthMiddleware = require("../middlewares/telegram-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
 /**
  * @swagger
@@ -30,7 +30,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  *         description: List of user galaxies
  */
 router.get(
-	'/galaxies',
+	"/",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
@@ -56,11 +56,47 @@ router.get(
  *         description: Galaxy details
  */
 router.get(
-	'/:seed',
+	"/:seed",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
 	galaxyController.getUserGalaxy
+);
+
+/**
+ * @swagger
+ * /galaxies/{seed}:
+ *   patch:
+ *     summary: Update a galaxy
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: seed
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               lastCollectTime:
+ *                 type: number
+ *                 description: Timestamp of last resource collection
+ *     responses:
+ *       200:
+ *         description: Galaxy updated successfully
+ */
+router.patch(
+	"/:seed",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(30, 60), // 30 requests per hour
+	authMiddleware,
+	galaxyController.updateGalaxy
 );
 
 /**
@@ -76,7 +112,7 @@ router.get(
  *         description: List of show galaxies
  */
 router.get(
-	'/show',
+	"/show",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60, 60), // 60 requests per hour
 	authMiddleware,
@@ -106,7 +142,7 @@ router.get(
  *         description: Galaxy created successfully
  */
 router.post(
-	'/create',
+	"/create",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(10, 60), // 10 requests per hour
 	authMiddleware,
@@ -126,7 +162,7 @@ router.post(
  *         description: Daily bonus claimed
  */
 router.post(
-	'/daily-bonus',
+	"/daily-bonus",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
@@ -158,7 +194,7 @@ router.post(
  *         description: Galaxy updated successfully
  */
 router.post(
-	'/transferstars',
+	"/transferstars",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(30, 60), // 30 requests per hour
 	authMiddleware,
@@ -184,7 +220,7 @@ router.post(
  *         description: Galaxy deleted successfully
  */
 router.delete(
-	'/:seed',
+	"/:seed",
 	telegramAuthMiddleware,
 	authMiddleware,
 	rateLimitMiddleware(10, 60), // 10 requests per hour

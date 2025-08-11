@@ -129,6 +129,37 @@ class GalaxyController {
 			next(e);
 		}
 	}
+
+	async updateGalaxy(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const seed = req.params.seed;
+			const updates = req.body;
+
+			// Проверяем, что галактика принадлежит пользователю
+			const galaxy = await Galaxy.findOne({
+				where: { seed, userId },
+			});
+
+			if (!galaxy) {
+				return res.status(404).json({
+					error: "Galaxy not found or not owned by user",
+				});
+			}
+
+			// Обновляем галактику
+			const result = await galaxyService.updateGalaxy(seed, updates, userId);
+
+			logger.info("Galaxy updated", { userId, seed, updates });
+
+			return res.json({
+				success: true,
+				galaxy: result,
+			});
+		} catch (e) {
+			next(e);
+		}
+	}
 }
 
 module.exports = new GalaxyController();

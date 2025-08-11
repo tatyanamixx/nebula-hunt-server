@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"main": "index.js",
 	"scripts": {
-		"start": "cross-env NODE_ENV=production node index.js",
+		"start": "cross-env NODE_ENV=development node index.js",
 		"dev": "cross-env NODE_ENV=development nodemon index.js",
 		"dev:test": "dotenv -e .env.test -- cross-env NODE_ENV=test nodemon index.js",
 		"dev:prod": "dotenv -e .env.production -- cross-env NODE_ENV=production nodemon index.js",

@@ -1,16 +1,13 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const { UserState, User } = require('../models/models');
-const logger = require('./logger-service');
-const ApiError = require('../exceptions/api-error');
-const { ERROR_CODES } = require('../config/error-codes');
-const sequelize = require('../db');
-const { Op } = require('sequelize');
-const {
-	LEADERBOARD_LIMIT,
-	DAILY_BONUS_STARDUST,
-} = require('../config/constants');
+const { UserState, User } = require("../models/models");
+const logger = require("./logger-service");
+const ApiError = require("../exceptions/api-error");
+const { ERROR_CODES } = require("../config/error-codes");
+const sequelize = require("../db");
+const { Op } = require("sequelize");
+const { LEADERBOARD_LIMIT, DAILY_BONUS_STARDUST } = require("../config/constants");
 
 class UserStateService {
 	async updateStreak(userState) {
@@ -45,9 +42,7 @@ class UserStateService {
 		}
 
 		// Calculate the difference in hours
-		const diffDays = Math.floor(
-			(today - lastLogin) / (1000 * 60 * 60 * 24)
-		);
+		const diffDays = Math.floor((today - lastLogin) / (1000 * 60 * 60 * 24));
 
 		if (diffDays === 1) {
 			// Consecutive day
@@ -74,7 +69,7 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
-			logger.debug('getUserState on start', { userId });
+			logger.debug("getUserState on start", { userId });
 			// Get basic user state
 			let userState = await UserState.findOne({
 				where: { userId: userId },
@@ -90,21 +85,21 @@ class UserStateService {
 					await t.commit();
 				}
 
-				logger.debug('getUserState completed successfully', { userId });
+				logger.debug("getUserState completed successfully", { userId });
 				return userState.toJSON();
 			}
 			if (shouldCommit) {
 				await t.commit();
 			}
 
-			logger.debug('getUserState - user state not found', { userId });
+			logger.debug("getUserState - user state not found", { userId });
 			return userState;
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
 
-			logger.error('Failed to get user state', {
+			logger.error("Failed to get user state", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -121,9 +116,9 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
-			logger.debug('createUserState on start', { userId });
+			logger.debug("createUserState on start", { userId });
 			await this.updateStreak(userState);
-			logger.debug('createUserState', userId, userState);
+			logger.debug("createUserState", userId, userState);
 			// Create new state for new user
 			const stateNew = await UserState.findOrCreate({
 				where: { userId: userId },
@@ -148,14 +143,14 @@ class UserStateService {
 				await t.commit();
 			}
 
-			logger.debug('createUserState completed successfully', { userId });
+			logger.debug("createUserState completed successfully", { userId });
 			return stateNew[0].toJSON();
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
 
-			logger.error('Failed to create user state', {
+			logger.error("Failed to create user state", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -173,7 +168,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
-			logger.debug('updateUserState on start', { userId });
+			logger.debug("updateUserState on start", { userId });
 			const stateData = await UserState.findOne({
 				where: { userId: userId },
 				transaction: t,
@@ -220,7 +215,7 @@ class UserStateService {
 				}
 
 				logger.debug(
-					'updateUserState completed successfully - updated existing state',
+					"updateUserState completed successfully - updated existing state",
 					{ userId }
 				);
 				return responseObj;
@@ -255,7 +250,7 @@ class UserStateService {
 			}
 
 			logger.debug(
-				'updateUserState completed successfully - created new state',
+				"updateUserState completed successfully - created new state",
 				{ userId }
 			);
 			return { userId, userState: stateNew.toJSON() };
@@ -264,7 +259,7 @@ class UserStateService {
 				await t.rollback();
 			}
 
-			logger.error('Failed to update user state', {
+			logger.error("Failed to update user state", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -282,7 +277,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
-			logger.debug('leaderboard on start', { userId });
+			logger.debug("leaderboard on start", { userId });
 			// Get user data and position in the leaderboard
 			let userRating = null;
 			let userData = null;
@@ -292,11 +287,11 @@ class UserStateService {
 					where: { userId },
 					include: User,
 					attributes: [
-						'state',
-						'currentStreak',
-						'maxStreak',
-						'updatedAt',
-						'userId',
+						"state",
+						"currentStreak",
+						"maxStreak",
+						"updatedAt",
+						"userId",
 					],
 					transaction: t,
 				});
@@ -341,20 +336,18 @@ class UserStateService {
 					include: User,
 					order: [
 						[
-							sequelize.literal(
-								"(state->>'totalStars')::integer"
-							),
-							'DESC',
+							sequelize.literal("(state->>'totalStars')::integer"),
+							"DESC",
 						],
-						['updatedAt', 'DESC'],
+						["updatedAt", "DESC"],
 					],
 					limit: LEADERBOARD_LIMIT,
 					attributes: [
-						'state',
-						'currentStreak',
-						'maxStreak',
-						'updatedAt',
-						'userId',
+						"state",
+						"currentStreak",
+						"maxStreak",
+						"updatedAt",
+						"userId",
 					],
 				},
 				{ transaction: t }
@@ -380,7 +373,7 @@ class UserStateService {
 				await t.commit();
 			}
 
-			logger.debug('leaderboard completed successfully', {
+			logger.debug("leaderboard completed successfully", {
 				userId,
 				userRating,
 				leaderboardSize: users.length,
@@ -394,7 +387,7 @@ class UserStateService {
 				await t.rollback();
 			}
 
-			logger.error('Failed to get leaderboard', {
+			logger.error("Failed to get leaderboard", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -412,7 +405,7 @@ class UserStateService {
 		const shouldCommit = !transaction;
 
 		try {
-			logger.debug('getUserResources on start', { userId });
+			logger.debug("getUserResources on start", { userId });
 			const userState = await UserState.findOne({
 				where: { userId },
 				transaction: t,
@@ -422,7 +415,7 @@ class UserStateService {
 				if (shouldCommit) {
 					await t.rollback();
 				}
-				logger.debug('User state not found for resources', { userId });
+				logger.debug("User state not found for resources", { userId });
 				throw ApiError.NotFound(
 					`User state not found: ${userId}`,
 					ERROR_CODES.USER_STATE.STATE_NOT_FOUND
@@ -469,14 +462,14 @@ class UserStateService {
 				await t.commit();
 			}
 
-			logger.debug('getUserResources completed successfully', { userId });
+			logger.debug("getUserResources completed successfully", { userId });
 			return resources;
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
 
-			logger.error('Failed to get user resources', {
+			logger.error("Failed to get user resources", {
 				userId,
 				error: err.message,
 				stack: err.stack,

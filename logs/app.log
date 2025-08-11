@@ -116,3 +116,31 @@
 {"level":50,"time":1752300000108,"pid":10784,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
 {"level":50,"time":1752300000154,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
 {"level":50,"time":1752300000154,"pid":21076,"hostname":"DESKTOP-SL6FQDI","msg":"Error processing expired offers: column \"userId\" does not exist"}
+{"level":20,"time":1754818491008,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics initialized successfully"}
+{"level":20,"time":1754818491011,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"PrometheusService imported successfully"}
+{"level":30,"time":1754818491236,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Password expiry checker started"}
+{"level":50,"time":1754818491325,"pid":20851,"hostname":"Antons-Mac-mini.local","error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","msg":"Failed to start server:"}
+{"level":20,"time":1754818500005,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Updated database metrics"}
+{"level":50,"time":1754818500020,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Error updating economy metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":50,"time":1754818500020,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Error updating active users metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":20,"time":1754818500020,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"All Prometheus metrics updated successfully"}
+{"level":20,"time":1754818500021,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics updated successfully"}
+{"level":20,"time":1754818800023,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Updated database metrics"}
+{"level":50,"time":1754818800033,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Error updating economy metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":50,"time":1754818800033,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Error updating active users metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":20,"time":1754818800033,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"All Prometheus metrics updated successfully"}
+{"level":20,"time":1754818800033,"pid":20851,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics updated successfully"}
+{"level":20,"time":1754826543228,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics initialized successfully"}
+{"level":20,"time":1754826543235,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"PrometheusService imported successfully"}
+{"level":30,"time":1754826543445,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Password expiry checker started"}
+{"level":50,"time":1754826543487,"pid":37544,"hostname":"Antons-Mac-mini.local","error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","msg":"Failed to start server:"}
+{"level":20,"time":1754826600067,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Updated database metrics"}
+{"level":50,"time":1754826600118,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Error updating economy metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":50,"time":1754826600118,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Error updating active users metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":20,"time":1754826600118,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"All Prometheus metrics updated successfully"}
+{"level":20,"time":1754826600119,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics updated successfully"}
+{"level":20,"time":1754826900171,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Updated database metrics"}
+{"level":50,"time":1754826900233,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Error updating economy metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":50,"time":1754826900233,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Error updating active users metrics: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"}
+{"level":20,"time":1754826900234,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"All Prometheus metrics updated successfully"}
+{"level":20,"time":1754826900234,"pid":37544,"hostname":"Antons-Mac-mini.local","msg":"Prometheus metrics updated successfully"}

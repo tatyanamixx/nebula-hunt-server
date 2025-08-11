@@ -66,9 +66,13 @@ class GameService {
 
 		try {
 			// Validate farming data structure
-			if (!Array.isArray(offerData) || offerData.length !== 2) {
+			if (
+				!Array.isArray(offerData) ||
+				offerData.length === 0 ||
+				offerData.length > 2
+			) {
 				throw ApiError.BadRequest(
-					"Farming data must be an array with exactly 2 elements",
+					"Farming data must be an array with 1 or 2 elements",
 					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
 				);
 			}
@@ -115,13 +119,10 @@ class GameService {
 				processedResources.add(offer.resource);
 			}
 
-			// Ensure both required resources are present
-			if (
-				!processedResources.has("stardust") ||
-				!processedResources.has("darkMatter")
-			) {
+			// Ensure at least one resource is present
+			if (processedResources.size === 0) {
 				throw ApiError.BadRequest(
-					"Farming data must include both stardust and darkMatter",
+					"Farming data must include at least one resource with positive amount",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -347,7 +348,7 @@ class GameService {
 
 			// Коммитим транзакцию только если она была создана в этом методе и не завершена
 			if (shouldCommit && !t.finished) {
-				await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction: t,
 				});
 				await t.commit();
@@ -510,6 +511,24 @@ class GameService {
 			// Use marketService.registerOffer to create the transaction
 			const result = await marketService.registerOffer(offerData, t);
 
+			// Update galaxy starCurrent after successful conversion
+			if (reward.resource === "stars" && reward.amount > 0) {
+				await galaxy.increment("starCurrent", {
+					by: reward.amount,
+					transaction: t,
+				});
+
+				// Refresh galaxy data to get updated starCurrent
+				await galaxy.reload({ transaction: t });
+
+				logger.debug("Updated galaxy starCurrent", {
+					galaxyId: galaxy.id,
+					galaxySeed: galaxy.seed,
+					newStarCurrent: galaxy.starCurrent,
+					starsAdded: reward.amount,
+				});
+			}
+
 			// Get updated user state
 			const updatedUserState = await userStateService.getUserState(userId, t);
 
@@ -536,6 +555,8 @@ class GameService {
 					galaxy: {
 						id: galaxy.id,
 						seed: galaxy.seed,
+						starCurrent: galaxy.starCurrent,
+						maxStars: galaxy.maxStars,
 					},
 					offer: {
 						id: result.offer.id,
