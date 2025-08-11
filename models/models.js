@@ -111,6 +111,12 @@ const UserState = sequelize.define(
 				stellarForge: 0,
 			},
 		},
+		tutorialCompleted: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+			comment: "Whether the user has completed the tutorial",
+		},
 		lastBotNotification: {
 			type: DataTypes.JSONB,
 			allowNull: false,

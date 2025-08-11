@@ -112,6 +112,7 @@ module.exports = {
 					anomalyBonus: 2,
 					synergy: 1.0,
 				}),
+				tutorialCompleted: false,
 				lastBotNotification: JSON.stringify({
 					lastBotNotificationTime: null,
 					lastBotNotificationToday: {
@@ -166,6 +167,7 @@ module.exports = {
 					anomalyChance: 0.0,
 					anomalyBonus: 2,
 				}),
+				tutorialCompleted: false,
 				lastBotNotification: JSON.stringify({
 					lastBotNotificationTime: new Date().toISOString(),
 					lastBotNotificationToday: {
@@ -220,6 +222,7 @@ module.exports = {
 					anomalyChance: 0.0,
 					anomalyBonus: 2,
 				}),
+				tutorialCompleted: false,
 				lastBotNotification: JSON.stringify({
 					lastBotNotificationTime: null,
 					lastBotNotificationToday: {

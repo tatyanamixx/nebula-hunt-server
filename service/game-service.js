@@ -55,10 +55,11 @@ class GameService {
 	 * Register farming reward for internal currency
 	 * @param {BigInt} userId - User ID
 	 * @param {Array} offerData - Array of farming rewards [{"resource": "stardust", "amount": 3890}, {"resource": "darkMatter", "amount": X}]
+	 * @param {Object} galaxyData - Galaxy data for updating lastCollectTime
 	 * @param {Object} transaction - Transaction object
 	 * @returns {Promise<Object>} Result of the operation
 	 */
-	async registerFarmingReward(userId, offerData, transaction) {
+	async registerFarmingReward(userId, offerData, galaxyData = null, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
@@ -162,6 +163,38 @@ class GameService {
 					offerId: result.offer.id,
 					marketTransactionId: result.marketTransaction.id,
 				});
+			}
+
+			// Update galaxy lastCollectTime if galaxyData.seed is provided
+			if (galaxyData && galaxyData.seed) {
+				try {
+					// Find galaxy by seed
+					const galaxy = await Galaxy.findOne({
+						where: { seed: galaxyData.seed },
+						transaction: t,
+					});
+
+					if (galaxy) {
+						// Update lastCollectTime to current time
+						await galaxy.update(
+							{ lastCollectTime: new Date() },
+							{ transaction: t }
+						);
+
+						logger.debug("Updated galaxy lastCollectTime", {
+							galaxyId: galaxy.id,
+							galaxySeed: galaxy.seed,
+							newLastCollectTime: new Date(),
+						});
+					}
+				} catch (error) {
+					logger.warn("Failed to update galaxy lastCollectTime", {
+						userId,
+						galaxySeed: galaxyData.seed,
+						error: error.message,
+					});
+					// Don't fail the entire operation for this update
+				}
 			}
 
 			// Get updated user state

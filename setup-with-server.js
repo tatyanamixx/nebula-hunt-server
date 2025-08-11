@@ -43,10 +43,10 @@ async function createSystemUser() {
 				`INSERT INTO userstates ("userId", stardust, "darkMatter", stars, "tgStars", "tonToken", 
          "lastLoginDate", "currentStreak", "maxStreak", "streakUpdatedAt", "chaosLevel", "stabilityLevel", 
          "entropyVelocity", "lockedStardust", "lockedDarkMatter", "lockedStars", "playerParameters", 
-         "lastBotNotification", "createdAt", "updatedAt")
+         "tutorialCompleted", "lastBotNotification", "createdAt", "updatedAt")
          VALUES (1, 0, 0, 0, 0, 0, NULL, 0, 0, NULL, 0.0, 0.0, 0.0, 0, 0, 0, 
          '{"stardustProduction":0,"starDiscount":0,"darkMatterChance":0,"stardustMultiplier":0,"galaxyExplorer":0,"darkMatterSynthesis":0,"bulkCreation":0,"stellarMarket":0,"cosmicHarmony":0,"overflowProtection":0,"quantumInstability":0,"voidResonance":0,"stellarForge":0}',
-         '{"lastBotNotificationTime":null,"lastBotNotificationToday":{"date":null,"count":0}}',
+         false, '{"lastBotNotificationTime":null,"lastBotNotificationToday":{"date":null,"count":0}}',
          NOW(), NOW())`
 			);
 

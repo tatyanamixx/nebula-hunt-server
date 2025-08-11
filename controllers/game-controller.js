@@ -16,9 +16,9 @@ class GameController {
 	 */
 	async registerFarmingReward(req, res, next) {
 		try {
-			const { offerData } = req.body;
+			const { offerData, galaxyData } = req.body;
 
-			logger.debug("registerFarmingReward request", { offerData });
+			logger.debug("registerFarmingReward request", { offerData, galaxyData });
 
 			// Validate required fields
 			if (!offerData) {
@@ -30,12 +30,14 @@ class GameController {
 
 			const result = await gameService.registerFarmingReward(
 				req.user.id,
-				offerData
+				offerData,
+				galaxyData
 			);
 
 			logger.info("Farming reward registered successfully", {
 				userId: req.user.id,
 				offerData,
+				galaxyData,
 			});
 
 			res.status(200).json({

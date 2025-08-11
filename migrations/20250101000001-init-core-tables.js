@@ -154,6 +154,12 @@ module.exports = {
 				},
 				allowNull: false,
 			},
+			tutorialCompleted: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+				allowNull: false,
+				comment: "Whether the user has completed the tutorial",
+			},
 			lastBotNotification: {
 				type: Sequelize.JSONB,
 				defaultValue: {
