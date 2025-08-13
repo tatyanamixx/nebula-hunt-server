@@ -10,7 +10,7 @@
 			"ru": "Создайте 100 звезд в вашей галактике"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 500
 		},
 		"condition": {
@@ -34,7 +34,7 @@
 			"ru": "Создайте 1,000 звезд в вашей галактике"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
@@ -58,7 +58,7 @@
 			"ru": "Создайте 10,000 звезд в вашей галактике"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 10000
 		},
 		"condition": {
@@ -82,7 +82,7 @@
 			"ru": "Создайте 50,000 звезд в вашей галактике"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
@@ -106,7 +106,7 @@
 			"ru": "Создайте 100,000 звезд в вашей галактике"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
@@ -130,7 +130,7 @@
 			"ru": "Соберите 5,000 звездной пыли"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 1000
 		},
 		"condition": {
@@ -154,7 +154,7 @@
 			"ru": "Соберите 25,000 звездной пыли"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 5000
 		},
 		"condition": {
@@ -178,7 +178,7 @@
 			"ru": "Соберите 100,000 звездной пыли"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 25
 		},
 		"condition": {
@@ -202,7 +202,7 @@
 			"ru": "Соберите 10 темной материи"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
@@ -226,7 +226,7 @@
 			"ru": "Соберите 50 темной материи"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
@@ -250,7 +250,7 @@
 			"ru": "Соберите 200 темной материи"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
@@ -274,7 +274,7 @@
 			"ru": "Владейте 3 галактиками"
 		},
 		"reward": {
-			"type": "darkMatter",
+				"resource": "darkMatter",
 			"amount": 15
 		},
 		"condition": {
@@ -298,7 +298,7 @@
 			"ru": "Владейте 5 галактиками"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 30
 		},
 		"condition": {
@@ -322,7 +322,7 @@
 			"ru": "Владейте 10 галактиками"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
@@ -346,7 +346,7 @@
 			"ru": "Входите ежедневно для получения наград"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 1000
 		},
 		"condition": {
@@ -368,7 +368,7 @@
 			"ru": "Входите 7 дней подряд"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 10
 		},
 		"condition": {
@@ -390,7 +390,7 @@
 			"ru": "Улучшите вашу галактику впервые"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
@@ -412,7 +412,7 @@
 			"ru": "Сканируйте вашу галактику 10 раз"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
@@ -434,7 +434,7 @@
 			"ru": "Поделитесь вашей галактикой с другом"
 		},
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
@@ -456,7 +456,7 @@
 			"ru": "Входите ежедневно для получения наград"
 		},
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 2500, 
 			"multiplier": 1.25
 		},

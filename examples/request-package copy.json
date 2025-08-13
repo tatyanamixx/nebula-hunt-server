@@ -8,10 +8,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 10000,
-			"price": 99,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 10000
+			},
+			"cost": {	
+				"price": 99,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 1,
 		"icon": "💫"
@@ -25,10 +29,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 25000,
-			"price": 199,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 25000
+			},
+			"cost": {	
+				"price": 199,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 2,
 		"icon": "✨"
@@ -42,10 +50,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 50000,
-			"price": 495,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 50000
+			},
+			"cost": {	
+				"price": 495,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 3,
 		"icon": "⚡"
@@ -59,10 +71,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 100000,
-			"price": 990,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 100000
+			},
+			"cost": {	
+				"price": 990,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 4,
 		"icon": "🌟"
@@ -76,10 +92,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 250000,
-			"price": 2475,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 250000
+			},
+			"cost": {	
+				"price": 2475,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 5,
 		"icon": "🔮"
@@ -93,10 +113,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 500000,
-			"price": 4950,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 500000
+			},
+			"cost": {	
+				"price": 4950,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 6,
 		"icon": "🔮"
@@ -110,10 +134,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 1000000,
-			"price": 9900,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 1000000
+			},
+			"cost": {	
+				"price": 9900,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 7,
 		"icon": "🌌"
@@ -127,10 +155,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 2500000,
-			"price": 24750,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 2500000
+			},
+			"cost": {	
+				"price": 24750,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 8,
 		"icon": "🌠"
@@ -144,10 +176,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": 5000000,
-			"price": 49500,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": 5000000
+			},
+			"cost": {	
+				"price": 49500,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 9,
 		"icon": "⭐"
@@ -161,10 +197,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 100,
-			"price": 199,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 100
+			},
+			"cost": {	
+				"price": 199,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 10,
 		"icon": "🌑"
@@ -178,10 +218,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 250,
-			"price": 499,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 250
+			},
+			"cost": {	
+				"price": 499,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 11,
 		"icon": "🌚"
@@ -195,10 +239,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 500,
-			"price": 990,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 500
+			},
+			"cost": {	
+				"price": 990,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 12,
 		"icon": "⚫"
@@ -212,10 +260,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 1000,
-			"price": 1990,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 1000
+			},
+			"cost": {	
+				"price": 1990,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 13,
 		"icon": "🕳️"
@@ -229,10 +281,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 2500,
-			"price": 4950,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 2500
+			},
+			"cost": {	
+				"price": 4950,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 14,
 		"icon": "🌌"
@@ -246,10 +302,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 5000,
-			"price": 9900,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 5000
+			},
+			"cost": {	
+				"price": 9900,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 15,
 		"icon": "🌀"
@@ -263,10 +323,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 10000,
-			"price": 19900,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 10000
+			},
+			"cost": {	
+				"price": 19900,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 16,
 		"icon": "🔭"
@@ -280,10 +344,14 @@
 		"action": {
 			"action": "purchaseResorcesFixedSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": 25000,
-			"price": 49750,
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 25000
+			},
+			"cost": {	
+				"price": 49750,
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 17,
 		"icon": "🚀"
@@ -297,10 +365,14 @@
 		"action": {
 			"action": "purchaseResorcesVariableSize",
 			"target": "resource",
-			"resource": "stardust",
-			"amount": "{{amount}}",
-			"price": "{{price}}",
-			"currency": "tgStars"
+			"reward": {
+				"resource": "stardust",
+				"amount": "{{amount}}"
+			},
+			"cost": {	
+				"price": "{{price}}",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 18,
 		"icon": "🌑"
@@ -314,10 +386,14 @@
 		"action": {
 			"action": "purchaseResorcesVariableSize",
 			"target": "resource",
-			"resource": "darkMatter",
-			"amount": "{{amount}}",
-			"price": "{{price}}",
-			"currency": "tgStars"
+			"reward": {
+				"resource": "darkMatter",
+				"amount": "{{amount}}"
+			},
+			"cost": {	
+				"price": "{{price}}",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 19,
 		"icon": "🌑"
@@ -331,11 +407,16 @@
 		"action": {
 			"action": "updateField",
 			"target": "gameObject",
-			"gameObject": "galaxy",
-			"field": "{{field}}",
-			"value": "{{value}}",
-			"price": "99",
-			"currency": "tgStars"
+			"gameObject": {
+				"type": "galaxy",
+				"seed": "{{seed}}",
+				"field": "{{field}}",
+				"value": "{{value}}"
+			},
+			"cost": {	
+				"price": "99",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 20,
 		"icon": "🌑"
@@ -349,11 +430,16 @@
 		"action": {
 			"action": "updateField",
 			"target": "gameObject",
-			"gameObject": "galaxy",
-			"field": "name",
-			"value": "{{value}}",
-			"price": "99",
-			"currency": "tgStars"
+			"gameObject": {
+				"type": "galaxy",
+				"seed": "{{seed}}",
+				"field": "name",
+				"value": "{{value}}"
+			},
+			"cost": {	
+				"price": "99",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 21,
 		"icon": "🌑"
