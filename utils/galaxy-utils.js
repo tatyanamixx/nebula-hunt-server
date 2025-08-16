@@ -97,10 +97,10 @@ function generateMaxStars(seed = null) {
 
 /**
  * Генерирует стартовую дату рождения галактики
- * @returns {string} Дата в формате YYYY-MM-DD
+ * @returns {Date} Объект Date для корректной работы с Sequelize
  */
 function generateBirthDate() {
-	return new Date().toISOString().split("T")[0];
+	return new Date();
 }
 
 /**
@@ -115,7 +115,25 @@ function parseClientGalaxyData(clientGalaxyData) {
 
 	const seed = clientGalaxyData.seed;
 
-	return {
+	// Логируем входные данные для отладки
+	console.log("🔍 parseClientGalaxyData - Input:", {
+		birthDate: clientGalaxyData.birthDate,
+		lastCollectTime: clientGalaxyData.lastCollectTime,
+		birthDateType: typeof clientGalaxyData.birthDate,
+		lastCollectTimeType: typeof clientGalaxyData.lastCollectTime,
+	});
+
+	const generatedBirthDate = generateBirthDate();
+	const generatedLastCollectTime = new Date();
+
+	console.log("🔍 parseClientGalaxyData - Generated:", {
+		generatedBirthDate,
+		generatedBirthDateType: typeof generatedBirthDate,
+		generatedLastCollectTime,
+		generatedLastCollectTimeType: typeof generatedLastCollectTime,
+	});
+
+	const result = {
 		// === ОСНОВНЫЕ ПОЛЯ ===
 		name: clientGalaxyData.name || getGalaxyNameFromSeed(seed),
 		seed: seed,
@@ -126,8 +144,20 @@ function parseClientGalaxyData(clientGalaxyData) {
 		maxStars: clientGalaxyData.maxStars || generateMaxStars(seed),
 
 		// === ВРЕМЕННЫЕ МЕТКИ ===
-		birthDate: clientGalaxyData.birthDate || generateBirthDate(),
-		lastCollectTime: clientGalaxyData.lastCollectTime || new Date(),
+		birthDate: (() => {
+			if (clientGalaxyData.birthDate) {
+				const date = new Date(clientGalaxyData.birthDate);
+				return isNaN(date.getTime()) ? generatedBirthDate : date;
+			}
+			return generatedBirthDate;
+		})(),
+		lastCollectTime: (() => {
+			if (clientGalaxyData.lastCollectTime) {
+				const date = new Date(clientGalaxyData.lastCollectTime);
+				return isNaN(date.getTime()) ? generatedLastCollectTime : date;
+			}
+			return generatedLastCollectTime;
+		})(),
 
 		// === ВИЗУАЛЬНЫЕ СВОЙСТВА ===
 		galaxyType: clientGalaxyData.type || clientGalaxyData.galaxyType || null,
@@ -146,6 +176,15 @@ function parseClientGalaxyData(clientGalaxyData) {
 		// === ДОПОЛНИТЕЛЬНЫЕ СВОЙСТВА ===
 		galaxyProperties: clientGalaxyData.galaxyProperties || {},
 	};
+
+	console.log("🔍 parseClientGalaxyData - Result:", {
+		birthDate: result.birthDate,
+		birthDateType: typeof result.birthDate,
+		lastCollectTime: result.lastCollectTime,
+		lastCollectTimeType: typeof result.lastCollectTime,
+	});
+
+	return result;
 }
 
 module.exports = {

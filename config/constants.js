@@ -6,13 +6,16 @@
 
 // ID системного пользователя (большое число, чтобы не конфликтовать с обычными пользователями)
 const SYSTEM_USER_ID = 1000000000000000;
-const SYSTEM_USER_USERNAME = 'SYSTEM';
+const SYSTEM_USER_USERNAME = "SYSTEM";
 
 // Количество пользователей в таблице лидеров
 const LEADERBOARD_LIMIT = 100;
 
-// Количество галактик для пользователя
+// Общий лимит галактик для пользователя (включая купленные)
 const GALAXY_LIMIT_FOR_USER = 10;
+
+// Лимит бесплатных галактик (при заполнении до максимума звезд)
+const FREE_GALAXY_LIMIT = 3;
 
 // Game Settings
 const DAILY_BONUS_STARDUST = 50;
@@ -31,4 +34,5 @@ module.exports = {
 	GALAXY_BASE_PRICE,
 	ARTIFACT_DROP_RATE,
 	GALAXY_LIMIT_FOR_USER,
+	FREE_GALAXY_LIMIT,
 };

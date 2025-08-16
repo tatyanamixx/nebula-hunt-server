@@ -8,9 +8,15 @@ const { ERROR_CODES } = require("../config/error-codes");
 const sequelize = require("../db");
 const { Op } = require("sequelize");
 const { LEADERBOARD_LIMIT, DAILY_BONUS_STARDUST } = require("../config/constants");
+const { GAME_CONSTANTS } = require("../config/game-constants");
 
 class UserStateService {
 	async updateStreak(userState) {
+		if (!userState) {
+			logger.debug("updateStreak: userState is null, skipping streak update");
+			return;
+		}
+
 		const now = new Date();
 		// const today = new Date(
 		// 	now.getFullYear(),
@@ -116,17 +122,29 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
-			logger.debug("createUserState on start", { userId });
+			// ✅ Конвертируем userId в число для базы данных
+			const numericUserId = parseInt(userId, 10);
+
+			logger.debug("createUserState on start", {
+				userId,
+				numericUserId,
+				typeof: typeof userId,
+				userState: userState,
+			});
 			await this.updateStreak(userState);
-			logger.debug("createUserState", userId, userState);
-			// Create new state for new user
+			logger.debug("createUserState", numericUserId, userState);
+
+			// ✅ ЗАГРУЖАЕМ КОНСТАНТЫ ИЗ АДМИНКИ
+			const freshConstants = require("../config/game-constants");
+
+			// Create new state for new user (все ресурсы = 0, даем как подарок)
 			const stateNew = await UserState.findOrCreate({
-				where: { userId: userId },
+				where: { userId: numericUserId },
 				defaults: {
-					userId: userId,
-					stardust: userState.stardust || 0,
-					darkMatter: userState.darkMatter || 0,
-					stars: userState.stars || 0,
+					userId: numericUserId,
+					stardust: 0, // ✅ Начинаем с 0, потом дадим как подарок
+					darkMatter: 0, // ✅ Начинаем с 0, потом дадим как подарок
+					stars: 0, // ✅ Начинаем с 0, потом дадим как подарок
 					lockedStardust: userState.lockedStardust || 0,
 					lockedDarkMatter: userState.lockedDarkMatter || 0,
 					lockedStars: userState.lockedStars || 0,
@@ -135,10 +153,66 @@ class UserStateService {
 					currentStreak: userState.currentStreak || 0,
 					maxStreak: userState.maxStreak || 0,
 					streakUpdatedAt: userState.streakUpdatedAt || null,
-					stateHistory: userState.stateHistory || [],
 				},
 				transaction: t,
 			});
+
+			// ✅ ПОДАРКИ ПОСЛЕ РЕГИСТРАЦИИ: Даем бонусные ресурсы как подарок
+			if (stateNew[1]) {
+				try {
+					const marketService = require("./market-service");
+					const { SYSTEM_USER_ID } = require("../config/constants");
+
+					// ✅ ПОДАРОК 1: Stardust
+					const stardustOfferData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: numericUserId,
+						itemType: "resource",
+						itemId: 0,
+						amount: freshConstants.ECONOMY.INITIAL_STARDUST,
+						resource: "stardust",
+						price: 0,
+						currency: "tonToken",
+						offerType: "SYSTEM",
+						txType: "REGISTRATION_BONUS",
+						status: "COMPLETED",
+					};
+
+					// ✅ ПОДАРОК 2: Dark Matter
+					const darkMatterOfferData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: numericUserId,
+						itemType: "resource",
+						itemId: 0,
+						amount: freshConstants.ECONOMY.INITIAL_DARK_MATTER,
+						resource: "darkMatter",
+						price: 0,
+						currency: "tonToken",
+						offerType: "SYSTEM",
+						txType: "REGISTRATION_BONUS",
+						status: "COMPLETED",
+					};
+
+					// Создаем подарки через marketOffer (stars даются при создании галактики)
+					await Promise.all([
+						marketService.registerOffer(stardustOfferData, t),
+						marketService.registerOffer(darkMatterOfferData, t),
+					]);
+
+					logger.info("🎁 Подарки регистрации созданы", {
+						userId: numericUserId,
+						stardust: freshConstants.ECONOMY.INITIAL_STARDUST,
+						darkMatter: freshConstants.ECONOMY.INITIAL_DARK_MATTER,
+					});
+				} catch (giftErr) {
+					logger.warn("⚠️ Не удалось создать подарки", {
+						userId: numericUserId,
+						error: giftErr.message,
+					});
+					// Не прерываем создание пользователя из-за ошибки подарков
+				}
+			}
+
 			if (shouldCommit) {
 				await t.commit();
 			}
@@ -333,6 +407,7 @@ class UserStateService {
 			// Get top users based on LEADERBOARD_LIMIT
 			const topUsers = await UserState.findAll(
 				{
+					where: {}, // ✅ Добавляем пустой where чтобы избежать ошибки
 					include: User,
 					order: [
 						[

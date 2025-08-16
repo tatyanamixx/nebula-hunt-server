@@ -423,20 +423,20 @@ class UserService {
 			if (isNewUser) {
 				logger.debug("Initializing new user", { userId });
 
-				// Инициализируем состояние пользователя
-				const [userState, createdUserState] = await UserState.findOrCreate({
-					where: { userId: user.id },
-					defaults: {
-						userId: user.id,
-					},
-					transaction: transaction,
+				// ✅ УБИРАЕМ: создание UserState здесь - пусть user-state-service сам создает с константами
+				let userStateNew;
+				logger.debug("Initializing UserState with constants", {
+					userId: user.id,
 				});
 
-				// Removed: User initialization (upgrades, events, tasks) - handled by separate endpoints
+				userStateNew = await userStateService.createUserState(
+					user.id,
+					{}, // ✅ Передаем пустой объект - user-state-service использует дефолты
+					transaction
+				);
 
-				// Создаём галактику для пользователя после коммита основной транзакции
+				// Объявляем переменную для галактики
 				let userGalaxy = null;
-				let userStateNew = userState.toJSON();
 
 				// Генерируем JWT токены
 				const tokens = tokenService.generateTokens({ ...userDto });
@@ -455,20 +455,14 @@ class UserService {
 					userId: user.id,
 				});
 
-				// Создаём галактику для пользователя после коммита основной транзакции
 				if (galaxyData && isNewUser) {
 					logger.debug(
 						"Creating galaxy as gift after main transaction commit",
-						{
-							galaxyData,
-						}
+						{ galaxyData }
 					);
 					try {
 						const galaxyTransaction = await sequelize.transaction();
-						const offer = {
-							price: 0,
-							currency: "tonToken",
-						};
+						const offer = { price: 0, currency: "tonToken" };
 						try {
 							const result = await gameService.createGalaxyWithOffer(
 								galaxyData,
@@ -476,27 +470,21 @@ class UserService {
 								offer,
 								galaxyTransaction
 							);
-
 							logger.debug("Galaxy creation result", result);
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
-
 							await galaxyTransaction.commit();
 						} catch (galaxyError) {
 							await galaxyTransaction.rollback();
 							logger.error("Failed to create galaxy", galaxyError);
-							// Don't fail the entire registration if galaxy creation fails
 						}
 					} catch (galaxyError) {
 						logger.error("Failed to create galaxy", galaxyError);
-						// Don't fail the entire registration if galaxy creation fails
 					}
 				} else if (isNewUser && !galaxyData) {
 					logger.debug(
 						"New user registered without galaxy data - galaxy will not be created",
-						{
-							userId: user.id,
-						}
+						{ userId: user.id }
 					);
 				}
 

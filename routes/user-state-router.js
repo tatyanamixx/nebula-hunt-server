@@ -96,4 +96,35 @@ router.put(
 	userStateController.updateUserState
 );
 
+/**
+ * @swagger
+ * /state/update-initial-resources:
+ *   post:
+ *     summary: Update initial resources for all users according to current game constants
+ *     tags: [UserState]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Admin endpoint to update all users' initial resources when game constants change
+ *     responses:
+ *       200:
+ *         description: Initial resources updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 updatedCount:
+ *                   type: number
+ *                   description: Number of users updated
+ *       403:
+ *         description: Access denied - admin only
+ */
+router.post(
+	"/update-initial-resources",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(10, 3600), // 10 requests per hour
+	authMiddleware,
+	userStateController.updateInitialResourcesForAllUsers
+);
+
 module.exports = router;

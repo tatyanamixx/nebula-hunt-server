@@ -1,6 +1,10 @@
 "use strict";
 
 /** @type {import('sequelize-cli').Migration} */
+/**
+ * Инициализация таблиц галактик и артефактов
+ * Включает поле hasGeneratedGalaxy для отслеживания галактик, которые уже создали новые галактики
+ */
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		// 1. Создаем таблицу galaxies
@@ -105,6 +109,13 @@ module.exports = {
 				type: Sequelize.BOOLEAN,
 				defaultValue: true,
 				allowNull: false,
+			},
+			hasGeneratedGalaxy: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+				allowNull: false,
+				comment:
+					"Флаг, указывающий, что эта галактика уже создала новую галактику",
 			},
 			createdAt: {
 				type: Sequelize.DATE,
@@ -277,6 +288,10 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS galaxy_has_generated_galaxy_idx ON galaxies ("hasGeneratedGalaxy");
+		`);
+
+		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS artifacttemplate_slug_idx ON artifacttemplates ("slug");
 		`);
 
@@ -369,6 +384,10 @@ module.exports = {
 		await queryInterface.removeIndex("galaxies", "galaxy_seed_idx");
 		await queryInterface.removeIndex("galaxies", "galaxy_type_idx");
 		await queryInterface.removeIndex("galaxies", "galaxy_last_collect_idx");
+		await queryInterface.removeIndex(
+			"galaxies",
+			"galaxy_has_generated_galaxy_idx"
+		);
 
 		// Удаляем таблицы
 		await queryInterface.dropTable("artifacts");

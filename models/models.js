@@ -39,14 +39,14 @@ const UserState = sequelize.define(
 		stardust: {
 			type: DataTypes.BIGINT,
 			allowNull: false,
-			defaultValue: 0,
+			defaultValue: 0, // Будет установлено динамически из game-constants
 		},
 		darkMatter: {
 			type: DataTypes.BIGINT,
 			allowNull: false,
-			defaultValue: 0,
+			defaultValue: 0, // Будет установлено динамически из game-constants
 		},
-		stars: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+		stars: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 }, // Будет установлено динамически из game-constants
 		tgStars: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
 		tonToken: {
 			type: DataTypes.DECIMAL(30, 8),
@@ -455,6 +455,12 @@ const Galaxy = sequelize.define(
 			comment: "Дополнительные свойства в JSON формате",
 		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
+		hasGeneratedGalaxy: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			comment:
+				"Флаг, указывающий, что эта галактика уже создала новую галактику",
+		},
 	},
 	{
 		indexes: [
@@ -820,7 +826,7 @@ const MarketOffer = sequelize.define(
 			allowNull: false,
 		},
 		itemId: { type: DataTypes.BIGINT, allowNull: false }, // id предмета (artifactId, galaxyId и т.д.)
-		amount: { type: DataTypes.DECIMAL, allowNull: false },
+		amount: { type: DataTypes.DECIMAL(30, 8), allowNull: false }, // ✅ Указываем точность как у price
 		resource: {
 			type: DataTypes.ENUM("stardust", "darkMatter", "stars"),
 			allowNull: false,

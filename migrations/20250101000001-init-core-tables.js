@@ -61,17 +61,17 @@ module.exports = {
 			},
 			stardust: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			darkMatter: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			stars: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			tgStars: {

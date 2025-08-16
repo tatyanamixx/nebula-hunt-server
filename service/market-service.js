@@ -836,6 +836,7 @@ class MarketService {
 				);
 				break;
 		}
+
 		await userState.save({ transaction });
 	}
 

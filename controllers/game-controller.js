@@ -199,12 +199,20 @@ class GameController {
 	 */
 	async registerGeneratedGalaxy(req, res, next) {
 		try {
-			const userId = req.initData.id;
-			const { galaxyData } = req.body;
+			logger.debug("registerGeneratedGalaxy START", {
+				hasUser: !!req.user,
+				hasUserToken: !!req.userToken,
+				hasBody: !!req.body,
+				bodyKeys: req.body ? Object.keys(req.body) : [],
+			});
+
+			const userId = req.user.id;
+			const { galaxyData, sourceGalaxySeed } = req.body;
 
 			logger.debug("registerGeneratedGalaxy request", {
 				userId,
 				galaxyData,
+				sourceGalaxySeed,
 			});
 
 			// Validate required fields
@@ -223,15 +231,32 @@ class GameController {
 				);
 			}
 
+			logger.debug("registerGeneratedGalaxy - calling gameService", {
+				userId,
+				galaxyDataSeed: galaxyData.seed,
+				sourceGalaxySeed,
+			});
+
 			const result = await gameService.registerGeneratedGalaxy(
 				userId,
-				galaxyData
+				galaxyData,
+				null, // transaction
+				sourceGalaxySeed
 			);
+
+			// Логируем результат для отладки
+			logger.debug("registerGeneratedGalaxy result:", {
+				result,
+				resultType: typeof result,
+				hasResult: !!result,
+				hasGalaxy: !!result?.galaxy,
+				galaxyId: result?.galaxy?.id,
+			});
 
 			logger.info("Generated galaxy registered successfully", {
 				userId,
 				galaxySeed: galaxyData.seed,
-				galaxyId: result.data?.galaxy?.id,
+				galaxyId: result?.galaxy?.id,
 			});
 
 			res.status(200).json({
