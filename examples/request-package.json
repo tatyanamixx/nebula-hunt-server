@@ -3,7 +3,6 @@
 		"slug": "tiny_stardust",
 		"name": "Tiny package",
 		"description": "10000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -24,7 +23,6 @@
 		"slug": "small_stardust",
 		"name": "Small package",
 		"description": "25000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -45,7 +43,6 @@
 		"slug": "medium_stardust",
 		"name": "Medium package",
 		"description": "50000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -66,7 +63,6 @@
 		"slug": "large_stardust",
 		"name": "Large package",
 		"description": "100000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -87,7 +83,6 @@
 		"slug": "huge_stardust",
 		"name": "Huge package",
 		"description": "250000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -108,7 +103,6 @@
 		"slug": "mega_stardust",
 		"name": "Mega package",
 		"description": "500000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -129,7 +123,6 @@
 		"slug": "giga_stardust",
 		"name": "Giga package",
 		"description": "1000000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -150,7 +143,6 @@
 		"slug": "ultra_stardust",
 		"name": "Ultra package",
 		"description": "2500000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -171,7 +163,6 @@
 		"slug": "cosmic_stardust",
 		"name": "Cosmic package",
 		"description": "5000000 stardust",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -192,7 +183,6 @@
 		"slug": "tiny_darkMatter",
 		"name": "Tiny package",
 		"description": "100 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -213,7 +203,6 @@
 		"slug": "small_darkMatter",
 		"name": "Small package",
 		"description": "250 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -234,7 +223,6 @@
 		"slug": "medium_darkMatter",
 		"name": "Medium package",
 		"description": "500 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -255,7 +243,6 @@
 		"slug": "large_darkMatter",
 		"name": "Large package",
 		"description": "1000 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -276,7 +263,6 @@
 		"slug": "huge_darkMatter",
 		"name": "Huge package",
 		"description": "2500 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -297,7 +283,6 @@
 		"slug": "ultra_darkMatter",
 		"name": "Ultra package",
 		"description": "5000 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -318,7 +303,6 @@
 		"slug": "mega_darkMatter",
 		"name": "Mega package",
 		"description": "10000 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -339,7 +323,6 @@
 		"slug": "giga_darkMatter",
 		"name": "Giga package",
 		"description": "25000 dark matter",
-		"isVariable": false,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
@@ -360,7 +343,6 @@
 		"slug": "variable_stardust",
 		"name": "Variable package",
 		"description": "Variable stardust",
-		"isVariable": true,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "variableAmount",
@@ -381,7 +363,6 @@
 		"slug": "variable_darkMatter",
 		"name": "Variable package",
 		"description": "Variable dark matter",
-		"isVariable": true,
 		"category": "resourcePurchase",
 		"action": {
 			"type": "variableAmount",
@@ -402,7 +383,6 @@
 		"slug": "update_galaxy_field",
 		"name": "Update galaxy field",
 		"description": "Update galaxy field",
-		"isVariable": false,
 		"category": "gameObject",
 		"action": {
 			"type": "updateField",
@@ -425,7 +405,6 @@
 		"slug": "update_galaxy_name",
 		"name": "Update galaxy name",
 		"description": "Update galaxy name",
-		"isVariable": false,
 		"category": "gameObject",
 		"action": {
 			"type": "updateField",
