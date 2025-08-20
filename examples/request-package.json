@@ -7,7 +7,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 10000
@@ -28,7 +28,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 25000
@@ -49,7 +49,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 50000
@@ -70,7 +70,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 100000
@@ -91,7 +91,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 250000
@@ -133,7 +133,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 1000000
@@ -154,7 +154,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 2500000
@@ -175,7 +175,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": 5000000
@@ -196,7 +196,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 100
@@ -217,7 +217,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 250
@@ -238,7 +238,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 500
@@ -259,7 +259,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 1000
@@ -280,7 +280,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 2500
@@ -301,7 +301,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 5000
@@ -322,7 +322,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 10000
@@ -343,7 +343,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "fixedAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": 25000
@@ -364,7 +364,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "variableAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "stardust",
 				"amount": "{{amount}}"
@@ -385,7 +385,7 @@
 		"category": "resourcePurchase",
 		"action": {
 			"type": "variableAmount",
-			"target": "resource",
+			"target": "reward",
 			"reward": {
 				"resource": "darkMatter",
 				"amount": "{{amount}}"
