@@ -1,295 +1,447 @@
 [
 	{
 		"slug": "tiny_stardust",
-		"amount": 10000,
 		"name": "Tiny package",
 		"description": "10000 stardust",
-		"resource": "stardust",
-		"price": 99,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 10000
+			},
+			"cost": {
+				"price": 99,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 1,
 		"icon": "💫"
 	},
 	{
 		"slug": "small_stardust",
-		"amount": 25000,
 		"name": "Small package",
 		"description": "25000 stardust",
-		"resource": "stardust",
-		"price": 199,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 25000
+			},
+			"cost": {
+				"price": 199,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 2,
 		"icon": "✨"
 	},
 	{
 		"slug": "medium_stardust",
-		"amount": 50000,
 		"name": "Medium package",
 		"description": "50000 stardust",
-		"resource": "stardust",
-		"price": 495,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 50000
+			},
+			"cost": {
+				"price": 495,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 3,
 		"icon": "⚡"
 	},
 	{
 		"slug": "large_stardust",
-		"amount": 100000,
 		"name": "Large package",
 		"description": "100000 stardust",
-		"resource": "stardust",
-		"price": 990,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 100000
+			},
+			"cost": {
+				"price": 990,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 4,
 		"icon": "🌟"
 	},
 	{
 		"slug": "huge_stardust",
-		"amount": 250000,
 		"name": "Huge package",
 		"description": "250000 stardust",
-		"resource": "stardust",
-		"price": 2475,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 250000
+			},
+			"cost": {
+				"price": 2475,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 5,
 		"icon": "🔮"
 	},
 	{
 		"slug": "mega_stardust",
-		"amount": 500000,
 		"name": "Mega package",
 		"description": "500000 stardust",
-		"resource": "stardust",
-		"price": 4950,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 500000
+			},
+			"cost": {
+				"price": 4950,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 6,
 		"icon": "🔮"
 	},
 	{
 		"slug": "giga_stardust",
-		"amount": 1000000,
 		"name": "Giga package",
 		"description": "1000000 stardust",
-		"resource": "stardust",
-		"price": 9900,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 1000000
+			},
+			"cost": {
+				"price": 9900,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 7,
 		"icon": "🌌"
 	},
 	{
 		"slug": "ultra_stardust",
-		"amount": 2500000,
 		"name": "Ultra package",
 		"description": "2500000 stardust",
-		"resource": "stardust",
-		"price": 24750,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 2500000
+			},
+			"cost": {
+				"price": 24750,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 8,
 		"icon": "🌠"
 	},
 	{
 		"slug": "cosmic_stardust",
-		"amount": 5000000,
 		"name": "Cosmic package",
 		"description": "5000000 stardust",
-		"resource": "stardust",
-		"price": 49500,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": 5000000
+			},
+			"cost": {
+				"price": 49500,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 9,
 		"icon": "⭐"
 	},
 	{
 		"slug": "tiny_darkMatter",
-		"amount": 100,
 		"name": "Tiny package",
 		"description": "100 dark matter",
-		"resource": "darkMatter",
-		"price": 199,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 100
+			},
+			"cost": {
+				"price": 199,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 10,
 		"icon": "🌑"
 	},
 	{
 		"slug": "small_darkMatter",
-		"amount": 250,
 		"name": "Small package",
 		"description": "250 dark matter",
-		"resource": "darkMatter",
-		"price": 499,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 250
+			},
+			"cost": {
+				"price": 499,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 11,
 		"icon": "🌚"
 	},
 	{
 		"slug": "medium_darkMatter",
-		"amount": 500,
 		"name": "Medium package",
 		"description": "500 dark matter",
-		"resource": "darkMatter",
-		"price": 990,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 500
+			},
+			"cost": {
+				"price": 990,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 12,
 		"icon": "⚫"
 	},
 	{
 		"slug": "large_darkMatter",
-		"amount": 1000,
 		"name": "Large package",
 		"description": "1000 dark matter",
-		"resource": "darkMatter",
-		"price": 1990,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 1000
+			},
+			"cost": {
+				"price": 1990,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 13,
 		"icon": "🕳️"
 	},
 	{
 		"slug": "huge_darkMatter",
-		"amount": 2500,
 		"name": "Huge package",
 		"description": "2500 dark matter",
-		"resource": "darkMatter",
-		"price": 4950,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 2500
+			},
+			"cost": {
+				"price": 4950,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 14,
 		"icon": "🌌"
 	},
 	{
 		"slug": "ultra_darkMatter",
-		"amount": 5000,
 		"name": "Ultra package",
 		"description": "5000 dark matter",
-		"resource": "darkMatter",
-		"price": 9900,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 5000
+			},
+			"cost": {
+				"price": 9900,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 15,
 		"icon": "🌀"
 	},
 	{
 		"slug": "mega_darkMatter",
-		"amount": 10000,
 		"name": "Mega package",
 		"description": "10000 dark matter",
-		"resource": "darkMatter",
-		"price": 19900,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 10000
+			},
+			"cost": {
+				"price": 19900,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 16,
 		"icon": "🔭"
 	},
 	{
 		"slug": "giga_darkMatter",
-		"amount": 25000,
 		"name": "Giga package",
 		"description": "25000 dark matter",
-		"resource": "darkMatter",
-		"price": 49750,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "purchaseResorces",
-		"action": { "action": "purchaseResorcesFixedSize" },
+		"category": "resourcePurchase",
+		"action": {
+			"type": "fixedAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": 25000
+			},
+			"cost": {
+				"price": 49750,
+				"currency": "tgStars"
+			}
+		},
 		"sortOrder": 17,
 		"icon": "🚀"
 	},
 	{
 		"slug": "variable_stardust",
 		"name": "Variable package",
-		"amount": 1000,
 		"description": "Variable stardust",
-		"resource": "stardust",
-		"price": 99,
-		"currency": "tgStars",
 		"isVariable": true,
-		"category": "purchaseResorces",
+		"category": "resourcePurchase",
 		"action": {
-			"action": "purchaseResorcesVariableSize",
-			"amount": "{{amount}}",
-			"price": "{{price}}"
+			"type": "variableAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "stardust",
+				"amount": "{{amount}}"
+			},
+			"cost": {
+				"price": "{{price}}",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 18,
 		"icon": "🌑"
 	},
 	{
 		"slug": "variable_darkMatter",
-		"amount": 1000,
 		"name": "Variable package",
 		"description": "Variable dark matter",
-		"resource": "darkMatter",
-		"price": 99,
-		"currency": "tgStars",
 		"isVariable": true,
-		"category": "purchaseResorces",
+		"category": "resourcePurchase",
 		"action": {
-			"action": "purchaseResorcesVariableSize",
-			"amount": "{{amount}}",
-			"price": "{{price}}"
+			"type": "variableAmount",
+			"target": "resource",
+			"reward": {
+				"resource": "darkMatter",
+				"amount": "{{amount}}"
+			},
+			"cost": {
+				"price": "{{price}}",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 19,
 		"icon": "🌑"
 	},
 	{
 		"slug": "update_galaxy_field",
-		"amount": 1000,
 		"name": "Update galaxy field",
 		"description": "Update galaxy field",
-		"resource": "stardust",
-		"price": 99,
-		"currency": "tgStars",
 		"isVariable": false,
-		"category": "updateField",
+		"category": "updateFieldGameObject",
 		"action": {
-			"action": "updateField",
-			"target": "galaxy",
-			"field": "{{field}}",
-			"value": "{{value}}"
+			"type": "updateField",
+			"target": "entity",
+			"entity": {
+				"table": "galaxy",
+				"seed": "{{seed}}",
+				"field": "{{field}}",
+				"value": "{{value}}"
+			},
+			"cost": {
+				"price": "99",
+				"currency": "tgStars"
+			}
 		},
 		"sortOrder": 20,
+		"icon": "🌑"
+	},
+	{
+		"slug": "update_galaxy_name",
+		"name": "Update galaxy name",
+		"description": "Update galaxy name",
+		"isVariable": false,
+		"category": "updateFieldGameObject",
+		"action": {
+			"type": "updateField",
+			"target": "entity",
+			"entity": {
+				"table": "galaxy",
+				"seed": "{{seed}}",
+				"field": "name",
+				"value": "{{value}}"
+			},
+			"cost": {
+				"price": "99",
+				"currency": "tgStars"
+			}
+		},
+		"sortOrder": 21,
 		"icon": "🌑"
 	}
 ]
