@@ -403,7 +403,7 @@
 		"name": "Update galaxy field",
 		"description": "Update galaxy field",
 		"isVariable": false,
-		"category": "updateFieldGameObject",
+		"category": "gameObject",
 		"action": {
 			"type": "updateField",
 			"target": "entity",
@@ -426,7 +426,7 @@
 		"name": "Update galaxy name",
 		"description": "Update galaxy name",
 		"isVariable": false,
-		"category": "updateFieldGameObject",
+		"category": "gameObject",
 		"action": {
 			"type": "updateField",
 			"target": "entity",
