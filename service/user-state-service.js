@@ -263,6 +263,29 @@ class UserStateService {
 					userState.entropyVelocity !== undefined
 						? userState.entropyVelocity
 						: stateData.entropyVelocity;
+
+				// Update currency fields
+				// tgStars НЕ обновляем в реальном Telegram - баланс управляется Telegram'ом
+				// Обновляем только в mock режиме для разработки
+				if (
+					userState.tgStars !== undefined &&
+					process.env.NODE_ENV === "development"
+				) {
+					stateData.tgStars = BigInt(userState.tgStars);
+					logger.debug("Mock mode: Updated tgStars in DB", {
+						userId,
+						newBalance: userState.tgStars,
+					});
+				}
+				if (userState.stardust !== undefined) {
+					stateData.stardust = BigInt(userState.stardust);
+				}
+				if (userState.darkMatter !== undefined) {
+					stateData.darkMatter = BigInt(userState.darkMatter);
+				}
+				if (userState.stars !== undefined) {
+					stateData.stars = BigInt(userState.stars);
+				}
 				// Ensure stateHistory is initialized
 				if (!stateData.stateHistory) {
 					stateData.stateHistory = [];

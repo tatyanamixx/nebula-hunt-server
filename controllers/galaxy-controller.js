@@ -53,8 +53,20 @@ class GalaxyController {
 	async getUserGalaxies(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const galaxies = await galaxyService.getUserGalaxies(userId);
-			return res.json(galaxies);
+			const galaxiesResponse = await galaxyService.getUserGalaxies(userId);
+
+			logger.info("User galaxies retrieved", {
+				userId,
+				galaxyCount: galaxiesResponse.galaxies.length,
+			});
+
+			return res.json({
+				success: true,
+				data: {
+					galaxies: galaxiesResponse.galaxies,
+					galaxiesThatGaveReward: galaxiesResponse.galaxiesThatGaveReward,
+				},
+			});
 		} catch (e) {
 			next(e);
 		}

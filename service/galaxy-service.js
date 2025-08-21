@@ -28,15 +28,42 @@ class GalaxyService {
 				if (shouldCommit) {
 					await t.commit();
 				}
-				return [];
+				return {
+					galaxies: [],
+					galaxiesThatGaveReward: [],
+				};
 			}
 
-			const galaxies = galaxiesRaw.map((item) => item.toJSON());
+			const galaxies = galaxiesRaw.map((item) => {
+				const galaxy = item.toJSON();
+				// Преобразуем данные для совместимости с клиентом
+				return {
+					seed: galaxy.seed,
+					name: galaxy.name,
+					stars: galaxy.starCurrent || 0,
+					maxStars: galaxy.maxStars || 100000,
+					birthDate: galaxy.birthDate,
+					lastCollectTime: galaxy.lastCollectTime,
+					type: galaxy.type,
+					colorPalette: galaxy.colorPalette,
+					background: galaxy.background,
+					particleCount: galaxy.particleCount || 100,
+					galaxyProperties: galaxy.galaxyProperties || {},
+				};
+			});
+
+			// Получаем информацию о галактиках, которые уже дали награду
+			const galaxiesThatGaveReward = galaxiesRaw
+				.filter((galaxy) => galaxy.hasGeneratedGalaxy === true)
+				.map((galaxy) => galaxy.seed);
 
 			if (shouldCommit) {
 				await t.commit();
 			}
-			return galaxies;
+			return {
+				galaxies,
+				galaxiesThatGaveReward,
+			};
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();

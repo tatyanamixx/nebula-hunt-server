@@ -75,4 +75,15 @@ router.post(
 	gameController.registerCapturedGalaxy
 );
 
+/**
+ * @route POST /api/game/complete-payment
+ * @desc Complete payment from Telegram webhook
+ * @access Public (called by Telegram webhook)
+ */
+router.post(
+	"/complete-payment",
+	rateLimitMiddleware(100, 60), // 100 requests per hour for webhooks
+	gameController.completePayment
+);
+
 module.exports = router;

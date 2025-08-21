@@ -509,11 +509,15 @@ class UserService {
 				logger.debug("User exists, performing login", { userId });
 
 				// Получаем состояние пользователя, галактики и артефакты
-				const [userState, userGalaxies, userArtifacts] = await Promise.all([
-					userStateService.getUserState(userDto.id, transaction),
-					galaxyService.getUserGalaxies(userDto.id, transaction),
-					artifactService.getUserArtifacts(userDto.id, transaction),
-				]);
+				const [userState, userGalaxiesResponse, userArtifacts] =
+					await Promise.all([
+						userStateService.getUserState(userDto.id, transaction),
+						galaxyService.getUserGalaxies(userDto.id, transaction),
+						artifactService.getUserArtifacts(userDto.id, transaction),
+					]);
+
+				// Извлекаем галактики из нового формата ответа
+				const userGalaxies = userGalaxiesResponse.galaxies || [];
 
 				// Removed: User initialization - handled by separate endpoints
 

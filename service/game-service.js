@@ -1095,6 +1095,217 @@ class GameService {
 			throw error;
 		}
 	}
+
+	/**
+	 * Complete galaxy capture payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completeGalaxyCapturePayment(userId, payload, payment) {
+		try {
+			logger.info("Completing galaxy capture payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// Создаем данные галактики из payload
+			const galaxyData = {
+				seed: payload.galaxySeed,
+				name: payload.galaxyName || `Galaxy-${payload.galaxySeed}`,
+				starMin: 100,
+				starCurrent: 1000, // Базовое количество звезд
+				maxStars: 80000 + Math.floor(Math.random() * 20000), // Случайный максимум
+				birthDate: new Date().toISOString().split("T")[0],
+				lastCollectTime: new Date(),
+				type: "spiral", // Базовый тип
+				colorPalette: "cosmic",
+				background: "stars",
+			};
+
+			// Создаем offer для записи в БД
+			const offer = {
+				price: payload.price,
+				currency: "tgStars",
+				txType: "GALAXY_CAPTURE",
+			};
+
+			// Регистрируем захваченную галактику
+			const result = await this.registerCapturedGalaxy(
+				userId,
+				galaxyData,
+				offer
+			);
+
+			logger.info("Galaxy capture payment completed", {
+				userId,
+				galaxySeed: payload.galaxySeed,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			return result;
+		} catch (error) {
+			logger.error("Failed to complete galaxy capture payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Complete stardust purchase payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completeStardustPayment(userId, payload, payment) {
+		try {
+			logger.info("Completing stardust purchase payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// Добавляем стардаст пользователю
+			const result = await userStateService.addCurrency(
+				userId,
+				"stardust",
+				payload.amount,
+				null // transaction будет создан внутри
+			);
+
+			// Создаем запись о покупке в MarketOffer
+			await MarketOffer.create({
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: payload.price,
+				currency: "tgStars",
+				amount: payload.amount,
+				resource: "stardust",
+				offerType: "SYSTEM",
+				txType: "STARDUST_PURCHASE",
+				status: "COMPLETED",
+				completedAt: new Date(),
+			});
+
+			logger.info("Stardust purchase payment completed", {
+				userId,
+				amount: payload.amount,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			return result;
+		} catch (error) {
+			logger.error("Failed to complete stardust purchase payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Complete dark matter purchase payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completeDarkMatterPayment(userId, payload, payment) {
+		try {
+			logger.info("Completing dark matter purchase payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// Добавляем темную материю пользователю
+			const result = await userStateService.addCurrency(
+				userId,
+				"darkMatter",
+				payload.amount,
+				null // transaction будет создан внутри
+			);
+
+			// Создаем запись о покупке в MarketOffer
+			await MarketOffer.create({
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: payload.price,
+				currency: "tgStars",
+				amount: payload.amount,
+				resource: "darkMatter",
+				offerType: "SYSTEM",
+				txType: "DARK_MATTER_PURCHASE",
+				status: "COMPLETED",
+				completedAt: new Date(),
+			});
+
+			logger.info("Dark matter purchase payment completed", {
+				userId,
+				amount: payload.amount,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			return result;
+		} catch (error) {
+			logger.error("Failed to complete dark matter purchase payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Complete galaxy upgrade payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completeGalaxyUpgradePayment(userId, payload, payment) {
+		try {
+			logger.info("Completing galaxy upgrade payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// TODO: Реализовать логику улучшения галактики
+			// Пока просто логируем успешный платеж
+
+			logger.info("Galaxy upgrade payment completed", {
+				userId,
+				upgradeType: payload.upgradeType,
+				galaxyName: payload.galaxyName,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			return {
+				success: true,
+				message: "Galaxy upgrade payment completed",
+				data: {
+					upgradeType: payload.upgradeType,
+					galaxyName: payload.galaxyName,
+				},
+			};
+		} catch (error) {
+			logger.error("Failed to complete galaxy upgrade payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
 }
 
 module.exports = new GameService();

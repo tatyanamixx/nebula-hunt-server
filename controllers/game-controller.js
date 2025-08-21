@@ -282,7 +282,7 @@ class GameController {
 	 */
 	async registerCapturedGalaxy(req, res, next) {
 		try {
-			const userId = req.initData.id;
+			const userId = req.initdata.id;
 			const { galaxyData, offer } = req.body;
 
 			logger.debug("registerCapturedGalaxy request", {
@@ -322,10 +322,10 @@ class GameController {
 				);
 			}
 
-			// Validate price is positive
-			if (offer.price <= 0) {
+			// Validate price is non-negative (0 is allowed for mock payments)
+			if (offer.price < 0) {
 				throw ApiError.BadRequest(
-					"Price must be positive",
+					"Price must be non-negative",
 					ERROR_CODES.VALIDATION.INVALID_AMOUNT
 				);
 			}
@@ -351,10 +351,118 @@ class GameController {
 			});
 		} catch (error) {
 			logger.error("Failed to register captured galaxy", {
-				userId: req.initData?.id,
+				userId: req.user?.id,
 				error: error.message,
 				galaxyData: req.body?.galaxyData,
 				offer: req.body?.offer,
+			});
+			next(error);
+		}
+	}
+
+	/**
+	 * Complete payment from Telegram webhook
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async completePayment(req, res, next) {
+		try {
+			const { payment, payload, user } = req.body;
+
+			logger.info("🔐 Payment completion request received from webhook", {
+				paymentId: payment?.telegram_payment_charge_id,
+				amount: payment?.total_amount,
+				currency: payment?.currency,
+				payload,
+				userId: user?.id,
+				userAgent: req.get("User-Agent"),
+				ip: req.ip,
+			});
+
+			// Validate required fields
+			if (!payment || !payload) {
+				throw ApiError.BadRequest(
+					"Payment and payload are required",
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Validate payment data
+			if (!payment.telegram_payment_charge_id || !payment.total_amount) {
+				throw ApiError.BadRequest(
+					"Invalid payment data",
+					ERROR_CODES.VALIDATION.INVALID_PAYMENT_DATA
+				);
+			}
+
+			// Validate payload
+			if (!payload.type || !payload.price) {
+				throw ApiError.BadRequest(
+					"Invalid payload data",
+					ERROR_CODES.VALIDATION.INVALID_PAYLOAD_DATA
+				);
+			}
+
+			// Process payment based on type
+			let result;
+			switch (payload.type) {
+				case "galaxyCapture":
+					// Handle galaxy capture payment
+					result = await gameService.completeGalaxyCapturePayment(
+						user?.id,
+						payload,
+						payment
+					);
+					break;
+				case "stardust":
+					// Handle stardust purchase payment
+					result = await gameService.completeStardustPayment(
+						user?.id,
+						payload,
+						payment
+					);
+					break;
+				case "darkMatter":
+					// Handle dark matter purchase payment
+					result = await gameService.completeDarkMatterPayment(
+						user?.id,
+						payload,
+						payment
+					);
+					break;
+				case "galaxyUpgrade":
+					// Handle galaxy upgrade payment
+					result = await gameService.completeGalaxyUpgradePayment(
+						user?.id,
+						payload,
+						payment
+					);
+					break;
+				default:
+					throw ApiError.BadRequest(
+						`Unsupported payment type: ${payload.type}`,
+						ERROR_CODES.VALIDATION.UNSUPPORTED_PAYMENT_TYPE
+					);
+			}
+
+			logger.info("Payment completed successfully", {
+				paymentId: payment.telegram_payment_charge_id,
+				type: payload.type,
+				userId: user?.id,
+				result,
+			});
+
+			res.status(200).json({
+				success: true,
+				message: "Payment completed successfully",
+				data: result,
+			});
+		} catch (error) {
+			logger.error("Failed to complete payment", {
+				payment: req.body?.payment,
+				payload: req.body?.payload,
+				error: error.message,
 			});
 			next(error);
 		}

@@ -759,18 +759,16 @@ class MarketService {
 				);
 				break;
 			case "tgStars":
-				if (
-					BigInt(userState.tgStars) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
-					throw new ApiError(400, "Insufficient tgStars");
-				}
 				await userState.update(
 					{
 						tgStars: BigInt(userState.tgStars) - BigInt(amount),
 					},
 					{ transaction }
 				);
+				logger.debug("tgStars payment processed by Telegram", {
+					userId,
+					amount,
+				});
 				break;
 		}
 		await userState.save({ transaction });
