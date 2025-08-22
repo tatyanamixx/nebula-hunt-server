@@ -274,7 +274,7 @@
 			"ru": "Владейте 3 галактиками"
 		},
 		"reward": {
-				"resource": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 15
 		},
 		"condition": {
@@ -336,50 +336,6 @@
 		"sortOrder": 14
 	},
 	{
-		"slug": "daily_login",
-		"title": {
-			"en": "Daily Explorer",
-			"ru": "Ежедневный исследователь"
-		},
-		"description": {
-			"en": "Log in daily to receive rewards",
-			"ru": "Входите ежедневно для получения наград"
-		},
-		"reward": {
-			"resource": "stardust",
-			"amount": 1000
-		},
-		"condition": {
-			"type": "daily_login",
-			"resetTime": "00:00"
-		},
-		"icon": "📆",
-		"active": true,
-		"sortOrder": 15
-	},
-	{
-		"slug": "weekly_login",
-		"title": {
-			"en": "Weekly Pioneer",
-			"ru": "Еженедельный пионер"
-		},
-		"description": {
-			"en": "Log in 7 days in a row",
-			"ru": "Входите 7 дней подряд"
-		},
-		"reward": {
-			"resource": "darkMatter",
-			"amount": 10
-		},
-		"condition": {
-			"type": "login_streak",
-			"days": 7
-		},
-		"icon": "📆",
-		"active": true,
-		"sortOrder": 16
-	},
-	{
 		"slug": "upgrade_galaxy",
 		"title": {
 			"en": "Galaxy Enhancement",
@@ -399,7 +355,7 @@
 		},
 		"icon": "⚙️",
 		"active": true,
-		"sortOrder": 17
+		"sortOrder": 15
 	},
 	{
 		"slug": "scan_galaxy_10",
@@ -421,7 +377,7 @@
 		},
 		"icon": "🔭",
 		"active": true,
-		"sortOrder": 18
+		"sortOrder": 16
 	},
 	{
 		"slug": "share_galaxy",
@@ -443,7 +399,7 @@
 		},
 		"icon": "🔗",
 		"active": true,
-		"sortOrder": 19
+		"sortOrder": 17
 	},
 	{
 		"slug": "daily_login_stardust",
@@ -461,13 +417,13 @@
 			"multiplier": 1.25
 		},
 		"condition": {
-			"type": "daily_login_stardust",
+			"type": "daily_login",
 			"days": [1,2,3,4,5,6,7],
 			"resetTime": "00:00"
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 20
+		"sortOrder": 18
 	},
 	{
 		"slug": "daily_login_darkmatter",
@@ -485,12 +441,12 @@
 			"multiplier": 1
 		},
 		"condition": {
-			"type": "daily_login_darkmatter",
+			"type": "daily_login",
 			"days": [3, 5, 7],
 			"resetTime": "00:00"
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 21
+		"sortOrder": 19
 	}
 ]
