@@ -16,7 +16,8 @@
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 1
+		"sortOrder": 1,
+		"labelKey": "create_stars_100"
 	},
 	{
 		"slug": "create_stars_1000",
@@ -35,7 +36,8 @@
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 2
+		"sortOrder": 2,
+		"labelKey": "create_stars_1000"
 	},
 	{
 		"slug": "create_stars_10000",
@@ -54,7 +56,8 @@
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 3
+		"sortOrder": 3,
+		"labelKey": "create_stars_10000"
 	},
 	{
 		"slug": "create_stars_50000",
@@ -73,7 +76,8 @@
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 4
+		"sortOrder": 4,
+		"labelKey": "create_stars_50000"
 	},
 	{
 		"slug": "create_stars_100000",
@@ -92,7 +96,8 @@
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 5
+		"sortOrder": 5,
+		"labelKey": "create_stars_100000"
 	},
 	{
 		"slug": "collect_stardust_5000",
@@ -111,7 +116,8 @@
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 6
+		"sortOrder": 6,
+		"labelKey": "collect_stardust_5000"
 	},
 	{
 		"slug": "collect_stardust_25000",
@@ -130,7 +136,8 @@
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 7
+		"sortOrder": 7,
+		"labelKey": "collect_stardust_25000"
 	},
 	{
 		"slug": "collect_stardust_100000",
@@ -149,7 +156,8 @@
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 8
+		"sortOrder": 8,
+		"labelKey": "collect_stardust_100000"
 	},
 	{
 		"slug": "collect_dark_matter_10",
@@ -168,7 +176,8 @@
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 9
+		"sortOrder": 9,
+		"labelKey": "collect_dark_matter_10"
 	},
 	{
 		"slug": "collect_dark_matter_50",
@@ -187,7 +196,8 @@
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 10
+		"sortOrder": 10,
+		"labelKey": "collect_dark_matter_50"
 	},
 	{
 		"slug": "collect_dark_matter_200",
@@ -206,7 +216,8 @@
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 11
+		"sortOrder": 11,
+		"labelKey": "collect_dark_matter_200"
 	},
 	{
 		"slug": "own_galaxies_3",
@@ -225,7 +236,8 @@
 		},
 		"icon": "🌌",
 		"active": true,
-		"sortOrder": 12
+			"sortOrder": 12,
+		"labelKey": "own_galaxies_3"
 	},
 	{
 		"slug": "own_galaxies_5",
@@ -244,7 +256,8 @@
 		},
 		"icon": "🌌",
 		"active": true,
-		"sortOrder": 13
+		"sortOrder": 13,
+		"labelKey": "own_galaxies_5"
 	},
 	{
 		"slug": "own_galaxies_10",
@@ -263,7 +276,8 @@
 		},
 		"icon": "🌌",
 		"active": true,
-		"sortOrder": 14
+		"sortOrder": 14,
+		"labelKey": "own_galaxies_10"
 	},
 	{
 		"slug": "upgrade_galaxy",
@@ -281,7 +295,8 @@
 		},
 		"icon": "⚙️",
 		"active": true,
-		"sortOrder": 15
+		"sortOrder": 15,
+		"labelKey": "upgrade_galaxy"
 	},
 	{
 		"slug": "scan_galaxy_10",
@@ -299,7 +314,8 @@
 		},
 		"icon": "🔭",
 		"active": true,
-		"sortOrder": 16
+		"sortOrder": 16,
+		"labelKey": "scan_galaxy_10"
 	},
 	{
 		"slug": "share_galaxy",
@@ -317,7 +333,8 @@
 		},
 		"icon": "🔗",
 		"active": true,
-		"sortOrder": 17
+		"sortOrder": 17,
+		"labelKey": "share_galaxy"
 	},
 	{
 		"slug": "daily_login_stardust",
@@ -336,7 +353,8 @@
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 18
+		"sortOrder": 18,
+		"labelKey": "daily_login_stardust"
 	},
 	{
 		"slug": "daily_login_darkmatter",
@@ -355,6 +373,7 @@
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 19
+		"sortOrder": 19,
+		"labelKey": "daily_login_darkmatter"
 	}
 ]
