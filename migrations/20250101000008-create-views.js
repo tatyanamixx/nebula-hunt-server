@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -111,10 +111,17 @@ module.exports = {
 				pt.status as active,
 				ps.status,
 				ps."createdAt" as purchased_at,
-				ps.amount,
-				ps.resource,
-				ps.price,
-				ps.currency
+				-- Новые поля для гибкой структуры
+				ps.category,
+				ps."actionType",
+				ps."actionTarget",
+				ps."actionData",
+				ps."costData",
+				pt.category as template_category,
+				pt."actionType" as template_action_type,
+				pt."actionTarget" as template_action_target,
+				pt."actionData" as template_action_data,
+				pt."costData" as template_cost_data
 			FROM packagestore ps
 			JOIN users u ON ps."userId" = u.id
 			JOIN packagetemplates pt ON ps."packageTemplateId" = pt.id
@@ -195,22 +202,22 @@ module.exports = {
 	async down(queryInterface, Sequelize) {
 		// Удаляем все view
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS artifact_statistics CASCADE;'
+			"DROP VIEW IF EXISTS artifact_statistics CASCADE;"
 		);
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS active_user_events CASCADE;'
+			"DROP VIEW IF EXISTS active_user_events CASCADE;"
 		);
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS user_progress CASCADE;'
+			"DROP VIEW IF EXISTS user_progress CASCADE;"
 		);
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS user_tasks CASCADE;'
+			"DROP VIEW IF EXISTS user_tasks CASCADE;"
 		);
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS user_packages CASCADE;'
+			"DROP VIEW IF EXISTS user_packages CASCADE;"
 		);
 		await queryInterface.sequelize.query(
-			'DROP VIEW IF EXISTS template_statistics CASCADE;'
+			"DROP VIEW IF EXISTS template_statistics CASCADE;"
 		);
 	},
 };

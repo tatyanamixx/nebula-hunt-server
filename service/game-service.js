@@ -1171,6 +1171,23 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Создаем offer для записи в БД через marketService
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: payload.price,
+				currency: "tgStars",
+				itemId: null, // Нет конкретного item
+				itemType: "resource",
+				amount: payload.amount,
+				resource: "stardust",
+				offerType: "SYSTEM",
+				txType: "STARDUST_PURCHASE",
+			};
+
+			// Регистрируем offer через marketService для полного аудита
+			const marketResult = await marketService.registerOffer(offerData);
+
 			// Добавляем стардаст пользователю
 			const result = await userStateService.addCurrency(
 				userId,
@@ -1179,27 +1196,17 @@ class GameService {
 				null // transaction будет создан внутри
 			);
 
-			// Создаем запись о покупке в MarketOffer
-			await MarketOffer.create({
-				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
-				currency: "tgStars",
-				amount: payload.amount,
-				resource: "stardust",
-				offerType: "SYSTEM",
-				txType: "STARDUST_PURCHASE",
-				status: "COMPLETED",
-				completedAt: new Date(),
-			});
-
 			logger.info("Stardust purchase payment completed", {
 				userId,
 				amount: payload.amount,
 				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.id,
 			});
 
-			return result;
+			return {
+				...result,
+				marketOffer: marketResult,
+			};
 		} catch (error) {
 			logger.error("Failed to complete stardust purchase payment", {
 				userId,
@@ -1225,6 +1232,23 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Создаем offer для записи в БД через marketService
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: payload.price,
+				currency: "tgStars",
+				itemId: null, // Нет конкретного item
+				itemType: "resource",
+				amount: payload.amount,
+				resource: "darkMatter",
+				offerType: "SYSTEM",
+				txType: "DARK_MATTER_PURCHASE",
+			};
+
+			// Регистрируем offer через marketService для полного аудита
+			const marketResult = await marketService.registerOffer(offerData);
+
 			// Добавляем темную материю пользователю
 			const result = await userStateService.addCurrency(
 				userId,
@@ -1233,27 +1257,17 @@ class GameService {
 				null // transaction будет создан внутри
 			);
 
-			// Создаем запись о покупке в MarketOffer
-			await MarketOffer.create({
-				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
-				currency: "tgStars",
-				amount: payload.amount,
-				resource: "darkMatter",
-				offerType: "SYSTEM",
-				txType: "DARK_MATTER_PURCHASE",
-				status: "COMPLETED",
-				completedAt: new Date(),
-			});
-
 			logger.info("Dark matter purchase payment completed", {
 				userId,
 				amount: payload.amount,
 				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.id,
 			});
 
-			return result;
+			return {
+				...result,
+				marketOffer: marketResult,
+			};
 		} catch (error) {
 			logger.error("Failed to complete dark matter purchase payment", {
 				userId,

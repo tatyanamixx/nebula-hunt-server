@@ -5,12 +5,12 @@
  * таблицы шаблонов с таблицами пользовательских данных
  */
 
-const sequelize = require('../db');
-const { DataTypes } = require('sequelize');
+const sequelize = require("../db");
+const { DataTypes } = require("sequelize");
 
 // View для апгрейдов пользователя с данными шаблона
 const UserUpgradeWithTemplate = sequelize.define(
-	'UserUpgradeWithTemplate',
+	"UserUpgradeWithTemplate",
 	{
 		// Поля из userupgrades
 		id: { type: DataTypes.BIGINT, primaryKey: true },
@@ -37,16 +37,16 @@ const UserUpgradeWithTemplate = sequelize.define(
 		templateEffectPerLevel: { type: DataTypes.FLOAT },
 		templatePriceMultiplier: { type: DataTypes.FLOAT },
 		templateCurrency: {
-			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
+			type: DataTypes.ENUM("stardust", "darkMatter", "stars"),
 		},
 		templateCategory: {
 			type: DataTypes.ENUM(
-				'production',
-				'economy',
-				'special',
-				'chance',
-				'storage',
-				'multiplier'
+				"production",
+				"economy",
+				"special",
+				"chance",
+				"storage",
+				"multiplier"
 			),
 		},
 		templateIcon: { type: DataTypes.STRING(3) },
@@ -60,7 +60,7 @@ const UserUpgradeWithTemplate = sequelize.define(
 		templateDelayedUntil: { type: DataTypes.DATE },
 	},
 	{
-		tableName: 'user_upgrades_with_template',
+		tableName: "user_upgrades_with_template",
 		timestamps: false, // View не имеет автоматических timestamps
 		freezeTableName: true,
 	}
@@ -68,7 +68,7 @@ const UserUpgradeWithTemplate = sequelize.define(
 
 // View для задач пользователя с данными шаблона
 const UserTaskWithTemplate = sequelize.define(
-	'UserTaskWithTemplate',
+	"UserTaskWithTemplate",
 	{
 		// Поля из usertasks
 		id: { type: DataTypes.BIGINT, primaryKey: true },
@@ -77,7 +77,7 @@ const UserTaskWithTemplate = sequelize.define(
 		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
 		reward: {
 			type: DataTypes.JSONB,
-			defaultValue: { type: 'stardust', amount: 0 },
+			defaultValue: { type: "stardust", amount: 0 },
 		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 		completedAt: { type: DataTypes.DATE },
@@ -94,7 +94,7 @@ const UserTaskWithTemplate = sequelize.define(
 		templateActive: { type: DataTypes.BOOLEAN },
 	},
 	{
-		tableName: 'user_tasks_with_template',
+		tableName: "user_tasks_with_template",
 		timestamps: false,
 		freezeTableName: true,
 	}
@@ -102,14 +102,14 @@ const UserTaskWithTemplate = sequelize.define(
 
 // View для событий пользователя с данными шаблона
 const UserEventWithTemplate = sequelize.define(
-	'UserEventWithTemplate',
+	"UserEventWithTemplate",
 	{
 		// Поля из userevents
 		id: { type: DataTypes.BIGINT, primaryKey: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
 		eventTemplateId: { type: DataTypes.BIGINT, allowNull: false },
 		status: {
-			type: DataTypes.ENUM('ACTIVE', 'EXPIRED', 'COMPLETED', 'CANCELLED'),
+			type: DataTypes.ENUM("ACTIVE", "EXPIRED", "COMPLETED", "CANCELLED"),
 		},
 		triggeredAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 		expiresAt: { type: DataTypes.DATE },
@@ -125,23 +125,23 @@ const UserEventWithTemplate = sequelize.define(
 		templateDescription: { type: DataTypes.JSONB },
 		templateType: {
 			type: DataTypes.ENUM(
-				'RANDOM',
-				'PERIODIC',
-				'ONE_TIME',
-				'CONDITIONAL',
-				'CHAINED',
-				'TRIGGERED_BY_ACTION',
-				'GLOBAL_TIMED',
-				'LIMITED_REPEATABLE',
-				'SEASONAL',
-				'PASSIVE',
-				'RESOURCE_BASED',
-				'UPGRADE_DEPENDENT',
-				'TASK_DEPENDENT',
-				'MARKET_DEPENDENT',
-				'MULTIPLAYER',
-				'PROGRESSIVE',
-				'TIERED'
+				"RANDOM",
+				"PERIODIC",
+				"ONE_TIME",
+				"CONDITIONAL",
+				"CHAINED",
+				"TRIGGERED_BY_ACTION",
+				"GLOBAL_TIMED",
+				"LIMITED_REPEATABLE",
+				"SEASONAL",
+				"PASSIVE",
+				"RESOURCE_BASED",
+				"UPGRADE_DEPENDENT",
+				"TASK_DEPENDENT",
+				"MARKET_DEPENDENT",
+				"MULTIPLAYER",
+				"PROGRESSIVE",
+				"TIERED"
 			),
 		},
 		templateTriggerConfig: { type: DataTypes.JSONB },
@@ -151,7 +151,7 @@ const UserEventWithTemplate = sequelize.define(
 		templateActive: { type: DataTypes.BOOLEAN },
 	},
 	{
-		tableName: 'user_events_with_template',
+		tableName: "user_events_with_template",
 		timestamps: false,
 		freezeTableName: true,
 	}
@@ -159,24 +159,19 @@ const UserEventWithTemplate = sequelize.define(
 
 // View для пакетов пользователя с данными шаблона
 const UserPackageWithTemplate = sequelize.define(
-	'UserPackageWithTemplate',
+	"UserPackageWithTemplate",
 	{
 		// Поля из packagestores
 		id: { type: DataTypes.BIGINT, primaryKey: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
 		packageTemplateId: { type: DataTypes.BIGINT, allowNull: false },
-		amount: { type: DataTypes.INTEGER, allowNull: false },
-		resource: { type: DataTypes.ENUM('stardust', 'darkMatter', 'stars') },
-		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-		currency: {
-			type: DataTypes.ENUM(
-				'tgStars',
-				'tonToken',
-				'stars',
-				'stardust',
-				'darkMatter'
-			),
-		},
+		// Новые поля для гибкой структуры
+		category: { type: DataTypes.STRING(50) },
+		actionType: { type: DataTypes.STRING(50) },
+		actionTarget: { type: DataTypes.STRING(50) },
+		actionData: { type: DataTypes.JSONB },
+		costData: { type: DataTypes.JSONB },
+
 		status: { type: DataTypes.BOOLEAN, defaultValue: true },
 		isUsed: { type: DataTypes.BOOLEAN, defaultValue: false },
 		isLocked: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -187,29 +182,21 @@ const UserPackageWithTemplate = sequelize.define(
 		templateSlug: { type: DataTypes.STRING },
 		templateName: { type: DataTypes.STRING },
 		templateDescription: { type: DataTypes.TEXT },
-		templateAmount: { type: DataTypes.INTEGER },
-		templateResource: {
-			type: DataTypes.ENUM('stardust', 'darkMatter', 'stars'),
-		},
-		templatePrice: { type: DataTypes.DECIMAL(30, 8) },
-		templateCurrency: {
-			type: DataTypes.ENUM(
-				'tgStars',
-				'tonToken',
-				'stars',
-				'stardust',
-				'darkMatter'
-			),
-		},
+		// Новые поля для гибкой структуры
+		templateCategory: { type: DataTypes.STRING(50) },
+		templateActionType: { type: DataTypes.STRING(50) },
+		templateActionTarget: { type: DataTypes.STRING(50) },
+		templateActionData: { type: DataTypes.JSONB },
+		templateCostData: { type: DataTypes.JSONB },
+
 		templateStatus: { type: DataTypes.BOOLEAN },
 		templateImageUrl: { type: DataTypes.STRING },
 		templateSortOrder: { type: DataTypes.INTEGER },
-		templateCategory: { type: DataTypes.STRING },
 		templateIsPromoted: { type: DataTypes.BOOLEAN },
 		templateValidUntil: { type: DataTypes.DATE },
 	},
 	{
-		tableName: 'user_packages_with_template',
+		tableName: "user_packages_with_template",
 		timestamps: false,
 		freezeTableName: true,
 	}
@@ -217,7 +204,7 @@ const UserPackageWithTemplate = sequelize.define(
 
 // View для артифактов пользователя с данными шаблона
 const UserArtifactWithTemplate = sequelize.define(
-	'UserArtifactWithTemplate',
+	"UserArtifactWithTemplate",
 	{
 		// Поля из artifacts
 		id: { type: DataTypes.BIGINT, primaryKey: true },
@@ -235,13 +222,7 @@ const UserArtifactWithTemplate = sequelize.define(
 		templateName: { type: DataTypes.STRING },
 		templateDescription: { type: DataTypes.TEXT },
 		templateRarity: {
-			type: DataTypes.ENUM(
-				'COMMON',
-				'UNCOMMON',
-				'RARE',
-				'EPIC',
-				'LEGENDARY'
-			),
+			type: DataTypes.ENUM("COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY"),
 		},
 		templateImage: { type: DataTypes.STRING },
 		templateEffects: { type: DataTypes.JSONB },
@@ -249,12 +230,12 @@ const UserArtifactWithTemplate = sequelize.define(
 		templateLimitedCount: { type: DataTypes.INTEGER },
 		templateLimitedDuration: { type: DataTypes.INTEGER },
 		templateLimitedDurationType: {
-			type: DataTypes.ENUM('HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'),
+			type: DataTypes.ENUM("HOUR", "DAY", "WEEK", "MONTH", "YEAR"),
 		},
 		templateLimitedDurationValue: { type: DataTypes.INTEGER },
 	},
 	{
-		tableName: 'user_artifacts_with_template',
+		tableName: "user_artifacts_with_template",
 		timestamps: false,
 		freezeTableName: true,
 	}

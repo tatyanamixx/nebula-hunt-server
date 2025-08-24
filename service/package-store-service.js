@@ -1,18 +1,14 @@
 /**
  * created by Claude on 15.07.2025
  */
-const {
-	PackageStore,
-	UserState,
-	PackageTemplate,
-} = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const { ERROR_CODES } = require('../config/error-codes');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const sequelize = require('../db');
-const logger = require('./logger-service');
-const { Op } = require('sequelize');
-const marketService = require('./market-service');
+const { PackageStore, UserState, PackageTemplate } = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const { ERROR_CODES } = require("../config/error-codes");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const sequelize = require("../db");
+const logger = require("./logger-service");
+const { Op } = require("sequelize");
+const marketService = require("./market-service");
 
 class PackageStoreService {
 	/**
@@ -25,7 +21,7 @@ class PackageStoreService {
 		const transaction = t || (await sequelize.transaction());
 		const shouldCommit = !t;
 
-		logger.debug('initializePackageStore on start', { userId });
+		logger.debug("initializePackageStore on start", { userId });
 
 		try {
 			// Get active package templates
@@ -35,7 +31,7 @@ class PackageStoreService {
 			});
 
 			if (!activeTemplates || activeTemplates.length === 0) {
-				logger.debug('No active package templates found', { userId });
+				logger.debug("No active package templates found", { userId });
 				if (shouldCommit && !transaction.finished) {
 					await transaction.commit();
 				}
@@ -45,28 +41,31 @@ class PackageStoreService {
 			const initializedPackages = [];
 			for (const template of activeTemplates) {
 				try {
-					const [packageItem, created] =
-						await PackageStore.findOrCreate({
-							where: {
-								userId,
-								packageTemplateId: template.id,
-							},
-							defaults: {
-								packageTemplateId: template.id,
-								userId,
-								amount: template.amount,
-								resource: template.resource,
-								price: template.price,
-								currency: template.currency,
-								status: true,
-								isUsed: false,
-								isLocked: false,
-							},
-							transaction: transaction,
-						});
+					const [packageItem, created] = await PackageStore.findOrCreate({
+						where: {
+							userId,
+							packageTemplateId: template.id,
+						},
+						defaults: {
+							packageTemplateId: template.id,
+							userId,
+							// Новые поля для гибкой структуры
+							category: template.category || "resourcePurchase",
+							actionType: template.actionType || "fixedAmount",
+							actionTarget: template.actionTarget || "reward",
+							actionData: template.actionData || {},
+							costData: template.costData || {},
+							// Копируем labelKey из шаблона
+							labelKey: template.labelKey,
+							status: true,
+							isUsed: false,
+							isLocked: false,
+						},
+						transaction: transaction,
+					});
 
 					if (created) {
-						logger.debug('Created new package store item', {
+						logger.debug("Created new package store item", {
 							userId,
 							packageTemplateId: template.id,
 							templateSlug: template.slug,
@@ -77,7 +76,7 @@ class PackageStoreService {
 							package: template.toJSON(),
 						});
 					} else {
-						logger.debug('Package store item already exists', {
+						logger.debug("Package store item already exists", {
 							userId,
 							packageTemplateId: template.id,
 							templateSlug: template.slug,
@@ -89,7 +88,7 @@ class PackageStoreService {
 						});
 					}
 				} catch (packageError) {
-					logger.error('Error creating package store item', {
+					logger.error("Error creating package store item", {
 						userId,
 						packageTemplateId: template.id,
 						templateSlug: template.slug,
@@ -106,7 +105,7 @@ class PackageStoreService {
 				await transaction.commit();
 			}
 
-			logger.debug('Package store initialized successfully', {
+			logger.debug("Package store initialized successfully", {
 				userId,
 				packagesCreated: initializedPackages.length,
 			});
@@ -117,7 +116,7 @@ class PackageStoreService {
 				await transaction.rollback();
 			}
 
-			logger.error('Failed to initialize package store', {
+			logger.error("Failed to initialize package store", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -143,32 +142,86 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('getUserPackages on start', { userId });
+			logger.debug("getUserPackages on start", { userId });
 
-			const packages = await PackageStore.findAll({
+			// Сначала проверяем, есть ли у пользователя пакеты
+			let packages = await PackageStore.findAll({
 				where: {
 					userId,
-					status: 'ACTIVE',
+					status: true,
 				},
 				include: [
 					{
 						model: PackageTemplate,
 						attributes: [
-							'id',
-							'slug',
-							'title',
-							'description',
-							'amount',
-							'resource',
-							'price',
-							'currency',
-							'status',
+							"id",
+							"slug",
+							"name",
+							"description",
+							"labelKey", // Добавляем labelKey
+							"icon", // Добавляем icon
+							"sortOrder", // Добавляем sortOrder
+							// Новые поля для гибкой структуры
+							"category",
+							"actionType",
+							"actionTarget",
+							"actionData",
+							"costData",
 						],
 					},
 				],
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 				transaction: t,
 			});
+
+			// Если у пользователя нет пакетов, инициализируем их
+			if (!packages || packages.length === 0) {
+				logger.debug(
+					"No packages found for user, initializing package store",
+					{ userId }
+				);
+
+				// Инициализируем пакеты на основе активных шаблонов
+				const initializedPackages = await this.initializePackageStore(
+					userId,
+					t
+				);
+
+				// Получаем инициализированные пакеты с шаблонами
+				packages = await PackageStore.findAll({
+					where: {
+						userId,
+						status: true,
+					},
+					include: [
+						{
+							model: PackageTemplate,
+							attributes: [
+								"id",
+								"slug",
+								"name",
+								"description",
+								"labelKey", // Добавляем labelKey
+								"icon", // Добавляем icon
+								"sortOrder", // Добавляем sortOrder
+								// Новые поля для гибкой структуры
+								"category",
+								"actionType",
+								"actionTarget",
+								"actionData",
+								"costData",
+							],
+						},
+					],
+					order: [["createdAt", "DESC"]],
+					transaction: t,
+				});
+
+				logger.debug("Package store initialized and packages loaded", {
+					userId,
+					packagesCount: packages.length,
+				});
+			}
 
 			const result = packages.map((packageItem) => ({
 				...packageItem.toJSON(),
@@ -177,16 +230,11 @@ class PackageStoreService {
 
 			await t.commit();
 
-			logger.debug('getUserPackages completed successfully', {
-				userId,
-				packagesCount: result.length,
-			});
-
 			return result;
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to get user packages', {
+			logger.error("Failed to get user packages", {
 				userId,
 				error: err.message,
 				stack: err.stack,
@@ -213,8 +261,6 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('getUserPackageBySlug on start', { userId, slug });
-
 			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
 				where: { slug },
@@ -222,13 +268,10 @@ class PackageStoreService {
 			});
 
 			if (!packageTemplate) {
-				logger.debug(
-					'getUserPackageBySlug - package template not found',
-					{
-						userId,
-						slug,
-					}
-				);
+				logger.debug("getUserPackageBySlug - package template not found", {
+					userId,
+					slug,
+				});
 				throw ApiError.NotFound(
 					`Package template not found: ${slug}`,
 					ERROR_CODES.PACKAGE.PACKAGE_TEMPLATE_NOT_FOUND
@@ -245,15 +288,22 @@ class PackageStoreService {
 					{
 						model: PackageTemplate,
 						attributes: [
-							'id',
-							'slug',
-							'title',
-							'description',
-							'amount',
-							'resource',
-							'price',
-							'currency',
-							'status',
+							"id",
+							"slug",
+							"title",
+							"description",
+							// Новые поля для гибкой структуры
+							"category",
+							"actionType",
+							"actionTarget",
+							"actionData",
+							"costData",
+							// Legacy поля для обратной совместимости
+							"amount",
+							"resource",
+							"price",
+							"currency",
+							"status",
 						],
 					},
 				],
@@ -261,7 +311,7 @@ class PackageStoreService {
 			});
 
 			if (!packageItem) {
-				logger.debug('getUserPackageBySlug - package not found', {
+				logger.debug("getUserPackageBySlug - package not found", {
 					userId,
 					slug,
 					packageTemplateId: packageTemplate.id,
@@ -279,17 +329,11 @@ class PackageStoreService {
 
 			await t.commit();
 
-			logger.debug('getUserPackageBySlug completed successfully', {
-				userId,
-				slug,
-				packageId: packageItem.id,
-			});
-
 			return result;
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to get user package by slug', {
+			logger.error("Failed to get user package by slug", {
 				userId,
 				slug,
 				error: err.message,
@@ -317,8 +361,6 @@ class PackageStoreService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('usePackage on start', { userId, slug });
-
 			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
 				where: { slug },
@@ -326,7 +368,7 @@ class PackageStoreService {
 			});
 
 			if (!packageTemplate) {
-				logger.debug('usePackage - package template not found', {
+				logger.debug("usePackage - package template not found", {
 					userId,
 					slug,
 				});
@@ -341,7 +383,7 @@ class PackageStoreService {
 				where: {
 					packageTemplateId: packageTemplate.id,
 					userId,
-					status: 'ACTIVE',
+					status: true,
 					isUsed: false,
 					isLocked: false,
 				},
@@ -349,7 +391,7 @@ class PackageStoreService {
 			});
 
 			if (!packageItem) {
-				logger.debug('usePackage - package not found or unavailable', {
+				logger.debug("usePackage - package not found or unavailable", {
 					userId,
 					slug,
 					packageTemplateId: packageTemplate.id,
@@ -360,22 +402,85 @@ class PackageStoreService {
 				);
 			}
 
-			// Создаем offer для регистрации изменений в состоянии через registerOffer
-			const offerData = {
-				sellerId: SYSTEM_USER_ID, // Системный аккаунт
-				buyerId: userId,
-				price: packageTemplate.price,
-				currency: packageTemplate.currency,
-				resource: packageTemplate.resource,
-				amount: packageTemplate.amount,
-				itemType: 'package',
-				itemId: packageItem.id, // userPackageStoreId
-				offerType: 'SYSTEM',
-				txType: 'PACKAGE_REWARD',
-			};
+			// Обрабатываем разные типы действий
+			const actionType = packageTemplate.actionType || "fixedAmount";
+			const actionTarget = packageTemplate.actionTarget || "reward";
+			const actionData = packageTemplate.actionData || {};
+			const costData = packageTemplate.costData || {};
 
-			// Используем registerOffer для регистрации изменений в состоянии
-			const result = await marketService.registerOffer(offerData, t);
+			let result;
+
+			switch (actionType) {
+				case "fixedAmount":
+				case "variableAmount":
+					// Создаем offer для регистрации изменений в состоянии через registerOffer
+					const offerData = {
+						sellerId: SYSTEM_USER_ID, // Системный аккаунт
+						buyerId: userId,
+						price: costData.price || 0,
+						currency: costData.currency || "tgStars",
+						resource: actionData.resource || "stardust",
+						amount: actionData.amount || 0,
+						itemType: "package",
+						itemId: packageItem.id, // userPackageStoreId
+						offerType: "SYSTEM",
+						txType: "PACKAGE_REWARD",
+					};
+
+					// Используем registerOffer для регистрации изменений в состоянии
+					result = await marketService.registerOffer(offerData, t);
+					break;
+
+				case "updateField":
+					// Обрабатываем обновление полей игровых объектов
+					if (actionTarget === "entity" && actionData.table === "galaxy") {
+						// Импортируем galaxyService для обновления галактик
+						const galaxyService = require("./galaxy-service");
+
+						// Получаем данные для обновления
+						const { seed, field, value } = actionData;
+
+						if (!seed || !field || value === undefined) {
+							throw new ApiError(
+								400,
+								`Missing required fields for galaxy update: seed, field, value`,
+								ERROR_CODES.PACKAGE.INVALID_ACTION
+							);
+						}
+
+						// Обновляем галактику
+						const updateData = { [field]: value };
+						await galaxyService.updateGalaxy(seed, updateData, userId);
+
+						logger.debug("Galaxy field updated successfully", {
+							userId,
+							seed,
+							field,
+							value,
+							actionData,
+						});
+
+						result = {
+							success: true,
+							message: `Galaxy field ${field} updated successfully`,
+							updatedField: { seed, field, value },
+						};
+					} else {
+						throw new ApiError(
+							400,
+							`Unsupported action target: ${actionTarget}`,
+							ERROR_CODES.PACKAGE.INVALID_ACTION
+						);
+					}
+					break;
+
+				default:
+					throw new ApiError(
+						400,
+						`Unsupported action type: ${actionType}`,
+						ERROR_CODES.PACKAGE.INVALID_ACTION
+					);
+			}
 
 			// Получаем обновленное состояние пользователя
 			const userState = await UserState.findOne({
@@ -385,14 +490,12 @@ class PackageStoreService {
 
 			await t.commit();
 
-			logger.debug('usePackage completed successfully', {
+			logger.debug("usePackage completed successfully", {
 				userId,
 				slug,
 				packageId: packageItem.id,
-				resource: packageTemplate.resource,
-				amount: packageTemplate.amount,
-				price: packageTemplate.price,
-				currency: packageTemplate.currency,
+				actionType: packageTemplate.actionType,
+				actionTarget: packageTemplate.actionTarget,
 				marketResult: result,
 			});
 
@@ -404,7 +507,7 @@ class PackageStoreService {
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to use package', {
+			logger.error("Failed to use package", {
 				userId,
 				slug,
 				error: err.message,

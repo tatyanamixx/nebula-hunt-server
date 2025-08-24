@@ -1,8 +1,8 @@
 /**
  * created by Claude on 15.07.2025
  */
-const packageStoreService = require('../service/package-store-service');
-const ApiError = require('../exceptions/api-error');
+const packageStoreService = require("../service/package-store-service");
+const ApiError = require("../exceptions/api-error");
 
 class PackageStoreController {
 	/**
@@ -15,6 +15,13 @@ class PackageStoreController {
 		try {
 			const userId = req.initdata.id;
 			const packages = await packageStoreService.getUserPackages(userId);
+
+			// Добавляем логирование для отладки
+			console.log("getUserPackages - returning packages:", {
+				userId,
+				packagesCount: packages.length,
+			});
+
 			return res.json(packages);
 		} catch (error) {
 			next(error);
@@ -56,7 +63,7 @@ class PackageStoreController {
 			const result = await packageStoreService.usePackage(slug, userId);
 			return res.json({
 				success: true,
-				message: 'Package used successfully',
+				message: "Package used successfully",
 				userState: result.userState,
 				package: result.package,
 				marketResult: result.marketResult,

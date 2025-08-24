@@ -22,21 +22,45 @@ class PackageTemplateController {
 				(template) => template.status === true
 			);
 
-			// Transform to client format
+			console.log(
+				"🔍 Package templates from database:",
+				activeTemplates.map((t) => ({
+					slug: t.slug,
+					labelKey: t.labelKey,
+					category: t.category,
+					actionType: t.actionType,
+				}))
+			);
+
+			// Transform to client format with new structure support
 			const storePackages = activeTemplates.map((template) => ({
 				id: template.slug,
-				amount: template.amount,
-				price: template.price,
+				// Новые поля для гибкой структуры
+				category: template.category,
+				action: {
+					type: template.actionType,
+					target: template.actionTarget,
+					reward: template.actionData,
+					cost: template.costData,
+				},
 				labelKey: template.labelKey,
 				icon: template.icon,
 				name: template.name,
 				description: template.description,
-				resource: template.resource,
-				currency: template.currency,
 				status: template.status,
 				sortOrder: template.sortOrder,
 				isPromoted: template.isPromoted,
 			}));
+
+			console.log(
+				"📦 Transformed packages for client:",
+				storePackages.map((p) => ({
+					id: p.id,
+					labelKey: p.labelKey,
+					category: p.category,
+					actionType: p.action.type,
+				}))
+			);
 
 			res.json({
 				success: true,

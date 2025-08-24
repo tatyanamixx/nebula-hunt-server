@@ -1421,9 +1421,10 @@ class MarketService {
 	/**
 	 * Get system package offers and initialize the user's packages
 	 * @param {number} userId - User ID (optional)
+	 * @param {Object} filterParams - Filter parameters (category, actionType)
 	 * @returns {Promise<Array>} - List of system package offers
 	 */
-	async getPackageOffers(userId = null) {
+	async getPackageOffers(userId = null, filterParams = {}) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -1443,6 +1444,14 @@ class MarketService {
 			}
 
 			await t.commit();
+
+			// Если есть параметры фильтрации, применяем их к результату
+			if (filterParams.category || filterParams.actionType) {
+				// Здесь можно добавить дополнительную фильтрацию по шаблонам пакетов
+				// если нужно фильтровать по новым полям
+				logger.debug("Filtering package offers", { filterParams });
+			}
+
 			return offers;
 		} catch (err) {
 			await t.rollback();
@@ -1644,10 +1653,12 @@ class MarketService {
 					{
 						id: packageId,
 						userId: buyerId,
-						amount: template.amount,
-						resource: template.resource,
-						price: template.price,
-						currency: template.currency,
+						// Новые поля для гибкой структуры
+						category: template.category || "resourcePurchase",
+						actionType: template.actionType || "fixedAmount",
+						actionTarget: template.actionTarget || "reward",
+						actionData: template.actionData || {},
+						costData: template.costData || {},
 						status: "ACTIVE",
 						isUsed: false,
 						isLocked: false,

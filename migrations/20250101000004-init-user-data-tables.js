@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		// 1. Создаем таблицу userupgrades
-		await queryInterface.createTable('userupgrades', {
+		await queryInterface.createTable("userupgrades", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -46,7 +46,7 @@ module.exports = {
 			},
 			lastProgressUpdate: {
 				type: Sequelize.DATE,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 				allowNull: false,
 			},
 			stability: {
@@ -62,17 +62,17 @@ module.exports = {
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 2. Создаем таблицу usertasks
-		await queryInterface.createTable('usertasks', {
+		await queryInterface.createTable("usertasks", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -94,7 +94,7 @@ module.exports = {
 			},
 			reward: {
 				type: Sequelize.JSONB,
-				defaultValue: { type: 'stardust', amount: 0 },
+				defaultValue: { type: "stardust", amount: 0 },
 				allowNull: false,
 			},
 			active: {
@@ -109,17 +109,17 @@ module.exports = {
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 3. Создаем таблицу userevents
-		await queryInterface.createTable('userevents', {
+		await queryInterface.createTable("userevents", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -135,18 +135,13 @@ module.exports = {
 				allowNull: false,
 			},
 			status: {
-				type: Sequelize.ENUM(
-					'ACTIVE',
-					'EXPIRED',
-					'COMPLETED',
-					'CANCELLED'
-				),
-				defaultValue: 'ACTIVE',
+				type: Sequelize.ENUM("ACTIVE", "EXPIRED", "COMPLETED", "CANCELLED"),
+				defaultValue: "ACTIVE",
 				allowNull: false,
 			},
 			triggeredAt: {
 				type: Sequelize.DATE,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 				allowNull: false,
 			},
 			expiresAt: {
@@ -157,13 +152,13 @@ module.exports = {
 				type: Sequelize.JSONB,
 				defaultValue: {},
 				allowNull: false,
-				comment: 'Эффекты события (множители и т.д.)',
+				comment: "Эффекты события (множители и т.д.)",
 			},
 			progress: {
 				type: Sequelize.JSONB,
 				defaultValue: {},
 				allowNull: false,
-				comment: 'Прогресс выполнения события',
+				comment: "Прогресс выполнения события",
 			},
 			completedAt: {
 				type: Sequelize.DATE,
@@ -172,17 +167,17 @@ module.exports = {
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 4. Создаем таблицу usereventsettings
-		await queryInterface.createTable('usereventsettings', {
+		await queryInterface.createTable("usereventsettings", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -204,52 +199,52 @@ module.exports = {
 					rewards: 1.0,
 				},
 				allowNull: false,
-				comment: 'Текущие активные множители от событий',
+				comment: "Текущие активные множители от событий",
 			},
 			lastEventCheck: {
 				type: Sequelize.DATE,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 				allowNull: false,
-				comment: 'Последнее время проверки событий',
+				comment: "Последнее время проверки событий",
 			},
 			eventCooldowns: {
 				type: Sequelize.JSONB,
 				defaultValue: {},
 				allowNull: false,
-				comment: 'Кулдауны для разных типов событий',
+				comment: "Кулдауны для разных типов событий",
 			},
 			enabledTypes: {
 				type: Sequelize.ARRAY(Sequelize.STRING),
-				defaultValue: ['RANDOM', 'PERIODIC', 'CONDITIONAL'],
+				defaultValue: ["RANDOM", "PERIODIC", "CONDITIONAL"],
 				allowNull: false,
-				comment: 'Включенные типы событий',
+				comment: "Включенные типы событий",
 			},
 			disabledEvents: {
 				type: Sequelize.ARRAY(Sequelize.STRING),
 				defaultValue: [],
 				allowNull: false,
-				comment: 'Отключенные конкретные события',
+				comment: "Отключенные конкретные события",
 			},
 			priorityEvents: {
 				type: Sequelize.ARRAY(Sequelize.STRING),
 				defaultValue: [],
 				allowNull: false,
-				comment: 'Приоритетные события',
+				comment: "Приоритетные события",
 			},
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 5. Создаем таблицу packagestore
-		await queryInterface.createTable('packagestore', {
+		await queryInterface.createTable("packagestore", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -264,27 +259,34 @@ module.exports = {
 				type: Sequelize.BIGINT,
 				allowNull: false,
 			},
-			amount: {
-				type: Sequelize.INTEGER,
-				allowNull: false,
+			category: {
+				type: Sequelize.STRING(50),
+				allowNull: true,
+				defaultValue: "resourcePurchase",
 			},
-			resource: {
-				type: Sequelize.ENUM('stardust', 'darkMatter', 'stars'),
-				allowNull: false,
+			actionType: {
+				type: Sequelize.STRING(50),
+				allowNull: true,
+				defaultValue: "fixedAmount",
 			},
-			price: {
-				type: Sequelize.DECIMAL(30, 8),
-				allowNull: false,
+			actionTarget: {
+				type: Sequelize.STRING(50),
+				allowNull: true,
+				defaultValue: "reward",
 			},
-			currency: {
-				type: Sequelize.ENUM(
-					'tgStars',
-					'tonToken',
-					'stars',
-					'stardust',
-					'darkMatter'
-				),
-				allowNull: false,
+			actionData: {
+				type: Sequelize.JSONB,
+				allowNull: true,
+				defaultValue: {},
+			},
+			costData: {
+				type: Sequelize.JSONB,
+				allowNull: true,
+				defaultValue: {},
+			},
+			labelKey: {
+				type: Sequelize.STRING(500),
+				allowNull: true,
 			},
 			status: {
 				type: Sequelize.BOOLEAN,
@@ -304,12 +306,12 @@ module.exports = {
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
@@ -368,6 +370,18 @@ module.exports = {
 
 		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS packagestore_package_template_id_idx ON packagestore ("packageTemplateId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_category_idx ON packagestore ("category");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_action_type_idx ON packagestore ("actionType");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_label_key_idx ON packagestore ("labelKey");
 		`);
 
 		// Создаем отложенные внешние ключи
@@ -465,100 +479,94 @@ module.exports = {
 	async down(queryInterface, Sequelize) {
 		// Удаляем отложенные ограничения
 		await queryInterface.removeConstraint(
-			'packagestore',
-			'packagestore_package_template_id_fkey'
+			"packagestore",
+			"packagestore_package_template_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'packagestore',
-			'packagestore_user_id_fkey'
+			"packagestore",
+			"packagestore_user_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'usereventsettings',
-			'usereventsettings_user_id_fkey'
+			"usereventsettings",
+			"usereventsettings_user_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'userevents',
-			'userevents_event_template_id_fkey'
+			"userevents",
+			"userevents_event_template_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'userevents',
-			'userevents_user_id_fkey'
+			"userevents",
+			"userevents_user_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'usertasks',
-			'usertasks_task_template_id_fkey'
+			"usertasks",
+			"usertasks_task_template_id_fkey"
+		);
+		await queryInterface.removeConstraint("usertasks", "usertasks_user_id_fkey");
+		await queryInterface.removeConstraint(
+			"userupgrades",
+			"userupgrades_upgrade_node_template_id_fkey"
 		);
 		await queryInterface.removeConstraint(
-			'usertasks',
-			'usertasks_user_id_fkey'
-		);
-		await queryInterface.removeConstraint(
-			'userupgrades',
-			'userupgrades_upgrade_node_template_id_fkey'
-		);
-		await queryInterface.removeConstraint(
-			'userupgrades',
-			'userupgrades_user_id_fkey'
+			"userupgrades",
+			"userupgrades_user_id_fkey"
 		);
 
 		// Удаляем индексы
 		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_package_template_id_idx'
+			"packagestore",
+			"packagestore_action_type_idx"
 		);
 		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_user_id_idx'
+			"packagestore",
+			"packagestore_category_idx"
 		);
 		await queryInterface.removeIndex(
-			'usereventsettings',
-			'usereventsettings_user_id_idx'
+			"packagestore",
+			"packagestore_package_template_id_idx"
+		);
+		await queryInterface.removeIndex("packagestore", "packagestore_user_id_idx");
+		await queryInterface.removeIndex(
+			"packagestore",
+			"packagestore_label_key_idx"
 		);
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_triggered_at_idx'
+			"usereventsettings",
+			"usereventsettings_user_id_idx"
 		);
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_expires_at_idx'
+			"userevents",
+			"userevents_triggered_at_idx"
 		);
-		await queryInterface.removeIndex('userevents', 'userevents_status_idx');
+		await queryInterface.removeIndex("userevents", "userevents_expires_at_idx");
+		await queryInterface.removeIndex("userevents", "userevents_status_idx");
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_event_template_id_idx'
+			"userevents",
+			"userevents_event_template_id_idx"
 		);
+		await queryInterface.removeIndex("userevents", "userevents_user_id_idx");
+		await queryInterface.removeIndex("usertasks", "usertasks_active_idx");
+		await queryInterface.removeIndex("usertasks", "usertasks_completed_idx");
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_user_id_idx'
+			"usertasks",
+			"usertasks_task_template_id_idx"
 		);
-		await queryInterface.removeIndex('usertasks', 'usertasks_active_idx');
+		await queryInterface.removeIndex("usertasks", "usertasks_user_id_idx");
 		await queryInterface.removeIndex(
-			'usertasks',
-			'usertasks_completed_idx'
-		);
-		await queryInterface.removeIndex(
-			'usertasks',
-			'usertasks_task_template_id_idx'
-		);
-		await queryInterface.removeIndex('usertasks', 'usertasks_user_id_idx');
-		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_completed_idx'
+			"userupgrades",
+			"userupgrades_completed_idx"
 		);
 		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_upgrade_node_template_id_idx'
+			"userupgrades",
+			"userupgrades_upgrade_node_template_id_idx"
 		);
-		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_user_id_idx'
-		);
+		await queryInterface.removeIndex("userupgrades", "userupgrades_user_id_idx");
 
 		// Удаляем таблицы
-		await queryInterface.dropTable('packagestore');
-		await queryInterface.dropTable('usereventsettings');
-		await queryInterface.dropTable('userevents');
-		await queryInterface.dropTable('usertasks');
-		await queryInterface.dropTable('userupgrades');
+		await queryInterface.dropTable("packagestore");
+		await queryInterface.dropTable("usereventsettings");
+		await queryInterface.dropTable("userevents");
+		await queryInterface.dropTable("usertasks");
+		await queryInterface.dropTable("userupgrades");
 	},
 };

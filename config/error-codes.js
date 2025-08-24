@@ -112,6 +112,7 @@ const ERROR_CODES = {
 		PACKAGE_ALREADY_PURCHASED: "PKG_002",
 		PACKAGE_TEMPLATE_NOT_FOUND: "PKG_003",
 		PACKAGE_EXPIRED: "PKG_004",
+		INVALID_ACTION: "PKG_005",
 	},
 
 	// Комиссии
@@ -239,6 +240,7 @@ const ERROR_DESCRIPTIONS = {
 	PKG_002: "Package already purchased",
 	PKG_003: "Package template not found",
 	PKG_004: "Package has expired",
+	PKG_005: "Invalid package action type or target",
 
 	// Комиссии
 	COM_001: "Commission not found",
@@ -347,6 +349,7 @@ const ERROR_SEVERITY_MAPPING = {
 	PKG_002: ERROR_SEVERITY.LOW,
 	PKG_003: ERROR_SEVERITY.MEDIUM,
 	PKG_004: ERROR_SEVERITY.LOW,
+	PKG_005: ERROR_SEVERITY.MEDIUM,
 
 	// Системные
 	SYS_001: ERROR_SEVERITY.CRITICAL,

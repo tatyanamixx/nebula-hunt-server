@@ -1014,21 +1014,35 @@ const PackageStore = sequelize.define(
 			allowNull: false,
 			field: "packageTemplateId", // Explicitly set the field name
 		},
-		amount: { type: DataTypes.INTEGER, allowNull: false },
-		resource: {
-			type: DataTypes.ENUM("stardust", "darkMatter", "stars"),
-			allowNull: false,
+		// Новые поля для гибкой структуры действий
+		category: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "resourcePurchase",
 		},
-		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-		currency: {
-			type: DataTypes.ENUM(
-				"tgStars",
-				"tonToken",
-				"stars",
-				"stardust",
-				"darkMatter"
-			),
-			allowNull: false,
+		actionType: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "fixedAmount",
+		},
+		actionTarget: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "reward",
+		},
+		actionData: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			defaultValue: {},
+		},
+		costData: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			defaultValue: {},
+		},
+		labelKey: {
+			type: DataTypes.STRING(500),
+			allowNull: true,
 		},
 		status: {
 			type: DataTypes.BOOLEAN,
@@ -1047,6 +1061,7 @@ const PackageStore = sequelize.define(
 		},
 	},
 	{
+		tableName: "packagestore", // Явно указываем имя таблицы (единственное число)
 		indexes: [
 			{
 				fields: ["userId"],
@@ -1055,6 +1070,14 @@ const PackageStore = sequelize.define(
 			{
 				fields: ["packageTemplateId"],
 				name: "packagestore_package_template_id_idx",
+			},
+			{
+				fields: ["category"],
+				name: "packagestore_category_idx",
+			},
+			{
+				fields: ["actionType"],
+				name: "packagestore_action_type_idx",
 			},
 		],
 	}
@@ -1067,21 +1090,31 @@ const PackageTemplate = sequelize.define(
 		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
 		name: { type: DataTypes.STRING, allowNull: false },
 		description: { type: DataTypes.TEXT, allowNull: true },
-		amount: { type: DataTypes.INTEGER, allowNull: false },
-		resource: {
-			type: DataTypes.ENUM("stardust", "darkMatter", "stars"),
-			allowNull: false,
+		// Новые поля для гибкой структуры действий
+		category: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "resourcePurchase",
 		},
-		price: { type: DataTypes.DECIMAL(30, 8), allowNull: false },
-		currency: {
-			type: DataTypes.ENUM(
-				"tgStars",
-				"tonToken",
-				"stars",
-				"stardust",
-				"darkMatter"
-			),
-			allowNull: false,
+		actionType: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "fixedAmount",
+		},
+		actionTarget: {
+			type: DataTypes.STRING(50),
+			allowNull: true,
+			defaultValue: "reward",
+		},
+		actionData: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			defaultValue: {},
+		},
+		costData: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			defaultValue: {},
 		},
 		status: {
 			type: DataTypes.BOOLEAN,
@@ -1094,10 +1127,19 @@ const PackageTemplate = sequelize.define(
 		validUntil: { type: DataTypes.DATE, allowNull: true },
 	},
 	{
+		tableName: "packagetemplates", // Явно указываем имя таблицы (множественное число)
 		indexes: [
 			{
 				fields: ["slug"],
 				name: "packagetemplate_slug_idx",
+			},
+			{
+				fields: ["category"],
+				name: "packagetemplate_category_idx",
+			},
+			{
+				fields: ["actionType"],
+				name: "packagetemplate_action_type_idx",
 			},
 		],
 	}
