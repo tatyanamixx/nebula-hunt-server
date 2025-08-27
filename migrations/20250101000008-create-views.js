@@ -111,12 +111,7 @@ module.exports = {
 				pt.status as active,
 				ps.status,
 				ps."createdAt" as purchased_at,
-				-- Новые поля для гибкой структуры
-				ps.category,
-				ps."actionType",
-				ps."actionTarget",
-				ps."actionData",
-				ps."costData",
+				-- Новые поля для гибкой структуры (только из шаблона)
 				pt.category as template_category,
 				pt."actionType" as template_action_type,
 				pt."actionTarget" as template_action_target,

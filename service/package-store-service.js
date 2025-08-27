@@ -49,17 +49,8 @@ class PackageStoreService {
 						defaults: {
 							packageTemplateId: template.id,
 							userId,
-							// Новые поля для гибкой структуры
-							category: template.category || "resourcePurchase",
-							actionType: template.actionType || "fixedAmount",
-							actionTarget: template.actionTarget || "reward",
-							actionData: template.actionData || {},
-							costData: template.costData || {},
-							// Копируем labelKey из шаблона
-							labelKey: template.labelKey,
 							status: true,
 							isUsed: false,
-							isLocked: false,
 						},
 						transaction: transaction,
 					});
@@ -76,17 +67,22 @@ class PackageStoreService {
 							package: template.toJSON(),
 						});
 					} else {
-						logger.debug("Package store item already exists", {
+						// Если запись уже существует, обновляем только status
+						await packageItem.update(
+							{ status: true },
+							{ transaction: transaction }
+						);
+						logger.debug("Updated existing package store item status", {
 							userId,
 							packageTemplateId: template.id,
 							templateSlug: template.slug,
 						});
-
-						initializedPackages.push({
-							...packageItem.toJSON(),
-							package: template.toJSON(),
-						});
 					}
+
+					initializedPackages.push({
+						...packageItem.toJSON(),
+						package: template.toJSON(),
+					});
 				} catch (packageError) {
 					logger.error("Error creating package store item", {
 						userId,
@@ -158,15 +154,16 @@ class PackageStoreService {
 							"slug",
 							"name",
 							"description",
-							"labelKey", // Добавляем labelKey
-							"icon", // Добавляем icon
-							"sortOrder", // Добавляем sortOrder
-							// Новые поля для гибкой структуры
+							"icon",
+							"sortOrder",
 							"category",
 							"actionType",
 							"actionTarget",
 							"actionData",
 							"costData",
+							"labelKey",
+							"isPromoted",
+							"validUntil",
 						],
 					},
 				],
@@ -201,15 +198,16 @@ class PackageStoreService {
 								"slug",
 								"name",
 								"description",
-								"labelKey", // Добавляем labelKey
-								"icon", // Добавляем icon
-								"sortOrder", // Добавляем sortOrder
-								// Новые поля для гибкой структуры
+								"icon",
+								"sortOrder",
 								"category",
 								"actionType",
 								"actionTarget",
 								"actionData",
 								"costData",
+								"labelKey",
+								"isPromoted",
+								"validUntil",
 							],
 						},
 					],
@@ -290,20 +288,18 @@ class PackageStoreService {
 						attributes: [
 							"id",
 							"slug",
-							"title",
+							"name",
 							"description",
-							// Новые поля для гибкой структуры
+							"icon",
+							"sortOrder",
 							"category",
 							"actionType",
 							"actionTarget",
 							"actionData",
 							"costData",
-							// Legacy поля для обратной совместимости
-							"amount",
-							"resource",
-							"price",
-							"currency",
-							"status",
+							"labelKey",
+							"isPromoted",
+							"validUntil",
 						],
 					},
 				],
@@ -357,10 +353,16 @@ class PackageStoreService {
 	 * @param {number} userId - User ID
 	 * @returns {Promise<Object>} - Updated user state and package
 	 */
-	async usePackage(slug, userId) {
+	async usePackage(slug, userId, offer = {}) {
 		const t = await sequelize.transaction();
 
 		try {
+			logger.debug("usePackage started", {
+				userId,
+				slug,
+				offer,
+			});
+
 			// Находим шаблон пакета
 			const packageTemplate = await PackageTemplate.findOne({
 				where: { slug },
@@ -378,6 +380,13 @@ class PackageStoreService {
 				);
 			}
 
+			logger.debug("usePackage - package template found", {
+				userId,
+				slug,
+				actionType: packageTemplate.actionType,
+				actionTarget: packageTemplate.actionTarget,
+			});
+
 			// Находим пакет пользователя
 			const packageItem = await PackageStore.findOne({
 				where: {
@@ -385,7 +394,6 @@ class PackageStoreService {
 					userId,
 					status: true,
 					isUsed: false,
-					isLocked: false,
 				},
 				transaction: t,
 			});
@@ -412,9 +420,8 @@ class PackageStoreService {
 
 			switch (actionType) {
 				case "fixedAmount":
-				case "variableAmount":
 					// Создаем offer для регистрации изменений в состоянии через registerOffer
-					const offerData = {
+					const fixedOfferData = {
 						sellerId: SYSTEM_USER_ID, // Системный аккаунт
 						buyerId: userId,
 						price: costData.price || 0,
@@ -427,8 +434,36 @@ class PackageStoreService {
 						txType: "PACKAGE_REWARD",
 					};
 
-					// Используем registerOffer для регистрации изменений в состоянии
-					result = await marketService.registerOffer(offerData, t);
+					// Создаем транзакцию по оплате через marketService.registerOffer
+					result = await marketService.registerOffer(fixedOfferData, t);
+					break;
+
+				case "variableAmount":
+					// Для variableAmount используем параметры из offer
+					if (!offer || !offer.amount) {
+						throw new ApiError(
+							400,
+							`Missing required offer.amount for variableAmount package`,
+							ERROR_CODES.PACKAGE.INVALID_ACTION
+						);
+					}
+
+					// Создаем offer для регистрации изменений в состоянии через registerOffer
+					const variableOfferData = {
+						sellerId: SYSTEM_USER_ID, // Системный аккаунт
+						buyerId: userId,
+						price: costData.price || 0,
+						currency: costData.currency || "tgStars",
+						resource: actionData.resource || "stardust",
+						amount: offer.amount, // Используем amount из offer
+						itemType: "package",
+						itemId: packageItem.id, // userPackageStoreId
+						offerType: "SYSTEM",
+						txType: "PACKAGE_REWARD",
+					};
+
+					// Создаем транзакцию по оплате через marketService.registerOffer
+					result = await marketService.registerOffer(variableOfferData, t);
 					break;
 
 				case "updateField":
@@ -437,8 +472,17 @@ class PackageStoreService {
 						// Импортируем galaxyService для обновления галактик
 						const galaxyService = require("./galaxy-service");
 
-						// Получаем данные для обновления
-						const { seed, field, value } = actionData;
+						// Получаем данные для обновления, заменяя placeholder'ы из offer
+						let seed = actionData.seed;
+						let field = actionData.field;
+						let value = actionData.value;
+
+						// Заменяем placeholder'ы на значения из offer
+						if (offer) {
+							if (offer.seed !== undefined) seed = offer.seed;
+							if (offer.field !== undefined) field = offer.field;
+							if (offer.value !== undefined) value = offer.value;
+						}
 
 						if (!seed || !field || value === undefined) {
 							throw new ApiError(
@@ -458,6 +502,7 @@ class PackageStoreService {
 							field,
 							value,
 							actionData,
+							offer,
 						});
 
 						result = {

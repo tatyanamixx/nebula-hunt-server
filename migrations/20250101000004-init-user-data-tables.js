@@ -259,46 +259,12 @@ module.exports = {
 				type: Sequelize.BIGINT,
 				allowNull: false,
 			},
-			category: {
-				type: Sequelize.STRING(50),
-				allowNull: true,
-				defaultValue: "resourcePurchase",
-			},
-			actionType: {
-				type: Sequelize.STRING(50),
-				allowNull: true,
-				defaultValue: "fixedAmount",
-			},
-			actionTarget: {
-				type: Sequelize.STRING(50),
-				allowNull: true,
-				defaultValue: "reward",
-			},
-			actionData: {
-				type: Sequelize.JSONB,
-				allowNull: true,
-				defaultValue: {},
-			},
-			costData: {
-				type: Sequelize.JSONB,
-				allowNull: true,
-				defaultValue: {},
-			},
-			labelKey: {
-				type: Sequelize.STRING(500),
-				allowNull: true,
-			},
 			status: {
 				type: Sequelize.BOOLEAN,
 				defaultValue: true,
 				allowNull: false,
 			},
 			isUsed: {
-				type: Sequelize.BOOLEAN,
-				defaultValue: false,
-				allowNull: false,
-			},
-			isLocked: {
 				type: Sequelize.BOOLEAN,
 				defaultValue: false,
 				allowNull: false,
@@ -370,18 +336,6 @@ module.exports = {
 
 		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS packagestore_package_template_id_idx ON packagestore ("packageTemplateId");
-		`);
-
-		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS packagestore_category_idx ON packagestore ("category");
-		`);
-
-		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS packagestore_action_type_idx ON packagestore ("actionType");
-		`);
-
-		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS packagestore_label_key_idx ON packagestore ("labelKey");
 		`);
 
 		// Создаем отложенные внешние ключи
@@ -515,21 +469,9 @@ module.exports = {
 		// Удаляем индексы
 		await queryInterface.removeIndex(
 			"packagestore",
-			"packagestore_action_type_idx"
-		);
-		await queryInterface.removeIndex(
-			"packagestore",
-			"packagestore_category_idx"
-		);
-		await queryInterface.removeIndex(
-			"packagestore",
 			"packagestore_package_template_id_idx"
 		);
 		await queryInterface.removeIndex("packagestore", "packagestore_user_id_idx");
-		await queryInterface.removeIndex(
-			"packagestore",
-			"packagestore_label_key_idx"
-		);
 		await queryInterface.removeIndex(
 			"usereventsettings",
 			"usereventsettings_user_id_idx"

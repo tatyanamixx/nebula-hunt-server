@@ -1014,47 +1014,12 @@ const PackageStore = sequelize.define(
 			allowNull: false,
 			field: "packageTemplateId", // Explicitly set the field name
 		},
-		// Новые поля для гибкой структуры действий
-		category: {
-			type: DataTypes.STRING(50),
-			allowNull: true,
-			defaultValue: "resourcePurchase",
-		},
-		actionType: {
-			type: DataTypes.STRING(50),
-			allowNull: true,
-			defaultValue: "fixedAmount",
-		},
-		actionTarget: {
-			type: DataTypes.STRING(50),
-			allowNull: true,
-			defaultValue: "reward",
-		},
-		actionData: {
-			type: DataTypes.JSONB,
-			allowNull: true,
-			defaultValue: {},
-		},
-		costData: {
-			type: DataTypes.JSONB,
-			allowNull: true,
-			defaultValue: {},
-		},
-		labelKey: {
-			type: DataTypes.STRING(500),
-			allowNull: true,
-		},
 		status: {
 			type: DataTypes.BOOLEAN,
 			defaultValue: true,
 			allowNull: false,
 		},
 		isUsed: {
-			type: DataTypes.BOOLEAN,
-			defaultValue: false,
-			allowNull: false,
-		},
-		isLocked: {
 			type: DataTypes.BOOLEAN,
 			defaultValue: false,
 			allowNull: false,
@@ -1070,14 +1035,6 @@ const PackageStore = sequelize.define(
 			{
 				fields: ["packageTemplateId"],
 				name: "packagestore_package_template_id_idx",
-			},
-			{
-				fields: ["category"],
-				name: "packagestore_category_idx",
-			},
-			{
-				fields: ["actionType"],
-				name: "packagestore_action_type_idx",
 			},
 		],
 	}
