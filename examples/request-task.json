@@ -13,12 +13,12 @@
 			"type": "param",
 			"entity": "userState",
 			"param": "stars",
-			"amount": 100,
+			"threshold": 100,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 1	
+		"sortOrder": 1
 	},
 	{
 		"slug": "create_stars_1000",
@@ -34,7 +34,7 @@
 			"type": "param",
 			"entity": "userState",
 			"param": "stars",
-			"amount": 1000,
+			"threshold": 1000,
 			"operator": ">="
 		},
 		"icon": "⭐",
@@ -55,7 +55,7 @@
 			"type": "param",
 			"entity": "userState",
 			"param": "stars",
-			"amount": 10000,
+			"threshold": 10000,
 			"operator": ">="
 		},
 		"icon": "⭐",
@@ -76,7 +76,7 @@
 			"type": "param",
 			"entity": "userState",
 			"param": "stars",
-			"amount": 50000,
+			"threshold": 50000,
 			"operator": ">="
 		},
 		"icon": "⭐",
@@ -97,7 +97,7 @@
 			"type": "param",
 			"entity": "userState",
 			"param": "stars",
-			"amount": 100000,
+			"threshold": 100000,
 			"operator": ">="
 		},
 		"icon": "⭐",
@@ -118,8 +118,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "stardust",
-			"amount": 5000,
+			"checkResource": "stardust",
+			"threshold": 5000,
 			"operator": ">="
 		},
 		"icon": "✨",
@@ -140,8 +140,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "stardust",
-			"amount": 25000,
+			"checkResource": "stardust",
+			"threshold": 25000,
 			"operator": ">="
 		},
 		"icon": "✨",
@@ -162,8 +162,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "stardust",
-			"amount": 100000,
+			"checkResource": "stardust",
+			"threshold": 100000,
 			"operator": ">="
 		},
 		"icon": "✨",
@@ -184,8 +184,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "darkMatter",
-			"amount": 10,
+			"checkResource": "darkMatter",
+			"threshold": 10,
 			"operator": ">="
 		},
 		"icon": "🌑",
@@ -206,8 +206,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "darkMatter",
-			"amount": 50,
+			"checkResource": "darkMatter",
+			"threshold": 50,
 			"operator": ">="
 		},
 		"icon": "🌑",
@@ -228,8 +228,8 @@
 			"type": "sum_resource",
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
-			"resource": "darkMatter",
-			"amount": 200,
+			"checkResource": "darkMatter",
+			"threshold": 200,
 			"operator": ">="
 		},
 		"icon": "🌑",
@@ -247,9 +247,9 @@
 			"amount": 15
 		},
 		"condition": {
-			"type": "count_entity",	
+			"type": "count_entity",
 			"entity": "galaxy",
-			"amount": 3,
+			"threshold": 3,
 			"operator": ">="
 		},
 		"icon": "🌌",
@@ -269,7 +269,7 @@
 		"condition": {
 			"type": "count_entity",
 			"entity": "galaxy",
-			"amount": 5,
+			"threshold": 5,
 			"operator": ">="
 		},
 		"icon": "🌌",
@@ -289,7 +289,7 @@
 		"condition": {
 			"type": "count_entity",
 			"entity": "galaxy",
-			"amount": 10,
+			"threshold": 10,
 			"operator": ">="
 		},
 		"icon": "🌌",
@@ -309,7 +309,7 @@
 		"condition": {
 			"type": "upgrade_entity",
 			"entity": "galaxy",
-			"count": 1
+			"threshold": 1
 		},
 		"icon": "⚙️",
 		"active": true,
@@ -328,7 +328,7 @@
 		"condition": {
 			"type": "scan_entity",
 			"entity": "galaxy",
-			"count": 10
+			"threshold": 10
 		},
 		"icon": "🔭",
 		"active": true,
@@ -347,7 +347,7 @@
 		"condition": {
 			"type": "share_entity",
 			"entity": "galaxy",
-			"count": 1
+			"threshold": 1
 		},
 		"icon": "🔗",
 		"active": true,
@@ -361,15 +361,15 @@
 		"category": "daily_login",
 		"reward": {
 			"resource": "stardust",
-			"amount": 2500, 
+			"amount": 2500,
 			"multiplier": 1.25
 		},
 		"condition": {
 			"type": "login_daily",
-			"days": [1,2,3,4,5,6,7],
+			"days": [1, 2, 3, 4, 5, 6, 7],
 			"resetTime": "00:00"
 		},
-		"icon": "📆",	
+		"icon": "📆",
 		"active": true,
 		"sortOrder": 18
 	},
@@ -389,7 +389,7 @@
 			"days": [3, 5, 7],
 			"resetTime": "00:00"
 		},
-		"icon": "📆",	
+		"icon": "📆",
 		"active": true,
 		"sortOrder": 19
 	}

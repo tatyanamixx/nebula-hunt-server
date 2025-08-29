@@ -90,7 +90,7 @@ class TaskTemplateDTO {
 			days: condition.days || [],
 			amount: condition.amount || 0,
 			operator: condition.operator || '>=',
-			resource: condition.resource || '',
+			checkResource: condition.checkResource || '',
 			resetTime: condition.resetTime || '00:00',
 		};
 	}
