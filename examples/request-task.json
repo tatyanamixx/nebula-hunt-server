@@ -3,377 +3,394 @@
 		"slug": "create_stars_100",
 		"name": "First Steps",
 		"description": "Create 100 stars in your galaxy",
-		"target": "resource",
+		"labelKey": "create_stars_100",
+		"category": "param_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 500
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
+			"type": "param",
+			"entity": "userState",
+			"param": "stars",
 			"amount": 100,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 1,
-		"labelKey": "create_stars_100"
+		"sortOrder": 1	
 	},
 	{
 		"slug": "create_stars_1000",
 		"name": "Star Crafter",
 		"description": "Create 1,000 stars in your galaxy",
-		"target": "resource",
+		"labelKey": "create_stars_1000",
+		"category": "param_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
+			"type": "param",
+			"entity": "userState",
+			"param": "stars",
 			"amount": 1000,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 2,
-		"labelKey": "create_stars_1000"
+		"sortOrder": 2
 	},
 	{
 		"slug": "create_stars_10000",
 		"name": "Stellar Engineer",
 		"description": "Create 10,000 stars in your galaxy",
-		"target": "resource",
+		"labelKey": "create_stars_10000",
+		"category": "param_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 10000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
+			"type": "param",
+			"entity": "userState",
+			"param": "stars",
 			"amount": 10000,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 3,
-		"labelKey": "create_stars_10000"
+		"sortOrder": 3
 	},
 	{
 		"slug": "create_stars_50000",
 		"name": "Master of Stars",
 		"description": "Create 50,000 stars in your galaxy",
-		"target": "resource",
+		"labelKey": "create_stars_50000",
+		"category": "param_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
+			"type": "param",
+			"entity": "userState",
+			"param": "stars",
 			"amount": 50000,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 4,
-		"labelKey": "create_stars_50000"
+		"sortOrder": 4
 	},
 	{
 		"slug": "create_stars_100000",
 		"name": "Cosmic Architect",
 		"description": "Create 100,000 stars in your galaxy",
-		"target": "resource",
+		"labelKey": "create_stars_100000",
+		"category": "param_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
+			"type": "param",
+			"entity": "userState",
+			"param": "stars",
 			"amount": 100000,
 			"operator": ">="
 		},
 		"icon": "⭐",
 		"active": true,
-		"sortOrder": 5,
-		"labelKey": "create_stars_100000"
+		"sortOrder": 5
 	},
 	{
 		"slug": "collect_stardust_5000",
 		"name": "Dust Collector",
 		"description": "Collect 5,000 stardust",
-		"target": "resource",
+		"labelKey": "collect_stardust_5000",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "stardust",
 			"amount": 1000
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "stardust",
 			"amount": 5000,
 			"operator": ">="
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 6,
-		"labelKey": "collect_stardust_5000"
+		"sortOrder": 6
 	},
 	{
 		"slug": "collect_stardust_25000",
 		"name": "Dust Magnet",
 		"description": "Collect 25,000 stardust",
-		"target": "resource",
+		"labelKey": "collect_stardust_25000",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "stardust",
 			"amount": 5000
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "stardust",
 			"amount": 25000,
 			"operator": ">="
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 7,
-		"labelKey": "collect_stardust_25000"
+		"sortOrder": 7
 	},
 	{
 		"slug": "collect_stardust_100000",
 		"name": "Stardust Master",
 		"description": "Collect 100,000 stardust",
-		"target": "resource",
+		"labelKey": "collect_stardust_100000",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 25
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "stardust",
 			"amount": 100000,
 			"operator": ">="
 		},
 		"icon": "✨",
 		"active": true,
-		"sortOrder": 8,
-		"labelKey": "collect_stardust_100000"
+		"sortOrder": 8
 	},
 	{
 		"slug": "collect_dark_matter_10",
 		"name": "Dark Explorer",
 		"description": "Collect 10 dark matter",
-		"target": "resource",
+		"labelKey": "collect_dark_matter_10",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "darkMatter",
 			"amount": 10,
 			"operator": ">="
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 9,
-		"labelKey": "collect_dark_matter_10"
+		"sortOrder": 9
 	},
 	{
 		"slug": "collect_dark_matter_50",
 		"name": "Void Master",
 		"description": "Collect 50 dark matter",
-		"target": "resource",
+		"labelKey": "collect_dark_matter_50",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "darkMatter",
 			"amount": 50,
 			"operator": ">="
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 10,
-		"labelKey": "collect_dark_matter_50"
+		"sortOrder": 10
 	},
 	{
 		"slug": "collect_dark_matter_200",
 		"name": "Dark Matter Sage",
 		"description": "Collect 200 dark matter",
-		"target": "resource",
+		"labelKey": "collect_dark_matter_200",
+		"category": "sum_resource",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
-			"type": "resource_threshold",
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
 			"resource": "darkMatter",
 			"amount": 200,
 			"operator": ">="
 		},
 		"icon": "🌑",
 		"active": true,
-		"sortOrder": 11,
-		"labelKey": "collect_dark_matter_200"
+		"sortOrder": 11
 	},
 	{
 		"slug": "own_galaxies_3",
 		"name": "Galaxy Explorer",
 		"description": "Own 3 galaxies",
-		"target": "entity",
+		"labelKey": "own_galaxies_3",
+		"category": "count_entity",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 15
 		},
 		"condition": {
-			"type": "entity_threshold",
+			"type": "count_entity",	
 			"entity": "galaxy",
 			"amount": 3,
 			"operator": ">="
 		},
 		"icon": "🌌",
 		"active": true,
-			"sortOrder": 12,
-		"labelKey": "own_galaxies_3"
+		"sortOrder": 12
 	},
 	{
 		"slug": "own_galaxies_5",
 		"name": "Cosmic Emperor",
 		"description": "Own 5 galaxies",
-		"target": "entity",
+		"labelKey": "own_galaxies_5",
+		"category": "count_entity",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 30
 		},
 		"condition": {
-			"type": "entity_threshold",
+			"type": "count_entity",
 			"entity": "galaxy",
 			"amount": 5,
 			"operator": ">="
 		},
 		"icon": "🌌",
 		"active": true,
-		"sortOrder": 13,
-		"labelKey": "own_galaxies_5"
+		"sortOrder": 13
 	},
 	{
 		"slug": "own_galaxies_10",
 		"name": "Universal Sovereign",
 		"description": "Own 10 galaxies",
-		"target": "entity",
+		"labelKey": "own_galaxies_10",
+		"category": "count_entity",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
-			"type": "entity_threshold",
+			"type": "count_entity",
 			"entity": "galaxy",
 			"amount": 10,
 			"operator": ">="
 		},
 		"icon": "🌌",
 		"active": true,
-		"sortOrder": 14,
-		"labelKey": "own_galaxies_10"
+		"sortOrder": 14
 	},
 	{
 		"slug": "upgrade_galaxy",
 		"name": "Galaxy Enhancement",
 		"description": "Upgrade your galaxy for the first time",
-		"target": "entity",
+		"labelKey": "upgrade_galaxy",
+		"category": "entity_upgrade",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
-			"type": "entity_upgrade",
+			"type": "upgrade_entity",
 			"entity": "galaxy",
 			"count": 1
 		},
 		"icon": "⚙️",
 		"active": true,
-		"sortOrder": 15,
-		"labelKey": "upgrade_galaxy"
+		"sortOrder": 15
 	},
 	{
 		"slug": "scan_galaxy_10",
 		"name": "Cosmic Researcher",
 		"description": "Scan your galaxy 10 times",
-		"target": "scan",
+		"labelKey": "scan_galaxy_10",
+		"category": "scan_entity",
 		"reward": {
 			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
-			"type": "entity_scan",
+			"type": "scan_entity",
 			"entity": "galaxy",
 			"count": 10
 		},
 		"icon": "🔭",
 		"active": true,
-		"sortOrder": 16,
-		"labelKey": "scan_galaxy_10"
+		"sortOrder": 16
 	},
 	{
 		"slug": "share_galaxy",
 		"name": "Stellar Ambassador",
 		"description": "Share your galaxy with a friend",
-		"target": "share",
+		"labelKey": "share_galaxy",
+		"category": "entity_share",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
-			"type": "entity_share",
+			"type": "share_entity",
 			"entity": "galaxy",
 			"count": 1
 		},
 		"icon": "🔗",
 		"active": true,
-		"sortOrder": 17,
-		"labelKey": "share_galaxy"
+		"sortOrder": 17
 	},
 	{
 		"slug": "daily_login_stardust",
 		"name": "Daily login reward",
 		"description": "Login daily to receive rewards",
-		"target": "login",
+		"labelKey": "daily_login_stardust",
+		"category": "daily_login",
 		"reward": {
 			"resource": "stardust",
 			"amount": 2500, 
 			"multiplier": 1.25
 		},
 		"condition": {
-			"type": "daily_login",
+			"type": "login_daily",
 			"days": [1,2,3,4,5,6,7],
 			"resetTime": "00:00"
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 18,
-		"labelKey": "daily_login_stardust"
+		"sortOrder": 18
 	},
 	{
 		"slug": "daily_login_darkmatter",
 		"name": "Daily login reward darkmatter",
 		"description": "Login daily to receive rewards",
-		"target": "login",
+		"labelKey": "daily_login_darkmatter",
+		"category": "daily_login",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 5,
 			"multiplier": 1
 		},
 		"condition": {
-			"type": "daily_login",
+			"type": "login_daily",
 			"days": [3, 5, 7],
 			"resetTime": "00:00"
 		},
 		"icon": "📆",	
 		"active": true,
-		"sortOrder": 19,
-		"labelKey": "daily_login_darkmatter"
+		"sortOrder": 19
 	}
 ]
