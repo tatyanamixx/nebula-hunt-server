@@ -4,17 +4,17 @@
 		"name": "First Steps",
 		"description": "Create 100 stars in your galaxy",
 		"labelKey": "create_stars_100",
-		"category": "param_threshold",
+		"category": "stars_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 500
 		},
 		"condition": {
-			"type": "param",
-			"entity": "userState",
-			"param": "stars",
-			"threshold": 100,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 100
 		},
 		"icon": "⭐",
 		"active": true,
@@ -25,17 +25,17 @@
 		"name": "Star Crafter",
 		"description": "Create 1,000 stars in your galaxy",
 		"labelKey": "create_stars_1000",
-		"category": "param_threshold",
+		"category": "stars_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
-			"type": "param",
-			"entity": "userState",
-			"param": "stars",
-			"threshold": 1000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 1000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -46,17 +46,17 @@
 		"name": "Stellar Engineer",
 		"description": "Create 10,000 stars in your galaxy",
 		"labelKey": "create_stars_10000",
-		"category": "param_threshold",
+		"category": "stars_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 10000
 		},
 		"condition": {
-			"type": "param",
-			"entity": "userState",
-			"param": "stars",
-			"threshold": 10000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 10000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -67,17 +67,17 @@
 		"name": "Master of Stars",
 		"description": "Create 50,000 stars in your galaxy",
 		"labelKey": "create_stars_50000",
-		"category": "param_threshold",
+		"category": "stars_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
-			"type": "param",
-			"entity": "userState",
-			"param": "stars",
-			"threshold": 50000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 50000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -88,17 +88,17 @@
 		"name": "Cosmic Architect",
 		"description": "Create 100,000 stars in your galaxy",
 		"labelKey": "create_stars_100000",
-		"category": "param_threshold",
+		"category": "stars_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
-			"type": "param",
-			"entity": "userState",
-			"param": "stars",
-			"threshold": 100000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 100000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -109,7 +109,7 @@
 		"name": "Dust Collector",
 		"description": "Collect 5,000 stardust",
 		"labelKey": "collect_stardust_5000",
-		"category": "sum_resource",
+		"category": "stardust_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 1000
@@ -119,8 +119,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "stardust",
-			"threshold": 5000,
-			"operator": ">="
+			"threshold": 5000
 		},
 		"icon": "✨",
 		"active": true,
@@ -131,7 +130,7 @@
 		"name": "Dust Magnet",
 		"description": "Collect 25,000 stardust",
 		"labelKey": "collect_stardust_25000",
-		"category": "sum_resource",
+		"category": "stardust_threshold",
 		"reward": {
 			"resource": "stardust",
 			"amount": 5000
@@ -141,8 +140,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "stardust",
-			"threshold": 25000,
-			"operator": ">="
+			"threshold": 25000
 		},
 		"icon": "✨",
 		"active": true,
@@ -153,7 +151,7 @@
 		"name": "Stardust Master",
 		"description": "Collect 100,000 stardust",
 		"labelKey": "collect_stardust_100000",
-		"category": "sum_resource",
+		"category": "stardust_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 25
@@ -163,8 +161,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "stardust",
-			"threshold": 100000,
-			"operator": ">="
+			"threshold": 100000
 		},
 		"icon": "✨",
 		"active": true,
@@ -175,7 +172,7 @@
 		"name": "Dark Explorer",
 		"description": "Collect 10 dark matter",
 		"labelKey": "collect_dark_matter_10",
-		"category": "sum_resource",
+		"category": "dark_matter_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 5
@@ -185,8 +182,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "darkMatter",
-			"threshold": 10,
-			"operator": ">="
+			"threshold": 10
 		},
 		"icon": "🌑",
 		"active": true,
@@ -197,7 +193,7 @@
 		"name": "Void Master",
 		"description": "Collect 50 dark matter",
 		"labelKey": "collect_dark_matter_50",
-		"category": "sum_resource",
+		"category": "dark_matter_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 20
@@ -207,8 +203,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "darkMatter",
-			"threshold": 50,
-			"operator": ">="
+			"threshold": 50
 		},
 		"icon": "🌑",
 		"active": true,
@@ -219,7 +214,7 @@
 		"name": "Dark Matter Sage",
 		"description": "Collect 200 dark matter",
 		"labelKey": "collect_dark_matter_200",
-		"category": "sum_resource",
+		"category": "dark_matter_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 50
@@ -229,8 +224,7 @@
 			"entity": "paymentTransaction",
 			"filter": "FARMING_REWARD",
 			"checkResource": "darkMatter",
-			"threshold": 200,
-			"operator": ">="
+			"threshold": 200
 		},
 		"icon": "🌑",
 		"active": true,
@@ -241,7 +235,7 @@
 		"name": "Galaxy Explorer",
 		"description": "Own 3 galaxies",
 		"labelKey": "own_galaxies_3",
-		"category": "count_entity",
+		"category": "galaxies_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 15
@@ -249,8 +243,7 @@
 		"condition": {
 			"type": "count_entity",
 			"entity": "galaxy",
-			"threshold": 3,
-			"operator": ">="
+			"threshold": 3
 		},
 		"icon": "🌌",
 		"active": true,
@@ -261,7 +254,7 @@
 		"name": "Cosmic Emperor",
 		"description": "Own 5 galaxies",
 		"labelKey": "own_galaxies_5",
-		"category": "count_entity",
+		"category": "galaxies_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 30
@@ -269,8 +262,7 @@
 		"condition": {
 			"type": "count_entity",
 			"entity": "galaxy",
-			"threshold": 5,
-			"operator": ">="
+			"threshold": 5
 		},
 		"icon": "🌌",
 		"active": true,
@@ -281,7 +273,7 @@
 		"name": "Universal Sovereign",
 		"description": "Own 10 galaxies",
 		"labelKey": "own_galaxies_10",
-		"category": "count_entity",
+		"category": "galaxies_threshold",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 100
@@ -289,8 +281,9 @@
 		"condition": {
 			"type": "count_entity",
 			"entity": "galaxy",
-			"threshold": 10,
-			"operator": ">="
+			"filter": "FARMING_REWARD",
+			"checkResource": "galaxy",
+			"threshold": 10
 		},
 		"icon": "🌌",
 		"active": true,
@@ -301,14 +294,16 @@
 		"name": "Galaxy Enhancement",
 		"description": "Upgrade your galaxy for the first time",
 		"labelKey": "upgrade_galaxy",
-		"category": "entity_upgrade",
+		"category": "galaxies_upgrade",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
 			"type": "upgrade_entity",
-			"entity": "galaxy",
+			"entity": "paymentTransaction",
+			"filter": "UPGRADE_GALAXY",
+			"checkResource": "galaxy",
 			"threshold": 1
 		},
 		"icon": "⚙️",
@@ -320,14 +315,16 @@
 		"name": "Cosmic Researcher",
 		"description": "Scan your galaxy 10 times",
 		"labelKey": "scan_galaxy_10",
-		"category": "scan_entity",
+		"category": "scan_galaxies",
 		"reward": {
 			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
-			"type": "scan_entity",
-			"entity": "galaxy",
+			"type": "scan_galaxies",
+			"entity": "paymentTransaction",
+			"filter": "SCAN_GALAXY",
+			"checkResource": "galaxy",
 			"threshold": 10
 		},
 		"icon": "🔭",
@@ -339,14 +336,16 @@
 		"name": "Stellar Ambassador",
 		"description": "Share your galaxy with a friend",
 		"labelKey": "share_galaxy",
-		"category": "entity_share",
+		"category": "galaxies_share",
 		"reward": {
 			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
-			"type": "share_entity",
-			"entity": "galaxy",
+			"type": "share_galaxies",
+			"entity": "paymentTransaction",
+			"filter": "SHARE_GALAXY",
+			"checkResource": "galaxy",
 			"threshold": 1
 		},
 		"icon": "🔗",
