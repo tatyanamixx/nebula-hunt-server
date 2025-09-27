@@ -91,12 +91,8 @@ module.exports = {
 				type: Sequelize.ENUM("locked", "available", "completed"),
 				defaultValue: "locked",
 				allowNull: false,
-				comment: "Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
-			},
-			reward: {
-				type: Sequelize.JSONB,
-				defaultValue: { type: "stardust", amount: 0 },
-				allowNull: false,
+				comment:
+					"Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
 			},
 			active: {
 				type: Sequelize.BOOLEAN,

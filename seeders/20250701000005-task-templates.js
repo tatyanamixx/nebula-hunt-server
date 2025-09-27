@@ -12,10 +12,8 @@ module.exports = {
 					name: "Daily Explorer",
 					labelKey: "task.daily_login.title",
 					description: "Login daily to receive rewards",
+					reward: JSON.stringify({ type: "daily_login" }),
 					isDaily: true,
-					reward: JSON.stringify({
-						type: "daily_login", // Special type for dynamic calculation
-					}),
 					condition: JSON.stringify({
 						type: "daily_login",
 					}),
@@ -33,8 +31,8 @@ module.exports = {
 					name: "First Steps",
 					labelKey: "task.create_stars_100.title",
 					description: "Create 100 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 500 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 100,
@@ -51,8 +49,8 @@ module.exports = {
 					name: "Star Crafter",
 					labelKey: "task.create_stars_1000.title",
 					description: "Create 1,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 1000,
@@ -69,8 +67,8 @@ module.exports = {
 					name: "Stellar Engineer",
 					labelKey: "task.create_stars_10000.title",
 					description: "Create 10,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 10000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 10000,
@@ -87,8 +85,8 @@ module.exports = {
 					name: "Star Architect",
 					labelKey: "task.create_stars_25000.title",
 					description: "Create 25,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 15000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 25000,
@@ -105,8 +103,8 @@ module.exports = {
 					name: "Dust Collector",
 					labelKey: "task.collect_stardust_5000.title",
 					description: "Collect 5,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 1000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 5000,
@@ -123,8 +121,8 @@ module.exports = {
 					name: "Dust Magnet",
 					labelKey: "task.collect_stardust_25000.title",
 					description: "Collect 25,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 5000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 25000,
@@ -141,8 +139,8 @@ module.exports = {
 					name: "Cosmic Harvester",
 					labelKey: "task.collect_stardust_50000.title",
 					description: "Collect 50,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 8000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 50000,
@@ -159,8 +157,8 @@ module.exports = {
 					name: "Stardust Tycoon",
 					labelKey: "task.collect_stardust_75000.title",
 					description: "Collect 75,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 12000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 75000,
@@ -177,8 +175,8 @@ module.exports = {
 					name: "Galactic Pioneer",
 					labelKey: "task.own_galaxies_2.title",
 					description: "Own 2 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "owned_galaxies",
 						threshold: 2,
@@ -195,8 +193,8 @@ module.exports = {
 					name: "Dedicated Explorer",
 					labelKey: "task.continuous_play_1.title",
 					description: "Play for 3 consecutive days",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "login_streak",
 						threshold: 3,
@@ -213,8 +211,8 @@ module.exports = {
 					name: "Space Enthusiast",
 					labelKey: "task.continuous_play_2.title",
 					description: "Play for 5 consecutive days",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 5000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "login_streak",
 						threshold: 5,
@@ -231,8 +229,8 @@ module.exports = {
 					name: "Dark Beginnings",
 					labelKey: "task.dark_matter_first.title",
 					description: "Collect your first dark matter",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "dark_matter_count",
 						threshold: 1,
@@ -249,8 +247,8 @@ module.exports = {
 					name: "Cosmic Researcher",
 					labelKey: "task.scan_galaxy_10.title",
 					description: "Scan 10 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
+					isDaily: false,
 					condition: JSON.stringify({ type: "scan_count", threshold: 10 }),
 					icon: "🔭",
 					active: true,
@@ -264,8 +262,8 @@ module.exports = {
 					name: "Star Collector",
 					labelKey: "task.star_collector.title",
 					description: "Create stars 10 times",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 1500 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "star_creation_count",
 						threshold: 10,
@@ -282,8 +280,8 @@ module.exports = {
 					name: "Rapid Development",
 					labelKey: "task.quick_progress.title",
 					description: "Create 500 stars in one session",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3500 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "session_stars_created",
 						threshold: 500,
@@ -300,8 +298,8 @@ module.exports = {
 					name: "Efficiency Master",
 					labelKey: "task.efficiency_master.title",
 					description: "Collect stardust 5 times in one day",
-					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2500 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "daily_collection_count",
 						threshold: 5,
@@ -320,8 +318,8 @@ module.exports = {
 					name: "Master of Stars",
 					labelKey: "task.create_stars_50000.title",
 					description: "Create 50,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 50000,
@@ -338,8 +336,8 @@ module.exports = {
 					name: "Stellar Domination",
 					labelKey: "task.create_stars_75000.title",
 					description: "Create 75,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 75000,
@@ -356,8 +354,8 @@ module.exports = {
 					name: "Cosmic Architect",
 					labelKey: "task.create_stars_100000.title",
 					description: "Create 100,000 stars",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 100 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "total_stars",
 						threshold: 100000,
@@ -374,8 +372,8 @@ module.exports = {
 					name: "Stardust Master",
 					labelKey: "task.collect_stardust_100000.title",
 					description: "Collect 100,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 25 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 100000,
@@ -392,8 +390,8 @@ module.exports = {
 					name: "Stardust Overlord",
 					labelKey: "task.collect_stardust_250000.title",
 					description: "Collect 250,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 250000,
@@ -410,8 +408,8 @@ module.exports = {
 					name: "Stellar Dust Emperor",
 					labelKey: "task.collect_stardust_500000.title",
 					description: "Collect 500,000 stardust",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 500000,
@@ -428,8 +426,8 @@ module.exports = {
 					name: "Dark Explorer",
 					labelKey: "task.collect_dark_matter_10.title",
 					description: "Collect 10 dark matter",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 5 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "dark_matter_count",
 						threshold: 10,
@@ -446,8 +444,8 @@ module.exports = {
 					name: "Void Master",
 					labelKey: "task.collect_dark_matter_50.title",
 					description: "Collect 50 dark matter",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "dark_matter_count",
 						threshold: 50,
@@ -464,8 +462,8 @@ module.exports = {
 					name: "Dark Matter Collector",
 					labelKey: "task.collect_dark_matter_100.title",
 					description: "Collect 100 dark matter",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 30 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "dark_matter_count",
 						threshold: 100,
@@ -482,8 +480,8 @@ module.exports = {
 					name: "Dark Matter Sage",
 					labelKey: "task.collect_dark_matter_200.title",
 					description: "Collect 200 dark matter",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "dark_matter_count",
 						threshold: 200,
@@ -500,8 +498,8 @@ module.exports = {
 					name: "Galaxy Explorer",
 					labelKey: "task.own_galaxies_3.title",
 					description: "Own 3 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 15 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "owned_galaxies",
 						threshold: 3,
@@ -518,8 +516,8 @@ module.exports = {
 					name: "Cosmic Emperor",
 					labelKey: "task.own_galaxies_5.title",
 					description: "Own 5 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 30 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "owned_galaxies",
 						threshold: 5,
@@ -536,8 +534,8 @@ module.exports = {
 					name: "Galactic Conqueror",
 					labelKey: "task.own_galaxies_7.title",
 					description: "Own 7 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 60 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "owned_galaxies",
 						threshold: 7,
@@ -554,8 +552,8 @@ module.exports = {
 					name: "Universal Sovereign",
 					labelKey: "task.own_galaxies_10.title",
 					description: "Own 10 galaxies",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 100 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "owned_galaxies",
 						threshold: 10,
@@ -572,8 +570,8 @@ module.exports = {
 					name: "Cosmic Veteran",
 					labelKey: "task.cosmic_veteran.title",
 					description: "Play for 7 consecutive days",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 15 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "login_streak",
 						threshold: 7,
@@ -590,8 +588,8 @@ module.exports = {
 					name: "Cosmic Devotee",
 					labelKey: "task.cosmic_devotee.title",
 					description: "Complete 10 tasks",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 25 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "completed_tasks",
 						threshold: 10,
@@ -608,8 +606,8 @@ module.exports = {
 					name: "Cosmic Master",
 					labelKey: "task.cosmic_master.title",
 					description: "Complete 20 tasks",
-					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
+					isDaily: false,
 					condition: JSON.stringify({
 						type: "completed_tasks",
 						threshold: 20,
@@ -627,7 +625,6 @@ module.exports = {
 					labelKey: "task.stardust_millionaire.title",
 					description: "Collect 1,000,000 stardust",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
 						threshold: 1000000,
@@ -645,7 +642,6 @@ module.exports = {
 					labelKey: "task.upgrade_galaxy.title",
 					description: "Upgrade your first galaxy",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
 					condition: JSON.stringify({ type: "first_galaxy_upgraded" }),
 					icon: "⚙️",
 					active: true,
@@ -660,7 +656,6 @@ module.exports = {
 					labelKey: "task.share_galaxy.title",
 					description: "Share a galaxy",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 5 }),
 					condition: JSON.stringify({ type: "galaxy_shared" }),
 					icon: "🔗",
 					active: true,
@@ -675,7 +670,6 @@ module.exports = {
 					labelKey: "task.galactic_harmony.title",
 					description: "Own 3 galaxies with stars",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
 					condition: JSON.stringify({
 						type: "galactic_harmony",
 						threshold: 3,
@@ -693,7 +687,6 @@ module.exports = {
 					labelKey: "task.universal_explorer.title",
 					description: "Visit 20 galaxies",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 35 }),
 					condition: JSON.stringify({
 						type: "galaxies_visited",
 						threshold: 20,
@@ -711,7 +704,6 @@ module.exports = {
 					labelKey: "task.collect_all_day.title",
 					description: "Collect stardust hourly for 12 hours",
 					isDaily: false,
-					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
 					condition: JSON.stringify({
 						type: "hourly_collections",
 						threshold: 12,

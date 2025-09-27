@@ -219,11 +219,8 @@ const UserTask = sequelize.define(
 			type: DataTypes.ENUM("locked", "available", "completed"),
 			defaultValue: "locked",
 			allowNull: false,
-			comment: "Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
-		},
-		reward: {
-			type: DataTypes.JSONB,
-			defaultValue: { type: "stardust", amount: 0 },
+			comment:
+				"Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
 		},
 		active: { type: DataTypes.BOOLEAN, defaultValue: true },
 		completedAt: { type: DataTypes.DATE, allowNull: true },

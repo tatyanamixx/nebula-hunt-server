@@ -190,7 +190,9 @@ class TaskService {
 					userId: userTask.userId,
 					taskId: userTask.taskId,
 					status: evaluatedTask ? evaluatedTask.status : userTask.status,
-					reward: evaluatedTask ? evaluatedTask.reward : userTask.reward,
+					reward: evaluatedTask
+						? evaluatedTask.reward
+						: userTask.tasktemplate.reward,
 					active: userTask.active,
 					completedAt: evaluatedTask
 						? evaluatedTask.completedAt
@@ -431,7 +433,10 @@ class TaskService {
 				const isGalaxyRelated = galaxyRelatedTasks.includes(userTask);
 				const isArtifactRelated = artifactRelatedTasks.includes(userTask);
 				const isPaymentRelated = paymentRelatedTasks.includes(userTask);
-				let updatedTask = { ...userTask.toJSON() };
+				let updatedTask = {
+					...userTask.toJSON(),
+					reward: taskTemplate.reward,
+				};
 
 				// Проверяем задачи, связанные с галактиками
 				if (isGalaxyRelated && userGalaxies.length > 0) {
@@ -961,7 +966,6 @@ class TaskService {
 			const now = new Date();
 			userTask.status = "completed";
 			userTask.completedAt = now;
-			userTask.reward = taskTemplate.reward;
 			await userTask.save({ transaction: t });
 
 			// Создаем offer для регистрации изменений в состоянии через registerOffer
@@ -1035,19 +1039,25 @@ class TaskService {
 		try {
 			logger.debug("getTotalTaskReward on start", { userId });
 
-			// Получаем все завершенные задачи пользователя
+			// Получаем все завершенные задачи пользователя с шаблонами
 			const completedTasks = await UserTask.findAll({
 				where: {
 					userId,
 					status: "completed",
 				},
+				include: [
+					{
+						model: TaskTemplate,
+						attributes: ["reward"],
+					},
+				],
 				transaction: t,
 			});
 
 			// Вычисляем общую награду
 			let totalReward = 0;
 			for (const task of completedTasks) {
-				const reward = task.reward || { amount: 0 };
+				const reward = task.tasktemplate?.reward || { amount: 0 };
 				totalReward += reward.amount || 0;
 			}
 

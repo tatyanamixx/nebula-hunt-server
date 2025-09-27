@@ -420,8 +420,14 @@ module.exports = {
 			"packagetemplate_slug_idx"
 		);
 		await queryInterface.removeIndex("eventtemplates", "eventtemplate_slug_idx");
-		await queryInterface.removeIndex("tasktemplates", "tasktemplate_label_key_idx");
-		await queryInterface.removeIndex("tasktemplates", "tasktemplate_is_daily_idx");
+		await queryInterface.removeIndex(
+			"tasktemplates",
+			"tasktemplate_label_key_idx"
+		);
+		await queryInterface.removeIndex(
+			"tasktemplates",
+			"tasktemplate_is_daily_idx"
+		);
 		await queryInterface.removeIndex("tasktemplates", "tasktemplate_slug_idx");
 		await queryInterface.removeIndex(
 			"upgradenodetemplates",
