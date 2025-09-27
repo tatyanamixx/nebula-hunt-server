@@ -140,18 +140,20 @@ module.exports = {
 				unique: true,
 				allowNull: false,
 			},
-			title: {
-				type: Sequelize.JSONB,
-				defaultValue: {
-					en: "",
-					ru: "",
-				},
-				allowNull: false,
-				comment: "Localized task descriptions",
+			name: {
+				type: Sequelize.STRING,
+				allowNull: true,
+				comment: "Название задачи (заменяет title)",
+			},
+			labelKey: {
+				type: Sequelize.STRING,
+				allowNull: true,
+				comment: "Ключ для локализации",
 			},
 			description: {
-				type: Sequelize.JSONB,
+				type: Sequelize.TEXT,
 				allowNull: false,
+				comment: "Описание задачи (изменено с JSONB на TEXT)",
 			},
 			reward: {
 				type: Sequelize.JSONB,
@@ -176,6 +178,12 @@ module.exports = {
 				type: Sequelize.INTEGER,
 				defaultValue: 0,
 				allowNull: false,
+			},
+			isDaily: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+				allowNull: false,
+				comment: "Флаг для проверки ежедневных задач",
 			},
 			createdAt: {
 				type: Sequelize.DATE,
@@ -373,6 +381,14 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS tasktemplate_is_daily_idx ON tasktemplates ("isDaily");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS tasktemplate_label_key_idx ON tasktemplates ("labelKey");
+		`);
+
+		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS eventtemplate_slug_idx ON eventtemplates ("slug");
 		`);
 
@@ -404,6 +420,8 @@ module.exports = {
 			"packagetemplate_slug_idx"
 		);
 		await queryInterface.removeIndex("eventtemplates", "eventtemplate_slug_idx");
+		await queryInterface.removeIndex("tasktemplates", "tasktemplate_label_key_idx");
+		await queryInterface.removeIndex("tasktemplates", "tasktemplate_is_daily_idx");
 		await queryInterface.removeIndex("tasktemplates", "tasktemplate_slug_idx");
 		await queryInterface.removeIndex(
 			"upgradenodetemplates",

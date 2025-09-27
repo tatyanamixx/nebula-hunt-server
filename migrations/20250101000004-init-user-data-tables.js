@@ -87,10 +87,11 @@ module.exports = {
 				type: Sequelize.BIGINT,
 				allowNull: false,
 			},
-			completed: {
-				type: Sequelize.BOOLEAN,
-				defaultValue: false,
+			status: {
+				type: Sequelize.ENUM("locked", "available", "completed"),
+				defaultValue: "locked",
 				allowNull: false,
+				comment: "Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
 			},
 			reward: {
 				type: Sequelize.JSONB,
@@ -299,7 +300,7 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS usertasks_completed_idx ON usertasks ("completed");
+			CREATE INDEX IF NOT EXISTS usertasks_status_idx ON usertasks ("status");
 		`);
 
 		await queryInterface.sequelize.query(`
@@ -428,9 +429,31 @@ module.exports = {
 			ON DELETE CASCADE 
 			DEFERRABLE INITIALLY DEFERRED;
 		`);
+
+		// Обновляем все daily_login задачи, у которых не установлен completedAt
+		// Это нужно для установки начальной даты последнего claim для ежедневных задач
+		await queryInterface.sequelize.query(`
+			UPDATE usertasks 
+			SET "completedAt" = NOW() 
+			WHERE "taskTemplateId" IN (
+				SELECT id FROM tasktemplates 
+				WHERE slug = 'daily_login'
+			) 
+			AND "completedAt" IS NULL;
+		`);
 	},
 
 	async down(queryInterface, Sequelize) {
+		// Откатываем изменения для daily_login задач - устанавливаем completedAt в NULL
+		await queryInterface.sequelize.query(`
+			UPDATE usertasks 
+			SET "completedAt" = NULL 
+			WHERE "taskTemplateId" IN (
+				SELECT id FROM tasktemplates 
+				WHERE slug = 'daily_login'
+			);
+		`);
+
 		// Удаляем отложенные ограничения
 		await queryInterface.removeConstraint(
 			"packagestore",
@@ -488,7 +511,7 @@ module.exports = {
 		);
 		await queryInterface.removeIndex("userevents", "userevents_user_id_idx");
 		await queryInterface.removeIndex("usertasks", "usertasks_active_idx");
-		await queryInterface.removeIndex("usertasks", "usertasks_completed_idx");
+		await queryInterface.removeIndex("usertasks", "usertasks_status_idx");
 		await queryInterface.removeIndex(
 			"usertasks",
 			"usertasks_task_template_id_idx"

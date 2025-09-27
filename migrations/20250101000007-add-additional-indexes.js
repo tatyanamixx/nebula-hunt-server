@@ -136,6 +136,14 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS paymenttransactions_tx_type_idx ON paymenttransactions ("txType");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS paymenttransactions_blockchain_tx_id_idx ON paymenttransactions ("blockchainTxId");
+		`);
+
+		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS packagestore_is_used_idx ON packagestore ("isUsed");
 		`);
 
@@ -231,7 +239,7 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS usertasks_user_id_active_completed_idx ON usertasks ("userId", "active", "completed");
+			CREATE INDEX IF NOT EXISTS usertasks_user_id_active_status_idx ON usertasks ("userId", "active", "status");
 		`);
 
 		await queryInterface.sequelize.query(`
@@ -272,7 +280,7 @@ module.exports = {
 		);
 		await queryInterface.removeIndex(
 			"usertasks",
-			"usertasks_user_id_active_completed_idx"
+			"usertasks_user_id_active_status_idx"
 		);
 		await queryInterface.removeIndex(
 			"userupgrades",
@@ -371,6 +379,10 @@ module.exports = {
 		await queryInterface.removeIndex(
 			"paymenttransactions",
 			"paymenttransactions_tx_type_idx"
+		);
+		await queryInterface.removeIndex(
+			"paymenttransactions",
+			"paymenttransactions_blockchain_tx_id_idx"
 		);
 		await queryInterface.removeIndex(
 			"paymenttransactions",

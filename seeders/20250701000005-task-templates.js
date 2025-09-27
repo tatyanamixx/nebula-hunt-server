@@ -9,14 +9,10 @@ module.exports = {
 				// Daily tasks
 				{
 					slug: "daily_login",
-					title: JSON.stringify({
-						en: "Daily Explorer",
-						ru: "Ежедневный исследователь",
-					}),
-					description: JSON.stringify({
-						en: "Login daily to receive rewards",
-						ru: "Входите ежедневно для получения наград",
-					}),
+					name: "Daily Explorer",
+					labelKey: "task.daily_login.title",
+					description: "Login daily to receive rewards",
+					isDaily: true,
 					reward: JSON.stringify({
 						type: "daily_login", // Special type for dynamic calculation
 					}),
@@ -34,14 +30,10 @@ module.exports = {
 				// Stardust tasks
 				{
 					slug: "create_stars_100",
-					title: JSON.stringify({
-						en: "First Steps",
-						ru: "Первые шаги",
-					}),
-					description: JSON.stringify({
-						en: "Create 100 stars",
-						ru: "Создайте 100 звезд",
-					}),
+					name: "First Steps",
+					labelKey: "task.create_stars_100.title",
+					description: "Create 100 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 500 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -56,14 +48,10 @@ module.exports = {
 				},
 				{
 					slug: "create_stars_1000",
-					title: JSON.stringify({
-						en: "Star Crafter",
-						ru: "Создатель звезд",
-					}),
-					description: JSON.stringify({
-						en: "Create 1,000 stars",
-						ru: "Создайте 1,000 звезд",
-					}),
+					name: "Star Crafter",
+					labelKey: "task.create_stars_1000.title",
+					description: "Create 1,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -78,14 +66,10 @@ module.exports = {
 				},
 				{
 					slug: "create_stars_10000",
-					title: JSON.stringify({
-						en: "Stellar Engineer",
-						ru: "Звездный инженер",
-					}),
-					description: JSON.stringify({
-						en: "Create 10,000 stars",
-						ru: "Создайте 10,000 звезд",
-					}),
+					name: "Stellar Engineer",
+					labelKey: "task.create_stars_10000.title",
+					description: "Create 10,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 10000 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -100,14 +84,10 @@ module.exports = {
 				},
 				{
 					slug: "create_stars_25000",
-					title: JSON.stringify({
-						en: "Star Architect",
-						ru: "Звездный архитектор",
-					}),
-					description: JSON.stringify({
-						en: "Create 25,000 stars",
-						ru: "Создайте 25,000 звезд",
-					}),
+					name: "Star Architect",
+					labelKey: "task.create_stars_25000.title",
+					description: "Create 25,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 15000 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -122,14 +102,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_5000",
-					title: JSON.stringify({
-						en: "Dust Collector",
-						ru: "Сборщик пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 5,000 stardust",
-						ru: "Соберите 5,000 звездной пыли",
-					}),
+					name: "Dust Collector",
+					labelKey: "task.collect_stardust_5000.title",
+					description: "Collect 5,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 1000 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -144,14 +120,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_25000",
-					title: JSON.stringify({
-						en: "Dust Magnet",
-						ru: "Магнит пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 25,000 stardust",
-						ru: "Соберите 25,000 звездной пыли",
-					}),
+					name: "Dust Magnet",
+					labelKey: "task.collect_stardust_25000.title",
+					description: "Collect 25,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 5000 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -166,14 +138,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_50000",
-					title: JSON.stringify({
-						en: "Cosmic Harvester",
-						ru: "Космический сборщик",
-					}),
-					description: JSON.stringify({
-						en: "Collect 50,000 stardust",
-						ru: "Соберите 50,000 звездной пыли",
-					}),
+					name: "Cosmic Harvester",
+					labelKey: "task.collect_stardust_50000.title",
+					description: "Collect 50,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 8000 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -188,14 +156,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_75000",
-					title: JSON.stringify({
-						en: "Stardust Tycoon",
-						ru: "Титан звездной пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 75,000 stardust",
-						ru: "Соберите 75,000 звездной пыли",
-					}),
+					name: "Stardust Tycoon",
+					labelKey: "task.collect_stardust_75000.title",
+					description: "Collect 75,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 12000 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -210,14 +174,10 @@ module.exports = {
 				},
 				{
 					slug: "own_galaxies_2",
-					title: JSON.stringify({
-						en: "Galactic Pioneer",
-						ru: "Галактический пионер",
-					}),
-					description: JSON.stringify({
-						en: "Own 2 galaxies",
-						ru: "Владейте 2 галактиками",
-					}),
+					name: "Galactic Pioneer",
+					labelKey: "task.own_galaxies_2.title",
+					description: "Own 2 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3000 }),
 					condition: JSON.stringify({
 						type: "owned_galaxies",
@@ -232,14 +192,10 @@ module.exports = {
 				},
 				{
 					slug: "continuous_play_1",
-					title: JSON.stringify({
-						en: "Dedicated Explorer",
-						ru: "Преданный исследователь",
-					}),
-					description: JSON.stringify({
-						en: "Play for 3 consecutive days",
-						ru: "Играйте 3 дня подряд",
-					}),
+					name: "Dedicated Explorer",
+					labelKey: "task.continuous_play_1.title",
+					description: "Play for 3 consecutive days",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3000 }),
 					condition: JSON.stringify({
 						type: "login_streak",
@@ -254,14 +210,10 @@ module.exports = {
 				},
 				{
 					slug: "continuous_play_2",
-					title: JSON.stringify({
-						en: "Space Enthusiast",
-						ru: "Космический энтузиаст",
-					}),
-					description: JSON.stringify({
-						en: "Play for 5 consecutive days",
-						ru: "Играйте 5 дней подряд",
-					}),
+					name: "Space Enthusiast",
+					labelKey: "task.continuous_play_2.title",
+					description: "Play for 5 consecutive days",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 5000 }),
 					condition: JSON.stringify({
 						type: "login_streak",
@@ -276,14 +228,10 @@ module.exports = {
 				},
 				{
 					slug: "dark_matter_first",
-					title: JSON.stringify({
-						en: "Dark Beginnings",
-						ru: "Темные начала",
-					}),
-					description: JSON.stringify({
-						en: "Collect your first dark matter",
-						ru: "Соберите первую темную материю",
-					}),
+					name: "Dark Beginnings",
+					labelKey: "task.dark_matter_first.title",
+					description: "Collect your first dark matter",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
 					condition: JSON.stringify({
 						type: "dark_matter_count",
@@ -298,14 +246,10 @@ module.exports = {
 				},
 				{
 					slug: "scan_galaxy_10",
-					title: JSON.stringify({
-						en: "Cosmic Researcher",
-						ru: "Космический исследователь",
-					}),
-					description: JSON.stringify({
-						en: "Scan 10 galaxies",
-						ru: "Просканируйте 10 галактик",
-					}),
+					name: "Cosmic Researcher",
+					labelKey: "task.scan_galaxy_10.title",
+					description: "Scan 10 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2000 }),
 					condition: JSON.stringify({ type: "scan_count", threshold: 10 }),
 					icon: "🔭",
@@ -317,14 +261,10 @@ module.exports = {
 				},
 				{
 					slug: "star_collector",
-					title: JSON.stringify({
-						en: "Star Collector",
-						ru: "Сборщик звезд",
-					}),
-					description: JSON.stringify({
-						en: "Create stars 10 times",
-						ru: "Создайте звезды 10 раз",
-					}),
+					name: "Star Collector",
+					labelKey: "task.star_collector.title",
+					description: "Create stars 10 times",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 1500 }),
 					condition: JSON.stringify({
 						type: "star_creation_count",
@@ -339,14 +279,10 @@ module.exports = {
 				},
 				{
 					slug: "quick_progress",
-					title: JSON.stringify({
-						en: "Rapid Development",
-						ru: "Быстрое развитие",
-					}),
-					description: JSON.stringify({
-						en: "Create 500 stars in one session",
-						ru: "Создайте 500 звезд за одну сессию",
-					}),
+					name: "Rapid Development",
+					labelKey: "task.quick_progress.title",
+					description: "Create 500 stars in one session",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 3500 }),
 					condition: JSON.stringify({
 						type: "session_stars_created",
@@ -361,14 +297,10 @@ module.exports = {
 				},
 				{
 					slug: "efficiency_master",
-					title: JSON.stringify({
-						en: "Efficiency Master",
-						ru: "Мастер эффективности",
-					}),
-					description: JSON.stringify({
-						en: "Collect stardust 5 times in one day",
-						ru: "Соберите звездную пыль 5 раз за день",
-					}),
+					name: "Efficiency Master",
+					labelKey: "task.efficiency_master.title",
+					description: "Collect stardust 5 times in one day",
+					isDaily: false,
 					reward: JSON.stringify({ type: "stardust", amount: 2500 }),
 					condition: JSON.stringify({
 						type: "daily_collection_count",
@@ -385,14 +317,10 @@ module.exports = {
 				// Dark Matter tasks
 				{
 					slug: "create_stars_50000",
-					title: JSON.stringify({
-						en: "Master of Stars",
-						ru: "Мастер звезд",
-					}),
-					description: JSON.stringify({
-						en: "Create 50,000 stars",
-						ru: "Создайте 50,000 звезд",
-					}),
+					name: "Master of Stars",
+					labelKey: "task.create_stars_50000.title",
+					description: "Create 50,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -407,14 +335,10 @@ module.exports = {
 				},
 				{
 					slug: "create_stars_75000",
-					title: JSON.stringify({
-						en: "Stellar Domination",
-						ru: "Звездное господство",
-					}),
-					description: JSON.stringify({
-						en: "Create 75,000 stars",
-						ru: "Создайте 75,000 звезд",
-					}),
+					name: "Stellar Domination",
+					labelKey: "task.create_stars_75000.title",
+					description: "Create 75,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -429,14 +353,10 @@ module.exports = {
 				},
 				{
 					slug: "create_stars_100000",
-					title: JSON.stringify({
-						en: "Cosmic Architect",
-						ru: "Космический архитектор",
-					}),
-					description: JSON.stringify({
-						en: "Create 100,000 stars",
-						ru: "Создайте 100,000 звезд",
-					}),
+					name: "Cosmic Architect",
+					labelKey: "task.create_stars_100000.title",
+					description: "Create 100,000 stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 100 }),
 					condition: JSON.stringify({
 						type: "total_stars",
@@ -451,14 +371,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_100000",
-					title: JSON.stringify({
-						en: "Stardust Master",
-						ru: "Мастер звездной пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 100,000 stardust",
-						ru: "Соберите 100,000 звездной пыли",
-					}),
+					name: "Stardust Master",
+					labelKey: "task.collect_stardust_100000.title",
+					description: "Collect 100,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 25 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -473,14 +389,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_250000",
-					title: JSON.stringify({
-						en: "Stardust Overlord",
-						ru: "Повелитель звездной пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 250,000 stardust",
-						ru: "Соберите 250,000 звездной пыли",
-					}),
+					name: "Stardust Overlord",
+					labelKey: "task.collect_stardust_250000.title",
+					description: "Collect 250,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -495,14 +407,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_stardust_500000",
-					title: JSON.stringify({
-						en: "Stellar Dust Emperor",
-						ru: "Император звездной пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 500,000 stardust",
-						ru: "Соберите 500,000 звездной пыли",
-					}),
+					name: "Stellar Dust Emperor",
+					labelKey: "task.collect_stardust_500000.title",
+					description: "Collect 500,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -517,14 +425,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_dark_matter_10",
-					title: JSON.stringify({
-						en: "Dark Explorer",
-						ru: "Темный исследователь",
-					}),
-					description: JSON.stringify({
-						en: "Collect 10 dark matter",
-						ru: "Соберите 10 темной материи",
-					}),
+					name: "Dark Explorer",
+					labelKey: "task.collect_dark_matter_10.title",
+					description: "Collect 10 dark matter",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 5 }),
 					condition: JSON.stringify({
 						type: "dark_matter_count",
@@ -539,14 +443,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_dark_matter_50",
-					title: JSON.stringify({
-						en: "Void Master",
-						ru: "Мастер пустоты",
-					}),
-					description: JSON.stringify({
-						en: "Collect 50 dark matter",
-						ru: "Соберите 50 темной материи",
-					}),
+					name: "Void Master",
+					labelKey: "task.collect_dark_matter_50.title",
+					description: "Collect 50 dark matter",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
 					condition: JSON.stringify({
 						type: "dark_matter_count",
@@ -561,14 +461,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_dark_matter_100",
-					title: JSON.stringify({
-						en: "Dark Matter Collector",
-						ru: "Сборщик темной материи",
-					}),
-					description: JSON.stringify({
-						en: "Collect 100 dark matter",
-						ru: "Соберите 100 темной материи",
-					}),
+					name: "Dark Matter Collector",
+					labelKey: "task.collect_dark_matter_100.title",
+					description: "Collect 100 dark matter",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 30 }),
 					condition: JSON.stringify({
 						type: "dark_matter_count",
@@ -583,14 +479,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_dark_matter_200",
-					title: JSON.stringify({
-						en: "Dark Matter Sage",
-						ru: "Мудрец темной материи",
-					}),
-					description: JSON.stringify({
-						en: "Collect 200 dark matter",
-						ru: "Соберите 200 темной материи",
-					}),
+					name: "Dark Matter Sage",
+					labelKey: "task.collect_dark_matter_200.title",
+					description: "Collect 200 dark matter",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "dark_matter_count",
@@ -605,14 +497,10 @@ module.exports = {
 				},
 				{
 					slug: "own_galaxies_3",
-					title: JSON.stringify({
-						en: "Galaxy Explorer",
-						ru: "Исследователь галактик",
-					}),
-					description: JSON.stringify({
-						en: "Own 3 galaxies",
-						ru: "Владейте 3 галактиками",
-					}),
+					name: "Galaxy Explorer",
+					labelKey: "task.own_galaxies_3.title",
+					description: "Own 3 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 15 }),
 					condition: JSON.stringify({
 						type: "owned_galaxies",
@@ -627,14 +515,10 @@ module.exports = {
 				},
 				{
 					slug: "own_galaxies_5",
-					title: JSON.stringify({
-						en: "Cosmic Emperor",
-						ru: "Космический император",
-					}),
-					description: JSON.stringify({
-						en: "Own 5 galaxies",
-						ru: "Владейте 5 галактиками",
-					}),
+					name: "Cosmic Emperor",
+					labelKey: "task.own_galaxies_5.title",
+					description: "Own 5 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 30 }),
 					condition: JSON.stringify({
 						type: "owned_galaxies",
@@ -649,14 +533,10 @@ module.exports = {
 				},
 				{
 					slug: "own_galaxies_7",
-					title: JSON.stringify({
-						en: "Galactic Conqueror",
-						ru: "Галактический завоеватель",
-					}),
-					description: JSON.stringify({
-						en: "Own 7 galaxies",
-						ru: "Владейте 7 галактиками",
-					}),
+					name: "Galactic Conqueror",
+					labelKey: "task.own_galaxies_7.title",
+					description: "Own 7 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 60 }),
 					condition: JSON.stringify({
 						type: "owned_galaxies",
@@ -671,14 +551,10 @@ module.exports = {
 				},
 				{
 					slug: "own_galaxies_10",
-					title: JSON.stringify({
-						en: "Universal Sovereign",
-						ru: "Вселенский суверен",
-					}),
-					description: JSON.stringify({
-						en: "Own 10 galaxies",
-						ru: "Владейте 10 галактиками",
-					}),
+					name: "Universal Sovereign",
+					labelKey: "task.own_galaxies_10.title",
+					description: "Own 10 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 100 }),
 					condition: JSON.stringify({
 						type: "owned_galaxies",
@@ -693,14 +569,10 @@ module.exports = {
 				},
 				{
 					slug: "cosmic_veteran",
-					title: JSON.stringify({
-						en: "Cosmic Veteran",
-						ru: "Космический ветеран",
-					}),
-					description: JSON.stringify({
-						en: "Play for 7 consecutive days",
-						ru: "Играйте 7 дней подряд",
-					}),
+					name: "Cosmic Veteran",
+					labelKey: "task.cosmic_veteran.title",
+					description: "Play for 7 consecutive days",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 15 }),
 					condition: JSON.stringify({
 						type: "login_streak",
@@ -715,14 +587,10 @@ module.exports = {
 				},
 				{
 					slug: "cosmic_devotee",
-					title: JSON.stringify({
-						en: "Cosmic Devotee",
-						ru: "Космический преданный",
-					}),
-					description: JSON.stringify({
-						en: "Complete 10 tasks",
-						ru: "Выполните 10 заданий",
-					}),
+					name: "Cosmic Devotee",
+					labelKey: "task.cosmic_devotee.title",
+					description: "Complete 10 tasks",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 25 }),
 					condition: JSON.stringify({
 						type: "completed_tasks",
@@ -737,14 +605,10 @@ module.exports = {
 				},
 				{
 					slug: "cosmic_master",
-					title: JSON.stringify({
-						en: "Cosmic Master",
-						ru: "Космический мастер",
-					}),
-					description: JSON.stringify({
-						en: "Complete 20 tasks",
-						ru: "Выполните 20 заданий",
-					}),
+					name: "Cosmic Master",
+					labelKey: "task.cosmic_master.title",
+					description: "Complete 20 tasks",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "completed_tasks",
@@ -759,14 +623,10 @@ module.exports = {
 				},
 				{
 					slug: "stardust_millionaire",
-					title: JSON.stringify({
-						en: "Stardust Millionaire",
-						ru: "Миллионер звездной пыли",
-					}),
-					description: JSON.stringify({
-						en: "Collect 1,000,000 stardust",
-						ru: "Соберите 1,000,000 звездной пыли",
-					}),
+					name: "Stardust Millionaire",
+					labelKey: "task.stardust_millionaire.title",
+					description: "Collect 1,000,000 stardust",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 50 }),
 					condition: JSON.stringify({
 						type: "stardust_count",
@@ -781,14 +641,10 @@ module.exports = {
 				},
 				{
 					slug: "upgrade_galaxy",
-					title: JSON.stringify({
-						en: "Galaxy Enhancement",
-						ru: "Улучшение галактики",
-					}),
-					description: JSON.stringify({
-						en: "Upgrade your first galaxy",
-						ru: "Улучшите свою первую галактику",
-					}),
+					name: "Galaxy Enhancement",
+					labelKey: "task.upgrade_galaxy.title",
+					description: "Upgrade your first galaxy",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
 					condition: JSON.stringify({ type: "first_galaxy_upgraded" }),
 					icon: "⚙️",
@@ -800,14 +656,10 @@ module.exports = {
 				},
 				{
 					slug: "share_galaxy",
-					title: JSON.stringify({
-						en: "Stellar Ambassador",
-						ru: "Звездный посол",
-					}),
-					description: JSON.stringify({
-						en: "Share a galaxy",
-						ru: "Поделитесь галактикой",
-					}),
+					name: "Stellar Ambassador",
+					labelKey: "task.share_galaxy.title",
+					description: "Share a galaxy",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 5 }),
 					condition: JSON.stringify({ type: "galaxy_shared" }),
 					icon: "🔗",
@@ -819,14 +671,10 @@ module.exports = {
 				},
 				{
 					slug: "galactic_harmony",
-					title: JSON.stringify({
-						en: "Galactic Harmony",
-						ru: "Галактическая гармония",
-					}),
-					description: JSON.stringify({
-						en: "Own 3 galaxies with stars",
-						ru: "Владейте 3 галактиками со звездами",
-					}),
+					name: "Galactic Harmony",
+					labelKey: "task.galactic_harmony.title",
+					description: "Own 3 galaxies with stars",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 75 }),
 					condition: JSON.stringify({
 						type: "galactic_harmony",
@@ -841,14 +689,10 @@ module.exports = {
 				},
 				{
 					slug: "universal_explorer",
-					title: JSON.stringify({
-						en: "Universal Explorer",
-						ru: "Вселенский исследователь",
-					}),
-					description: JSON.stringify({
-						en: "Visit 20 galaxies",
-						ru: "Посетите 20 галактик",
-					}),
+					name: "Universal Explorer",
+					labelKey: "task.universal_explorer.title",
+					description: "Visit 20 galaxies",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 35 }),
 					condition: JSON.stringify({
 						type: "galaxies_visited",
@@ -863,14 +707,10 @@ module.exports = {
 				},
 				{
 					slug: "collect_all_day",
-					title: JSON.stringify({
-						en: "Diligent Collector",
-						ru: "Усердный сборщик",
-					}),
-					description: JSON.stringify({
-						en: "Collect stardust hourly for 12 hours",
-						ru: "Собирайте звездную пыль каждый час 12 часов",
-					}),
+					name: "Diligent Collector",
+					labelKey: "task.collect_all_day.title",
+					description: "Collect stardust hourly for 12 hours",
+					isDaily: false,
 					reward: JSON.stringify({ type: "darkMatter", amount: 20 }),
 					condition: JSON.stringify({
 						type: "hourly_collections",

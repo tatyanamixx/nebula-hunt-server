@@ -86,16 +86,16 @@ module.exports = {
 				ut."userId",
 				u.username,
 				tt.id as template_id,
-				tt.title->>'en' as task_name,
+				tt.name as task_name,
 				tt.active,
-				ut.completed,
+				ut.status,
 				ut.active as task_active,
 				ut."createdAt" as started_at,
 				ut."completedAt"
 			FROM usertasks ut
 			JOIN users u ON ut."userId" = u.id
 			JOIN tasktemplates tt ON ut."taskTemplateId" = tt.id
-			WHERE ut.completed = false
+			WHERE ut.status != 'completed'
 			ORDER BY ut."createdAt" DESC;
 		`);
 

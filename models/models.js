@@ -215,7 +215,12 @@ const UserTask = sequelize.define(
 			allowNull: false,
 			field: "taskTemplateId", // Explicitly set the field name
 		},
-		completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+		status: {
+			type: DataTypes.ENUM("locked", "available", "completed"),
+			defaultValue: "locked",
+			allowNull: false,
+			comment: "Статус задачи: locked - заблокирована, available - доступна, completed - выполнена",
+		},
 		reward: {
 			type: DataTypes.JSONB,
 			defaultValue: { type: "stardust", amount: 0 },
@@ -233,10 +238,9 @@ const UserTask = sequelize.define(
 				fields: ["taskTemplateId"],
 				name: "usertasks_task_template_id_idx",
 			},
-
 			{
-				fields: ["completed"],
-				name: "usertasks_completed_idx",
+				fields: ["status"],
+				name: "usertasks_status_idx",
 			},
 			{
 				fields: ["active"],
@@ -658,18 +662,20 @@ const TaskTemplate = sequelize.define(
 			autoIncrement: true,
 		},
 		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
-		title: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				en: "",
-				ru: "",
-			},
-			allowNull: false,
-			comment: "Localized task descriptions",
+		name: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: "Название задачи (заменяет title)",
+		},
+		labelKey: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			comment: "Ключ для локализации",
 		},
 		description: {
-			type: DataTypes.JSONB,
+			type: DataTypes.TEXT,
 			allowNull: false,
+			comment: "Описание задачи (изменено с JSONB на TEXT)",
 		},
 		reward: {
 			type: DataTypes.JSONB,
@@ -701,6 +707,12 @@ const TaskTemplate = sequelize.define(
 			comment:
 				"Task category for grouping (daily, stardust, darkMatter, etc.)",
 		},
+		isDaily: {
+			type: DataTypes.BOOLEAN,
+			defaultValue: false,
+			allowNull: false,
+			comment: "Флаг для проверки ежедневных задач",
+		},
 	},
 	{
 		indexes: [
@@ -711,6 +723,14 @@ const TaskTemplate = sequelize.define(
 			{
 				fields: ["category"],
 				name: "tasktemplate_category_idx",
+			},
+			{
+				fields: ["isDaily"],
+				name: "tasktemplate_is_daily_idx",
+			},
+			{
+				fields: ["labelKey"],
+				name: "tasktemplate_label_key_idx",
 			},
 		],
 	}
