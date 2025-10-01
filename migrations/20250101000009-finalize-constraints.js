@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		// Активируем все отложенные ограничения
-		await queryInterface.sequelize.query('SET CONSTRAINTS ALL IMMEDIATE;');
+		await queryInterface.sequelize.query("SET CONSTRAINTS ALL IMMEDIATE;");
 
 		// Создаем дополнительные проверки целостности данных
 
@@ -19,10 +19,10 @@ module.exports = {
 				CHECK (role IN ('USER', 'SYSTEM'));
 			`);
 		} catch (error) {
-			if (!error.message.includes('already exists')) {
+			if (!error.message.includes("already exists")) {
 				throw error;
 			}
-			console.log('⚠️ Constraint check_valid_role already exists');
+			console.log("⚠️ Constraint check_valid_role already exists");
 		}
 
 		try {
@@ -32,10 +32,10 @@ module.exports = {
 				CHECK (role IN ('ADMIN', 'SUPERVISOR'));
 			`);
 		} catch (error) {
-			if (!error.message.includes('already exists')) {
+			if (!error.message.includes("already exists")) {
 				throw error;
 			}
-			console.log('⚠️ Constraint check_valid_admin_role already exists');
+			console.log("⚠️ Constraint check_valid_admin_role already exists");
 		}
 
 		// Создаем индексы для JSONB полей для оптимизации запросов
@@ -45,7 +45,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_userstates_player_parameters already exists or error:',
+				"⚠️ Index idx_userstates_player_parameters already exists or error:",
 				error.message
 			);
 		}
@@ -56,7 +56,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_userstates_last_bot_notification already exists or error:',
+				"⚠️ Index idx_userstates_last_bot_notification already exists or error:",
 				error.message
 			);
 		}
@@ -67,7 +67,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_artifacts_effects already exists or error:',
+				"⚠️ Index idx_artifacts_effects already exists or error:",
 				error.message
 			);
 		}
@@ -78,7 +78,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_upgrades_modifiers already exists or error:',
+				"⚠️ Index idx_upgrades_modifiers already exists or error:",
 				error.message
 			);
 		}
@@ -89,7 +89,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_upgrades_conditions already exists or error:',
+				"⚠️ Index idx_upgrades_conditions already exists or error:",
 				error.message
 			);
 		}
@@ -100,7 +100,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_events_trigger_config already exists or error:',
+				"⚠️ Index idx_events_trigger_config already exists or error:",
 				error.message
 			);
 		}
@@ -111,7 +111,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_events_effect already exists or error:',
+				"⚠️ Index idx_events_effect already exists or error:",
 				error.message
 			);
 		}
@@ -122,7 +122,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_events_frequency already exists or error:',
+				"⚠️ Index idx_events_frequency already exists or error:",
 				error.message
 			);
 		}
@@ -133,7 +133,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_events_conditions already exists or error:',
+				"⚠️ Index idx_events_conditions already exists or error:",
 				error.message
 			);
 		}
@@ -144,7 +144,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_userevents_effects already exists or error:',
+				"⚠️ Index idx_userevents_effects already exists or error:",
 				error.message
 			);
 		}
@@ -155,7 +155,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_userevents_progress already exists or error:',
+				"⚠️ Index idx_userevents_progress already exists or error:",
 				error.message
 			);
 		}
@@ -166,7 +166,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_usereventsettings_event_multipliers already exists or error:',
+				"⚠️ Index idx_usereventsettings_event_multipliers already exists or error:",
 				error.message
 			);
 		}
@@ -177,7 +177,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_usereventsettings_event_cooldowns already exists or error:',
+				"⚠️ Index idx_usereventsettings_event_cooldowns already exists or error:",
 				error.message
 			);
 		}
@@ -189,7 +189,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_active_galaxies already exists or error:',
+				"⚠️ Index idx_active_galaxies already exists or error:",
 				error.message
 			);
 		}
@@ -200,7 +200,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_tradable_artifacts already exists or error:',
+				"⚠️ Index idx_tradable_artifacts already exists or error:",
 				error.message
 			);
 		}
@@ -211,7 +211,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_active_market_offers already exists or error:',
+				"⚠️ Index idx_active_market_offers already exists or error:",
 				error.message
 			);
 		}
@@ -222,7 +222,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_completed_user_tasks already exists or error:',
+				"⚠️ Index idx_completed_user_tasks already exists or error:",
 				error.message
 			);
 		}
@@ -233,7 +233,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_active_user_events already exists or error:',
+				"⚠️ Index idx_active_user_events already exists or error:",
 				error.message
 			);
 		}
@@ -244,7 +244,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_confirmed_payments already exists or error:',
+				"⚠️ Index idx_confirmed_payments already exists or error:",
 				error.message
 			);
 		}
@@ -256,7 +256,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_artifacts_name_search already exists or error:',
+				"⚠️ Index idx_artifacts_name_search already exists or error:",
 				error.message
 			);
 		}
@@ -267,7 +267,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_artifact_templates_name_search already exists or error:',
+				"⚠️ Index idx_artifact_templates_name_search already exists or error:",
 				error.message
 			);
 		}
@@ -278,7 +278,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_upgrade_templates_name_search already exists or error:',
+				"⚠️ Index idx_upgrade_templates_name_search already exists or error:",
 				error.message
 			);
 		}
@@ -289,7 +289,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_task_templates_title_search already exists or error:',
+				"⚠️ Index idx_task_templates_title_search already exists or error:",
 				error.message
 			);
 		}
@@ -300,7 +300,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_event_templates_name_search already exists or error:',
+				"⚠️ Index idx_event_templates_name_search already exists or error:",
 				error.message
 			);
 		}
@@ -312,7 +312,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_payment_transactions_time_series already exists or error:',
+				"⚠️ Index idx_payment_transactions_time_series already exists or error:",
 				error.message
 			);
 		}
@@ -323,7 +323,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_market_offers_time_series already exists or error:',
+				"⚠️ Index idx_market_offers_time_series already exists or error:",
 				error.message
 			);
 		}
@@ -334,7 +334,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_user_events_time_series already exists or error:',
+				"⚠️ Index idx_user_events_time_series already exists or error:",
 				error.message
 			);
 		}
@@ -346,7 +346,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_user_resources_aggregation already exists or error:',
+				"⚠️ Index idx_user_resources_aggregation already exists or error:",
 				error.message
 			);
 		}
@@ -357,7 +357,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_market_pricing_aggregation already exists or error:',
+				"⚠️ Index idx_market_pricing_aggregation already exists or error:",
 				error.message
 			);
 		}
@@ -369,7 +369,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_unique_user_event_settings already exists or error:',
+				"⚠️ Index idx_unique_user_event_settings already exists or error:",
 				error.message
 			);
 		}
@@ -380,7 +380,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_unique_user_state already exists or error:',
+				"⚠️ Index idx_unique_user_state already exists or error:",
 				error.message
 			);
 		}
@@ -392,7 +392,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_unique_galaxy_seed already exists or error:',
+				"⚠️ Index idx_unique_galaxy_seed already exists or error:",
 				error.message
 			);
 		}
@@ -402,7 +402,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_unique_artifact_seed already exists or error:',
+				"⚠️ Index idx_unique_artifact_seed already exists or error:",
 				error.message
 			);
 		}
@@ -412,7 +412,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_unique_admin_invite_token already exists or error:',
+				"⚠️ Index idx_unique_admin_invite_token already exists or error:",
 				error.message
 			);
 		}
@@ -424,7 +424,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_package_templates_sort already exists or error:',
+				"⚠️ Index idx_package_templates_sort already exists or error:",
 				error.message
 			);
 		}
@@ -434,7 +434,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_task_templates_sort already exists or error:',
+				"⚠️ Index idx_task_templates_sort already exists or error:",
 				error.message
 			);
 		}
@@ -444,7 +444,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_artifact_templates_rarity_sort already exists or error:',
+				"⚠️ Index idx_artifact_templates_rarity_sort already exists or error:",
 				error.message
 			);
 		}
@@ -454,7 +454,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_upgrade_templates_category_sort already exists or error:',
+				"⚠️ Index idx_upgrade_templates_category_sort already exists or error:",
 				error.message
 			);
 		}
@@ -466,7 +466,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_users_created_date already exists or error:',
+				"⚠️ Index idx_users_created_date already exists or error:",
 				error.message
 			);
 		}
@@ -476,7 +476,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_artifacts_created_date already exists or error:',
+				"⚠️ Index idx_artifacts_created_date already exists or error:",
 				error.message
 			);
 		}
@@ -486,7 +486,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_galaxies_created_date already exists or error:',
+				"⚠️ Index idx_galaxies_created_date already exists or error:",
 				error.message
 			);
 		}
@@ -496,7 +496,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_market_offers_created_date already exists or error:',
+				"⚠️ Index idx_market_offers_created_date already exists or error:",
 				error.message
 			);
 		}
@@ -506,7 +506,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_payment_transactions_created_date already exists or error:',
+				"⚠️ Index idx_payment_transactions_created_date already exists or error:",
 				error.message
 			);
 		}
@@ -518,7 +518,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_market_offers_price_range already exists or error:',
+				"⚠️ Index idx_market_offers_price_range already exists or error:",
 				error.message
 			);
 		}
@@ -528,7 +528,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_user_resources_range already exists or error:',
+				"⚠️ Index idx_user_resources_range already exists or error:",
 				error.message
 			);
 		}
@@ -538,7 +538,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_upgrade_levels_range already exists or error:',
+				"⚠️ Index idx_upgrade_levels_range already exists or error:",
 				error.message
 			);
 		}
@@ -550,7 +550,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_payment_transactions_stats already exists or error:',
+				"⚠️ Index idx_payment_transactions_stats already exists or error:",
 				error.message
 			);
 		}
@@ -560,7 +560,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_market_offers_stats already exists or error:',
+				"⚠️ Index idx_market_offers_stats already exists or error:",
 				error.message
 			);
 		}
@@ -570,7 +570,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_user_activity_stats already exists or error:',
+				"⚠️ Index idx_user_activity_stats already exists or error:",
 				error.message
 			);
 		}
@@ -582,7 +582,7 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_admin_password_expiry already exists or error:',
+				"⚠️ Index idx_admin_password_expiry already exists or error:",
 				error.message
 			);
 		}
@@ -592,77 +592,75 @@ module.exports = {
 			`);
 		} catch (error) {
 			console.log(
-				'⚠️ Index idx_admin_last_login already exists or error:',
+				"⚠️ Index idx_admin_last_login already exists or error:",
 				error.message
 			);
 		}
 
-		console.log(
-			'✅ Все ограничения и индексы успешно созданы и активированы'
-		);
+		console.log("✅ Все ограничения и индексы успешно созданы и активированы");
 	},
 
 	async down(queryInterface, Sequelize) {
 		// Удаляем все созданные индексы
 		const indexes = [
-			'idx_userstates_player_parameters',
-			'idx_userstates_last_bot_notification',
-			'idx_artifacts_effects',
-			'idx_upgrades_modifiers',
-			'idx_upgrades_conditions',
-			'idx_events_trigger_config',
-			'idx_events_effect',
-			'idx_events_frequency',
-			'idx_events_conditions',
-			'idx_userevents_effects',
-			'idx_userevents_progress',
-			'idx_usereventsettings_event_multipliers',
-			'idx_usereventsettings_event_cooldowns',
-			'idx_active_galaxies',
-			'idx_tradable_artifacts',
-			'idx_active_market_offers',
-			'idx_completed_user_tasks',
-			'idx_active_user_events',
-			'idx_confirmed_payments',
-			'idx_artifacts_name_search',
-			'idx_artifact_templates_name_search',
-			'idx_upgrade_templates_name_search',
-			'idx_task_templates_title_search',
-			'idx_event_templates_name_search',
-			'idx_payment_transactions_time_series',
-			'idx_market_offers_time_series',
-			'idx_user_events_time_series',
-			'idx_user_resources_aggregation',
-			'idx_market_pricing_aggregation',
-			'idx_unique_user_event_settings',
-			'idx_unique_user_state',
-			'idx_unique_galaxy_seed',
-			'idx_unique_artifact_seed',
-			'idx_unique_admin_invite_token',
-			'idx_package_templates_sort',
-			'idx_task_templates_sort',
-			'idx_artifact_templates_rarity_sort',
-			'idx_upgrade_templates_category_sort',
-			'idx_users_created_date',
-			'idx_artifacts_created_date',
-			'idx_galaxies_created_date',
-			'idx_market_offers_created_date',
-			'idx_payment_transactions_created_date',
-			'idx_market_offers_price_range',
-			'idx_user_resources_range',
-			'idx_upgrade_levels_range',
-			'idx_payment_transactions_stats',
-			'idx_market_offers_stats',
-			'idx_user_activity_stats',
-			'idx_admin_password_expiry',
-			'idx_admin_last_login',
-			'idx_user_events_expiry',
-			'idx_market_offers_expiry',
-			'idx_admin_invites_expiry',
-			'idx_blocked_users',
-			'idx_blocked_admins',
-			'idx_failed_payments',
-			'idx_cancelled_market_offers',
+			"idx_userstates_player_parameters",
+			"idx_userstates_last_bot_notification",
+			"idx_artifacts_effects",
+			"idx_upgrades_modifiers",
+			"idx_upgrades_conditions",
+			"idx_events_trigger_config",
+			"idx_events_effect",
+			"idx_events_frequency",
+			"idx_events_conditions",
+			"idx_userevents_effects",
+			"idx_userevents_progress",
+			"idx_usereventsettings_event_multipliers",
+			"idx_usereventsettings_event_cooldowns",
+			"idx_active_galaxies",
+			"idx_tradable_artifacts",
+			"idx_active_market_offers",
+			"idx_completed_user_tasks",
+			"idx_active_user_events",
+			"idx_confirmed_payments",
+			"idx_artifacts_name_search",
+			"idx_artifact_templates_name_search",
+			"idx_upgrade_templates_name_search",
+			"idx_task_templates_title_search",
+			"idx_event_templates_name_search",
+			"idx_payment_transactions_time_series",
+			"idx_market_offers_time_series",
+			"idx_user_events_time_series",
+			"idx_user_resources_aggregation",
+			"idx_market_pricing_aggregation",
+			"idx_unique_user_event_settings",
+			"idx_unique_user_state",
+			"idx_unique_galaxy_seed",
+			"idx_unique_artifact_seed",
+			"idx_unique_admin_invite_token",
+			"idx_package_templates_sort",
+			"idx_task_templates_sort",
+			"idx_artifact_templates_rarity_sort",
+			"idx_upgrade_templates_category_sort",
+			"idx_users_created_date",
+			"idx_artifacts_created_date",
+			"idx_galaxies_created_date",
+			"idx_market_offers_created_date",
+			"idx_payment_transactions_created_date",
+			"idx_market_offers_price_range",
+			"idx_user_resources_range",
+			"idx_upgrade_levels_range",
+			"idx_payment_transactions_stats",
+			"idx_market_offers_stats",
+			"idx_user_activity_stats",
+			"idx_admin_password_expiry",
+			"idx_admin_last_login",
+			"idx_user_events_expiry",
+			"idx_market_offers_expiry",
+			"idx_admin_invites_expiry",
+			"idx_blocked_users",
+			"idx_blocked_admins",
+			"idx_failed_payments",
+			"idx_cancelled_market_offers",
 		];
 
 		for (const indexName of indexes) {
@@ -679,13 +677,13 @@ module.exports = {
 		}
 
 		// Удаляем проверки целостности
-		const constraints = ['check_valid_role', 'check_valid_admin_role'];
+		const constraints = ["check_valid_role", "check_valid_admin_role"];
 
 		for (const constraintName of constraints) {
 			try {
 				await queryInterface.sequelize.query(
 					`ALTER TABLE ${
-						constraintName.split('_')[1]
+						constraintName.split("_")[1]
 					}s DROP CONSTRAINT IF EXISTS ${constraintName} CASCADE;`
 				);
 			} catch (error) {
@@ -696,6 +694,6 @@ module.exports = {
 			}
 		}
 
-		console.log('✅ Все индексы и ограничения успешно удалены');
+		console.log("✅ Все индексы и ограничения успешно удалены");
 	},
 };

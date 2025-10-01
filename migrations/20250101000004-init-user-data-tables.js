@@ -84,7 +84,7 @@ module.exports = {
 				allowNull: false,
 			},
 			taskTemplateId: {
-				type: Sequelize.BIGINT,
+				type: Sequelize.STRING(50),
 				allowNull: false,
 			},
 			status: {
@@ -370,7 +370,7 @@ module.exports = {
 			ALTER TABLE usertasks 
 			ADD CONSTRAINT usertasks_task_template_id_fkey 
 			FOREIGN KEY ("taskTemplateId") 
-			REFERENCES tasktemplates(id) 
+			REFERENCES tasktemplates(slug) 
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE 
 			DEFERRABLE INITIALLY DEFERRED;
@@ -432,7 +432,7 @@ module.exports = {
 			UPDATE usertasks 
 			SET "completedAt" = NOW() 
 			WHERE "taskTemplateId" IN (
-				SELECT id FROM tasktemplates 
+				SELECT slug FROM tasktemplates 
 				WHERE slug = 'daily_login'
 			) 
 			AND "completedAt" IS NULL;
@@ -445,7 +445,7 @@ module.exports = {
 			UPDATE usertasks 
 			SET "completedAt" = NULL 
 			WHERE "taskTemplateId" IN (
-				SELECT id FROM tasktemplates 
+				SELECT slug FROM tasktemplates 
 				WHERE slug = 'daily_login'
 			);
 		`);

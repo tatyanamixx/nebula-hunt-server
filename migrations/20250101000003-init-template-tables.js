@@ -127,75 +127,83 @@ module.exports = {
 			},
 		});
 
-		// 2. Создаем таблицу tasktemplates
-		await queryInterface.createTable("tasktemplates", {
-			id: {
-				type: Sequelize.BIGINT,
-				primaryKey: true,
-				autoIncrement: true,
-				allowNull: false,
-			},
-			slug: {
-				type: Sequelize.STRING,
-				unique: true,
-				allowNull: false,
-			},
-			name: {
-				type: Sequelize.STRING,
-				allowNull: true,
-				comment: "Название задачи (заменяет title)",
-			},
-			labelKey: {
-				type: Sequelize.STRING,
-				allowNull: true,
-				comment: "Ключ для локализации",
-			},
-			description: {
-				type: Sequelize.TEXT,
-				allowNull: false,
-				comment: "Описание задачи (изменено с JSONB на TEXT)",
-			},
-			reward: {
-				type: Sequelize.JSONB,
-				defaultValue: { type: "stardust", amount: 0 },
-				allowNull: false,
-			},
-			condition: {
-				type: Sequelize.JSONB,
-				allowNull: false,
-				comment: "Condition for the task to be completed",
-			},
-			icon: {
-				type: Sequelize.STRING,
-				allowNull: false,
-			},
-			active: {
-				type: Sequelize.BOOLEAN,
-				defaultValue: true,
-				allowNull: false,
-			},
-			sortOrder: {
-				type: Sequelize.INTEGER,
-				defaultValue: 0,
-				allowNull: false,
-			},
-			isDaily: {
-				type: Sequelize.BOOLEAN,
-				defaultValue: false,
-				allowNull: false,
-				comment: "Флаг для проверки ежедневных задач",
-			},
-			createdAt: {
-				type: Sequelize.DATE,
-				allowNull: false,
-				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
-			},
-			updatedAt: {
-				type: Sequelize.DATE,
-				allowNull: false,
-				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
-			},
-		});
+		// 2. Создаем таблицу tasktemplates (если не существует)
+		const taskTemplatesExists = await queryInterface
+			.describeTable("tasktemplates")
+			.catch(() => null);
+		if (!taskTemplatesExists) {
+			await queryInterface.createTable("tasktemplates", {
+				slug: {
+					type: Sequelize.STRING(50),
+					primaryKey: true,
+					allowNull: false,
+					comment: "Unique slug identifier for task template",
+				},
+				title: {
+					type: Sequelize.JSONB,
+					allowNull: false,
+					defaultValue: { en: "", ru: "" },
+					comment: "Task title in multiple languages",
+				},
+				description: {
+					type: Sequelize.JSONB,
+					allowNull: false,
+					defaultValue: { en: "", ru: "" },
+					comment: "Task description in multiple languages",
+				},
+				reward: {
+					type: Sequelize.JSONB,
+					defaultValue: { type: "stardust", amount: 0 },
+					allowNull: false,
+					comment: "Reward configuration",
+				},
+				condition: {
+					type: Sequelize.JSONB,
+					allowNull: false,
+					comment: "Condition for the task to be completed",
+				},
+				icon: {
+					type: Sequelize.STRING,
+					allowNull: false,
+					comment: "Icon for the task",
+				},
+				active: {
+					type: Sequelize.BOOLEAN,
+					defaultValue: true,
+					allowNull: false,
+					comment: "Whether the task template is active",
+				},
+				sortOrder: {
+					type: Sequelize.INTEGER,
+					defaultValue: 0,
+					allowNull: false,
+					comment: "Sort order for display",
+				},
+				category: {
+					type: Sequelize.STRING,
+					allowNull: true,
+					defaultValue: "general",
+					comment:
+						"Task category for grouping (daily, stardust, darkMatter, etc.)",
+				},
+				isDaily: {
+					type: Sequelize.BOOLEAN,
+					defaultValue: false,
+					allowNull: false,
+					comment: "Flag for daily tasks",
+				},
+				createdAt: {
+					type: Sequelize.DATE,
+					allowNull: false,
+					defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
+				},
+				updatedAt: {
+					type: Sequelize.DATE,
+					allowNull: false,
+					defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
+				},
+			});
+		}
 
 		// 3. Создаем таблицу eventtemplates
 		await queryInterface.createTable("eventtemplates", {
@@ -382,10 +390,6 @@ module.exports = {
 
 		await queryInterface.sequelize.query(`
 			CREATE INDEX IF NOT EXISTS tasktemplate_is_daily_idx ON tasktemplates ("isDaily");
-		`);
-
-		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS tasktemplate_label_key_idx ON tasktemplates ("labelKey");
 		`);
 
 		await queryInterface.sequelize.query(`

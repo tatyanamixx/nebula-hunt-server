@@ -142,7 +142,6 @@ class TaskTemplateService {
 				const taskData = task.get({ plain: true });
 				return {
 					...taskData,
-					id: parseInt(taskData.id) || taskData.id,
 					sortOrder: parseInt(taskData.sortOrder) || 0,
 					createdAt: taskData.createdAt
 						? new Date(taskData.createdAt).toISOString()

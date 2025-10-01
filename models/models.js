@@ -211,7 +211,7 @@ const UserTask = sequelize.define(
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		userId: { type: DataTypes.BIGINT, allowNull: false },
 		taskTemplateId: {
-			type: DataTypes.BIGINT,
+			type: DataTypes.STRING(50),
 			allowNull: false,
 			field: "taskTemplateId", // Explicitly set the field name
 		},
@@ -653,31 +653,29 @@ const UpgradeNodeTemplate = sequelize.define(
 const TaskTemplate = sequelize.define(
 	"tasktemplate",
 	{
-		id: {
-			type: DataTypes.BIGINT,
+		slug: {
+			type: DataTypes.STRING(50),
 			primaryKey: true,
-			autoIncrement: true,
+			allowNull: false,
+			comment: "Unique slug identifier for task template",
 		},
-		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
-		name: {
-			type: DataTypes.STRING,
-			allowNull: true,
-			comment: "Название задачи (заменяет title)",
-		},
-		labelKey: {
-			type: DataTypes.STRING,
-			allowNull: true,
-			comment: "Ключ для локализации",
+		title: {
+			type: DataTypes.JSONB,
+			allowNull: false,
+			defaultValue: { en: "", ru: "" },
+			comment: "Task title in multiple languages",
 		},
 		description: {
-			type: DataTypes.TEXT,
+			type: DataTypes.JSONB,
 			allowNull: false,
-			comment: "Описание задачи (изменено с JSONB на TEXT)",
+			defaultValue: { en: "", ru: "" },
+			comment: "Task description in multiple languages",
 		},
 		reward: {
 			type: DataTypes.JSONB,
 			defaultValue: { type: "stardust", amount: 0 },
 			allowNull: false,
+			comment: "Reward configuration",
 		},
 		condition: {
 			type: DataTypes.JSONB,
@@ -687,15 +685,20 @@ const TaskTemplate = sequelize.define(
 		icon: {
 			type: DataTypes.STRING,
 			allowNull: false,
+			defaultValue: "🎯",
+			comment: "Icon for the task",
 		},
 		active: {
 			type: DataTypes.BOOLEAN,
 			defaultValue: true,
+			allowNull: false,
+			comment: "Whether the task template is active",
 		},
 		sortOrder: {
 			type: DataTypes.INTEGER,
 			defaultValue: 0,
 			allowNull: false,
+			comment: "Sort order for display",
 		},
 		category: {
 			type: DataTypes.STRING,
@@ -708,7 +711,14 @@ const TaskTemplate = sequelize.define(
 			type: DataTypes.BOOLEAN,
 			defaultValue: false,
 			allowNull: false,
-			comment: "Флаг для проверки ежедневных задач",
+			comment: "Flag for daily tasks",
+		},
+		checkType: {
+			type: DataTypes.STRING,
+			defaultValue: "stardust_count",
+			allowNull: false,
+			comment:
+				"Type of condition check: stardust_count, dark_matter_count, stars_count, galaxies_count, scans_count, streak_count, daily_reset, galaxy_upgraded, galaxy_shared",
 		},
 	},
 	{
@@ -726,8 +736,8 @@ const TaskTemplate = sequelize.define(
 				name: "tasktemplate_is_daily_idx",
 			},
 			{
-				fields: ["labelKey"],
-				name: "tasktemplate_label_key_idx",
+				fields: ["active"],
+				name: "tasktemplate_active_idx",
 			},
 		],
 	}
@@ -1325,7 +1335,7 @@ TaskTemplate.hasMany(UserTask, {
 });
 UserTask.belongsTo(TaskTemplate, {
 	foreignKey: "taskTemplateId",
-	targetKey: "id",
+	targetKey: "slug",
 });
 
 User.hasMany(UserEvent);

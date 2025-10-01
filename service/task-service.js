@@ -92,7 +92,7 @@ class TaskService {
 
 			// Обрабатываем каждый шаблон задач
 			for (const taskTemplate of allTaskTemplates) {
-				const existingTask = existingTasksMap.get(taskTemplate.id);
+				const existingTask = existingTasksMap.get(taskTemplate.slug);
 				const isDailyLogin = taskTemplate.slug === "daily_login";
 				const now = new Date();
 
@@ -103,7 +103,7 @@ class TaskService {
 						await UserTask.create(
 							{
 								userId,
-								taskTemplateId: taskTemplate.id,
+								taskTemplateId: taskTemplate.slug,
 								status: "locked",
 								reward: taskTemplate.reward || {
 									type: "stardust",
@@ -148,16 +148,16 @@ class TaskService {
 					{
 						model: TaskTemplate,
 						attributes: [
-							"id",
 							"slug",
-							"name",
-							"labelKey",
+							"title",
 							"description",
 							"reward",
 							"condition",
 							"icon",
 							"active",
 							"isDaily",
+							"category",
+							"sortOrder",
 						],
 					},
 				],
@@ -186,18 +186,19 @@ class TaskService {
 
 				return {
 					id: userTask.id,
-					slug: userTask.tasktemplate.slug,
+					slug: userTask.TaskTemplate?.slug || userTask.tasktemplate?.slug,
 					userId: userTask.userId,
 					taskId: userTask.taskId,
 					status: evaluatedTask ? evaluatedTask.status : userTask.status,
 					reward: evaluatedTask
 						? evaluatedTask.reward
-						: userTask.tasktemplate.reward,
+						: userTask.TaskTemplate?.reward ||
+						  userTask.tasktemplate?.reward,
 					active: userTask.active,
 					completedAt: evaluatedTask
 						? evaluatedTask.completedAt
 						: userTask.completedAt,
-					task: userTask.tasktemplate,
+					task: userTask.TaskTemplate || userTask.tasktemplate,
 				};
 			});
 
@@ -353,7 +354,10 @@ class TaskService {
 			let userGalaxies = [];
 			if (galaxyRelatedTasks.length > 0) {
 				try {
-					userGalaxies = await galaxyService.getUserGalaxies(userId);
+					const galaxiesResult = await galaxyService.getUserGalaxies(
+						userId
+					);
+					userGalaxies = galaxiesResult.galaxies || [];
 					logger.debug("Retrieved user galaxies for task evaluation", {
 						userId,
 						galaxiesCount: userGalaxies.length,
@@ -842,15 +846,256 @@ class TaskService {
 				} else {
 					// Для не-ежедневных задач - проверяем условия разблокировки
 					if (userTask.status === "locked") {
-						// Здесь можно добавить логику проверки условий разблокировки
-						// Например, проверка уровня пользователя, количества выполненных задач и т.д.
+						// Проверяем задачи создания звезд
+						if (taskTemplate.slug.startsWith("create_stars_")) {
+							// Получаем количество звезд пользователя из userState
+							const userStars = userState?.stars || 0;
 
-						// Пока что просто разблокируем все не-ежедневные задачи
-						await userTask.update(
-							{ status: "available" },
-							{ transaction: t }
-						);
-						updatedTask.status = "available";
+							// Извлекаем требуемое количество звезд из slug
+							const requiredStars = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							if (userStars >= requiredStars) {
+								// Разблокируем задачу
+								await userTask.update(
+									{ status: "available" },
+									{ transaction: t }
+								);
+								updatedTask.status = "available";
+
+								logger.debug("Stars creation task unlocked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredStars,
+									userStars,
+								});
+							}
+						} else if (taskTemplate.slug.startsWith("own_galaxies_")) {
+							// Проверяем задачи владения галактиками
+							const galaxiesResult =
+								await galaxyService.getUserGalaxies(userId);
+							const userGalaxiesCount = galaxiesResult.galaxies
+								? galaxiesResult.galaxies.length
+								: 0;
+							const requiredGalaxies = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							if (userGalaxiesCount >= requiredGalaxies) {
+								await userTask.update(
+									{ status: "available" },
+									{ transaction: t }
+								);
+								updatedTask.status = "available";
+
+								logger.debug("Galaxy ownership task unlocked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredGalaxies,
+									userGalaxiesCount,
+								});
+							}
+						} else if (
+							taskTemplate.slug.startsWith("collect_dark_matter_")
+						) {
+							// Проверяем задачи сбора темной материи
+							const requiredDarkMatter = parseInt(
+								taskTemplate.slug.split("_")[3]
+							);
+
+							// Для задач сбора темной материи всегда разблокируем
+							// (пользователь может собирать темную материю в любое время)
+							await userTask.update(
+								{ status: "available" },
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+
+							logger.debug("Dark matter collection task unlocked", {
+								userId,
+								taskSlug: taskTemplate.slug,
+								requiredDarkMatter,
+							});
+						} else if (
+							taskTemplate.slug.startsWith("collect_stardust_")
+						) {
+							// Проверяем задачи сбора звездной пыли
+							const requiredStardust = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							// Для задач сбора звездной пыли всегда разблокируем
+							// (пользователь может собирать звездную пыль в любое время)
+							await userTask.update(
+								{ status: "available" },
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+
+							logger.debug("Stardust collection task unlocked", {
+								userId,
+								taskSlug: taskTemplate.slug,
+								requiredStardust,
+							});
+						} else if (taskTemplate.slug === "weekly_login") {
+							// Проверяем еженедельную задачу входа
+							const currentStreak = userState?.currentStreak || 0;
+
+							if (currentStreak >= 7) {
+								await userTask.update(
+									{ status: "available" },
+									{ transaction: t }
+								);
+								updatedTask.status = "available";
+
+								logger.debug("Weekly login task unlocked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									currentStreak,
+								});
+							}
+						} else if (taskTemplate.slug === "upgrade_galaxy") {
+							// Проверяем задачу улучшения галактики
+							// Пока что всегда разблокируем (можно добавить проверку на наличие улучшений)
+							await userTask.update(
+								{ status: "available" },
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+
+							logger.debug("Galaxy upgrade task unlocked", {
+								userId,
+								taskSlug: taskTemplate.slug,
+							});
+						} else if (taskTemplate.slug === "share_galaxy") {
+							// Проверяем задачу поделиться галактикой
+							// Пока что всегда разблокируем (можно добавить проверку на факт шаринга)
+							await userTask.update(
+								{ status: "available" },
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+
+							logger.debug("Galaxy share task unlocked", {
+								userId,
+								taskSlug: taskTemplate.slug,
+							});
+						} else if (taskTemplate.slug.startsWith("scan_galaxy_")) {
+							// Проверяем задачи сканирования галактики
+							const requiredScans = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							// Получаем количество сканирований из userState
+							const scanCount = userState?.galaxyScans || 0;
+
+							if (scanCount >= requiredScans) {
+								await userTask.update(
+									{ status: "available" },
+									{ transaction: t }
+								);
+								updatedTask.status = "available";
+
+								logger.debug("Galaxy scan task unlocked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredScans,
+									scanCount,
+								});
+							}
+						} else {
+							// Для других не-ежедневных задач - разблокируем все
+							await userTask.update(
+								{ status: "available" },
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+						}
+					} else if (userTask.status === "available") {
+						// Проверяем, не нужно ли заблокировать задачу обратно
+						if (taskTemplate.slug.startsWith("create_stars_")) {
+							const userStars = userState?.stars || 0;
+							const requiredStars = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							if (userStars < requiredStars) {
+								// Блокируем задачу обратно
+								await userTask.update(
+									{ status: "locked" },
+									{ transaction: t }
+								);
+								updatedTask.status = "locked";
+
+								logger.debug("Stars creation task locked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredStars,
+									userStars,
+								});
+							}
+						} else if (taskTemplate.slug.startsWith("own_galaxies_")) {
+							const galaxiesResult =
+								await galaxyService.getUserGalaxies(userId);
+							const userGalaxiesCount = galaxiesResult.galaxies
+								? galaxiesResult.galaxies.length
+								: 0;
+							const requiredGalaxies = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+
+							if (userGalaxiesCount < requiredGalaxies) {
+								await userTask.update(
+									{ status: "locked" },
+									{ transaction: t }
+								);
+								updatedTask.status = "locked";
+
+								logger.debug("Galaxy ownership task locked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredGalaxies,
+									userGalaxiesCount,
+								});
+							}
+						} else if (taskTemplate.slug === "weekly_login") {
+							const currentStreak = userState?.currentStreak || 0;
+
+							if (currentStreak < 7) {
+								await userTask.update(
+									{ status: "locked" },
+									{ transaction: t }
+								);
+								updatedTask.status = "locked";
+
+								logger.debug("Weekly login task locked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									currentStreak,
+								});
+							}
+						} else if (taskTemplate.slug.startsWith("scan_galaxy_")) {
+							const requiredScans = parseInt(
+								taskTemplate.slug.split("_")[2]
+							);
+							const scanCount = userState?.galaxyScans || 0;
+
+							if (scanCount < requiredScans) {
+								await userTask.update(
+									{ status: "locked" },
+									{ transaction: t }
+								);
+								updatedTask.status = "locked";
+
+								logger.debug("Galaxy scan task locked", {
+									userId,
+									taskSlug: taskTemplate.slug,
+									requiredScans,
+									scanCount,
+								});
+							}
+						}
 					}
 				}
 
@@ -928,9 +1173,11 @@ class TaskService {
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskTemplateId: taskTemplate.id,
+					taskTemplateId: taskTemplate.slug,
 					active: true,
-					status: "locked",
+					status: {
+						[Op.in]: ["locked", "available"],
+					},
 				},
 				include: [
 					{
@@ -945,7 +1192,7 @@ class TaskService {
 				logger.debug("completeTask - user task not found", {
 					userId,
 					slug,
-					taskTemplateId: taskTemplate.id,
+					taskTemplateId: taskTemplate.slug,
 				});
 				throw ApiError.BadRequest(
 					`User task not found for template: ${slug}`,
@@ -960,6 +1207,37 @@ class TaskService {
 					slug,
 				});
 				return { success: false, userTask };
+			}
+
+			// Проверяем, что задача доступна для выполнения
+			if (userTask.status === "locked") {
+				logger.debug("completeTask - task is locked", {
+					userId,
+					slug,
+				});
+				throw ApiError.BadRequest(
+					`Task is locked and not available for completion: ${slug}`,
+					ERROR_CODES.TASK.TASK_LOCKED
+				);
+			}
+
+			// Проверяем условия выполнения задачи
+			const canComplete = await this.checkTaskCompletionConditions(
+				userId,
+				userTask,
+				taskTemplate,
+				t
+			);
+
+			if (!canComplete) {
+				logger.debug("completeTask - task conditions not met", {
+					userId,
+					slug,
+				});
+				throw ApiError.BadRequest(
+					`Task conditions not met for completion: ${slug}`,
+					ERROR_CODES.TASK.TASK_CONDITIONS_NOT_MET
+				);
 			}
 
 			// Помечаем задачу как завершенную
@@ -1009,6 +1287,7 @@ class TaskService {
 				userTask,
 				userState: userState,
 				marketResult: result,
+				rewards: reward, // Добавляем награды для клиента
 			};
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
@@ -1114,7 +1393,7 @@ class TaskService {
 			const userTask = await UserTask.findOne({
 				where: {
 					userId,
-					taskTemplateId: taskTemplate.id,
+					taskTemplateId: taskTemplate.slug,
 					active: true,
 				},
 			});
@@ -1123,7 +1402,7 @@ class TaskService {
 				logger.debug("getTaskStatus - user task not found", {
 					userId,
 					slug,
-					taskTemplateId: taskTemplate.id,
+					taskTemplateId: taskTemplate.slug,
 				});
 				throw ApiError.BadRequest(
 					`User task not found for template: ${slug}`,
@@ -1132,7 +1411,7 @@ class TaskService {
 			}
 
 			const result = {
-				taskId: taskTemplate.id,
+				taskId: taskTemplate.slug,
 				slug: taskTemplate.slug,
 				status: userTask.status,
 				active: userTask.active,
@@ -1227,6 +1506,193 @@ class TaskService {
 				`Failed to get user task stats: ${err.message}`,
 				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
+		}
+	}
+	/**
+	 * Проверяет условия выполнения задачи
+	 * @param {number} userId - User ID
+	 * @param {Object} userTask - User task instance
+	 * @param {Object} taskTemplate - Task template
+	 * @param {Transaction} transaction - Database transaction
+	 * @returns {Promise<boolean>} - True if task can be completed
+	 */
+	async checkTaskCompletionConditions(
+		userId,
+		userTask,
+		taskTemplate,
+		transaction
+	) {
+		const t = transaction || (await sequelize.transaction());
+		const shouldCommit = !transaction;
+
+		try {
+			const slug = taskTemplate.slug;
+
+			// Проверяем задачи создания звезд
+			if (slug.startsWith("create_stars_")) {
+				// Получаем userState для проверки количества звезд
+				const userState = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				const userStars = userState?.stars || 0;
+				const requiredStars = parseInt(slug.split("_")[2]);
+
+				logger.debug("Checking stars creation task conditions", {
+					userId,
+					slug,
+					userStars,
+					requiredStars,
+					canComplete: userStars >= requiredStars,
+				});
+
+				return userStars >= requiredStars;
+			}
+
+			// Проверяем ежедневные задачи
+			if (taskTemplate.isDaily || slug === "daily_login") {
+				// Для ежедневных задач проверяем, что прошло достаточно времени
+				const lastCompleted = userTask.completedAt;
+				const now = new Date();
+
+				if (lastCompleted) {
+					const timeDiff = now.getTime() - lastCompleted.getTime();
+					const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+					// Можно выполнять ежедневную задачу раз в 24 часа
+					const canComplete = hoursDiff >= 24;
+
+					logger.debug("Checking daily task conditions", {
+						userId,
+						slug,
+						lastCompleted: lastCompleted?.toISOString(),
+						hoursDiff,
+						canComplete,
+					});
+
+					return canComplete;
+				}
+
+				// Если задача никогда не выполнялась, можно выполнить
+				return true;
+			}
+
+			// Для других задач пока что разрешаем выполнение
+			// Здесь можно добавить дополнительные проверки
+			return true;
+		} catch (err) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
+
+			logger.error("Failed to check task completion conditions", {
+				userId,
+				slug: taskTemplate.slug,
+				error: err.message,
+				stack: err.stack,
+			});
+
+			throw err;
+		} finally {
+			if (shouldCommit && !t.finished) {
+				await t.commit();
+			}
+		}
+	}
+
+	/**
+	 * Проверяет условия разблокировки задачи на основе checkType
+	 * @param {number} userId - User ID
+	 * @param {Object} taskTemplate - Task template
+	 * @param {Object} userState - User state
+	 * @param {Transaction} transaction - Database transaction
+	 * @returns {Promise<boolean>} - True if task can be unlocked
+	 */
+	async checkTaskUnlockCondition(userId, taskTemplate, userState, transaction) {
+		const checkType = taskTemplate.checkType || "stardust_count";
+		const slug = taskTemplate.slug;
+
+		try {
+			switch (checkType) {
+				case "stars_count":
+					// Проверка количества звезд пользователя
+					const userStars = userState?.stars || 0;
+					const requiredStars = parseInt(slug.split("_")[2]);
+					return userStars >= requiredStars;
+
+				case "stardust_count":
+					// Проверка количества звездной пыли
+					const userStardust = userState?.stardustCount || 0;
+					const requiredStardust = parseInt(slug.split("_")[2]);
+					return userStardust >= requiredStardust;
+
+				case "dark_matter_count":
+					// Проверка количества темной материи
+					const userDarkMatter = userState?.darkMatterCount || 0;
+					const requiredDarkMatter = parseInt(slug.split("_")[3]);
+					return userDarkMatter >= requiredDarkMatter;
+
+				case "galaxies_count":
+					// Проверка количества галактик
+					const galaxiesResult = await galaxyService.getUserGalaxies(
+						userId
+					);
+					const userGalaxiesCount = galaxiesResult.galaxies
+						? galaxiesResult.galaxies.length
+						: 0;
+					const requiredGalaxies = parseInt(slug.split("_")[2]);
+
+					logger.debug("Checking galaxies count", {
+						userId,
+						slug,
+						userGalaxiesCount,
+						requiredGalaxies,
+						canUnlock: userGalaxiesCount >= requiredGalaxies,
+					});
+
+					return userGalaxiesCount >= requiredGalaxies;
+
+				case "scans_count":
+					// Проверка количества сканирований галактики
+					const scanCount = userState?.galaxyScans || 0;
+					const requiredScans = parseInt(slug.split("_")[2]);
+					return scanCount >= requiredScans;
+
+				case "streak_count":
+					// Проверка streak входа
+					const currentStreak = userState?.currentStreak || 0;
+					const requiredStreak = parseInt(slug.split("_")[2]) || 7;
+					return currentStreak >= requiredStreak;
+
+				case "daily_reset":
+					// Для ежедневных задач проверяем время последнего выполнения
+					return true; // Логика ежедневных задач обрабатывается отдельно
+
+				case "galaxy_upgraded":
+					// Проверка улучшения галактики (пока что всегда true)
+					return true;
+
+				case "galaxy_shared":
+					// Проверка поделиться галактикой (пока что всегда true)
+					return true;
+
+				default:
+					logger.warn("Unknown checkType", {
+						userId,
+						taskSlug: slug,
+						checkType,
+					});
+					return false; // По умолчанию блокируем
+			}
+		} catch (error) {
+			logger.error("Error checking task unlock condition", {
+				userId,
+				taskSlug: slug,
+				checkType,
+				error: error.message,
+			});
+			return false;
 		}
 	}
 }

@@ -85,8 +85,8 @@ module.exports = {
 				ut.id,
 				ut."userId",
 				u.username,
-				tt.id as template_id,
-				tt.name as task_name,
+				tt.slug as template_slug,
+				tt.title as task_title,
 				tt.active,
 				ut.status,
 				ut.active as task_active,
@@ -94,7 +94,7 @@ module.exports = {
 				ut."completedAt"
 			FROM usertasks ut
 			JOIN users u ON ut."userId" = u.id
-			JOIN tasktemplates tt ON ut."taskTemplateId" = tt.id
+			JOIN tasktemplates tt ON ut."taskTemplateId" = tt.slug
 			WHERE ut.status != 'completed'
 			ORDER BY ut."createdAt" DESC;
 		`);
@@ -129,8 +129,8 @@ module.exports = {
 			CREATE OR REPLACE VIEW template_statistics AS
 			SELECT 
 				'artifact' as template_type,
-				at.id as template_id,
-				at.name as template_name,
+				at.id::text as template_id,
+				at.name::text as template_name,
 				at.active,
 				COUNT(a.id) as total_instances,
 				COUNT(DISTINCT a."userId") as unique_users
@@ -142,8 +142,8 @@ module.exports = {
 			
 			SELECT 
 				'event' as template_type,
-				et.id as template_id,
-				et.name as template_name,
+				et.id::text as template_id,
+				et.name::text as template_name,
 				et.active,
 				COUNT(ue.id) as total_instances,
 				COUNT(DISTINCT ue."userId") as unique_users
@@ -155,8 +155,8 @@ module.exports = {
 			
 			SELECT 
 				'upgrade' as template_type,
-				unt.id as template_id,
-				unt.name as template_name,
+				unt.id::text as template_id,
+				unt.name::text as template_name,
 				unt.active,
 				COUNT(uu.id) as total_instances,
 				COUNT(DISTINCT uu."userId") as unique_users
@@ -166,23 +166,23 @@ module.exports = {
 			
 			UNION ALL
 			
-						SELECT
+			SELECT
 				'task' as template_type,
-				tt.id as template_id,
+				tt.slug as template_id,
 				tt.title->>'en' as template_name,
 				tt.active,
 				COUNT(ut.id) as total_instances,
 				COUNT(DISTINCT ut."userId") as unique_users
 			FROM tasktemplates tt
-			LEFT JOIN usertasks ut ON tt.id = ut."taskTemplateId"
-			GROUP BY tt.id, tt.title->>'en', tt.active
+			LEFT JOIN usertasks ut ON tt.slug = ut."taskTemplateId"
+			GROUP BY tt.slug, tt.title, tt.active
 			
 			UNION ALL
 			
-						SELECT
+			SELECT
 				'package' as template_type,
-				pt.id as template_id,
-				pt.name as template_name,
+				pt.id::text as template_id,
+				pt.name::text as template_name,
 				pt.status as active,
 				COUNT(ps.id) as total_instances,
 				COUNT(DISTINCT ps."userId") as unique_users

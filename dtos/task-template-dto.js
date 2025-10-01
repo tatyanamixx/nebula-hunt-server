@@ -12,9 +12,11 @@ class TaskTemplateDTO {
 	static toFormFormat(taskTemplate) {
 		return {
 			...taskTemplate,
-			// Преобразуем JSONB поля в структурированный формат для веб-форм
+			// Обрабатываем title - JSONB объект {en, ru}
 			title: this.formatTitleField(taskTemplate.title),
+			// Обрабатываем description - JSONB объект {en, ru}
 			description: this.formatDescriptionField(taskTemplate.description),
+			// Преобразуем поля в структурированный формат для веб-форм
 			reward: this.formatRewardField(taskTemplate.reward),
 			condition: this.formatConditionField(taskTemplate.condition),
 			// Добавляем краткое отображение reward для списка
@@ -28,51 +30,113 @@ class TaskTemplateDTO {
 	 * @returns {Object} - Форматированный объект для базы данных
 	 */
 	static fromFormFormat(formData) {
-		return {
-			...formData,
+		console.log("🔍 fromFormFormat - Input:", JSON.stringify(formData, null, 2));
+
+		// Если данные приходят как массив, берем первый элемент
+		const data = Array.isArray(formData) ? formData[0] : formData;
+		console.log(
+			"🔍 fromFormFormat - Processed data:",
+			JSON.stringify(data, null, 2)
+		);
+
+		const result = {
+			...data,
 			// Преобразуем структурированные данные обратно в JSONB объекты
-			title: this.parseTitleField(formData.title),
-			description: this.parseDescriptionField(formData.description),
-			reward: this.parseRewardField(formData.reward),
-			condition: this.parseConditionField(formData.condition),
+			title: this.parseTitleField(data.title),
+			description: this.parseDescriptionField(data.description),
+			reward: this.parseRewardField(data.reward),
+			condition: this.parseConditionField(data.condition),
 		};
+
+		console.log("🔍 fromFormFormat - Output:", JSON.stringify(result, null, 2));
+		return result;
 	}
 
 	/**
 	 * Форматирует поле title для веб-формы
-	 * @param {Object|string} field - JSONB поле title
-	 * @returns {Object} - Структурированный объект для веб-формы
+	 * @param {Object} title - JSONB объект {en, ru}
+	 * @returns {Object} - Форматированный объект для формы
 	 */
-	static formatTitleField(field) {
-		const title = this.parseJsonbField(field, 'title');
+	static formatTitleField(title) {
+		if (!title || typeof title !== "object") {
+			return { en: "", ru: "" };
+		}
 		return {
-			en: title.en || '',
-			ru: title.ru || '',
+			en: title.en || "",
+			ru: title.ru || "",
 		};
 	}
 
 	/**
 	 * Форматирует поле description для веб-формы
-	 * @param {Object|string} field - JSONB поле description
-	 * @returns {Object} - Структурированный объект для веб-формы
+	 * @param {Object} description - JSONB объект {en, ru}
+	 * @returns {Object} - Форматированный объект для формы
 	 */
-	static formatDescriptionField(field) {
-		const description = this.parseJsonbField(field, 'description');
+	static formatDescriptionField(description) {
+		if (!description || typeof description !== "object") {
+			return { en: "", ru: "" };
+		}
 		return {
-			en: description.en || '',
-			ru: description.ru || '',
+			en: description.en || "",
+			ru: description.ru || "",
+		};
+	}
+
+	/**
+	 * Парсит поле title из веб-формы в JSONB формат
+	 * @param {Object} title - Данные из формы
+	 * @returns {Object} - JSONB объект для базы данных
+	 */
+	static parseTitleField(title) {
+		console.log("🔍 parseTitleField - Input:", title);
+
+		if (!title || typeof title !== "object") {
+			console.log(
+				"🔍 parseTitleField - Invalid input, returning empty object"
+			);
+			return { en: "", ru: "" };
+		}
+
+		const result = {
+			en: title.en || "",
+			ru: title.ru || "",
+		};
+
+		console.log("🔍 parseTitleField - Output:", result);
+		return result;
+	}
+
+	/**
+	 * Парсит поле description из веб-формы в JSONB формат
+	 * @param {Object} description - Данные из формы
+	 * @returns {Object} - JSONB объект для базы данных
+	 */
+	static parseDescriptionField(description) {
+		if (!description || typeof description !== "object") {
+			return { en: "", ru: "" };
+		}
+		return {
+			en: description.en || "",
+			ru: description.ru || "",
 		};
 	}
 
 	/**
 	 * Форматирует поле reward для веб-формы
-	 * @param {Object|string} field - JSONB поле reward
-	 * @returns {Object} - Структурированный объект для веб-формы
+	 * @param {Object} reward - JSONB объект награды
+	 * @returns {Object} - Форматированный объект для формы
 	 */
-	static formatRewardField(field) {
-		const reward = this.parseJsonbField(field, 'reward');
+	static formatRewardField(reward) {
+		if (!reward || typeof reward !== "object") {
+			return {
+				type: "stardust",
+				amount: 0,
+				multiplier: 1.0,
+			};
+		}
+
 		return {
-			type: reward.type || 'stardust',
+			type: reward.type || "stardust",
 			amount: reward.amount || 0,
 			multiplier: reward.multiplier || 1.0,
 		};
@@ -80,223 +144,249 @@ class TaskTemplateDTO {
 
 	/**
 	 * Форматирует поле condition для веб-формы
-	 * @param {Object|string} field - JSONB поле condition
-	 * @returns {Object} - Структурированный объект для веб-формы
+	 * @param {Object} condition - JSONB объект условия
+	 * @returns {Object} - Форматированный объект для формы
 	 */
-	static formatConditionField(field) {
-		const condition = this.parseJsonbField(field, 'condition');
+	static formatConditionField(condition) {
+		if (!condition || typeof condition !== "object") {
+			return {
+				type: "totalStars",
+				operator: ">=",
+				value: 0,
+			};
+		}
+
 		return {
-			type: condition.type || '',
-			days: condition.days || [],
-			amount: condition.amount || 0,
-			operator: condition.operator || '>=',
-			resource: condition.resource || '',
-			resetTime: condition.resetTime || '00:00',
+			type: condition.type || "totalStars",
+			operator: condition.operator || ">=",
+			value: condition.value || condition.threshold || 0,
 		};
 	}
 
 	/**
-	 * Форматирует краткое отображение reward для списка
-	 * @param {Object|string} field - JSONB поле reward
-	 * @returns {string} - Краткое описание награды (например: "500 stardust")
+	 * Парсит поле reward из веб-формы в JSONB формат
+	 * @param {Object} reward - Данные из формы
+	 * @returns {Object} - JSONB объект для базы данных
 	 */
-	static formatRewardDisplay(field) {
-		const reward = this.parseJsonbField(field, 'reward');
+	static parseRewardField(reward) {
+		if (!reward || typeof reward !== "object") {
+			return { type: "stardust", amount: 0 };
+		}
+
+		return {
+			type: reward.type || "stardust",
+			amount: parseInt(reward.amount) || 0,
+			multiplier: parseFloat(reward.multiplier) || 1.0,
+		};
+	}
+
+	/**
+	 * Парсит поле condition из веб-формы в JSONB формат
+	 * @param {Object} condition - Данные из формы
+	 * @returns {Object} - JSONB объект для базы данных
+	 */
+	static parseConditionField(condition) {
+		if (!condition || typeof condition !== "object") {
+			return { type: "totalStars", operator: ">=", value: 0 };
+		}
+
+		return {
+			type: condition.type || "totalStars",
+			operator: condition.operator || ">=",
+			value: parseInt(condition.value) || 0,
+		};
+	}
+
+	/**
+	 * Форматирует отображение награды для списка
+	 * @param {Object} reward - JSONB объект награды
+	 * @returns {string} - Строка для отображения
+	 */
+	static formatRewardDisplay(reward) {
+		if (!reward || typeof reward !== "object") {
+			return "0 stardust";
+		}
+
 		const amount = reward.amount || 0;
-		const type = reward.type || 'stardust';
+		const type = reward.type || "stardust";
 		const multiplier = reward.multiplier || 1.0;
 
-		// Если есть multiplier, показываем его
+		let display = `${amount} ${type}`;
 		if (multiplier !== 1.0) {
-			return `${amount} ${type} (x${multiplier})`;
+			display += ` (x${multiplier})`;
 		}
 
-		return `${amount} ${type}`;
-	}
-
-	/**
-	 * Парсит поле title из веб-формы
-	 * @param {Object} field - Данные из веб-формы
-	 * @returns {Object} - JSONB объект
-	 */
-	static parseTitleField(field) {
-		if (typeof field === 'object' && field !== null) {
-			return {
-				en: field.en || '',
-				ru: field.ru || '',
-			};
-		}
-		return { en: '', ru: '' };
-	}
-
-	/**
-	 * Парсит поле description из веб-формы
-	 * @param {Object} field - Данные из веб-формы
-	 * @returns {Object} - JSONB объект
-	 */
-	static parseDescriptionField(field) {
-		if (typeof field === 'object' && field !== null) {
-			return {
-				en: field.en || '',
-				ru: field.ru || '',
-			};
-		}
-		return { en: '', ru: '' };
-	}
-
-	/**
-	 * Парсит поле reward из веб-формы
-	 * @param {Object} field - Данные из веб-формы
-	 * @returns {Object} - JSONB объект
-	 */
-	static parseRewardField(field) {
-		if (typeof field === 'object' && field !== null) {
-			return {
-				type: field.type || 'stardust',
-				amount: parseInt(field.amount) || 0,
-				multiplier: parseFloat(field.multiplier) || 1.0,
-			};
-		}
-		return { type: 'stardust', amount: 0, multiplier: 1.0 };
-	}
-
-	/**
-	 * Парсит поле condition из веб-формы
-	 * @param {Object} field - Данные из веб-формы
-	 * @returns {Object} - JSONB объект
-	 */
-	static parseConditionField(field) {
-		if (typeof field === 'object' && field !== null) {
-			return {
-				type: field.type || '',
-				days: Array.isArray(field.days) ? field.days : [],
-				amount: parseInt(field.amount) || 0,
-				operator: field.operator || '>=',
-				resource: field.resource || '',
-				resetTime: field.resetTime || '00:00',
-			};
-		}
-		return {
-			type: '',
-			days: [],
-			amount: 0,
-			operator: '>=',
-			resource: '',
-			resetTime: '00:00',
-		};
-	}
-
-	/**
-	 * Форматирует JSONB поле в строку для веб-формы (для обратной совместимости)
-	 * @param {Object|string} field - JSONB поле
-	 * @param {string} fieldName - Название поля для логирования
-	 * @returns {string} - JSON строка
-	 */
-	static formatJsonbField(field, fieldName) {
-		if (typeof field === 'string') {
-			try {
-				// Если это уже строка, попробуем распарсить и переформатировать
-				const parsed = JSON.parse(field);
-				return JSON.stringify(parsed, null, 2);
-			} catch (error) {
-				console.warn(`Failed to parse ${fieldName} as JSON:`, error);
-				return field;
-			}
-		} else if (typeof field === 'object' && field !== null) {
-			// Если это объект, преобразуем в JSON строку
-			return JSON.stringify(field, null, 2);
-		} else {
-			// Если поле пустое или null, возвращаем пустой объект
-			return JSON.stringify({}, null, 2);
-		}
-	}
-
-	/**
-	 * Парсит строку обратно в JSONB объект
-	 * @param {string} field - JSON строка из веб-формы
-	 * @param {string} fieldName - Название поля для логирования
-	 * @returns {Object} - JSONB объект
-	 */
-	static parseJsonbField(field, fieldName) {
-		if (typeof field === 'object' && field !== null) {
-			// Если это уже объект, возвращаем как есть
-			return field;
-		} else if (typeof field === 'string' && field.trim()) {
-			try {
-				// Если это строка, парсим JSON
-				return JSON.parse(field);
-			} catch (error) {
-				console.error(`Failed to parse ${fieldName} as JSON:`, error);
-				// Возвращаем пустой объект в случае ошибки
-				return {};
-			}
-		} else {
-			// Если поле пустое, возвращаем пустой объект
-			return {};
-		}
+		return display;
 	}
 
 	/**
 	 * Преобразует массив TaskTemplate в формат для веб-форм
-	 * @param {Array} taskTemplates - Массив TaskTemplate
+	 * @param {Array} taskTemplates - Массив объектов TaskTemplate
 	 * @returns {Array} - Массив форматированных объектов
 	 */
 	static toFormFormatArray(taskTemplates) {
-		return taskTemplates.map((task) => this.toFormFormat(task));
+		if (!Array.isArray(taskTemplates)) {
+			return [];
+		}
+
+		return taskTemplates.map((template) => this.toFormFormat(template));
 	}
 
 	/**
-	 * Валидирует JSONB поля
-	 * @param {Object} formData - Данные из веб-формы
+	 * Валидирует данные формы TaskTemplate
+	 * @param {Object} formData - Данные из формы
+	 * @returns {Object} - Результат валидации {isValid, errors}
+	 */
+	static validateFormData(formData) {
+		const errors = [];
+
+		// Проверяем обязательные поля
+		if (!formData.slug || formData.slug.trim() === "") {
+			errors.push("Slug is required");
+		}
+
+		// Проверяем title
+		if (
+			!formData.title ||
+			!formData.title.en ||
+			formData.title.en.trim() === ""
+		) {
+			errors.push("English title is required");
+		}
+		if (
+			!formData.title ||
+			!formData.title.ru ||
+			formData.title.ru.trim() === ""
+		) {
+			errors.push("Russian title is required");
+		}
+
+		// Проверяем description
+		if (
+			!formData.description ||
+			!formData.description.en ||
+			formData.description.en.trim() === ""
+		) {
+			errors.push("English description is required");
+		}
+		if (
+			!formData.description ||
+			!formData.description.ru ||
+			formData.description.ru.trim() === ""
+		) {
+			errors.push("Russian description is required");
+		}
+
+		// Проверяем reward
+		if (!formData.reward || !formData.reward.type) {
+			errors.push("Reward type is required");
+		}
+		if (
+			!formData.reward ||
+			!formData.reward.amount ||
+			formData.reward.amount <= 0
+		) {
+			errors.push("Reward amount must be greater than 0");
+		}
+
+		// Проверяем condition
+		if (!formData.condition || !formData.condition.type) {
+			errors.push("Condition type is required");
+		}
+		if (
+			!formData.condition ||
+			!formData.condition.value ||
+			formData.condition.value < 0
+		) {
+			errors.push("Condition value must be 0 or greater");
+		}
+
+		return {
+			isValid: errors.length === 0,
+			errors: errors,
+		};
+	}
+
+	/**
+	 * Валидирует JSONB поля для создания/обновления шаблона
+	 * @param {Object} formData - Данные из формы
 	 * @returns {Object} - Объект с ошибками валидации
 	 */
 	static validateJsonbFields(formData) {
 		const errors = {};
+		console.log(
+			"🔍 DTO Validation - Input data:",
+			JSON.stringify(formData, null, 2)
+		);
 
-		// Валидируем title
-		try {
-			const title = this.parseTitleField(formData.title);
-			if (!title.en || !title.ru) {
-				errors.title = 'Title must contain both "en" and "ru" fields';
-			}
-		} catch (error) {
-			errors.title = 'Invalid title format';
+		// Если данные приходят как массив, берем первый элемент
+		const data = Array.isArray(formData) ? formData[0] : formData;
+		console.log(
+			"🔍 DTO Validation - Processed data:",
+			JSON.stringify(data, null, 2)
+		);
+
+		// Проверяем slug
+		if (!data.slug || data.slug.trim() === "") {
+			errors.slug = "Slug is required";
+			console.log("❌ Slug validation failed");
 		}
 
-		// Валидируем description
-		try {
-			const description = this.parseDescriptionField(
-				formData.description
-			);
-			if (!description.en || !description.ru) {
-				errors.description =
-					'Description must contain both "en" and "ru" fields';
+		// Проверяем title
+		if (!data.title) {
+			errors.title = "Title is required";
+			console.log("❌ Title validation failed - no title");
+		} else if (typeof data.title === "object") {
+			if (!data.title.en || data.title.en.trim() === "") {
+				errors.title_en = "English title is required";
+				console.log("❌ English title validation failed");
 			}
-		} catch (error) {
-			errors.description = 'Invalid description format';
+			if (!data.title.ru || data.title.ru.trim() === "") {
+				errors.title_ru = "Russian title is required";
+				console.log("❌ Russian title validation failed");
+			}
 		}
 
-		// Валидируем reward
-		try {
-			const reward = this.parseRewardField(formData.reward);
-			if (!reward.type || typeof reward.amount !== 'number') {
-				errors.reward =
-					'Reward must contain "type" and "amount" fields';
+		// Проверяем description
+		if (!data.description) {
+			errors.description = "Description is required";
+			console.log("❌ Description validation failed - no description");
+		} else if (typeof data.description === "object") {
+			if (!data.description.en || data.description.en.trim() === "") {
+				errors.description_en = "English description is required";
+				console.log("❌ English description validation failed");
 			}
-		} catch (error) {
-			errors.reward = 'Invalid reward format';
+			if (!data.description.ru || data.description.ru.trim() === "") {
+				errors.description_ru = "Russian description is required";
+				console.log("❌ Russian description validation failed");
+			}
 		}
 
-		// Валидируем condition
-		try {
-			const condition = this.parseConditionField(formData.condition);
-			if (!condition.type) {
-				errors.condition = 'Condition must contain "type" field';
+		// Проверяем reward
+		if (!data.reward) {
+			errors.reward = "Reward is required";
+			console.log("❌ Reward validation failed - no reward");
+		} else if (typeof data.reward === "object") {
+			if (!data.reward.type || data.reward.type.trim() === "") {
+				errors.reward_type = "Reward type is required";
+				console.log("❌ Reward type validation failed");
 			}
-		} catch (error) {
-			errors.condition = 'Invalid condition format';
+			if (typeof data.reward.amount !== "number" || data.reward.amount < 0) {
+				errors.reward_amount = "Reward amount must be a non-negative number";
+				console.log(
+					"❌ Reward amount validation failed:",
+					data.reward.amount
+				);
+			}
 		}
 
+		// Проверяем icon
+		if (!data.icon || data.icon.trim() === "") {
+			errors.icon = "Icon is required";
+			console.log("❌ Icon validation failed");
+		}
+
+		console.log("🔍 DTO Validation - Final errors:", errors);
 		return errors;
 	}
 }

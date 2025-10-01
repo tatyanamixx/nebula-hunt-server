@@ -41,6 +41,7 @@ class TaskTemplateController {
 	async createTaskTemplates(req, res, next) {
 		try {
 			const taskData = req.body;
+
 			if (!taskData) {
 				return next(
 					ApiError.BadRequest("Invalid request: task data required")
@@ -60,9 +61,10 @@ class TaskTemplateController {
 			// Преобразуем данные из веб-формы в формат для базы данных
 			const formattedTaskData = TaskTemplateDTO.fromFormFormat(taskData);
 
-			const result = await taskTemplateService.createTaskTemplates(
-				formattedTaskData
-			);
+			// Сервис ожидает массив, поэтому оборачиваем в массив
+			const result = await taskTemplateService.createTaskTemplates([
+				formattedTaskData,
+			]);
 
 			// Преобразуем результат обратно в формат для веб-форм
 			const formattedResult = TaskTemplateDTO.toFormFormatArray(result);

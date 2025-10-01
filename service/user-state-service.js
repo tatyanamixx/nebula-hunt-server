@@ -65,10 +65,6 @@ class UserStateService {
 		userState.lastLoginDate = today;
 		userState.streakUpdatedAt = now;
 		userState.updatedAt = now;
-		userState.stateHistory.push({
-			timestamp: now,
-			state: userState.toJSON(),
-		});
 	}
 
 	async getUserState(userId, transaction) {

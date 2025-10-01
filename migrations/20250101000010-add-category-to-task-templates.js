@@ -3,14 +3,19 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
-		// Add category column to tasktemplates table
-		await queryInterface.addColumn("tasktemplates", "category", {
-			type: Sequelize.STRING,
-			allowNull: true,
-			defaultValue: "general",
-			comment:
-				"Task category for grouping (daily, stardust, darkMatter, etc.)",
-		});
+		// Check if category column already exists
+		const tableDescription = await queryInterface.describeTable("tasktemplates");
+
+		if (!tableDescription.category) {
+			// Add category column to tasktemplates table
+			await queryInterface.addColumn("tasktemplates", "category", {
+				type: Sequelize.STRING,
+				allowNull: true,
+				defaultValue: "general",
+				comment:
+					"Task category for grouping (daily, stardust, darkMatter, etc.)",
+			});
+		}
 
 		// Add index for category
 		await queryInterface.sequelize.query(`
