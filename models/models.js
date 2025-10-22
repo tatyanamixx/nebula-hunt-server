@@ -966,6 +966,7 @@ const PaymentTransaction = sequelize.define(
 				"RESOURCE_TRANSFER",
 				"UPGRADE_REWARD",
 				"TASK_REWARD",
+				"DAILY_TASK_REWARD",
 				"EVENT_REWARD",
 				"FARMING_REWARD",
 				"GALAXY_RESOURCE",
@@ -985,6 +986,12 @@ const PaymentTransaction = sequelize.define(
 			allowNull: true,
 			comment: "ID транзакции в блокчейне",
 		},
+		metadata: {
+			type: DataTypes.JSONB,
+			allowNull: true,
+			comment:
+				"Дополнительная информация о транзакции (например, день стрика для ежедневных заданий)",
+		},
 		status: {
 			type: DataTypes.ENUM("PENDING", "CONFIRMED", "FAILED", "CANCELLED"),
 			defaultValue: "PENDING",
@@ -993,6 +1000,7 @@ const PaymentTransaction = sequelize.define(
 		confirmedAt: { type: DataTypes.DATE, allowNull: true },
 	},
 	{
+		tableName: "paymenttransactions", // Явно указываем имя таблицы (множественное число)
 		indexes: [
 			{
 				fields: ["marketTransactionId"],

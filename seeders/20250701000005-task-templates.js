@@ -265,7 +265,8 @@ module.exports = {
 					description:
 						'{"en":"Log in daily to receive rewards","ru":"Входите ежедневно для получения наград"}',
 					reward: '{"type":"stardust","amount":1000}',
-					condition: '{"type":"dailyReset","operator":"==","value":true}',
+					condition:
+						'{"type":"dailyReset","operator":"==","value":true,"days":[1,2,3,4,5,6,7]}',
 					icon: "📆",
 					active: true,
 					sortOrder: 1,

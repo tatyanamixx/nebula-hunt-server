@@ -104,14 +104,15 @@ class TaskService {
 							{
 								userId,
 								taskTemplateId: taskTemplate.slug,
-								status: "locked",
+								// Для daily_login делаем доступной сразу на первый день
+								status: isDailyLogin ? "available" : "locked",
 								reward: taskTemplate.reward || {
 									type: "stardust",
 									amount: 0,
 								},
 								active: true,
-								// Для daily_login устанавливаем completedAt в текущую дату
-								...(isDailyLogin && { completedAt: now }),
+								// Для daily_login не ставим completedAt, чтобы можно было забрать сразу
+								...(isDailyLogin ? { completedAt: null } : {}),
 							},
 							{ transaction: t }
 						);
@@ -123,13 +124,7 @@ class TaskService {
 						);
 					}
 
-					// Для daily_login задач проверяем completedAt
-					if (existingTask && isDailyLogin && !existingTask.completedAt) {
-						await existingTask.update(
-							{ completedAt: now },
-							{ transaction: t }
-						);
-					}
+					// Для daily_login задач: если completedAt пустой, оставляем пустым
 				} else {
 					// Шаблон неактивен - деактивируем задачу если она существует
 					if (existingTask && existingTask.active) {
@@ -184,21 +179,26 @@ class TaskService {
 			const result = userTasks.map((userTask) => {
 				const evaluatedTask = evaluatedTasksMap.get(userTask.id);
 
+				// Получаем TaskTemplate данные (может быть под разными именами)
+				const taskTemplate = userTask.TaskTemplate || userTask.tasktemplate;
+
 				return {
 					id: userTask.id,
-					slug: userTask.TaskTemplate?.slug || userTask.tasktemplate?.slug,
+					slug: taskTemplate?.slug,
 					userId: userTask.userId,
 					taskId: userTask.taskId,
 					status: evaluatedTask ? evaluatedTask.status : userTask.status,
 					reward: evaluatedTask
 						? evaluatedTask.reward
-						: userTask.TaskTemplate?.reward ||
-						  userTask.tasktemplate?.reward,
+						: taskTemplate?.reward,
 					active: userTask.active,
-					completedAt: evaluatedTask
-						? evaluatedTask.completedAt
-						: userTask.completedAt,
-					task: userTask.TaskTemplate || userTask.tasktemplate,
+					completedAt: evaluatedTask?.completedAt
+						? evaluatedTask.completedAt.toISOString()
+						: userTask.completedAt
+						? userTask.completedAt.toISOString()
+						: null,
+					nextReward: evaluatedTask ? evaluatedTask.nextReward : undefined,
+					task: taskTemplate,
 				};
 			});
 
@@ -263,20 +263,77 @@ class TaskService {
 			effectiveStreak = cyclePosition;
 		}
 
+		// Рассчитываем, сколько полных циклов пройдено
+		const completedCycles = Math.floor(currentStreak / maxDay);
+
 		// Проверяем, есть ли эффективный streak в разрешенных днях
 		if (condition.days.includes(effectiveStreak)) {
-			const rewardAmount = Math.floor(
-				baseReward.amount * (baseReward.multiplier || 1) * effectiveStreak
-			);
+			// Определяем тип награды: дни 3, 5, 7 дают Dark Matter
+			const rewardType = [3, 5, 7].includes(effectiveStreak)
+				? "darkMatter"
+				: "stardust";
+
+			// Параметры для расчета
+			const power = 1.5; // Степень для роста награды
+			const baseAmount = 1000; // Базовая награда для первого дня
+
+			// Рассчитываем количество награды
+			let rewardAmount;
+			if (effectiveStreak === 7) {
+				// День 7: большая награда Dark Matter с усилением от циклов
+				const baseDay7 = 50;
+				const cycleBonus = completedCycles * 25;
+				rewardAmount = Math.floor(baseDay7 + cycleBonus);
+			} else if (effectiveStreak === 5) {
+				// День 5: средняя награда Dark Matter
+				const baseDay5 = 15;
+				const cycleBonus = completedCycles * 10;
+				rewardAmount = Math.floor(baseDay5 + cycleBonus);
+			} else if (effectiveStreak === 3) {
+				// День 3: малая награда Dark Matter
+				const baseDay3 = 5;
+				const cycleBonus = completedCycles * 5;
+				rewardAmount = Math.floor(baseDay3 + cycleBonus);
+			} else {
+				// Обычные дни (1, 2, 4, 6): награда растет степенно
+				// Формула: baseAmount * (day ^ power) * (1 + cycleMultiplier)
+				// Округляем до 1000: 1000, 3000, 5000, 8000, и т.д.
+				const cycleMultiplier = completedCycles * 0.5; // +50% за каждый цикл
+				const rawAmount =
+					baseAmount *
+					Math.pow(effectiveStreak, power) *
+					(1 + cycleMultiplier);
+
+				// Округляем до ближайшей 1000
+				rewardAmount = Math.round(rawAmount / 1000) * 1000;
+			}
 
 			return {
-				...baseReward,
+				type: rewardType,
 				amount: rewardAmount,
 			};
 		}
 
 		// Если streak не входит в разрешенные дни, возвращаем базовую награду
 		return baseReward;
+	}
+
+	/**
+	 * Get the next reward day based on current streak and available days
+	 * @param {number} currentStreak - Current streak
+	 * @param {Array} availableDays - Array of available reward days
+	 * @returns {number} - Next reward day
+	 */
+	getNextRewardDay(currentStreak, availableDays) {
+		const maxDay = Math.max(...availableDays);
+
+		// Calculate effective streak for next reward
+		let nextDay = currentStreak + 1;
+		if (nextDay > maxDay) {
+			nextDay = 1; // Reset to day 1 after completing the cycle
+		}
+
+		return nextDay;
 	}
 
 	/**
@@ -784,64 +841,142 @@ class TaskService {
 				if (isDailyTask) {
 					// Для ежедневных задач - проверяем доступность и рассчитываем награду
 					const now = new Date();
-					const today = new Date(
-						now.getFullYear(),
-						now.getMonth(),
-						now.getDate()
-					);
 					const lastCompleted = userTask.completedAt;
 
-					// Проверяем, забирал ли пользователь награду сегодня
+					// Проверяем, можно ли забрать награду (через 24 часа после последнего выполнения)
 					let canClaimToday = true;
+					let shouldResetStreak = false;
+
 					if (lastCompleted) {
-						const lastClaimDate = new Date(
-							lastCompleted.getFullYear(),
-							lastCompleted.getMonth(),
-							lastCompleted.getDate()
+						const timeDiff = now.getTime() - lastCompleted.getTime();
+						const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+						// Интервал между наградами в минутах (по умолчанию 1440 = 24 часа)
+						const intervalMinutes = parseInt(
+							process.env.DAILY_TASK_INTERVAL_MINUTES || "1440",
+							10
 						);
-						canClaimToday = lastClaimDate.getTime() !== today.getTime();
+						const intervalHours = intervalMinutes / 60;
+						const resetHours = intervalHours * 2; // Удвоенный интервал для сброса streak
+
+						// Можно забрать награду через указанный интервал
+						canClaimToday = hoursDiff >= intervalHours;
+
+						// Если прошло больше удвоенного интервала, сбрасываем streak
+						shouldResetStreak = hoursDiff >= resetHours;
+
+						logger.debug("Daily task time calculation", {
+							userId,
+							taskSlug: taskTemplate.slug,
+							now: now.toISOString(),
+							lastCompleted: lastCompleted.toISOString(),
+							timeDiff,
+							hoursDiff,
+							intervalMinutes,
+							intervalHours,
+							resetHours,
+							canClaimToday,
+							shouldResetStreak,
+						});
 					}
 
 					// Получаем currentStreak из userState
-					const currentStreak = userState?.currentStreak || 1;
+					let currentStreak = userState?.currentStreak || 0;
 
-					// Рассчитываем награду используя отдельный метод
+					// Если нужно сбросить streak (прошло больше 48 часов)
+					if (shouldResetStreak) {
+						currentStreak = 0;
+						// Обновляем streak в userState
+						if (userState) {
+							await userState.update(
+								{ currentStreak: 0 },
+								{ transaction: t }
+							);
+						}
+						logger.debug("Streak reset due to inactivity", {
+							userId,
+							taskSlug: taskTemplate.slug,
+							previousStreak: userState?.currentStreak,
+							newStreak: 0,
+						});
+					}
+
+					// Определяем день для расчета награды:
+					// - Если задание можно забрать (canClaimToday = true): показываем награду за следующий день (currentStreak + 1)
+					// - Если задание уже выполнено (canClaimToday = false): показываем информацию о текущем выполненном дне (currentStreak)
+					const dayForReward = canClaimToday
+						? currentStreak + 1
+						: currentStreak;
 					const calculatedReward = this.calculateDailyReward(
 						taskTemplate,
-						currentStreak
+						dayForReward
 					);
 
 					// Обновляем статус задачи
-					if (canClaimToday && userTask.status === "completed") {
-						// Сбрасываем статус для нового дня
-						await userTask.update(
-							{
-								status: "available",
-								completedAt: null,
-							},
-							{ transaction: t }
-						);
-						updatedTask.status = "available";
-						updatedTask.completedAt = null;
-					} else if (userTask.status === "locked" && canClaimToday) {
-						// Разблокируем ежедневную задачу
-						await userTask.update(
-							{ status: "available" },
-							{ transaction: t }
-						);
-						updatedTask.status = "available";
+					if (canClaimToday) {
+						// Пользователь может забрать награду
+						if (
+							userTask.status === "completed" ||
+							userTask.status === "locked"
+						) {
+							await userTask.update(
+								{
+									status: "available",
+									completedAt: null,
+								},
+								{ transaction: t }
+							);
+							updatedTask.status = "available";
+							updatedTask.completedAt = null;
+						}
+					} else {
+						// Пользователь еще не может забрать награду
+						if (userTask.status === "available") {
+							await userTask.update(
+								{ status: "completed" },
+								{ transaction: t }
+							);
+							updatedTask.status = "completed";
+						}
 					}
 
 					// Обновляем награду с рассчитанным значением
 					updatedTask.reward = calculatedReward;
 
+					// Добавляем информацию о следующей награде для ежедневных заданий
+					if (taskTemplate.slug === "daily_login") {
+						const condition = taskTemplate.condition;
+
+						// Ensure condition.days exists and is an array
+						if (
+							condition &&
+							condition.days &&
+							Array.isArray(condition.days)
+						) {
+							// dayForReward показывает:
+							// - Если можно забрать (canClaimToday = true): день награды, которую можно забрать сейчас
+							// - Если нельзя забрать (canClaimToday = false): день награды, которую уже забрали
+							updatedTask.nextReward = {
+								day: dayForReward,
+								reward: calculatedReward,
+								canClaimToday: canClaimToday,
+								currentStreak: currentStreak,
+							};
+						}
+					}
+
 					logger.debug("Daily task evaluation", {
 						userId,
 						taskSlug: taskTemplate.slug,
 						currentStreak,
+						dayForReward,
 						canClaimToday,
 						calculatedReward,
 						lastCompleted: lastCompleted?.toISOString(),
+						userStateCurrentStreak: userState?.currentStreak,
+						userTaskStatus: userTask.status,
+						userTaskCompletedAt: userTask.completedAt?.toISOString(),
+						shouldResetStreak,
 					});
 				} else {
 					// Для не-ежедневных задач - проверяем условия разблокировки
@@ -1246,8 +1381,78 @@ class TaskService {
 			userTask.completedAt = now;
 			await userTask.save({ transaction: t });
 
-			// Создаем offer для регистрации изменений в состоянии через registerOffer
-			const reward = taskTemplate.reward;
+			// Для ежедневных заданий увеличиваем streak
+			if (taskTemplate.isDaily) {
+				const userState = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				if (userState) {
+					const newStreak = (userState.currentStreak || 0) + 1;
+					const currentMaxStreak = userState.maxStreak || 0;
+
+					// Обновляем maxStreak если новый streak больше
+					const updateData = { currentStreak: newStreak };
+					if (newStreak > currentMaxStreak) {
+						updateData.maxStreak = newStreak;
+					}
+
+					await userState.update(updateData, { transaction: t });
+
+					logger.debug("Daily task completed - streak increased", {
+						userId,
+						slug,
+						previousStreak: userState.currentStreak,
+						newStreak,
+						maxStreak:
+							newStreak > currentMaxStreak
+								? newStreak
+								: currentMaxStreak,
+						maxStreakUpdated: newStreak > currentMaxStreak,
+					});
+				}
+			}
+
+			// Определяем тип транзакции в зависимости от типа задания
+			let txType = "TASK_REWARD";
+			let metadata = {};
+			let reward = taskTemplate.reward;
+
+			if (taskTemplate.isDaily || taskTemplate.slug === "daily_login") {
+				txType = "DAILY_TASK_REWARD";
+
+				// Получаем актуальный streak после обновления
+				const userStateUpdated = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				// Для ежедневных заданий пересчитываем награду на основе НОВОГО streak
+				if (userStateUpdated) {
+					const newStreak = userStateUpdated.currentStreak;
+
+					// Пересчитываем награду для текущего дня (который только что выполнили)
+					reward = this.calculateDailyReward(taskTemplate, newStreak);
+
+					// Добавляем информацию о дне стрика в метаданные
+					metadata = {
+						streakDay: newStreak,
+						taskSlug: taskTemplate.slug,
+					};
+
+					logger.debug(
+						"Daily task reward recalculated after streak update",
+						{
+							userId,
+							slug: taskTemplate.slug,
+							newStreak,
+							calculatedReward: reward,
+						}
+					);
+				}
+			}
+
 			const offerData = {
 				sellerId: SYSTEM_USER_ID, // Системный аккаунт
 				buyerId: userId,
@@ -1258,7 +1463,8 @@ class TaskService {
 				itemType: "task",
 				itemId: userTask.id, // userTaskId
 				offerType: "SYSTEM",
-				txType: "TASK_REWARD",
+				txType: txType,
+				metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 			};
 
 			// Используем registerOffer для регистрации изменений в состоянии
@@ -1279,6 +1485,8 @@ class TaskService {
 				slug,
 				taskId: userTask.id,
 				reward: reward,
+				txType: txType,
+				metadata: metadata,
 				marketResult: result,
 			});
 
@@ -1576,6 +1784,50 @@ class TaskService {
 
 				// Если задача никогда не выполнялась, можно выполнить
 				return true;
+			}
+
+			// Проверяем задачи улучшения галактики
+			if (slug === "upgrade_galaxy") {
+				// Пока что всегда разрешаем выполнение (можно добавить проверку на факт улучшения)
+				logger.debug("Checking galaxy upgrade task conditions", {
+					userId,
+					slug,
+					canComplete: true,
+				});
+				return true;
+			}
+
+			// Проверяем задачи поделиться галактикой
+			if (slug === "share_galaxy") {
+				// Пока что всегда разрешаем выполнение (можно добавить проверку на факт шаринга)
+				logger.debug("Checking galaxy share task conditions", {
+					userId,
+					slug,
+					canComplete: true,
+				});
+				return true;
+			}
+
+			// Проверяем задачи сканирования галактики
+			if (slug.startsWith("scan_galaxy_")) {
+				// Получаем userState для проверки количества сканирований
+				const userState = await UserState.findOne({
+					where: { userId },
+					transaction: t,
+				});
+
+				const scanCount = userState?.galaxyScans || 0;
+				const requiredScans = parseInt(slug.split("_")[2]);
+
+				logger.debug("Checking galaxy scan task conditions", {
+					userId,
+					slug,
+					scanCount,
+					requiredScans,
+					canComplete: scanCount >= requiredScans,
+				});
+
+				return scanCount >= requiredScans;
 			}
 
 			// Для других задач пока что разрешаем выполнение

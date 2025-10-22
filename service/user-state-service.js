@@ -32,8 +32,8 @@ class UserStateService {
 		// If this is the first login ever
 		if (!lastLogin) {
 			userState.lastLoginDate = today;
-			userState.currentStreak = 1;
-			userState.maxStreak = 1;
+			userState.currentStreak = 0; // Начинаем с 0, streak увеличится при выполнении первого задания
+			userState.maxStreak = 0;
 			userState.streakUpdatedAt = now;
 			return;
 		}
@@ -51,15 +51,11 @@ class UserStateService {
 		const diffDays = Math.floor((today - lastLogin) / (1000 * 60 * 60 * 24));
 
 		if (diffDays === 1) {
-			// Consecutive day
-			userState.currentStreak += 1;
-			userState.maxStreak = Math.max(
-				userState.currentStreak,
-				userState.maxStreak
-			);
+			// Consecutive day - не увеличиваем здесь, streak увеличится при выполнении задания
+			// Это просто обновление lastLoginDate
 		} else if (diffDays > 1) {
-			// Streak broken
-			userState.currentStreak = 1;
+			// Streak broken - сбрасываем на 0
+			userState.currentStreak = 0;
 		}
 
 		userState.lastLoginDate = today;
