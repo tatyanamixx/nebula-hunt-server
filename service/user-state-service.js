@@ -1,7 +1,7 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const { UserState, User } = require("../models/models");
+const { UserState, User, Galaxy } = require("../models/models");
 const logger = require("./logger-service");
 const ApiError = require("../exceptions/api-error");
 const { ERROR_CODES } = require("../config/error-codes");
@@ -374,9 +374,18 @@ class UserStateService {
 			if (userId) {
 				const userState = await UserState.findOne({
 					where: { userId },
-					include: User,
+					include: {
+						model: User,
+						where: {
+							role: {
+								[Op.ne]: "SYSTEM",
+							},
+						},
+					},
 					attributes: [
-						"state",
+						"stars",
+						"stardust",
+						"darkMatter",
 						"currentStreak",
 						"maxStreak",
 						"updatedAt",
@@ -386,21 +395,24 @@ class UserStateService {
 				});
 
 				if (userState) {
-					const userStars = userState.state?.totalStars || 0;
+					const userStars = userState.stars || 0;
 					const userUpdatedAt = userState.updatedAt;
 
 					// Count users with more stars or same stars but more recent update
+					// Exclude SYSTEM users from ranking
 					const higherUsers = await UserState.count({
 						where: {
 							[Op.or]: [
-								sequelize.literal(
-									`(state->>'totalStars')::integer > ${userStars}`
-								),
+								{
+									stars: {
+										[Op.gt]: userStars,
+									},
+								},
 								{
 									[Op.and]: [
-										sequelize.literal(
-											`(state->>'totalStars')::integer = ${userStars}`
-										),
+										{
+											stars: userStars,
+										},
 										{
 											updatedAt: {
 												[Op.gt]: userUpdatedAt,
@@ -409,6 +421,15 @@ class UserStateService {
 									],
 								},
 							],
+						},
+						include: {
+							model: User,
+							where: {
+								role: {
+									[Op.ne]: "SYSTEM",
+								},
+							},
+							attributes: [],
 						},
 						transaction: t,
 					});
@@ -420,39 +441,60 @@ class UserStateService {
 			}
 
 			// Get top users based on LEADERBOARD_LIMIT
-			const topUsers = await UserState.findAll(
+			// Exclude SYSTEM users from leaderboard
+			// Use subquery to get only the latest userstate for each user, then sort and limit
+			const topUsers = await sequelize.query(
+				`
+				WITH latest_states AS (
+					SELECT DISTINCT ON (us."userId") 
+						us.stars,
+						us.stardust,
+						us."darkMatter",
+						us."currentStreak",
+						us."maxStreak",
+						us."updatedAt",
+						us."userId",
+						u.username,
+						(
+							SELECT COUNT(*)::int
+							FROM galaxies
+							WHERE galaxies."userId" = us."userId"
+						) as "galaxyCount"
+					FROM userstates us
+					INNER JOIN users u ON u.id = us."userId"
+					WHERE u.role != 'SYSTEM'
+					ORDER BY us."userId", us."updatedAt" DESC
+				)
+				SELECT * FROM latest_states
+				ORDER BY stars DESC, "updatedAt" DESC
+				LIMIT :limit
+				`,
 				{
-					where: {}, // ✅ Добавляем пустой where чтобы избежать ошибки
-					include: User,
-					order: [
-						[
-							sequelize.literal("(state->>'totalStars')::integer"),
-							"DESC",
-						],
-						["updatedAt", "DESC"],
-					],
-					limit: LEADERBOARD_LIMIT,
-					attributes: [
-						"state",
-						"currentStreak",
-						"maxStreak",
-						"updatedAt",
-						"userId",
-					],
-				},
-				{ transaction: t }
+					replacements: { limit: LEADERBOARD_LIMIT },
+					type: sequelize.QueryTypes.SELECT,
+					transaction: t,
+				}
 			);
 
 			// Calculate ratings for top users
 			const users = topUsers.map((item, index) => {
-				const user = item.toJSON();
+				// Raw query returns plain objects, not Sequelize instances
+				const user =
+					typeof item.toJSON === "function" ? item.toJSON() : item;
 				user.rating = index + 1;
+				// Add User object for consistency with client expectations
+				if (user.username && !user.User) {
+					user.User = {
+						username: user.username,
+					};
+				}
 				return user;
 			});
 
 			// Check if user is already in the leaderboard
+			// Note: user.userId from raw query is a string, so use == instead of ===
 			const userInLeaderboard =
-				userId && users.some((user) => user.userId === userId);
+				userId && users.some((user) => user.userId == userId);
 
 			// Add user data to the end of the leaderboard if not already included
 			if (userId && userData && !userInLeaderboard) {

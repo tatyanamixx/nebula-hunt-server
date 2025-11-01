@@ -1,12 +1,12 @@
 /**
  * created by Claude on 15.07.2025
  */
-const { UpgradeNodeTemplate } = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const { ERROR_CODES } = require('../config/error-codes');
-const sequelize = require('../db');
-const { Op } = require('sequelize');
-const logger = require('./logger-service');
+const { UpgradeNodeTemplate } = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const { ERROR_CODES } = require("../config/error-codes");
+const sequelize = require("../db");
+const { Op } = require("sequelize");
+const logger = require("./logger-service");
 
 class UpgradeTemplateService {
 	/**
@@ -18,25 +18,63 @@ class UpgradeTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('createUpgradeNodeTemplates on start', {
+			logger.debug("createUpgradeNodeTemplates on start", {
 				nodesCount: nodes.length,
 			});
 			const createdNodes = [];
 			for (const node of nodes) {
 				// Validate node data
 				if (!node.slug || !node.name || !node.description) {
-					logger.debug('Invalid upgrade node data structure', {
+					logger.debug("Invalid upgrade node data structure", {
 						node,
 					});
 					throw ApiError.BadRequest(
-						'Invalid upgrade node data structure',
+						"Invalid upgrade node data structure",
 						ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
 					);
 				}
 
-				// Validate description structure
-				if (!node.description.en || !node.description.ru) {
-					logger.debug('Invalid description structure', { node });
+				// Validate name structure (handle both JSON string and object)
+				let nameObj = node.name;
+				if (typeof node.name === "string" && node.name.startsWith("{")) {
+					try {
+						nameObj = JSON.parse(node.name);
+					} catch (e) {
+						logger.debug("Invalid name JSON string", { node });
+						throw ApiError.BadRequest(
+							"Name must be a valid JSON string",
+							ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
+						);
+					}
+				}
+
+				if (typeof nameObj === "object" && (!nameObj.en || !nameObj.ru)) {
+					logger.debug("Invalid name structure", { node, nameObj });
+					throw ApiError.BadRequest(
+						'Name must contain both "en" and "ru" translations',
+						ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
+					);
+				}
+
+				// Validate description structure (handle both JSON string and object)
+				let descriptionObj = node.description;
+				if (typeof node.description === "string") {
+					try {
+						descriptionObj = JSON.parse(node.description);
+					} catch (e) {
+						logger.debug("Invalid description JSON string", { node });
+						throw ApiError.BadRequest(
+							"Description must be a valid JSON string",
+							ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
+						);
+					}
+				}
+
+				if (!descriptionObj.en || !descriptionObj.ru) {
+					logger.debug("Invalid description structure", {
+						node,
+						descriptionObj,
+					});
 					throw ApiError.BadRequest(
 						'Description must contain both "en" and "ru" translations',
 						ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
@@ -67,20 +105,20 @@ class UpgradeTemplateService {
 			// Convert BigInt to regular numbers for JSON serialization
 			const serializedNodes = createdNodes.map((node) => {
 				const nodeData = node.toJSON();
-				if (nodeData.id && typeof nodeData.id === 'bigint') {
+				if (nodeData.id && typeof nodeData.id === "bigint") {
 					nodeData.id = Number(nodeData.id);
 				}
 				return nodeData;
 			});
 
-			logger.debug('createUpgradeNodeTemplates completed successfully', {
+			logger.debug("createUpgradeNodeTemplates completed successfully", {
 				createdCount: serializedNodes.length,
 			});
 			return serializedNodes;
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to create upgrade node templates', {
+			logger.error("Failed to create upgrade node templates", {
 				nodesCount: nodes.length,
 				error: err.message,
 				stack: err.stack,
@@ -106,7 +144,7 @@ class UpgradeTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('updateUpgradeNodeTemplate on start', {
+			logger.debug("updateUpgradeNodeTemplate on start", {
 				slug: nodeData.slug,
 			});
 			// Find the node by ID
@@ -117,7 +155,7 @@ class UpgradeTemplateService {
 
 			if (!node) {
 				await t.rollback();
-				logger.debug('Upgrade node template not found for update', {
+				logger.debug("Upgrade node template not found for update", {
 					slug: nodeData.slug,
 				});
 				throw ApiError.NotFound(
@@ -133,21 +171,18 @@ class UpgradeTemplateService {
 
 			// Convert BigInt to regular numbers for JSON serialization
 			const nodeDataSerialized = node.toJSON();
-			if (
-				nodeDataSerialized.id &&
-				typeof nodeDataSerialized.id === 'bigint'
-			) {
+			if (nodeDataSerialized.id && typeof nodeDataSerialized.id === "bigint") {
 				nodeDataSerialized.id = Number(nodeDataSerialized.id);
 			}
 
-			logger.debug('updateUpgradeNodeTemplate completed successfully', {
+			logger.debug("updateUpgradeNodeTemplate completed successfully", {
 				slug: nodeData.slug,
 			});
 			return nodeDataSerialized;
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to update upgrade node template', {
+			logger.error("Failed to update upgrade node template", {
 				slug: nodeData.slug,
 				error: err.message,
 				stack: err.stack,
@@ -172,7 +207,7 @@ class UpgradeTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('deleteUpgradeNodeTemplate on start', { slug });
+			logger.debug("deleteUpgradeNodeTemplate on start", { slug });
 			const node = await UpgradeNodeTemplate.findOne({
 				where: { slug },
 				transaction: t,
@@ -180,7 +215,7 @@ class UpgradeTemplateService {
 
 			if (!node) {
 				await t.rollback();
-				logger.debug('Upgrade node template not found for deletion', {
+				logger.debug("Upgrade node template not found for deletion", {
 					slug,
 				});
 				throw ApiError.NotFound(
@@ -193,14 +228,14 @@ class UpgradeTemplateService {
 
 			await t.commit();
 
-			logger.debug('deleteUpgradeNodeTemplate completed successfully', {
+			logger.debug("deleteUpgradeNodeTemplate completed successfully", {
 				slug,
 			});
-			return { message: 'Upgrade node deleted successfully', slug: slug };
+			return { message: "Upgrade node deleted successfully", slug: slug };
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to delete upgrade node template', {
+			logger.error("Failed to delete upgrade node template", {
 				slug,
 				error: err.message,
 				stack: err.stack,
@@ -222,26 +257,26 @@ class UpgradeTemplateService {
 	 */
 	async getAllUpgradeNodeTemplates() {
 		try {
-			logger.debug('getAllUpgradeNodeTemplates on start');
+			logger.debug("getAllUpgradeNodeTemplates on start");
 			const nodes = await UpgradeNodeTemplate.findAll({
-				order: [['slug', 'ASC']],
+				order: [["slug", "ASC"]],
 			});
 
 			// Convert BigInt to regular numbers for JSON serialization
 			const serializedNodes = nodes.map((node) => {
 				const nodeData = node.toJSON();
-				if (nodeData.id && typeof nodeData.id === 'bigint') {
+				if (nodeData.id && typeof nodeData.id === "bigint") {
 					nodeData.id = Number(nodeData.id);
 				}
 				return nodeData;
 			});
 
-			logger.debug('getAllUpgradeNodeTemplates completed successfully', {
+			logger.debug("getAllUpgradeNodeTemplates completed successfully", {
 				count: serializedNodes.length,
 			});
 			return serializedNodes;
 		} catch (err) {
-			logger.error('Failed to get all upgrade node templates', {
+			logger.error("Failed to get all upgrade node templates", {
 				error: err.message,
 				stack: err.stack,
 			});
@@ -260,13 +295,13 @@ class UpgradeTemplateService {
 	 */
 	async getUpgradeNodeTemplate(slug) {
 		try {
-			logger.debug('getUpgradeNodeTemplate on start', { slug });
+			logger.debug("getUpgradeNodeTemplate on start", { slug });
 			const node = await UpgradeNodeTemplate.findOne({
 				where: { slug },
 			});
 
 			if (!node) {
-				logger.debug('Upgrade node template not found', { slug });
+				logger.debug("Upgrade node template not found", { slug });
 				throw ApiError.NotFound(
 					`Upgrade node template not found: ${slug}`,
 					ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
@@ -275,16 +310,16 @@ class UpgradeTemplateService {
 
 			// Convert BigInt to regular numbers for JSON serialization
 			const nodeData = node.toJSON();
-			if (nodeData.id && typeof nodeData.id === 'bigint') {
+			if (nodeData.id && typeof nodeData.id === "bigint") {
 				nodeData.id = Number(nodeData.id);
 			}
 
-			logger.debug('getUpgradeNodeTemplate completed successfully', {
+			logger.debug("getUpgradeNodeTemplate completed successfully", {
 				slug,
 			});
 			return nodeData;
 		} catch (err) {
-			logger.error('Failed to get upgrade node template', {
+			logger.error("Failed to get upgrade node template", {
 				slug,
 				error: err.message,
 				stack: err.stack,
@@ -309,7 +344,7 @@ class UpgradeTemplateService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.debug('toggleUpgradeNodeTemplateActive on start', { slug });
+			logger.debug("toggleUpgradeNodeTemplateActive on start", { slug });
 			const node = await UpgradeNodeTemplate.findOne({
 				where: { slug },
 				transaction: t,
@@ -317,10 +352,9 @@ class UpgradeTemplateService {
 
 			if (!node) {
 				await t.rollback();
-				logger.debug(
-					'Upgrade node template not found for status toggle',
-					{ slug }
-				);
+				logger.debug("Upgrade node template not found for status toggle", {
+					slug,
+				});
 				throw ApiError.NotFound(
 					`Upgrade node template not found: ${slug}`,
 					ERROR_CODES.UPGRADE.UPGRADE_TEMPLATE_NOT_FOUND
@@ -334,25 +368,19 @@ class UpgradeTemplateService {
 
 			// Convert BigInt to regular numbers for JSON serialization
 			const nodeDataSerialized = node.toJSON();
-			if (
-				nodeDataSerialized.id &&
-				typeof nodeDataSerialized.id === 'bigint'
-			) {
+			if (nodeDataSerialized.id && typeof nodeDataSerialized.id === "bigint") {
 				nodeDataSerialized.id = Number(nodeDataSerialized.id);
 			}
 
-			logger.debug(
-				'toggleUpgradeNodeTemplateActive completed successfully',
-				{
-					slug,
-					newActiveStatus: node.active,
-				}
-			);
+			logger.debug("toggleUpgradeNodeTemplateActive completed successfully", {
+				slug,
+				newActiveStatus: node.active,
+			});
 			return nodeDataSerialized;
 		} catch (err) {
 			await t.rollback();
 
-			logger.error('Failed to toggle upgrade node template status', {
+			logger.error("Failed to toggle upgrade node template status", {
 				slug,
 				error: err.message,
 				stack: err.stack,
@@ -374,7 +402,7 @@ class UpgradeTemplateService {
 	 */
 	async getUpgradeNodeTemplatesStats() {
 		try {
-			logger.debug('getUpgradeNodeTemplatesStats on start');
+			logger.debug("getUpgradeNodeTemplatesStats on start");
 			const totalNodes = await UpgradeNodeTemplate.count();
 			const activeNodes = await UpgradeNodeTemplate.count({
 				where: { active: true },
@@ -384,10 +412,10 @@ class UpgradeTemplateService {
 			// Count by category
 			const categories = await UpgradeNodeTemplate.findAll({
 				attributes: [
-					'category',
-					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+					"category",
+					[sequelize.fn("COUNT", sequelize.col("id")), "count"],
 				],
-				group: ['category'],
+				group: ["category"],
 			});
 
 			const categoryStats = {};
@@ -398,10 +426,10 @@ class UpgradeTemplateService {
 			// Count by resource
 			const resources = await UpgradeNodeTemplate.findAll({
 				attributes: [
-					'resource',
-					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+					"resource",
+					[sequelize.fn("COUNT", sequelize.col("id")), "count"],
 				],
-				group: ['resource'],
+				group: ["resource"],
 			});
 
 			const resourceStats = {};
@@ -417,16 +445,13 @@ class UpgradeTemplateService {
 				byResource: resourceStats,
 			};
 
-			logger.debug(
-				'getUpgradeNodeTemplatesStats completed successfully',
-				{
-					total: totalNodes,
-					active: activeNodes,
-				}
-			);
+			logger.debug("getUpgradeNodeTemplatesStats completed successfully", {
+				total: totalNodes,
+				active: activeNodes,
+			});
 			return result;
 		} catch (err) {
-			logger.error('Failed to get upgrade node templates stats', {
+			logger.error("Failed to get upgrade node templates stats", {
 				error: err.message,
 				stack: err.stack,
 			});

@@ -16,6 +16,7 @@ const upgradeRouter = require("./upgrade-router");
 const packageStoreRouter = require("./package-store-router");
 const marketRouter = require("./market-router");
 const gameRouter = require("./game-router");
+const referralRouter = require("./referral-router");
 
 const gameMetricsRouter = require("./game-metrics-router");
 const prometheusRouter = require("./prometheus-router");
@@ -42,6 +43,7 @@ router.use("/upgrades", upgradeRouter);
 router.use("/market", marketRouter);
 router.use("/packages", packageStoreRouter);
 router.use("/game", gameRouter);
+router.use("/referral", referralRouter);
 
 // Admin routes
 router.use("/admin", adminRouter);

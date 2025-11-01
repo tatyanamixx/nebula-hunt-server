@@ -96,19 +96,21 @@ const UserState = sequelize.define(
 			type: DataTypes.JSONB,
 			allowNull: false,
 			defaultValue: {
-				stardustProduction: 0,
-				starDiscount: 0,
-				darkMatterChance: 0,
-				stardustMultiplier: 0,
-				galaxyExplorer: 0,
-				darkMatterSynthesis: 0,
-				bulkCreation: 0,
-				stellarMarket: 0,
-				cosmicHarmony: 0,
-				overflowProtection: 0,
-				quantumInstability: 0,
-				voidResonance: 0,
-				stellarForge: 0,
+				stardust_production: 0,
+				star_efficiency: 0,
+				cosmic_harmony: 0,
+				star_discount: 0,
+				bulk_creation: 0,
+				stellar_market: 0,
+				dark_matter_chance: 0,
+				quantum_instability: 0,
+				void_resonance: 0,
+				stardust_multiplier: 0,
+				dark_energy_infusion: 0,
+				cosmic_acceleration: 0,
+				galaxy_explorer: 0,
+				stellar_forge: 0,
+				dark_matter_synthesis: 0,
 			},
 		},
 		tutorialCompleted: {
@@ -148,10 +150,11 @@ const UserUpgrade = sequelize.define(
 			type: DataTypes.BIGINT,
 			allowNull: false,
 		},
-		upgradeNodeTemplateId: {
-			type: DataTypes.BIGINT,
+		upgradeTemplateSlug: {
+			type: DataTypes.STRING(50),
 			allowNull: false,
-			field: "upgradeNodeTemplateId", // Explicitly set the field name
+			field: "upgradeTemplateSlug",
+			comment: "Slug identifier for upgrade template",
 		},
 		level: {
 			type: DataTypes.INTEGER,
@@ -193,8 +196,13 @@ const UserUpgrade = sequelize.define(
 				name: "userupgrades_user_id_idx",
 			},
 			{
-				fields: ["upgradeNodeTemplateId"],
-				name: "userupgrades_upgrade_node_template_id_idx",
+				fields: ["upgradeTemplateSlug"],
+				name: "userupgrades_upgrade_template_slug_idx",
+			},
+			{
+				fields: ["userId", "upgradeTemplateSlug"],
+				unique: true,
+				name: "userupgrades_user_upgrade_unique_idx",
 			},
 			{
 				fields: ["completed"],
@@ -582,14 +590,15 @@ const UpgradeNodeTemplate = sequelize.define(
 	{
 		id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
 		slug: { type: DataTypes.STRING, unique: true, allowNull: false },
-		name: { type: DataTypes.STRING },
+		name: {
+			type: DataTypes.TEXT,
+			defaultValue: '{"en": "", "ru": ""}',
+			comment: "Localized upgrade node name as JSON string",
+		},
 		description: {
-			type: DataTypes.JSONB,
-			defaultValue: {
-				en: "",
-				ru: "",
-			},
-			comment: "Localized upgrade node descriptions",
+			type: DataTypes.TEXT,
+			defaultValue: '{"en": "", "ru": ""}',
+			comment: "Localized upgrade node description as JSON string",
 		},
 		maxLevel: { type: DataTypes.INTEGER, defaultValue: 0 },
 		basePrice: { type: DataTypes.INTEGER, defaultValue: 0 },
@@ -977,7 +986,10 @@ const PaymentTransaction = sequelize.define(
 				"STARDUST_TRANSFER",
 				"DARK_MATTER_TRANSFER",
 				"DAILY_REWARD",
-				"PACKAGE_REWARD"
+				"PACKAGE_REWARD",
+				"REFERRER_REWARD",
+				"REFEREE_REWARD",
+				"REGISTRATION_BONUS"
 			),
 			allowNull: false,
 		},
@@ -1328,11 +1340,12 @@ User.hasMany(UserUpgrade);
 UserUpgrade.belongsTo(User, { foreignKey: "userId" });
 
 UpgradeNodeTemplate.hasMany(UserUpgrade, {
-	foreignKey: "upgradeNodeTemplateId",
+	foreignKey: "upgradeTemplateSlug",
+	sourceKey: "slug",
 });
 UserUpgrade.belongsTo(UpgradeNodeTemplate, {
-	foreignKey: "upgradeNodeTemplateId",
-	targetKey: "id",
+	foreignKey: "upgradeTemplateSlug",
+	targetKey: "slug",
 });
 
 User.hasMany(UserTask);
