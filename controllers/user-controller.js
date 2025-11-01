@@ -1,11 +1,11 @@
 /**
  * created by Tatyana Mikhniukevich on 01.06.2025
  */
-const userService = require('../service/user-service');
-const { validationResult } = require('express-validator');
-const ApiError = require('../exceptions/api-error');
-const logger = require('../service/logger-service');
-const { ERROR_CODES } = require('../config/error-codes');
+const userService = require("../service/user-service");
+const { validationResult } = require("express-validator");
+const ApiError = require("../exceptions/api-error");
+const logger = require("../service/logger-service");
+const { ERROR_CODES } = require("../config/error-codes");
 
 class UserController {
 	async login(req, res, next) {
@@ -17,26 +17,26 @@ class UserController {
 
 			// Валидация referral (если предоставлен)
 			if (referral !== undefined && referral !== null) {
-				if (typeof referral === 'string') {
+				if (typeof referral === "string") {
 					try {
 						referral = BigInt(referral);
 					} catch {
 						return next(
 							ApiError.withCode(
 								400,
-								'Referral must be a number, bigint, or numeric string',
+								"Referral must be a number, bigint, or numeric string",
 								ERROR_CODES.VALIDATION.INVALID_REFERRAL
 							)
 						);
 					}
 				} else if (
-					typeof referral !== 'number' &&
-					typeof referral !== 'bigint'
+					typeof referral !== "number" &&
+					typeof referral !== "bigint"
 				) {
 					return next(
 						ApiError.withCode(
 							400,
-							'Referral must be a number, bigint, or numeric string',
+							"Referral must be a number, bigint, or numeric string",
 							ERROR_CODES.VALIDATION.INVALID_REFERRAL
 						)
 					);
@@ -48,22 +48,17 @@ class UserController {
 				referral = null;
 			}
 
-			logger.debug('User login/registration', {
+			logger.debug("User login/registration", {
 				userId: id,
 				username,
-				referral: referral || 'not provided',
+				referral: referral || "not provided",
 				hasGalaxy: !!galaxy,
 			});
 
-			const result = await userService.login(
-				id,
-				username,
-				referral,
-				galaxy
-			);
-			logger.debug('User login result', { result });
+			const result = await userService.login(id, username, referral, galaxy);
+			logger.debug("User login result", { result });
 
-			res.cookie('refreshToken', result.refreshToken, {
+			res.cookie("refreshToken", result.data.auth.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
 			});
@@ -80,21 +75,21 @@ class UserController {
 			const userData = await userService.refresh(refreshToken);
 
 			// Устанавливаем новый refresh token в cookies
-			res.cookie('refreshToken', userData.refreshToken, {
+			res.cookie("refreshToken", userData.data.auth.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
 				httpOnly: true,
-				secure: process.env.NODE_ENV === 'production', // HTTPS только в production
-				sameSite: 'strict', // Защита от CSRF
+				secure: process.env.NODE_ENV === "production", // HTTPS только в production
+				sameSite: "strict", // Защита от CSRF
 			});
 
-			logger.debug('Token refresh successful', {
+			logger.debug("Token refresh successful", {
 				userId: req.refreshTokenData?.id,
 				ip: req.ip,
 			});
 
 			return res.json(userData);
 		} catch (e) {
-			logger.error('Token refresh failed', {
+			logger.error("Token refresh failed", {
 				userId: req.refreshTokenData?.id,
 				ip: req.ip,
 				error: e.message,

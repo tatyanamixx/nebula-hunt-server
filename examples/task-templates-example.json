@@ -1,0 +1,254 @@
+[
+	{
+		"slug": "daily_login",
+		"title": {
+			"en": "Daily Explorer",
+			"ru": "Ежедневный исследователь"
+		},
+		"description": {
+			"en": "Login daily to receive rewards",
+			"ru": "Входите ежедневно для получения наград"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 2500
+		},
+		"condition": {
+			"type": "daily_login"
+		},
+		"icon": "📆",
+		"active": true,
+		"sortOrder": 1,
+		"category": "daily"
+	},
+	{
+		"slug": "create_stars_100",
+		"title": {
+			"en": "First Steps",
+			"ru": "Первые шаги"
+		},
+		"description": {
+			"en": "Create 100 stars",
+			"ru": "Создайте 100 звезд"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 500
+		},
+		"condition": {
+			"type": "total_stars",
+			"threshold": 100
+		},
+		"icon": "⭐",
+		"active": true,
+		"sortOrder": 10,
+		"category": "stardust"
+	},
+	{
+		"slug": "create_stars_1000",
+		"title": {
+			"en": "Star Crafter",
+			"ru": "Создатель звезд"
+		},
+		"description": {
+			"en": "Create 1,000 stars",
+			"ru": "Создайте 1,000 звезд"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 2000
+		},
+		"condition": {
+			"type": "total_stars",
+			"threshold": 1000
+		},
+		"icon": "⭐",
+		"active": true,
+		"sortOrder": 11,
+		"category": "stardust"
+	},
+	{
+		"slug": "create_stars_10000",
+		"title": {
+			"en": "Stellar Engineer",
+			"ru": "Звездный инженер"
+		},
+		"description": {
+			"en": "Create 10,000 stars",
+			"ru": "Создайте 10,000 звезд"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 10000
+		},
+		"condition": {
+			"type": "total_stars",
+			"threshold": 10000
+		},
+		"icon": "⭐",
+		"active": true,
+		"sortOrder": 12,
+		"category": "stardust"
+	},
+	{
+		"slug": "create_stars_25000",
+		"title": {
+			"en": "Star Architect",
+			"ru": "Звездный архитектор"
+		},
+		"description": {
+			"en": "Create 25,000 stars",
+			"ru": "Создайте 25,000 звезд"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 15000
+		},
+		"condition": {
+			"type": "total_stars",
+			"threshold": 25000
+		},
+		"icon": "⭐",
+		"active": true,
+		"sortOrder": 13,
+		"category": "stardust"
+	},
+	{
+		"slug": "collect_stardust_5000",
+		"title": {
+			"en": "Dust Collector",
+			"ru": "Сборщик пыли"
+		},
+		"description": {
+			"en": "Collect 5,000 stardust",
+			"ru": "Соберите 5,000 звездной пыли"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 1000
+		},
+		"condition": {
+			"type": "stardust_count",
+			"threshold": 5000
+		},
+		"icon": "✨",
+		"active": true,
+		"sortOrder": 14,
+		"category": "stardust"
+	},
+	{
+		"slug": "collect_stardust_25000",
+		"title": {
+			"en": "Dust Magnet",
+			"ru": "Магнит пыли"
+		},
+		"description": {
+			"en": "Collect 25,000 stardust",
+			"ru": "Соберите 25,000 звездной пыли"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 5000
+		},
+		"condition": {
+			"type": "stardust_count",
+			"threshold": 25000
+		},
+		"icon": "✨",
+		"active": true,
+		"sortOrder": 15,
+		"category": "stardust"
+	},
+	{
+		"slug": "collect_stardust_50000",
+		"title": {
+			"en": "Cosmic Harvester",
+			"ru": "Космический сборщик"
+		},
+		"description": {
+			"en": "Collect 50,000 stardust",
+			"ru": "Соберите 50,000 звездной пыли"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 8000
+		},
+		"condition": {
+			"type": "stardust_count",
+			"threshold": 50000
+		},
+		"icon": "✨",
+		"active": true,
+		"sortOrder": 16,
+		"category": "stardust"
+	},
+	{
+		"slug": "collect_stardust_75000",
+		"title": {
+			"en": "Stardust Tycoon",
+			"ru": "Магнат звездной пыли"
+		},
+		"description": {
+			"en": "Collect 75,000 stardust",
+			"ru": "Соберите 75,000 звездной пыли"
+		},
+		"reward": {
+			"type": "stardust",
+			"amount": 12000
+		},
+		"condition": {
+			"type": "stardust_count",
+			"threshold": 75000
+		},
+		"icon": "✨",
+		"active": true,
+		"sortOrder": 17,
+		"category": "stardust"
+	},
+	{
+		"slug": "collect_dark_matter_100",
+		"title": {
+			"en": "Dark Matter Novice",
+			"ru": "Новичок темной материи"
+		},
+		"description": {
+			"en": "Collect 100 dark matter",
+			"ru": "Соберите 100 темной материи"
+		},
+		"reward": {
+			"type": "darkMatter",
+			"amount": 50
+		},
+		"condition": {
+			"type": "dark_matter_count",
+			"threshold": 100
+		},
+		"icon": "🌑",
+		"active": true,
+		"sortOrder": 20,
+		"category": "darkMatter"
+	},
+	{
+		"slug": "collect_dark_matter_500",
+		"title": {
+			"en": "Dark Matter Adept",
+			"ru": "Адепт темной материи"
+		},
+		"description": {
+			"en": "Collect 500 dark matter",
+			"ru": "Соберите 500 темной материи"
+		},
+		"reward": {
+			"type": "darkMatter",
+			"amount": 100
+		},
+		"condition": {
+			"type": "dark_matter_count",
+			"threshold": 500
+		},
+		"icon": "🌑",
+		"active": true,
+		"sortOrder": 21,
+		"category": "darkMatter"
+	}
+]

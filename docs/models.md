@@ -185,14 +185,14 @@
     },
     unique: true
   },
-  stardust: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
-  darkMatter: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
+  	stardust: {
+		type: DataTypes.INTEGER,
+		defaultValue: 5000 // INITIAL_STARDUST
+	},
+	darkMatter: {
+		type: DataTypes.INTEGER,
+		defaultValue: 10 // INITIAL_DARK_MATTER
+	},
   tgStars: {
     type: DataTypes.INTEGER,
     defaultValue: 0

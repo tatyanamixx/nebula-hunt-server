@@ -6,7 +6,7 @@ const {
 	ERROR_CODES,
 	ERROR_DESCRIPTIONS,
 	ERROR_SEVERITY_MAPPING,
-} = require('../config/error-codes');
+} = require("../config/error-codes");
 
 module.exports = class ApiError extends Error {
 	status;
@@ -14,13 +14,7 @@ module.exports = class ApiError extends Error {
 	errorCode;
 	severity;
 
-	constructor(
-		status,
-		message,
-		errors = [],
-		errorCode = null,
-		severity = null
-	) {
+	constructor(status, message, errors = [], errorCode = null, severity = null) {
 		super(message);
 		this.status = status;
 		this.errors = errors;
@@ -54,32 +48,31 @@ module.exports = class ApiError extends Error {
 	}
 
 	// Новые методы с поддержкой кодов ошибок
-	static UserNotFound(message = 'User not found') {
+	static UserNotFound(message = "User not found") {
 		return new ApiError(404, message, [], ERROR_CODES.AUTH.USER_NOT_FOUND);
 	}
 
-	static UserAlreadyExists(message = 'User already exists') {
-		return new ApiError(
-			409,
-			message,
-			[],
-			ERROR_CODES.AUTH.USER_ALREADY_EXISTS
-		);
+	static UserAlreadyExists(message = "User already exists") {
+		return new ApiError(409, message, [], ERROR_CODES.AUTH.USER_ALREADY_EXISTS);
 	}
 
-	static InvalidToken(message = 'Invalid authentication token') {
+	static InvalidToken(message = "Invalid authentication token") {
 		return new ApiError(401, message, [], ERROR_CODES.AUTH.INVALID_TOKEN);
 	}
 
-	static TokenExpired(message = 'Authentication token has expired') {
+	static TokenExpired(message = "Authentication token has expired") {
 		return new ApiError(401, message, [], ERROR_CODES.AUTH.TOKEN_EXPIRED);
 	}
 
-	static UserBlocked(message = 'User account is blocked') {
+	static UserBlocked(message = "User account is blocked") {
 		return new ApiError(403, message, [], ERROR_CODES.AUTH.USER_BLOCKED);
 	}
 
-	static InvalidGalaxyData(message = 'Invalid galaxy data provided') {
+	static NotFound(message = "Resource not found", errorCode = null) {
+		return new ApiError(404, message, [], errorCode);
+	}
+
+	static InvalidGalaxyData(message = "Invalid galaxy data provided") {
 		return new ApiError(
 			400,
 			message,
@@ -88,18 +81,11 @@ module.exports = class ApiError extends Error {
 		);
 	}
 
-	static GalaxyNotFound(message = 'Galaxy not found') {
-		return new ApiError(
-			404,
-			message,
-			[],
-			ERROR_CODES.GALAXY.GALAXY_NOT_FOUND
-		);
+	static GalaxyNotFound(message = "Galaxy not found") {
+		return new ApiError(404, message, [], ERROR_CODES.GALAXY.GALAXY_NOT_FOUND);
 	}
 
-	static GalaxyAlreadyExists(
-		message = 'Galaxy with this seed already exists'
-	) {
+	static GalaxyAlreadyExists(message = "Galaxy with this seed already exists") {
 		return new ApiError(
 			409,
 			message,
@@ -108,36 +94,19 @@ module.exports = class ApiError extends Error {
 		);
 	}
 
-	static DuplicateGalaxySeed(message = 'Duplicate galaxy seed detected') {
-		return new ApiError(
-			409,
-			message,
-			[],
-			ERROR_CODES.GALAXY.DUPLICATE_SEED
-		);
+	static DuplicateGalaxySeed(message = "Duplicate galaxy seed detected") {
+		return new ApiError(409, message, [], ERROR_CODES.GALAXY.DUPLICATE_SEED);
 	}
 
-	static GalaxyNotOwned(message = 'Galaxy is not owned by the user') {
-		return new ApiError(
-			403,
-			message,
-			[],
-			ERROR_CODES.GALAXY.GALAXY_NOT_OWNED
-		);
+	static GalaxyNotOwned(message = "Galaxy is not owned by the user") {
+		return new ApiError(403, message, [], ERROR_CODES.GALAXY.GALAXY_NOT_OWNED);
 	}
 
-	static InsufficientStars(
-		message = 'Insufficient stars for this operation'
-	) {
-		return new ApiError(
-			400,
-			message,
-			[],
-			ERROR_CODES.GALAXY.INSUFFICIENT_STARS
-		);
+	static InsufficientStars(message = "Insufficient stars for this operation") {
+		return new ApiError(400, message, [], ERROR_CODES.GALAXY.INSUFFICIENT_STARS);
 	}
 
-	static InvalidOfferData(message = 'Invalid offer data provided') {
+	static InvalidOfferData(message = "Invalid offer data provided") {
 		return new ApiError(
 			400,
 			message,
@@ -146,9 +115,7 @@ module.exports = class ApiError extends Error {
 		);
 	}
 
-	static MissingRequiredFields(
-		message = 'Missing required fields in request'
-	) {
+	static MissingRequiredFields(message = "Missing required fields in request") {
 		return new ApiError(
 			400,
 			message,
@@ -157,16 +124,11 @@ module.exports = class ApiError extends Error {
 		);
 	}
 
-	static DatabaseError(message = 'Database operation failed') {
-		return new ApiError(
-			500,
-			message,
-			[],
-			ERROR_CODES.SYSTEM.DATABASE_ERROR
-		);
+	static DatabaseError(message = "Database operation failed") {
+		return new ApiError(500, message, [], ERROR_CODES.SYSTEM.DATABASE_ERROR);
 	}
 
-	static ConfigurationError(message = 'Configuration error') {
+	static ConfigurationError(message = "Configuration error") {
 		return new ApiError(
 			500,
 			message,
@@ -182,7 +144,7 @@ module.exports = class ApiError extends Error {
 
 	// Метод для получения описания ошибки по коду
 	static getDescription(errorCode) {
-		return ERROR_DESCRIPTIONS[errorCode] || 'Unknown error';
+		return ERROR_DESCRIPTIONS[errorCode] || "Unknown error";
 	}
 
 	// Метод для проверки существования кода ошибки

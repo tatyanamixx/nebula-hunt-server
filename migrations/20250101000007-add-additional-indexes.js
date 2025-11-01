@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -136,11 +136,15 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS packagestore_is_used_idx ON packagestore ("isUsed");
+			CREATE INDEX IF NOT EXISTS paymenttransactions_tx_type_idx ON paymenttransactions ("txType");
 		`);
 
 		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS packagestore_is_locked_idx ON packagestore ("isLocked");
+			CREATE INDEX IF NOT EXISTS paymenttransactions_blockchain_tx_id_idx ON paymenttransactions ("blockchainTxId");
+		`);
+
+		await queryInterface.sequelize.query(`
+			CREATE INDEX IF NOT EXISTS packagestore_is_used_idx ON packagestore ("isUsed");
 		`);
 
 		await queryInterface.sequelize.query(`
@@ -235,7 +239,7 @@ module.exports = {
 		`);
 
 		await queryInterface.sequelize.query(`
-			CREATE INDEX IF NOT EXISTS usertasks_user_id_active_completed_idx ON usertasks ("userId", "active", "completed");
+			CREATE INDEX IF NOT EXISTS usertasks_user_id_active_status_idx ON usertasks ("userId", "active", "status");
 		`);
 
 		await queryInterface.sequelize.query(`
@@ -243,18 +247,18 @@ module.exports = {
 		`);
 
 		await queryInterface.addIndex(
-			'paymenttransactions',
-			['fromAccount', 'status'],
+			"paymenttransactions",
+			["fromAccount", "status"],
 			{
-				name: 'paymenttransactions_from_account_status_idx',
+				name: "paymenttransactions_from_account_status_idx",
 			}
 		);
 
 		await queryInterface.addIndex(
-			'paymenttransactions',
-			['toAccount', 'status'],
+			"paymenttransactions",
+			["toAccount", "status"],
 			{
-				name: 'paymenttransactions_to_account_status_idx',
+				name: "paymenttransactions_to_account_status_idx",
 			}
 		);
 	},
@@ -262,262 +266,221 @@ module.exports = {
 	async down(queryInterface, Sequelize) {
 		// Удаляем составные индексы
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_to_account_status_idx'
+			"paymenttransactions",
+			"paymenttransactions_to_account_status_idx"
 		);
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_from_account_status_idx'
+			"paymenttransactions",
+			"paymenttransactions_from_account_status_idx"
+		);
+		await queryInterface.removeIndex("galaxies", "galaxies_user_id_active_idx");
+		await queryInterface.removeIndex(
+			"artifacts",
+			"artifacts_user_id_tradable_idx"
 		);
 		await queryInterface.removeIndex(
-			'galaxies',
-			'galaxies_user_id_active_idx'
+			"usertasks",
+			"usertasks_user_id_active_status_idx"
 		);
 		await queryInterface.removeIndex(
-			'artifacts',
-			'artifacts_user_id_tradable_idx'
+			"userupgrades",
+			"userupgrades_user_id_completed_idx"
 		);
 		await queryInterface.removeIndex(
-			'usertasks',
-			'usertasks_user_id_active_completed_idx'
+			"userevents",
+			"userevents_user_id_status_expires_at_idx"
 		);
 		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_user_id_completed_idx'
-		);
-		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_user_id_status_expires_at_idx'
-		);
-		await queryInterface.removeIndex(
-			'marketoffers',
-			'marketoffers_status_item_type_created_at_idx'
+			"marketoffers",
+			"marketoffers_status_item_type_created_at_idx"
 		);
 
 		// Удаляем индексы для приглашений администраторов
+		await queryInterface.removeIndex("admininvites", "admininvites_token_idx");
 		await queryInterface.removeIndex(
-			'admininvites',
-			'admininvites_token_idx'
+			"admininvites",
+			"admininvites_expires_at_idx"
 		);
-		await queryInterface.removeIndex(
-			'admininvites',
-			'admininvites_expires_at_idx'
-		);
-		await queryInterface.removeIndex(
-			'admininvites',
-			'admininvites_used_idx'
-		);
+		await queryInterface.removeIndex("admininvites", "admininvites_used_idx");
 
 		// Удаляем индексы для администраторов
-		await queryInterface.removeIndex('admins', 'admins_last_login_at_idx');
-		await queryInterface.removeIndex(
-			'admins',
-			'admins_password_expires_at_idx'
-		);
-		await queryInterface.removeIndex('admins', 'admins_is_2fa_enabled_idx');
-		await queryInterface.removeIndex('admins', 'admins_blocked_idx');
-		await queryInterface.removeIndex('admins', 'admins_role_idx');
+		await queryInterface.removeIndex("admins", "admins_last_login_at_idx");
+		await queryInterface.removeIndex("admins", "admins_password_expires_at_idx");
+		await queryInterface.removeIndex("admins", "admins_is_2fa_enabled_idx");
+		await queryInterface.removeIndex("admins", "admins_blocked_idx");
+		await queryInterface.removeIndex("admins", "admins_role_idx");
 
 		// Удаляем индексы для шаблонов апгрейдов
 		await queryInterface.removeIndex(
-			'upgradenodetemplates',
-			'upgradenodetemplates_currency_idx'
+			"upgradenodetemplates",
+			"upgradenodetemplates_currency_idx"
 		);
 		await queryInterface.removeIndex(
-			'upgradenodetemplates',
-			'upgradenodetemplates_category_idx'
+			"upgradenodetemplates",
+			"upgradenodetemplates_category_idx"
 		);
 		await queryInterface.removeIndex(
-			'upgradenodetemplates',
-			'upgradenodetemplates_active_idx'
+			"upgradenodetemplates",
+			"upgradenodetemplates_active_idx"
 		);
 
 		// Удаляем индексы для шаблонов событий
 		await queryInterface.removeIndex(
-			'eventtemplates',
-			'eventtemplates_type_idx'
+			"eventtemplates",
+			"eventtemplates_type_idx"
 		);
 		await queryInterface.removeIndex(
-			'eventtemplates',
-			'eventtemplates_active_idx'
+			"eventtemplates",
+			"eventtemplates_active_idx"
 		);
 
 		// Удаляем индексы для шаблонов задач
 		await queryInterface.removeIndex(
-			'tasktemplates',
-			'tasktemplates_sort_order_idx'
+			"tasktemplates",
+			"tasktemplates_sort_order_idx"
 		);
 		await queryInterface.removeIndex(
-			'tasktemplates',
-			'tasktemplates_active_idx'
+			"tasktemplates",
+			"tasktemplates_active_idx"
 		);
 
 		// Удаляем индексы для шаблонов пакетов
 		await queryInterface.removeIndex(
-			'packagetemplates',
-			'packagetemplates_sort_order_idx'
+			"packagetemplates",
+			"packagetemplates_sort_order_idx"
 		);
 		await queryInterface.removeIndex(
-			'packagetemplates',
-			'packagetemplates_valid_until_idx'
+			"packagetemplates",
+			"packagetemplates_valid_until_idx"
 		);
 		await queryInterface.removeIndex(
-			'packagetemplates',
-			'packagetemplates_is_promoted_idx'
+			"packagetemplates",
+			"packagetemplates_is_promoted_idx"
 		);
 		await queryInterface.removeIndex(
-			'packagetemplates',
-			'packagetemplates_status_idx'
+			"packagetemplates",
+			"packagetemplates_status_idx"
 		);
 
 		// Удаляем индексы для пакетов
 		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_created_at_idx'
+			"packagestore",
+			"packagestore_created_at_idx"
 		);
-		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_is_locked_idx'
-		);
-		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_is_used_idx'
-		);
-		await queryInterface.removeIndex(
-			'packagestore',
-			'packagestore_status_idx'
-		);
+
+		await queryInterface.removeIndex("packagestore", "packagestore_is_used_idx");
+		await queryInterface.removeIndex("packagestore", "packagestore_status_idx");
 
 		// Удаляем индексы для платежных транзакций
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_currency_or_resource_idx'
+			"paymenttransactions",
+			"paymenttransactions_currency_or_resource_idx"
 		);
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_tx_type_idx'
+			"paymenttransactions",
+			"paymenttransactions_tx_type_idx"
 		);
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_status_created_at_idx'
+			"paymenttransactions",
+			"paymenttransactions_blockchain_tx_id_idx"
 		);
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_confirmed_at_idx'
+			"paymenttransactions",
+			"paymenttransactions_status_created_at_idx"
 		);
 		await queryInterface.removeIndex(
-			'paymenttransactions',
-			'paymenttransactions_created_at_idx'
+			"paymenttransactions",
+			"paymenttransactions_confirmed_at_idx"
+		);
+		await queryInterface.removeIndex(
+			"paymenttransactions",
+			"paymenttransactions_created_at_idx"
 		);
 
 		// Удаляем индексы для рыночных транзакций
 		await queryInterface.removeIndex(
-			'markettransactions',
-			'markettransactions_status_created_at_idx'
+			"markettransactions",
+			"markettransactions_status_created_at_idx"
 		);
 		await queryInterface.removeIndex(
-			'markettransactions',
-			'markettransactions_completed_at_idx'
+			"markettransactions",
+			"markettransactions_completed_at_idx"
 		);
 		await queryInterface.removeIndex(
-			'markettransactions',
-			'markettransactions_created_at_idx'
+			"markettransactions",
+			"markettransactions_created_at_idx"
 		);
 
 		// Удаляем индексы для рыночных предложений
 		await queryInterface.removeIndex(
-			'marketoffers',
-			'marketoffers_currency_status_idx'
+			"marketoffers",
+			"marketoffers_currency_status_idx"
 		);
 		await queryInterface.removeIndex(
-			'marketoffers',
-			'marketoffers_item_type_status_idx'
+			"marketoffers",
+			"marketoffers_item_type_status_idx"
 		);
 		await queryInterface.removeIndex(
-			'marketoffers',
-			'marketoffers_expires_at_idx'
+			"marketoffers",
+			"marketoffers_expires_at_idx"
 		);
 		await queryInterface.removeIndex(
-			'marketoffers',
-			'marketoffers_created_at_idx'
+			"marketoffers",
+			"marketoffers_created_at_idx"
 		);
 
 		// Удаляем индексы для пользовательских событий
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_expires_at_status_idx'
+			"userevents",
+			"userevents_expires_at_status_idx"
 		);
 		await queryInterface.removeIndex(
-			'userevents',
-			'userevents_triggered_at_status_idx'
+			"userevents",
+			"userevents_triggered_at_status_idx"
 		);
 
 		// Удаляем индексы для пользовательских задач
-		await queryInterface.removeIndex(
-			'usertasks',
-			'usertasks_created_at_idx'
-		);
-		await queryInterface.removeIndex(
-			'usertasks',
-			'usertasks_completed_at_idx'
-		);
+		await queryInterface.removeIndex("usertasks", "usertasks_created_at_idx");
+		await queryInterface.removeIndex("usertasks", "usertasks_completed_at_idx");
 
 		// Удаляем индексы для пользовательских апгрейдов
 		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_last_progress_update_idx'
+			"userupgrades",
+			"userupgrades_last_progress_update_idx"
 		);
-		await queryInterface.removeIndex(
-			'userupgrades',
-			'userupgrades_level_idx'
-		);
+		await queryInterface.removeIndex("userupgrades", "userupgrades_level_idx");
 
 		// Удаляем индексы для шаблонов артефактов
 		await queryInterface.removeIndex(
-			'artifacttemplates',
-			'artifacttemplates_base_chance_idx'
+			"artifacttemplates",
+			"artifacttemplates_base_chance_idx"
 		);
 		await queryInterface.removeIndex(
-			'artifacttemplates',
-			'artifacttemplates_active_idx'
+			"artifacttemplates",
+			"artifacttemplates_active_idx"
 		);
 
 		// Удаляем индексы для артефактов
-		await queryInterface.removeIndex(
-			'artifacts',
-			'artifacts_created_at_idx'
-		);
+		await queryInterface.removeIndex("artifacts", "artifacts_created_at_idx");
 
 		// Удаляем индексы для галактик
-		await queryInterface.removeIndex('galaxies', 'galaxies_created_at_idx');
-		await queryInterface.removeIndex('galaxies', 'galaxies_active_idx');
+		await queryInterface.removeIndex("galaxies", "galaxies_created_at_idx");
+		await queryInterface.removeIndex("galaxies", "galaxies_active_idx");
 
 		// Удаляем индексы для состояний пользователей
 		await queryInterface.removeIndex(
-			'userstates',
-			'userstates_last_daily_bonus_idx'
+			"userstates",
+			"userstates_last_daily_bonus_idx"
 		);
-		await queryInterface.removeIndex(
-			'userstates',
-			'userstates_ton_token_idx'
-		);
-		await queryInterface.removeIndex(
-			'userstates',
-			'userstates_tg_stars_idx'
-		);
-		await queryInterface.removeIndex('userstates', 'userstates_stars_idx');
-		await queryInterface.removeIndex(
-			'userstates',
-			'userstates_dark_matter_idx'
-		);
-		await queryInterface.removeIndex(
-			'userstates',
-			'userstates_stardust_idx'
-		);
+		await queryInterface.removeIndex("userstates", "userstates_ton_token_idx");
+		await queryInterface.removeIndex("userstates", "userstates_tg_stars_idx");
+		await queryInterface.removeIndex("userstates", "userstates_stars_idx");
+		await queryInterface.removeIndex("userstates", "userstates_dark_matter_idx");
+		await queryInterface.removeIndex("userstates", "userstates_stardust_idx");
 
 		// Удаляем индексы для пользователей
-		await queryInterface.removeIndex('users', 'users_created_at_idx');
-		await queryInterface.removeIndex('users', 'users_blocked_idx');
-		await queryInterface.removeIndex('users', 'users_role_idx');
+		await queryInterface.removeIndex("users", "users_created_at_idx");
+		await queryInterface.removeIndex("users", "users_blocked_idx");
+		await queryInterface.removeIndex("users", "users_role_idx");
 	},
 };

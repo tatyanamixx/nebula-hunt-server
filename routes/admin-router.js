@@ -2,44 +2,44 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * updated by Claude on 15.07.2025
  */
-const Router = require('express').Router;
+const Router = require("express").Router;
 const router = new Router();
-const adminController = require('../controllers/admin-controller');
-const adminAuthMiddleware = require('../middlewares/admin-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const adminController = require("../controllers/admin-controller");
+const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
 // Google OAuth аутентификация для администраторов
 router.post(
-	'/oauth/google',
+	"/oauth/google",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.googleOAuth
 );
 router.post(
-	'/oauth/2fa/verify',
+	"/oauth/2fa/verify",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.oauth2FAVerify
 );
 
 // Admin login (email + 2FA) - устаревший метод
-router.post('/login', rateLimitMiddleware(100, 60),adminController.loginAdmin); // 100 requests per hour
+router.post("/login", rateLimitMiddleware(100, 60), adminController.loginAdmin); // 100 requests per hour
 
 // Admin login with password
 router.post(
-	'/login/password',
+	"/login/password",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.loginWithPassword
 );
 
 // Admin password 2FA verification
 router.post(
-	'/login/password/2fa/verify',
+	"/login/password/2fa/verify",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.password2FAVerify
 );
 
 // Admin logout
 router.post(
-	'/logout',
+	"/logout",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.logoutAdmin
@@ -47,7 +47,7 @@ router.post(
 
 // Initialize admin
 router.post(
-	'/init',
+	"/init",
 
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.initAdmin
@@ -55,7 +55,7 @@ router.post(
 
 // Verify 2FA
 router.post(
-	'/2fa/verify',
+	"/2fa/verify",
 
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.verify2FA
@@ -63,21 +63,21 @@ router.post(
 
 // Initialize supervisor (legacy)
 router.post(
-	'/supervisor/init',
+	"/supervisor/init",
 	rateLimitMiddleware(10, 3600), // 10 requests per 60 hours (2.5 days)
 	adminController.initSupervisor
 );
 
 // Complete 2FA setup (for registration)
 router.post(
-	'/2fa/complete',
+	"/2fa/complete",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.complete2FA
 );
 
 // Setup 2FA for existing admin
 router.post(
-	'/2fa/setup',
+	"/2fa/setup",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.setup2FA
@@ -85,7 +85,7 @@ router.post(
 
 // Disable 2FA
 router.post(
-	'/2fa/disable',
+	"/2fa/disable",
 	adminAuthMiddleware,
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.disable2FA
@@ -93,7 +93,7 @@ router.post(
 
 // Get 2FA info (QR code and secret)
 router.get(
-	'/2fa/info',
+	"/2fa/info",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.get2FAInfo
@@ -101,7 +101,7 @@ router.get(
 
 // Get current admin info
 router.get(
-	'/me',
+	"/me",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getCurrentAdmin
@@ -109,21 +109,21 @@ router.get(
 
 // Get 2FA QR code for login (no auth required)
 router.get(
-	'/2fa/qr/:email',
+	"/2fa/qr/:email",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.get2FAQRForLogin
 );
 
 // Admin registration via invite
 router.post(
-	'/register',
+	"/register",
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.registerAdmin
 );
 
 // Send admin invite
 router.post(
-	'/invite',
+	"/invite",
 	adminAuthMiddleware,
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.sendInvite
@@ -131,14 +131,14 @@ router.post(
 
 // Validate invite token
 router.get(
-	'/invite/validate',
+	"/invite/validate",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.validateInvite
 );
 
 // Get all invites
 router.get(
-	'/invites',
+	"/invites",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getInvites
@@ -146,7 +146,7 @@ router.get(
 
 // Get admin stats
 router.get(
-	'/stats',
+	"/stats",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getStats
@@ -154,31 +154,46 @@ router.get(
 
 // Refresh admin JWT token
 router.post(
-	'/refresh',
+	"/refresh",
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.refreshToken
 );
 
 // Password management routes
 router.post(
-	'/password/change',
+	"/password/change",
 	adminAuthMiddleware,
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.changePassword
 );
 
 router.post(
-	'/password/force-change',
+	"/password/force-change",
 	adminAuthMiddleware,
 	rateLimitMiddleware(50, 60), // 50 requests per hour
 	adminController.forceChangePassword
 );
 
 router.get(
-	'/password/info',
+	"/password/info",
 	adminAuthMiddleware,
 	rateLimitMiddleware(100, 60), // 100 requests per hour
 	adminController.getPasswordInfo
+);
+
+// Game Constants Management
+router.get(
+	"/game-constants",
+	adminAuthMiddleware,
+	rateLimitMiddleware(100, 60), // 100 requests per hour
+	adminController.getGameConstants
+);
+
+router.put(
+	"/game-constants",
+	adminAuthMiddleware,
+	rateLimitMiddleware(50, 60), // 50 requests per hour
+	adminController.updateGameConstants
 );
 
 module.exports = router;

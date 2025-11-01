@@ -1,16 +1,16 @@
 /**
  * created by Tatyana Mikhniukevich on 08.05.2025
  */
-const { User, Galaxy } = require('../models/models');
-const logger = require('./logger-service');
-const ApiError = require('../exceptions/api-error');
-const { Op } = require('sequelize');
-const sequelize = require('../db');
-const { GALAXY_BASE_PRICE } = require('../config/constants');
-const marketService = require('./market-service');
-const userStateService = require('./user-state-service');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const { GALAXY_LIMIT_FOR_USER } = require('../config/constants');
+const { User, Galaxy } = require("../models/models");
+const logger = require("./logger-service");
+const ApiError = require("../exceptions/api-error");
+const { Op } = require("sequelize");
+const sequelize = require("../db");
+const { GALAXY_BASE_PRICE } = require("../config/constants");
+const marketService = require("./market-service");
+const userStateService = require("./user-state-service");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const { GALAXY_LIMIT_FOR_USER } = require("../config/constants");
 
 class GalaxyService {
 	async getUserGalaxies(userId, transaction) {
@@ -20,7 +20,7 @@ class GalaxyService {
 		try {
 			const galaxiesRaw = await Galaxy.findAll({
 				where: { userId },
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: t,
 			});
 
@@ -28,22 +28,47 @@ class GalaxyService {
 				if (shouldCommit) {
 					await t.commit();
 				}
-				return [];
+				return {
+					galaxies: [],
+					galaxiesThatGaveReward: [],
+				};
 			}
 
-			const galaxies = galaxiesRaw.map((item) => item.toJSON());
+			const galaxies = galaxiesRaw.map((item) => {
+				const galaxy = item.toJSON();
+				// Преобразуем данные для совместимости с клиентом
+				return {
+					seed: galaxy.seed,
+					name: galaxy.name,
+					stars: galaxy.starCurrent || 0,
+					maxStars: galaxy.maxStars || 100000,
+					birthDate: galaxy.birthDate,
+					lastCollectTime: galaxy.lastCollectTime,
+					type: galaxy.type,
+					colorPalette: galaxy.colorPalette,
+					background: galaxy.background,
+					particleCount: galaxy.particleCount || 100,
+					galaxyProperties: galaxy.galaxyProperties || {},
+				};
+			});
+
+			// Получаем информацию о галактиках, которые уже дали награду
+			const galaxiesThatGaveReward = galaxiesRaw
+				.filter((galaxy) => galaxy.hasGeneratedGalaxy === true)
+				.map((galaxy) => galaxy.seed);
 
 			if (shouldCommit) {
 				await t.commit();
 			}
-			return galaxies;
+			return {
+				galaxies,
+				galaxiesThatGaveReward,
+			};
 		} catch (err) {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			throw ApiError.Internal(
-				`Failed to get user galaxies: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get user galaxies: ${err.message}`);
 		}
 	}
 
@@ -89,7 +114,7 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'role', 'id'],
+						attributes: ["username", "role", "id"],
 					},
 				],
 				transaction: t,
@@ -113,9 +138,7 @@ class GalaxyService {
 			if (shouldCommit) {
 				await t.rollback();
 			}
-			throw ApiError.Internal(
-				`Failed to get show galaxies: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get show galaxies: ${err.message}`);
 		}
 	}
 
@@ -130,7 +153,7 @@ class GalaxyService {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'id'],
+						attributes: ["username", "id"],
 					},
 				],
 				transaction: t,
@@ -167,7 +190,7 @@ class GalaxyService {
 			if (!galaxy) {
 				await t.rollback();
 				throw ApiError.GalaxyNotFound(
-					'Galaxy not found or not owned by user'
+					"Galaxy not found or not owned by user"
 				);
 			}
 
@@ -177,7 +200,7 @@ class GalaxyService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'Galaxy deleted successfully',
+				message: "Galaxy deleted successfully",
 				galaxyId: galaxy.id,
 			};
 		} catch (err) {
@@ -186,6 +209,46 @@ class GalaxyService {
 				throw err;
 			}
 			throw ApiError.Internal(`Failed to delete galaxy: ${err.message}`);
+		}
+	}
+
+	async updateGalaxy(seed, updates, userId) {
+		const t = await sequelize.transaction();
+
+		try {
+			const galaxy = await Galaxy.findOne({
+				where: { seed, userId },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				await t.rollback();
+				throw ApiError.GalaxyNotFound(
+					"Galaxy not found or not owned by user"
+				);
+			}
+
+			// Обновляем только разрешенные поля
+			const allowedFields = ["lastCollectTime"];
+			const filteredUpdates = {};
+
+			for (const [key, value] of Object.entries(updates)) {
+				if (allowedFields.includes(key)) {
+					filteredUpdates[key] = value;
+				}
+			}
+
+			// Применяем обновления
+			await galaxy.update(filteredUpdates, { transaction: t });
+
+			await t.commit();
+			return galaxy.toJSON();
+		} catch (err) {
+			await t.rollback();
+			if (err instanceof ApiError) {
+				throw err;
+			}
+			throw ApiError.Internal(`Failed to update galaxy: ${err.message}`);
 		}
 	}
 }

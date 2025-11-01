@@ -24,6 +24,7 @@ module.exports = class UserStateDto {
 	stateHistory;
 	playerParameters;
 	lastBotNotification;
+	tutorialCompleted;
 	createdAt;
 	updatedAt;
 
@@ -69,6 +70,7 @@ module.exports = class UserStateDto {
 				count: 0,
 			},
 		};
+		this.tutorialCompleted = Boolean(model.tutorialCompleted);
 		this.createdAt = model.createdAt;
 		this.updatedAt = model.updatedAt;
 	}

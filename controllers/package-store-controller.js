@@ -1,8 +1,8 @@
 /**
  * created by Claude on 15.07.2025
  */
-const packageStoreService = require('../service/package-store-service');
-const ApiError = require('../exceptions/api-error');
+const packageStoreService = require("../service/package-store-service");
+const ApiError = require("../exceptions/api-error");
 
 class PackageStoreController {
 	/**
@@ -15,6 +15,13 @@ class PackageStoreController {
 		try {
 			const userId = req.initdata.id;
 			const packages = await packageStoreService.getUserPackages(userId);
+
+			// Добавляем логирование для отладки
+			console.log("getUserPackages - returning packages:", {
+				userId,
+				packagesCount: packages.length,
+			});
+
 			return res.json(packages);
 		} catch (error) {
 			next(error);
@@ -52,16 +59,49 @@ class PackageStoreController {
 		try {
 			const userId = req.initdata.id;
 			const { slug } = req.params;
+			const { offer } = req.body; // Необязательный объект с дополнительными параметрами
 
-			const result = await packageStoreService.usePackage(slug, userId);
+			// Логируем входящие параметры для отладки
+			console.log("usePackage - incoming request:", {
+				userId,
+				slug,
+				offer,
+			});
+
+			// Валидация offer параметров
+			if (offer && typeof offer !== 'object') {
+				return res.status(400).json({
+					success: false,
+					message: "Offer must be an object",
+				});
+			}
+
+			const result = await packageStoreService.usePackage(slug, userId, offer);
+			
+			console.log("usePackage - completed successfully:", {
+				userId,
+				slug,
+				result: {
+					userState: result.userState ? 'updated' : 'not_updated',
+					package: result.package ? 'used' : 'not_used',
+					marketResult: result.marketResult ? 'created' : 'not_created',
+				}
+			});
+
 			return res.json({
 				success: true,
-				message: 'Package used successfully',
+				message: "Package used successfully",
 				userState: result.userState,
 				package: result.package,
 				marketResult: result.marketResult,
 			});
 		} catch (error) {
+			console.error("usePackage - error:", {
+				userId: req.initdata?.id,
+				slug: req.params?.slug,
+				offer: req.body?.offer,
+				error: error.message,
+			});
 			next(error);
 		}
 	}

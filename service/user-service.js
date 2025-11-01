@@ -2,45 +2,38 @@
  * created by Tatyana Mikhniukevich on 02.06.2025
  * Сервис для работы с пользователями: регистрация, аутентификация, управление состоянием
  */
-const {
-	User,
-	UserState,
-	Galaxy,
-	UserUpgrade,
-	UpgradeNodeTemplate,
-} = require('../models/models');
-const tokenService = require('./token-service');
-const galaxyService = require('./galaxy-service');
-const userStateService = require('./user-state-service');
-const logger = require('./logger-service');
-const eventService = require('./event-service');
-const upgradeService = require('./upgrade-service');
-const taskService = require('./task-service');
-const UserDto = require('../dtos/user-dto');
-const UserStateDto = require('../dtos/user-state-dto');
-const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
-const { Op, where } = require('sequelize');
-const artifactService = require('./artifact-service');
-const prometheusService = require('./prometheus-service');
-const marketService = require('./market-service');
-const gameService = require('./game-service');
-const packageStoreService = require('./package-store-service');
+const { User, UserState } = require("../models/models");
+const tokenService = require("./token-service");
+const galaxyService = require("./galaxy-service");
+const userStateService = require("./user-state-service");
+const logger = require("./logger-service");
+// Removed: eventService, upgradeService, taskService imports - no longer used in login
+const UserDto = require("../dtos/user-dto");
+const UserStateDto = require("../dtos/user-state-dto");
+const ApiError = require("../exceptions/api-error");
+const sequelize = require("../db");
+const { Op, where } = require("sequelize");
+const artifactService = require("./artifact-service");
+const prometheusService = require("./prometheus-service");
+const marketService = require("./market-service");
+const gameService = require("./game-service");
+// Removed: packageStoreService import - no longer used in login
 
-const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require('../config/constants');
-const { ERROR_CODES } = require('../config/error-codes');
+const { SYSTEM_USER_ID, SYSTEM_USER_USERNAME } = require("../config/constants");
+const { ERROR_CODES } = require("../config/error-codes");
+const GAME_CONSTANTS = require("../config/game-constants");
 
 class UserService {
 	constructor() {
 		// Проверяем, что prometheusService импортирован корректно
 		if (!prometheusService) {
-			logger.warn('PrometheusService not imported correctly');
+			logger.warn("PrometheusService not imported correctly");
 		} else if (!prometheusService.incrementUserRegistration) {
 			logger.warn(
-				'PrometheusService.incrementUserRegistration method not found'
+				"PrometheusService.incrementUserRegistration method not found"
 			);
 		} else {
-			logger.debug('PrometheusService imported successfully');
+			logger.debug("PrometheusService imported successfully");
 		}
 	}
 
@@ -52,27 +45,24 @@ class UserService {
 	safeUpdatePrometheusMetric(metricType, options = {}) {
 		process.nextTick(() => {
 			try {
-				if (
-					!prometheusService ||
-					typeof prometheusService !== 'object'
-				) {
-					logger.debug('Prometheus service not available');
+				if (!prometheusService || typeof prometheusService !== "object") {
+					logger.debug("Prometheus service not available");
 					return;
 				}
 
 				switch (metricType) {
-					case 'userRegistration':
+					case "userRegistration":
 						if (
 							typeof prometheusService.incrementUserRegistration ===
-							'function'
+							"function"
 						) {
 							prometheusService.incrementUserRegistration();
 							logger.debug(
-								'User registration metric incremented successfully'
+								"User registration metric incremented successfully"
 							);
 						} else {
 							logger.debug(
-								'User registration metric method not available'
+								"User registration metric method not available"
 							);
 						}
 						break;
@@ -80,7 +70,7 @@ class UserService {
 						logger.debug(`Unknown metric type: ${metricType}`);
 				}
 			} catch (error) {
-				logger.warn('Failed to update Prometheus metric:', {
+				logger.warn("Failed to update Prometheus metric:", {
 					metricType,
 					error: error.message,
 					...options,
@@ -103,16 +93,25 @@ class UserService {
 				defaults: {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
-					role: 'SYSTEM',
 					referral: 0,
+					role: "SYSTEM",
+					blocked: false,
 				},
 				transaction: t,
 			});
+			logger.debug("systemUser", systemUser);
+
+			// Create system user state
+			const systemUserState = await UserState.findOrCreate({
+				where: { userId: SYSTEM_USER_ID },
+				transaction: t,
+			});
+			logger.debug("systemUserState", systemUserState);
 
 			if (created) {
-				logger.info('System user created successfully');
+				logger.info("System user created successfully");
 			} else {
-				logger.debug('System user already exists');
+				logger.debug("System user already exists");
 			}
 
 			if (shouldCommit) await t.commit();
@@ -136,23 +135,20 @@ class UserService {
 			const systemUser = await User.findByPk(SYSTEM_USER_ID);
 			if (!systemUser) {
 				logger.info(
-					'System user not found, creating with ID:',
+					"System user not found, creating with ID:",
 					SYSTEM_USER_ID
 				);
 				const result = await this.createSystemUser(t);
-				logger.info('System user and state created successfully', {
+				logger.info("System user and state created successfully", {
 					userId: result.id,
 				});
 			} else {
-				logger.debug(
-					'System user already exists with ID:',
-					systemUser.id
-				);
+				logger.debug("System user already exists with ID:", systemUser.id);
 			}
 			await t.commit();
 		} catch (err) {
 			if (!t.finished) await t.rollback();
-			logger.error('Failed to ensure system user exists:', err);
+			logger.error("Failed to ensure system user exists:", err);
 			throw ApiError.withCode(
 				500,
 				`Failed to ensure system user exists: ${err.message}`,
@@ -167,16 +163,16 @@ class UserService {
 		if (!userId || !username) {
 			throw ApiError.withCode(
 				400,
-				'Missing required user data (id or username)',
+				"Missing required user data (id or username)",
 				ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 			);
 		}
 
 		// Преобразуем referral в число, если это строка
-		if (typeof referral === 'string') {
+		if (typeof referral === "string") {
 			referral = BigInt(referral);
 		}
-		logger.debug('createUser on start', {
+		logger.debug("createUser on start", {
 			userId,
 			username,
 			referral,
@@ -190,7 +186,7 @@ class UserService {
 					id: userId,
 					username,
 					referral,
-					role: 'USER',
+					role: "USER",
 					blocked: false,
 				},
 				transaction: transaction,
@@ -217,7 +213,7 @@ class UserService {
 			}
 
 			// Проверяем на дублирование по уникальному ключу
-			if (err.name === 'SequelizeUniqueConstraintError') {
+			if (err.name === "SequelizeUniqueConstraintError") {
 				throw ApiError.withCode(
 					409,
 					`User with ID ${userId} already exists`,
@@ -240,7 +236,6 @@ class UserService {
 	 * @param {Object} userState - Состояние пользователя
 	 * @param {Array} galaxies - Массив галактик пользователя
 	 * @param {Array} artifacts - Массив артефактов пользователя
-	 * @param {Object} userData - Игровые данные пользователя
 	 * @param {boolean} galaxyCreated - Была ли создана галактика
 	 * @returns {Object} Структурированный ответ для клиента
 	 */
@@ -250,14 +245,11 @@ class UserService {
 		userState,
 		galaxies,
 		artifacts,
-		userData,
 		galaxyCreated = false
 	) {
 		return {
 			success: true,
-			message: galaxyCreated
-				? 'Registration successful'
-				: 'Login successful',
+			message: galaxyCreated ? "Registration successful" : "Login successful",
 			data: {
 				// Аутентификация
 				auth: {
@@ -295,14 +287,30 @@ class UserService {
 				galaxies: galaxies.map((galaxy) => ({
 					id: galaxy.id,
 					userId: galaxy.userId,
+					name: galaxy.name,
+					seed: galaxy.seed,
+
+					// Звезды и ресурсы
 					starMin: galaxy.starMin,
 					starCurrent: galaxy.starCurrent,
+					maxStars: galaxy.maxStars,
+
+					// Временные метки
+					birthDate: galaxy.birthDate,
+					lastCollectTime: galaxy.lastCollectTime,
+
+					// Визуальные свойства
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+
+					// Игровые параметры
 					price: galaxy.price,
-					seed: galaxy.seed,
 					particleCount: galaxy.particleCount,
 					onParticleCountChange: galaxy.onParticleCountChange,
 					galaxyProperties: galaxy.galaxyProperties,
 					active: galaxy.active,
+
 					createdAt: galaxy.createdAt,
 					updatedAt: galaxy.updatedAt,
 				})),
@@ -314,11 +322,14 @@ class UserService {
 					// Добавьте другие поля артефакта по необходимости
 				})),
 
+				// Game constants (added to login response)
+				gameConstants: GAME_CONSTANTS,
+
 				// Метаданные
 				metadata: {
 					galaxyCreated: galaxyCreated,
 					timestamp: new Date().toISOString(),
-					version: '1.0.0',
+					version: "1.0.0",
 				},
 			},
 		};
@@ -336,7 +347,7 @@ class UserService {
 		const transaction = await sequelize.transaction();
 		try {
 			// Откладываем проверку всех deferrable ограничений в начале транзакции
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction,
 			});
 
@@ -349,7 +360,7 @@ class UserService {
 
 			// Если пользователь не существует, создаем нового пользователя
 			if (!user && userId) {
-				logger.debug('User not found, creating new user', {
+				logger.debug("User not found, creating new user", {
 					userId,
 					username: username || null,
 					referral: referral || null,
@@ -362,7 +373,7 @@ class UserService {
 						id: userId,
 						username: username || null,
 						referral: referral || 0,
-						role: 'USER',
+						role: "USER",
 					},
 					{
 						transaction: transaction,
@@ -377,7 +388,7 @@ class UserService {
 				await transaction.rollback();
 				throw ApiError.withCode(
 					404,
-					'User not found',
+					"User not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}
@@ -387,7 +398,7 @@ class UserService {
 				await transaction.rollback();
 				throw ApiError.withCode(
 					403,
-					'User account is blocked',
+					"User account is blocked",
 					ERROR_CODES.AUTH.USER_BLOCKED
 				);
 			}
@@ -396,21 +407,22 @@ class UserService {
 
 			// 2. Если это новый пользователь, выполняем инициализацию
 			if (isNewUser) {
-				logger.debug('Initializing new user', { userId });
+				logger.debug("Initializing new user", { userId });
 
-				// Инициализируем состояние пользователя
-				const [userState, createdUserState] =
-					await UserState.findOrCreate({
-						where: { userId: user.id },
-						defaults: {
-							userId: user.id,
-						},
-						transaction: transaction,
-					});
+				// ✅ УБИРАЕМ: создание UserState здесь - пусть user-state-service сам создает с константами
+				let userStateNew;
+				logger.debug("Initializing UserState with constants", {
+					userId: user.id,
+				});
 
-				// Создаём галактику для пользователя после коммита основной транзакции
+				userStateNew = await userStateService.createUserState(
+					user.id,
+					{}, // ✅ Передаем пустой объект - user-state-service использует дефолты
+					transaction
+				);
+
+				// Объявляем переменную для галактики
 				let userGalaxy = null;
-				let userStateNew = userState.toJSON();
 
 				// Генерируем JWT токены
 				const tokens = tokenService.generateTokens({ ...userDto });
@@ -421,60 +433,44 @@ class UserService {
 				);
 
 				// Коммитим всю транзакцию
-				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction,
 				});
 				await transaction.commit();
-				logger.debug('All registration data committed to database', {
+				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});
 
-				// Создаём галактику для пользователя после коммита основной транзакции
 				if (galaxyData && isNewUser) {
 					logger.debug(
-						'Creating galaxy as gift after main transaction commit',
-						{
-							galaxyData,
-						}
+						"Creating galaxy as gift after main transaction commit",
+						{ galaxyData }
 					);
 					try {
 						const galaxyTransaction = await sequelize.transaction();
-						const offer = {
-							price: 0,
-							currency: 'tonToken',
-						};
+						const offer = { price: 0, currency: "tonToken" };
 						try {
-							const result =
-								await gameService.createGalaxyWithOffer(
-									galaxyData,
-									user.id,
-									offer,
-									galaxyTransaction
-								);
-
-							logger.debug('Galaxy creation result', result);
+							const result = await gameService.createGalaxyWithOffer(
+								galaxyData,
+								user.id,
+								offer,
+								galaxyTransaction
+							);
+							logger.debug("Galaxy creation result", result);
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
-
 							await galaxyTransaction.commit();
 						} catch (galaxyError) {
 							await galaxyTransaction.rollback();
-							logger.error(
-								'Failed to create galaxy',
-								galaxyError
-							);
-							// Don't fail the entire registration if galaxy creation fails
+							logger.error("Failed to create galaxy", galaxyError);
 						}
 					} catch (galaxyError) {
-						logger.error('Failed to create galaxy', galaxyError);
-						// Don't fail the entire registration if galaxy creation fails
+						logger.error("Failed to create galaxy", galaxyError);
 					}
 				} else if (isNewUser && !galaxyData) {
 					logger.debug(
-						'New user registered without galaxy data - galaxy will not be created',
-						{
-							userId: user.id,
-						}
+						"New user registered without galaxy data - galaxy will not be created",
+						{ userId: user.id }
 					);
 				}
 
@@ -492,22 +488,24 @@ class UserService {
 					!!userGalaxy
 				);
 
-				logger.debug('User registration response', response);
+				logger.debug("User registration response", response);
 				return response;
 			} else {
 				// 3. Для существующего пользователя выполняем логин
-				logger.debug('User exists, performing login', { userId });
+				logger.debug("User exists, performing login", { userId });
 
 				// Получаем состояние пользователя, галактики и артефакты
-				const [userState, userGalaxies, userArtifacts] =
+				const [userState, userGalaxiesResponse, userArtifacts] =
 					await Promise.all([
 						userStateService.getUserState(userDto.id, transaction),
 						galaxyService.getUserGalaxies(userDto.id, transaction),
-						artifactService.getUserArtifacts(
-							userDto.id,
-							transaction
-						),
+						artifactService.getUserArtifacts(userDto.id, transaction),
 					]);
+
+				// Извлекаем галактики из нового формата ответа
+				const userGalaxies = userGalaxiesResponse.galaxies || [];
+
+				// Removed: User initialization - handled by separate endpoints
 
 				// Генерируем и сохраняем новые токены
 				const tokens = tokenService.generateTokens({ ...userDto });
@@ -518,7 +516,7 @@ class UserService {
 				);
 
 				// Устанавливаем ограничения обратно в немедленные перед коммитом
-				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction,
 				});
 
@@ -532,7 +530,6 @@ class UserService {
 					userState,
 					userGalaxies,
 					userArtifacts,
-
 					false // galaxyCreated = false для существующих пользователей
 				);
 			}
@@ -555,7 +552,7 @@ class UserService {
 			}
 
 			// Проверяем на дублирование по уникальному ключу
-			if (err.name === 'SequelizeUniqueConstraintError') {
+			if (err.name === "SequelizeUniqueConstraintError") {
 				throw ApiError.withCode(
 					409,
 					`User with ID ${userId} already exists`,
@@ -585,7 +582,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Refresh token is required',
+					"Refresh token is required",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -596,7 +593,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Invalid refresh token',
+					"Invalid refresh token",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -607,7 +604,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					401,
-					'Refresh token not found in database',
+					"Refresh token not found in database",
 					ERROR_CODES.AUTH.INVALID_TOKEN
 				);
 			}
@@ -618,7 +615,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					404,
-					'User not found',
+					"User not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}
@@ -628,7 +625,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					403,
-					'User is blocked',
+					"User is blocked",
 					ERROR_CODES.AUTH.USER_BLOCKED
 				);
 			}
@@ -687,7 +684,7 @@ class UserService {
 				await t.rollback();
 				throw ApiError.withCode(
 					400,
-					'User ID is required',
+					"User ID is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -706,11 +703,11 @@ class UserService {
 			// Получаем список друзей (пользователей, которые указали данного пользователя как реферала)
 			const friends = await User.findAll({
 				where: { referral: userId },
-				attributes: ['id', 'username', 'referral', 'createdAt'],
+				attributes: ["id", "username", "referral", "createdAt"],
 				include: [
 					{
 						model: UserState,
-						attributes: ['state'],
+						attributes: ["state"],
 					},
 				],
 				transaction: t,
@@ -759,7 +756,7 @@ class UserService {
 			if (!systemUser) {
 				throw ApiError.withCode(
 					404,
-					'System user not found',
+					"System user not found",
 					ERROR_CODES.AUTH.USER_NOT_FOUND
 				);
 			}

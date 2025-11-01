@@ -1561,7 +1561,8 @@ Authorization: Bearer <access_token>
 			"type": "spiral",
 			"size": "medium"
 		}
-	}
+	},
+	"sourceGalaxySeed": "completed_galaxy_seed_456"
 }
 ```
 

@@ -14,14 +14,14 @@ const {
 	UserState,
 	Artifact,
 	PackageTemplate,
-} = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
-const { Op } = require('sequelize');
-const { pagination, offers } = require('../config/market.config');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const logger = require('../service/logger-service');
-const userStateService = require('./user-state-service');
+} = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const sequelize = require("../db");
+const { Op } = require("sequelize");
+const { pagination, offers } = require("../config/market.config");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const logger = require("../service/logger-service");
+const userStateService = require("./user-state-service");
 
 class MarketService {
 	/**
@@ -39,7 +39,7 @@ class MarketService {
 
 			// Check that the object or resource is not locked by another offer
 			// For system packages (from the game) skip the check
-			if (!(sellerId === SYSTEM_USER_ID && itemType === 'package')) {
+			if (!(sellerId === SYSTEM_USER_ID && itemType === "package")) {
 				await this.checkItemAvailability(
 					sellerId,
 					itemType,
@@ -50,7 +50,7 @@ class MarketService {
 
 			// Lock the resource or object (depending on the type)
 			// For system packages (from the game) skip the lock
-			if (!(sellerId === SYSTEM_USER_ID && itemType === 'package')) {
+			if (!(sellerId === SYSTEM_USER_ID && itemType === "package")) {
 				await this.lockItem(sellerId, itemType, itemId, transaction);
 			}
 
@@ -59,14 +59,13 @@ class MarketService {
 			let expiresAt = null;
 			let isItemLocked = true;
 
-			if (sellerId === SYSTEM_USER_ID && itemType === 'package') {
+			if (sellerId === SYSTEM_USER_ID && itemType === "package") {
 				// System packages from the game do not have an expiration date and are not locked
 				isItemLocked = false;
 			} else {
 				// For other offers set the expiration date
 				const expirationDays =
-					offers.expirationDays[itemType] ||
-					offers.expirationDays.default;
+					offers.expirationDays[itemType] || offers.expirationDays.default;
 				expiresAt = new Date();
 				expiresAt.setDate(expiresAt.getDate() + expirationDays);
 			}
@@ -108,7 +107,7 @@ class MarketService {
 				sellerId: userId,
 				itemType,
 				itemId,
-				status: 'ACTIVE',
+				status: "ACTIVE",
 				isItemLocked: true,
 			},
 			transaction,
@@ -120,29 +119,21 @@ class MarketService {
 
 		// Check the ownership of the item depending on the type
 		switch (itemType) {
-			case 'galaxy':
+			case "galaxy":
 				await this.checkGalaxyOwnership(userId, itemId, transaction);
 				break;
-			case 'artifact':
+			case "artifact":
 				await this.checkArtifactOwnership(userId, itemId, transaction);
 				break;
-			case 'resource':
-				await this.checkResourceAvailability(
-					userId,
-					itemId,
-					transaction
-				);
+			case "resource":
+				await this.checkResourceAvailability(userId, itemId, transaction);
 				break;
-			case 'package':
+			case "package":
 				// For packages, a separate check logic
-				await this.checkPackageAvailability(
-					userId,
-					itemId,
-					transaction
-				);
+				await this.checkPackageAvailability(userId, itemId, transaction);
 				break;
 			default:
-				throw new ApiError(400, 'Unknown item type');
+				throw new ApiError(400, "Unknown item type");
 		}
 	}
 
@@ -162,7 +153,7 @@ class MarketService {
 		});
 
 		if (!galaxy) {
-			throw new ApiError(403, 'You are not the owner of this galaxy');
+			throw new ApiError(403, "You are not the owner of this galaxy");
 		}
 	}
 
@@ -182,7 +173,7 @@ class MarketService {
 		});
 
 		if (!artifact) {
-			throw new ApiError(403, 'You are not the owner of this artifact');
+			throw new ApiError(403, "You are not the owner of this artifact");
 		}
 	}
 
@@ -193,11 +184,11 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async checkResourceAvailability(userId, resourceInfo, transaction) {
-		const [resourceType, amountStr] = resourceInfo.split('_');
+		const [resourceType, amountStr] = resourceInfo.split("_");
 		const amount = parseInt(amountStr, 10);
 
 		if (isNaN(amount) || amount <= 0) {
-			throw new ApiError(400, 'Invalid resource amount');
+			throw new ApiError(400, "Invalid resource amount");
 		}
 
 		const userState = await UserState.findOne({
@@ -206,28 +197,28 @@ class MarketService {
 		});
 
 		if (!userState) {
-			throw new ApiError(404, 'User state not found');
+			throw new ApiError(404, "User state not found");
 		}
 
 		// Проверяем наличие достаточного количества ресурсов
 		switch (resourceType) {
-			case 'stardust':
+			case "stardust":
 				if (BigInt(userState.stardust) < BigInt(amount)) {
-					throw new ApiError(400, 'Not enough stardust');
+					throw new ApiError(400, "Not enough stardust");
 				}
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				if (BigInt(userState.darkMatter) < BigInt(amount)) {
-					throw new ApiError(400, 'Not enough dark matter');
+					throw new ApiError(400, "Not enough dark matter");
 				}
 				break;
-			case 'stars':
+			case "stars":
 				if (BigInt(userState.stars) < BigInt(amount)) {
-					throw new ApiError(400, 'Not enough stars');
+					throw new ApiError(400, "Not enough stars");
 				}
 				break;
 			default:
-				throw new ApiError(400, 'Unknown resource type');
+				throw new ApiError(400, "Unknown resource type");
 		}
 	}
 
@@ -255,7 +246,7 @@ class MarketService {
 		if (!packageStore) {
 			throw new ApiError(
 				403,
-				'You do not have this package or it has already been used'
+				"You do not have this package or it has already been used"
 			);
 		}
 	}
@@ -268,9 +259,9 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async lockItem(userId, itemType, itemId, transaction) {
-		if (itemType === 'resource') {
+		if (itemType === "resource") {
 			await this.lockResource(userId, itemId, transaction);
-		} else if (itemType === 'package') {
+		} else if (itemType === "package") {
 			await this.lockPackage(userId, itemId, transaction);
 		}
 		// For galaxies and artifacts, only the isItemLocked flag in the offer is enough
@@ -283,7 +274,7 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async lockResource(userId, resourceInfo, transaction) {
-		const [resourceType, amountStr] = resourceInfo.split('_');
+		const [resourceType, amountStr] = resourceInfo.split("_");
 		const amount = parseInt(amountStr, 10);
 
 		const userState = await UserState.findOne({
@@ -293,32 +284,29 @@ class MarketService {
 
 		// Lock resources, reducing the available amount
 		switch (resourceType) {
-			case 'stardust':
+			case "stardust":
 				await userState.update(
 					{
 						stardust: BigInt(userState.stardust) - BigInt(amount),
 						lockedStardust: Number(
-							BigInt(userState.lockedStardust || 0) +
-								BigInt(amount)
+							BigInt(userState.lockedStardust || 0) + BigInt(amount)
 						),
 					},
 					{ transaction }
 				);
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				await userState.update(
 					{
-						darkMatter:
-							BigInt(userState.darkMatter) - BigInt(amount),
+						darkMatter: BigInt(userState.darkMatter) - BigInt(amount),
 						lockedDarkMatter: Number(
-							BigInt(userState.lockedDarkMatter || 0) +
-								BigInt(amount)
+							BigInt(userState.lockedDarkMatter || 0) + BigInt(amount)
 						),
 					},
 					{ transaction }
 				);
 				break;
-			case 'stars':
+			case "stars":
 				await userState.update(
 					{
 						stars: BigInt(userState.stars) - BigInt(amount),
@@ -372,9 +360,9 @@ class MarketService {
 			return;
 		}
 
-		if (itemType === 'resource') {
+		if (itemType === "resource") {
 			await this.unlockResource(sellerId, itemId, transaction);
-		} else if (itemType === 'package') {
+		} else if (itemType === "package") {
 			await this.unlockPackage(sellerId, itemId, transaction);
 		}
 
@@ -394,7 +382,7 @@ class MarketService {
 	 * @param {Transaction} transaction Sequelize transaction
 	 */
 	async unlockResource(userId, resourceInfo, transaction) {
-		const [resourceType, amountStr] = resourceInfo.split('_');
+		const [resourceType, amountStr] = resourceInfo.split("_");
 		const amount = parseInt(amountStr, 10);
 
 		const userState = await UserState.findOne({
@@ -411,7 +399,7 @@ class MarketService {
 
 		// Unlock resources, returning them to the available amount
 		switch (resourceType) {
-			case 'stardust':
+			case "stardust":
 				await userState.update(
 					{
 						stardust: BigInt(userState.stardust) + BigInt(amount),
@@ -426,11 +414,10 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				await userState.update(
 					{
-						darkMatter:
-							BigInt(userState.darkMatter) + BigInt(amount),
+						darkMatter: BigInt(userState.darkMatter) + BigInt(amount),
 						lockedDarkMatter: Math.max(
 							0,
 							Number(
@@ -442,15 +429,14 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'stars':
+			case "stars":
 				await userState.update(
 					{
 						stars: BigInt(userState.stars) + BigInt(amount),
 						lockedStars: Math.max(
 							0,
 							Number(
-								BigInt(userState.lockedStars || 0) -
-									BigInt(amount)
+								BigInt(userState.lockedStars || 0) - BigInt(amount)
 							)
 						),
 					},
@@ -500,20 +486,20 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId, { transaction });
 
 			if (!offer) {
-				throw new ApiError(404, 'Offer not found');
+				throw new ApiError(404, "Offer not found");
 			}
 
 			// Check that the user is the seller or an administrator
 			if (offer.sellerId !== userId && userId !== SYSTEM_USER_ID) {
 				throw new ApiError(
 					403,
-					'You do not have permission to cancel this offer'
+					"You do not have permission to cancel this offer"
 				);
 			}
 
 			// Check that the offer is active
-			if (offer.status !== 'ACTIVE') {
-				throw new ApiError(400, 'Only active offers can be cancelled');
+			if (offer.status !== "ACTIVE") {
+				throw new ApiError(400, "Only active offers can be cancelled");
 			}
 
 			// Unlock the resource or object
@@ -522,7 +508,7 @@ class MarketService {
 			// Update the status of the offer
 			await offer.update(
 				{
-					status: 'CANCELLED',
+					status: "CANCELLED",
 					isItemLocked: false,
 				},
 				{ transaction }
@@ -549,17 +535,17 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId, { t });
 
 			if (!offer) {
-				throw new ApiError(404, 'Offer not found');
+				throw new ApiError(404, "Offer not found");
 			}
 
 			// Check that the offer is active
-			if (offer.status !== 'ACTIVE') {
-				throw new ApiError(400, 'Only active offers can be purchased');
+			if (offer.status !== "ACTIVE") {
+				throw new ApiError(400, "Only active offers can be purchased");
 			}
 
 			// Check that the buyer is not the seller
 			if (offer.sellerId === buyerId) {
-				throw new ApiError(400, 'You cannot buy your own offer');
+				throw new ApiError(400, "You cannot buy your own offer");
 			}
 
 			// Find a market transaction
@@ -571,12 +557,12 @@ class MarketService {
 			});
 
 			if (!marketTransaction) {
-				throw new ApiError(404, 'Market transaction not found');
+				throw new ApiError(404, "Market transaction not found");
 			}
 
 			await marketTransaction.update(
 				{
-					status: 'COMPLETED',
+					status: "COMPLETED",
 					completedAt: new Date(),
 				},
 				{ t }
@@ -596,7 +582,7 @@ class MarketService {
 			// Update the status of the offer
 			await offer.update(
 				{
-					status: 'COMPLETED',
+					status: "COMPLETED",
 					isItemLocked: false,
 				},
 				{ transaction }
@@ -632,35 +618,35 @@ class MarketService {
 		});
 
 		if (!buyerState) {
-			throw new ApiError(404, 'Buyer state not found');
+			throw new ApiError(404, "Buyer state not found");
 		}
 
 		// Check that the buyer has enough funds
 		switch (currency) {
-			case 'stardust':
+			case "stardust":
 				if (buyerState.stardust < price) {
-					throw new ApiError(400, 'Insufficient stardust');
+					throw new ApiError(400, "Insufficient stardust");
 				}
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				if (buyerState.darkMatter < price) {
-					throw new ApiError(400, 'Insufficient dark matter');
+					throw new ApiError(400, "Insufficient dark matter");
 				}
 				break;
-			case 'tgStars':
+			case "tgStars":
 				if (buyerState.tgStars < price) {
-					throw new ApiError(400, 'Insufficient stars');
+					throw new ApiError(400, "Insufficient stars");
 				}
 				break;
-			case 'tonToken':
+			case "tonToken":
 				// For TON tokens, the check is done on the client side
 				break;
 			default:
-				throw new ApiError(400, 'Unknown currency');
+				throw new ApiError(400, "Unknown currency");
 		}
 
 		// If this is not TON, deduct the funds from the buyer
-		if (currency !== 'tonToken') {
+		if (currency !== "tonToken") {
 			await this.deductCurrency(buyerId, currency, price, transaction);
 		}
 
@@ -687,13 +673,8 @@ class MarketService {
 		}
 
 		// If this is not TON, add the funds to the seller
-		if (currency !== 'tonToken') {
-			await this.addCurrency(
-				sellerId,
-				currency,
-				sellerAmount,
-				transaction
-			);
+		if (currency !== "tonToken") {
+			await this.addCurrency(sellerId, currency, sellerAmount, transaction);
 		}
 
 		// Create a payment transaction
@@ -704,8 +685,8 @@ class MarketService {
 				toAccount: sellerId,
 				amount: price,
 				currency,
-				txType: 'MARKET_PURCHASE',
-				status: 'CONFIRMED',
+				txType: "MARKET_PURCHASE",
+				status: "CONFIRMED",
 				confirmedAt: new Date(),
 			},
 			{ transaction }
@@ -726,12 +707,12 @@ class MarketService {
 		});
 
 		switch (currency) {
-			case 'stardust':
+			case "stardust":
 				if (
 					BigInt(userState.stardust) < BigInt(amount) &&
 					userId !== SYSTEM_USER_ID
 				) {
-					throw new ApiError(400, 'Insufficient stardust');
+					throw new ApiError(400, "Insufficient stardust");
 				}
 				await userState.update(
 					{
@@ -740,27 +721,26 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				if (
 					BigInt(userState.darkMatter) < BigInt(amount) &&
 					userId !== SYSTEM_USER_ID
 				) {
-					throw new ApiError(400, 'Insufficient dark matter');
+					throw new ApiError(400, "Insufficient dark matter");
 				}
 				await userState.update(
 					{
-						darkMatter:
-							BigInt(userState.darkMatter) - BigInt(amount),
+						darkMatter: BigInt(userState.darkMatter) - BigInt(amount),
 					},
 					{ transaction }
 				);
 				break;
-			case 'stars':
+			case "stars":
 				if (
 					BigInt(userState.stars) < BigInt(amount) &&
 					userId !== SYSTEM_USER_ID
 				) {
-					throw new ApiError(400, 'Insufficient stars');
+					throw new ApiError(400, "Insufficient stars");
 				}
 				await userState.update(
 					{
@@ -769,7 +749,7 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'tonToken':
+			case "tonToken":
 				await userState.update(
 					{
 						tonToken:
@@ -778,19 +758,17 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'tgStars':
-				if (
-					BigInt(userState.tgStars) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
-					throw new ApiError(400, 'Insufficient tgStars');
-				}
+			case "tgStars":
 				await userState.update(
 					{
 						tgStars: BigInt(userState.tgStars) - BigInt(amount),
 					},
 					{ transaction }
 				);
+				logger.debug("tgStars payment processed by Telegram", {
+					userId,
+					amount,
+				});
 				break;
 		}
 		await userState.save({ transaction });
@@ -814,7 +792,7 @@ class MarketService {
 		}
 
 		switch (currency) {
-			case 'stardust':
+			case "stardust":
 				await userState.update(
 					{
 						stardust: BigInt(userState.stardust) + BigInt(amount),
@@ -822,16 +800,15 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				await userState.update(
 					{
-						darkMatter:
-							BigInt(userState.darkMatter) + BigInt(amount),
+						darkMatter: BigInt(userState.darkMatter) + BigInt(amount),
 					},
 					{ transaction }
 				);
 				break;
-			case 'tgStars':
+			case "tgStars":
 				await userState.update(
 					{
 						tgStars: BigInt(userState.tgStars) + BigInt(amount),
@@ -839,7 +816,7 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'tonToken':
+			case "tonToken":
 				await userState.update(
 					{
 						tonToken:
@@ -848,7 +825,7 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'stars':
+			case "stars":
 				await userState.update(
 					{
 						stars: BigInt(userState.stars) + BigInt(amount),
@@ -857,6 +834,7 @@ class MarketService {
 				);
 				break;
 		}
+
 		await userState.save({ transaction });
 	}
 
@@ -870,14 +848,14 @@ class MarketService {
 		const { sellerId, itemType, itemId } = offer;
 
 		switch (itemType) {
-			case 'galaxy':
+			case "galaxy":
 				// Update galaxy ownership and add stars to starCurrent
 				const galaxy = await Galaxy.findByPk(itemId, { transaction });
 				if (galaxy) {
 					await Galaxy.update(
 						{
 							userId: buyerId,
-							starCurrent: galaxy.starCurrent + offer.amount,
+							// starCurrent: galaxy.starCurrent + offer.amount,
 						},
 						{
 							where: { id: itemId },
@@ -887,7 +865,7 @@ class MarketService {
 				}
 				//await this.transferResource(offer, buyerId, transaction);
 				break;
-			case 'artifact':
+			case "artifact":
 				await Artifact.update(
 					{
 						userId: buyerId,
@@ -899,10 +877,10 @@ class MarketService {
 				);
 				//await this.transferResource(offer, buyerId, transaction);
 				break;
-			case 'resource':
+			case "resource":
 				//await this.transferResource(offer, buyerId, transaction);
 				break;
-			case 'package':
+			case "package":
 				// For system packages (from the game), create a new record for the buyer
 				if (sellerId === SYSTEM_USER_ID) {
 					const packageData = await PackageStore.findByPk(itemId, {
@@ -918,7 +896,7 @@ class MarketService {
 								resource: packageData.resource,
 								price: packageData.price,
 								currency: packageData.currency,
-								status: 'ACTIVE',
+								status: "ACTIVE",
 								isUsed: false,
 								isLocked: false,
 							},
@@ -958,7 +936,7 @@ class MarketService {
 
 		// Add the resource to the buyer
 		switch (resourceType) {
-			case 'stardust':
+			case "stardust":
 				await buyerState.update(
 					{
 						stardust: BigInt(buyerState.stardust) + BigInt(amount),
@@ -966,16 +944,15 @@ class MarketService {
 					{ transaction }
 				);
 				break;
-			case 'darkMatter':
+			case "darkMatter":
 				await buyerState.update(
 					{
-						darkMatter:
-							BigInt(buyerState.darkMatter) + BigInt(amount),
+						darkMatter: BigInt(buyerState.darkMatter) + BigInt(amount),
 					},
 					{ transaction }
 				);
 				break;
-			case 'stars':
+			case "stars":
 				await buyerState.update(
 					{
 						stars: BigInt(buyerState.stars) + BigInt(amount),
@@ -994,7 +971,7 @@ class MarketService {
 
 		if (sellerState) {
 			switch (resourceType) {
-				case 'stardust':
+				case "stardust":
 					await sellerState.update(
 						{
 							lockedStardust: Math.max(
@@ -1008,7 +985,7 @@ class MarketService {
 						{ transaction }
 					);
 					break;
-				case 'darkMatter':
+				case "darkMatter":
 					await sellerState.update(
 						{
 							lockedDarkMatter: Math.max(
@@ -1022,7 +999,7 @@ class MarketService {
 						{ transaction }
 					);
 					break;
-				case 'tgStars':
+				case "tgStars":
 					await sellerState.update(
 						{
 							lockedTgStars: Math.max(
@@ -1052,14 +1029,14 @@ class MarketService {
 			// Exclude system packages from the game (they do not have an expiration date)
 			const expiredOffers = await MarketOffer.findAll({
 				where: {
-					status: 'ACTIVE',
+					status: "ACTIVE",
 					expiresAt: {
 						[Op.lt]: new Date(),
 					},
 					// Exclude system packages from the game
 					[Op.not]: {
 						sellerId: SYSTEM_USER_ID,
-						itemType: 'package',
+						itemType: "package",
 					},
 				},
 				transaction,
@@ -1073,7 +1050,7 @@ class MarketService {
 				// Update the status of the offer
 				await offer.update(
 					{
-						status: 'EXPIRED',
+						status: "EXPIRED",
 						isItemLocked: false,
 					},
 					{ transaction }
@@ -1112,10 +1089,8 @@ class MarketService {
 	 */
 	async createResourceOffer(userId, resourceType, amount, price, currency) {
 		// Check that for P2P only TON is used
-		if (currency !== 'tonToken') {
-			throw ApiError.BadRequest(
-				'For P2P transactions, only TON can be used'
-			);
+		if (currency !== "tonToken") {
+			throw ApiError.BadRequest("For P2P transactions, only TON can be used");
 		}
 
 		// Form the itemId in the format "type_amount"
@@ -1124,11 +1099,11 @@ class MarketService {
 		// Create an offer with a locked resource
 		return await this.createOffer({
 			sellerId: userId,
-			itemType: 'resource',
+			itemType: "resource",
 			itemId,
 			price,
 			currency,
-			offerType: 'P2P',
+			offerType: "P2P",
 		});
 	}
 
@@ -1139,13 +1114,13 @@ class MarketService {
 	async createInvoice(offer, buyerId, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
-		logger.debug('createInvoice');
+		logger.debug("createInvoice");
 		// Get the offer
 		const transactionOffer = await MarketOffer.findByPk(offer.id, {
 			transaction: t,
 		});
-		if (!transactionOffer || transactionOffer.status !== 'ACTIVE') {
-			logger.error('Offer not found or not active');
+		if (!transactionOffer || transactionOffer.status !== "ACTIVE") {
+			logger.error("Offer not found or not active");
 			throw ApiError.OfferNotFound();
 		}
 
@@ -1154,7 +1129,7 @@ class MarketService {
 			offerId: transactionOffer.id,
 			buyerId,
 			sellerId: transactionOffer.sellerId,
-			status: 'PENDING',
+			status: "PENDING",
 			transaction: t,
 		});
 
@@ -1165,8 +1140,8 @@ class MarketService {
 			toAccount: SYSTEM_USER_ID,
 			priceOrAmount: offer.price,
 			currencyOrResource: offer.currency,
-			txType: 'BUYER_TO_CONTRACT',
-			status: 'PENDING',
+			txType: "BUYER_TO_CONTRACT",
+			status: "PENDING",
 			transaction: t,
 		});
 
@@ -1184,48 +1159,45 @@ class MarketService {
 	async processDeal({ transactionId, blockchainTxId }) {
 		// Database transaction for atomicity
 		return await sequelize.transaction(async (t) => {
-			const transaction = await MarketTransaction.findByPk(
-				transactionId,
-				{
-					transaction: t,
-				}
-			);
-			if (!transaction || transaction.status !== 'PENDING')
-				throw new Error('Transaction not found or not pending');
+			const transaction = await MarketTransaction.findByPk(transactionId, {
+				transaction: t,
+			});
+			if (!transaction || transaction.status !== "PENDING")
+				throw new Error("Transaction not found or not pending");
 
 			const offer = await MarketOffer.findByPk(transaction.offerId, {
 				transaction: t,
 			});
-			if (!offer || offer.status !== 'ACTIVE')
-				throw new Error('Offer not found or not active');
+			if (!offer || offer.status !== "ACTIVE")
+				throw new Error("Offer not found or not active");
 
 			// Find the payment and confirm it
 			const payment = await PaymentTransaction.findOne({
 				where: {
 					marketTransactionId: transaction.id,
-					txType: 'BUYER_TO_CONTRACT',
+					txType: "BUYER_TO_CONTRACT",
 				},
 				transaction: t,
 			});
-			if (!payment) throw new Error('Payment not found');
-			if (payment.status !== 'PENDING')
-				throw new Error('Payment already processed');
+			if (!payment) throw new Error("Payment not found");
+			if (payment.status !== "PENDING")
+				throw new Error("Payment already processed");
 
 			// Confirm the payment
-			payment.status = 'CONFIRMED';
+			payment.status = "CONFIRMED";
 			payment.blockchainTxId = blockchainTxId;
 			payment.confirmedAt = new Date();
 			await payment.save({ transaction: t });
 
 			// --- MULTI-CURRENCY UPDATE BALANCES ---
 			const currencyMap = {
-				stardust: 'stardustCount',
-				darkMatter: 'darkMatterCount',
-				tgStars: 'tgStarsCount',
-				tonToken: 'tokenTonsCount',
+				stardust: "stardustCount",
+				darkMatter: "darkMatterCount",
+				tgStars: "tgStarsCount",
+				tonToken: "tokenTonsCount",
 			};
 			const balanceField = currencyMap[offer.currency];
-			if (!balanceField) throw new Error('Unknown currency');
+			if (!balanceField) throw new Error("Unknown currency");
 
 			const price = Number(offer.price);
 
@@ -1234,8 +1206,8 @@ class MarketService {
 				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
 			});
-			if (!systemState) throw new Error('System user state not found');
-			if (typeof systemState.state[balanceField] !== 'number')
+			if (!systemState) throw new Error("System user state not found");
+			if (typeof systemState.state[balanceField] !== "number")
 				systemState.state[balanceField] = 0;
 
 			// Credit funds to the contract
@@ -1247,19 +1219,19 @@ class MarketService {
 				where: { userId: transaction.buyerId },
 				transaction: t,
 			});
-			if (!buyerState) throw new Error('Buyer state not found');
+			if (!buyerState) throw new Error("Buyer state not found");
 
-			if (offer.itemType === 'package') {
+			if (offer.itemType === "package") {
 				// Logic for packages
 				const pkg = await PackageStore.findByPk(offer.itemId, {
 					transaction: t,
 				});
-				if (!pkg) throw new Error('Package not found');
+				if (!pkg) throw new Error("Package not found");
 
 				// Add game currency to the buyer
 				const gameField = currencyMap[pkg.resource];
-				if (!gameField) throw new Error('Unknown game currency');
-				if (typeof buyerState.state[gameField] !== 'number')
+				if (!gameField) throw new Error("Unknown game currency");
+				if (typeof buyerState.state[gameField] !== "number")
 					buyerState.state[gameField] = 0;
 				buyerState.state[gameField] += Number(pkg.amount);
 
@@ -1273,14 +1245,14 @@ class MarketService {
 						toAccount: transaction.buyerId,
 						amount: pkg.amount,
 						currency: pkg.resource,
-						txType: 'CONTRACT_TO_BUYER',
-						status: 'CONFIRMED',
+						txType: "CONTRACT_TO_BUYER",
+						status: "CONFIRMED",
 					},
 					{ transaction: t }
 				);
 
 				// Complete the deal (the offer remains active for SYSTEM packages)
-				transaction.status = 'COMPLETED';
+				transaction.status = "COMPLETED";
 				transaction.completedAt = new Date();
 				await transaction.save({ transaction: t });
 
@@ -1288,35 +1260,34 @@ class MarketService {
 			} else {
 				// Logic for normal deals (artifacts, galaxies)
 				const commissionRate = await getCommissionRate(offer.currency);
-				const commission =
-					Math.floor(price * commissionRate * 100) / 100;
+				const commission = Math.floor(price * commissionRate * 100) / 100;
 				const sellerAmount = price - commission;
 
 				// Transfer the artifact to the new owner
-				if (offer.itemType === 'artifact') {
+				if (offer.itemType === "artifact") {
 					const artifact = await Artifact.findByPk(offer.itemId, {
 						transaction: t,
 					});
-					if (!artifact) throw new Error('Artifact not found');
+					if (!artifact) throw new Error("Artifact not found");
 					artifact.userId = transaction.buyerId;
 					await artifact.save({ transaction: t });
 				}
 
 				// Transfer the galaxy to the new owner
-				if (offer.itemType === 'galaxy') {
+				if (offer.itemType === "galaxy") {
 					const galaxy = await Galaxy.findByPk(offer.itemId, {
 						transaction: t,
 					});
-					if (!galaxy) throw new Error('Galaxy not found');
+					if (!galaxy) throw new Error("Galaxy not found");
 					galaxy.userId = transaction.buyerId;
 					await galaxy.save({ transaction: t });
 				}
 
 				// Complete the deal and the offer
-				transaction.status = 'COMPLETED';
+				transaction.status = "COMPLETED";
 				transaction.completedAt = new Date();
 				await transaction.save({ transaction: t });
-				offer.status = 'COMPLETED';
+				offer.status = "COMPLETED";
 				await offer.save({ transaction: t });
 
 				// Transfer the contract to the seller (with the commission)
@@ -1324,8 +1295,8 @@ class MarketService {
 					where: { userId: transaction.sellerId },
 					transaction: t,
 				});
-				if (!sellerState) throw new Error('Seller state not found');
-				if (typeof sellerState.state[balanceField] !== 'number')
+				if (!sellerState) throw new Error("Seller state not found");
+				if (typeof sellerState.state[balanceField] !== "number")
 					sellerState.state[balanceField] = 0;
 
 				// Deduct the amount from the contract from the seller
@@ -1346,8 +1317,8 @@ class MarketService {
 						toAccount: transaction.sellerId,
 						amount: sellerAmount,
 						currency: offer.currency,
-						txType: 'CONTRACT_TO_SELLER',
-						status: 'CONFIRMED',
+						txType: "CONTRACT_TO_SELLER",
+						status: "CONFIRMED",
 					},
 					{ transaction: t }
 				);
@@ -1360,8 +1331,8 @@ class MarketService {
 						toAccount: SYSTEM_USER_ID,
 						amount: commission,
 						currency: offer.currency,
-						txType: 'FEE',
-						status: 'CONFIRMED',
+						txType: "FEE",
+						status: "CONFIRMED",
 					},
 					{ transaction: t }
 				);
@@ -1389,7 +1360,7 @@ class MarketService {
 		try {
 			const offers = await MarketOffer.findAll({
 				where: {
-					status: 'ACTIVE',
+					status: "ACTIVE",
 					sellerId: { [Op.ne]: userId },
 				},
 				transaction: t,
@@ -1413,12 +1384,9 @@ class MarketService {
 		try {
 			const transactions = await MarketTransaction.findAll({
 				where: {
-					[sequelize.Op.or]: [
-						{ buyerId: userId },
-						{ sellerId: userId },
-					],
+					[sequelize.Op.or]: [{ buyerId: userId }, { sellerId: userId }],
 				},
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 				transaction: t,
 			});
 
@@ -1436,8 +1404,8 @@ class MarketService {
 		try {
 			const offers = await MarketOffer.findAll({
 				where: {
-					itemType: 'galaxy',
-					status: 'ACTIVE',
+					itemType: "galaxy",
+					status: "ACTIVE",
 				},
 				transaction: t,
 			});
@@ -1453,9 +1421,10 @@ class MarketService {
 	/**
 	 * Get system package offers and initialize the user's packages
 	 * @param {number} userId - User ID (optional)
+	 * @param {Object} filterParams - Filter parameters (category, actionType)
 	 * @returns {Promise<Array>} - List of system package offers
 	 */
-	async getPackageOffers(userId = null) {
+	async getPackageOffers(userId = null, filterParams = {}) {
 		const t = await sequelize.transaction();
 
 		try {
@@ -1468,14 +1437,22 @@ class MarketService {
 			// Get system package offers
 			const offers = await MarketOffer.findAll({
 				where: {
-					itemType: 'package',
-					status: 'ACTIVE',
-					offerType: 'SYSTEM',
+					itemType: "package",
+					status: "ACTIVE",
+					offerType: "SYSTEM",
 				},
 				transaction: t,
 			});
 
 			await t.commit();
+
+			// Если есть параметры фильтрации, применяем их к результату
+			if (filterParams.category || filterParams.actionType) {
+				// Здесь можно добавить дополнительную фильтрацию по шаблонам пакетов
+				// если нужно фильтровать по новым полям
+				logger.debug("Filtering package offers", { filterParams });
+			}
+
 			return offers;
 		} catch (err) {
 			await t.rollback();
@@ -1501,14 +1478,14 @@ class MarketService {
 
 			// Form the conditions of the request
 			const where = {
-				itemType: 'artifact',
+				itemType: "artifact",
 			};
 
 			if (status) {
 				where.status = status;
 			} else {
 				// By default, only active offers are shown
-				where.status = 'ACTIVE';
+				where.status = "ACTIVE";
 			}
 
 			if (currency) {
@@ -1520,12 +1497,12 @@ class MarketService {
 				where,
 				limit,
 				offset,
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 				include: [
 					{
 						model: User,
-						as: 'seller',
-						attributes: ['id', 'username'],
+						as: "seller",
+						attributes: ["id", "username"],
 					},
 				],
 				transaction: t,
@@ -1591,7 +1568,7 @@ class MarketService {
 		return this.getOffers({
 			page,
 			limit,
-			offerType: 'P2P',
+			offerType: "P2P",
 			status,
 			currency,
 			itemType,
@@ -1612,7 +1589,7 @@ class MarketService {
 		return this.getOffers({
 			page,
 			limit,
-			offerType: 'SYSTEM',
+			offerType: "SYSTEM",
 			status,
 			currency,
 			itemType,
@@ -1627,19 +1604,17 @@ class MarketService {
 			const offer = await MarketOffer.findByPk(offerId);
 
 			if (!offer) {
-				throw ApiError.BadRequest('Offer not found');
+				throw ApiError.BadRequest("Offer not found");
 			}
 
 			// Check the status of the offer
-			if (offer.status !== 'ACTIVE') {
-				throw ApiError.BadRequest(
-					'Offer is not available for purchase'
-				);
+			if (offer.status !== "ACTIVE") {
+				throw ApiError.BadRequest("Offer is not available for purchase");
 			}
 
 			// Check that the buyer is not the seller
 			if (offer.sellerId === buyerId) {
-				throw ApiError.BadRequest('You cannot buy your own offer');
+				throw ApiError.BadRequest("You cannot buy your own offer");
 			}
 
 			// Get the state of the buyer
@@ -1648,31 +1623,28 @@ class MarketService {
 			});
 
 			if (!buyerState) {
-				throw ApiError.BadRequest('Buyer state not found');
+				throw ApiError.BadRequest("Buyer state not found");
 			}
 
 			// Check that the buyer has enough currency
 			const totalPrice = Number(offer.price) * amount;
 
-			if (
-				offer.currency === 'tgStars' &&
-				buyerState.tgStars < totalPrice
-			) {
-				throw ApiError.BadRequest('Insufficient TG Stars for purchase');
+			if (offer.currency === "tgStars" && buyerState.tgStars < totalPrice) {
+				throw ApiError.BadRequest("Insufficient TG Stars for purchase");
 			} else if (
-				offer.currency === 'tonToken' &&
+				offer.currency === "tonToken" &&
 				buyerState.tonToken < totalPrice
 			) {
-				throw ApiError.BadRequest('Insufficient TON for purchase');
+				throw ApiError.BadRequest("Insufficient TON for purchase");
 			}
 
 			// If this is a system offer with a package, process it specially
-			if (offer.offerType === 'SYSTEM' && offer.itemType === 'package') {
+			if (offer.offerType === "SYSTEM" && offer.itemType === "package") {
 				// Get the package template
 				const template = await PackageTemplate.findByPk(offer.itemId);
 
 				if (!template) {
-					throw ApiError.BadRequest('Package template not found');
+					throw ApiError.BadRequest("Package template not found");
 				}
 
 				// Create a package for the user
@@ -1682,11 +1654,13 @@ class MarketService {
 					{
 						id: packageId,
 						userId: buyerId,
-						amount: template.amount,
-						resource: template.resource,
-						price: template.price,
-						currency: template.currency,
-						status: 'ACTIVE',
+						// Новые поля для гибкой структуры
+						category: template.category || "resourcePurchase",
+						actionType: template.actionType || "fixedAmount",
+						actionTarget: template.actionTarget || "reward",
+						actionData: template.actionData || {},
+						costData: template.costData || {},
+						status: "ACTIVE",
 						isUsed: false,
 						isLocked: false,
 					},
@@ -1694,9 +1668,9 @@ class MarketService {
 				);
 
 				// Deduct the currency from the buyer
-				if (offer.currency === 'tgStars') {
+				if (offer.currency === "tgStars") {
 					buyerState.tgStars -= totalPrice;
-				} else if (offer.currency === 'tonToken') {
+				} else if (offer.currency === "tonToken") {
 					buyerState.tonToken -= totalPrice;
 				}
 
@@ -1713,7 +1687,7 @@ class MarketService {
 						currency: offer.currency,
 						itemType: offer.itemType,
 						itemId: packageId, // Use the ID of the new package
-						status: 'COMPLETED',
+						status: "COMPLETED",
 					},
 					{ transaction }
 				);
@@ -1722,15 +1696,15 @@ class MarketService {
 
 				return {
 					success: true,
-					message: 'Package successfully purchased',
+					message: "Package successfully purchased",
 				};
 			}
 
 			// Normal offer - standard processing
 			// Deduct the currency from the buyer
-			if (offer.currency === 'tgStars') {
+			if (offer.currency === "tgStars") {
 				buyerState.tgStars -= totalPrice;
-			} else if (offer.currency === 'tonToken') {
+			} else if (offer.currency === "tonToken") {
 				buyerState.tonToken -= totalPrice;
 			}
 
@@ -1750,7 +1724,7 @@ class MarketService {
 					currency: offer.currency,
 					itemType: offer.itemType,
 					itemId: offer.itemId,
-					status: 'COMPLETED',
+					status: "COMPLETED",
 				},
 				{ transaction }
 			);
@@ -1758,7 +1732,7 @@ class MarketService {
 			// Update the status of the offer
 			await offer.update(
 				{
-					status: 'COMPLETED',
+					status: "COMPLETED",
 					isItemLocked: false,
 				},
 				{ transaction }
@@ -1766,7 +1740,7 @@ class MarketService {
 
 			await transaction.commit();
 
-			return { success: true, message: 'Offer successfully purchased' };
+			return { success: true, message: "Offer successfully purchased" };
 		} catch (e) {
 			await transaction.rollback();
 			throw e;
@@ -1786,16 +1760,16 @@ class MarketService {
 				include: [
 					{
 						model: User,
-						as: 'seller',
-						attributes: ['username', 'id'],
+						as: "seller",
+						attributes: ["username", "id"],
 					},
 					{
 						model: Artifact,
-						as: 'artifact',
+						as: "artifact",
 					},
 					{
 						model: Galaxy,
-						as: 'galaxy',
+						as: "galaxy",
 					},
 				],
 				transaction: t,
@@ -1803,7 +1777,7 @@ class MarketService {
 
 			if (!offer) {
 				await t.rollback();
-				throw ApiError.NotFound('Offer not found');
+				throw ApiError.NotFound("Offer not found");
 			}
 
 			await t.commit();
@@ -1827,7 +1801,7 @@ class MarketService {
 
 		try {
 			// Устанавливаем отложенные ограничения для этой транзакции
-			await sequelize.query('SET CONSTRAINTS ALL DEFERRED', {
+			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
 			});
 			if (offer.price > 0) {
@@ -1862,7 +1836,7 @@ class MarketService {
 			}
 
 			//Transfer item ownership if needed (for galaxies, artifacts, etc.)
-			if (offer.itemType === 'galaxy' || offer.itemType === 'artifact') {
+			if (offer.itemType === "galaxy" || offer.itemType === "artifact") {
 				await this.transferItemOwnership(offer, offer.buyerId, t);
 			}
 
@@ -1878,19 +1852,19 @@ class MarketService {
 					resource: offer.resource,
 					itemType: offer.itemType,
 					itemId: offer.itemId,
-					status: 'COMPLETED',
+					status: "COMPLETED",
 					completedAt: new Date(),
 				},
 				{ t }
 			);
-			logger.debug({ 'offer created': txOffer });
+			logger.debug({ "offer created": txOffer });
 
 			const txMarket = await MarketTransaction.create(
 				{
 					offerId: txOffer.id,
 					buyerId: offer.buyerId,
 					sellerId: offer.sellerId,
-					status: 'COMPLETED',
+					status: "COMPLETED",
 					completedAt: new Date(),
 				},
 				{ t }
@@ -1906,7 +1880,8 @@ class MarketService {
 						priceOrAmount: offer.price,
 						currencyOrResource: offer.currency,
 						txType: offer.txType,
-						status: 'CONFIRMED',
+						metadata: offer.metadata,
+						status: "CONFIRMED",
 						completedAt: new Date(),
 					},
 					{ t }
@@ -1914,7 +1889,7 @@ class MarketService {
 			}
 			//await payment.save({ t });
 
-			logger.debug('payment created');
+			logger.debug("payment created");
 			let transferResource = null;
 			// transfer stars from contract to buyer
 			if (offer.amount > 0) {
@@ -1926,20 +1901,21 @@ class MarketService {
 						priceOrAmount: offer.amount,
 						currencyOrResource: offer.resource,
 						txType: offer.txType,
-						status: 'CONFIRMED',
+						metadata: offer.metadata,
+						status: "CONFIRMED",
 						completedAt: new Date(),
 					},
 					{ t }
 				);
 			}
-			logger.debug('offer registered');
+			logger.debug("offer registered");
 
 			// Коммитим транзакцию только если она была создана в этом методе
 			if (shouldCommit) {
-				await sequelize.query('SET CONSTRAINTS ALL IMMEDIATE', {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction: t,
 				});
-				logger.debug('constraints set');
+				logger.debug("constraints set");
 				await t.commit();
 			}
 			const result = {
@@ -1948,7 +1924,7 @@ class MarketService {
 				payment: payment,
 				transferResource: transferResource,
 			};
-			logger.debug('offer registered', result);
+			logger.debug("offer registered", result);
 
 			return result;
 		} catch (error) {

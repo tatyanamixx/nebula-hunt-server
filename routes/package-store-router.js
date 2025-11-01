@@ -1,12 +1,12 @@
 /**
  * created by Claude on 15.07.2025
  */
-const Router = require('express').Router;
+const Router = require("express").Router;
 const router = new Router();
-const packageStoreController = require('../controllers/package-store-controller');
-const authMiddleware = require('../middlewares/auth-middleware');
-const telegramAuthMiddleware = require('../middlewares/telegram-auth-middleware');
-const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
+const packageStoreController = require("../controllers/package-store-controller");
+const authMiddleware = require("../middlewares/auth-middleware");
+const telegramAuthMiddleware = require("../middlewares/telegram-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
 /**
  * @swagger
@@ -23,7 +23,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  *         description: Unauthorized
  */
 router.get(
-	'/',
+	"/",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60),
 	authMiddleware,
@@ -54,7 +54,7 @@ router.get(
  *         description: Package not found
  */
 router.get(
-	'/:slug',
+	"/:slug",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(60),
 	authMiddleware,
@@ -85,7 +85,7 @@ router.get(
  *         description: Package not found or already used
  */
 router.post(
-	'/:slug/use',
+	"/:slug/use",
 	telegramAuthMiddleware,
 	rateLimitMiddleware(20),
 	authMiddleware,

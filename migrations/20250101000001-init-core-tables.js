@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		// 1. Создаем таблицу users
-		await queryInterface.createTable('users', {
+		await queryInterface.createTable("users", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -15,8 +15,8 @@ module.exports = {
 				allowNull: true,
 			},
 			role: {
-				type: Sequelize.ENUM('USER', 'SYSTEM'),
-				defaultValue: 'USER',
+				type: Sequelize.ENUM("USER", "SYSTEM"),
+				defaultValue: "USER",
 				allowNull: false,
 			},
 			referral: {
@@ -32,22 +32,22 @@ module.exports = {
 			tonWallet: {
 				type: Sequelize.STRING,
 				allowNull: true,
-				comment: 'TON wallet address of the user',
+				comment: "TON wallet address of the user",
 			},
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 2. Создаем таблицу userstates
-		await queryInterface.createTable('userstates', {
+		await queryInterface.createTable("userstates", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -61,17 +61,17 @@ module.exports = {
 			},
 			stardust: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			darkMatter: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			stars: {
 				type: Sequelize.BIGINT,
-				defaultValue: 0,
+				defaultValue: 0, // Будет установлено динамически из game-constants
 				allowNull: false,
 			},
 			tgStars: {
@@ -83,6 +83,38 @@ module.exports = {
 				type: Sequelize.DECIMAL(30, 8),
 				defaultValue: 0,
 				allowNull: false,
+			},
+			lastLoginDate: {
+				type: Sequelize.DATEONLY,
+				allowNull: true,
+				comment: "Date of the last login (YYYY-MM-DD)",
+			},
+			currentStreak: {
+				type: Sequelize.INTEGER,
+				defaultValue: 0,
+				comment: "Number of consecutive days logged in",
+			},
+			maxStreak: {
+				type: Sequelize.INTEGER,
+				defaultValue: 0,
+				comment: "Maximum streak achieved",
+			},
+			streakUpdatedAt: {
+				type: Sequelize.DATE,
+				allowNull: true,
+				comment: "Timestamp of the last streak update",
+			},
+			chaosLevel: {
+				type: Sequelize.FLOAT,
+				defaultValue: 0.0,
+			},
+			stabilityLevel: {
+				type: Sequelize.FLOAT,
+				defaultValue: 0.0,
+			},
+			entropyVelocity: {
+				type: Sequelize.FLOAT,
+				defaultValue: 0.0,
 			},
 			lastDailyBonus: {
 				type: Sequelize.DATE,
@@ -122,6 +154,12 @@ module.exports = {
 				},
 				allowNull: false,
 			},
+			tutorialCompleted: {
+				type: Sequelize.BOOLEAN,
+				defaultValue: false,
+				allowNull: false,
+				comment: "Whether the user has completed the tutorial",
+			},
 			lastBotNotification: {
 				type: Sequelize.JSONB,
 				defaultValue: {
@@ -136,17 +174,17 @@ module.exports = {
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
 		// 3. Создаем таблицу tokens
-		await queryInterface.createTable('tokens', {
+		await queryInterface.createTable("tokens", {
 			id: {
 				type: Sequelize.BIGINT,
 				primaryKey: true,
@@ -160,17 +198,17 @@ module.exports = {
 			refreshToken: {
 				type: Sequelize.TEXT,
 				allowNull: false,
-				comment: 'JWT refresh token (может быть длиннее 255 символов)',
+				comment: "JWT refresh token (может быть длиннее 255 символов)",
 			},
 			createdAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 			updatedAt: {
 				type: Sequelize.DATE,
 				allowNull: false,
-				defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+				defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
 			},
 		});
 
@@ -215,21 +253,21 @@ module.exports = {
 
 	async down(queryInterface, Sequelize) {
 		// Удаляем отложенные ограничения
-		await queryInterface.removeConstraint('tokens', 'tokens_user_id_fkey');
+		await queryInterface.removeConstraint("tokens", "tokens_user_id_fkey");
 		await queryInterface.removeConstraint(
-			'userstates',
-			'userstates_user_id_fkey'
+			"userstates",
+			"userstates_user_id_fkey"
 		);
 
 		// Удаляем индексы
-		await queryInterface.removeIndex('tokens', 'token_user_id_idx');
-		await queryInterface.removeIndex('tokens', 'token_refresh_token_idx');
-		await queryInterface.removeIndex('userstates', 'userstate_user_id_idx');
-		await queryInterface.removeIndex('users', 'user_referral_idx');
+		await queryInterface.removeIndex("tokens", "token_user_id_idx");
+		await queryInterface.removeIndex("tokens", "token_refresh_token_idx");
+		await queryInterface.removeIndex("userstates", "userstate_user_id_idx");
+		await queryInterface.removeIndex("users", "user_referral_idx");
 
 		// Удаляем таблицы
-		await queryInterface.dropTable('tokens');
-		await queryInterface.dropTable('userstates');
-		await queryInterface.dropTable('users');
+		await queryInterface.dropTable("tokens");
+		await queryInterface.dropTable("userstates");
+		await queryInterface.dropTable("users");
 	},
 };

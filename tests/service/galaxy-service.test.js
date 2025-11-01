@@ -1,12 +1,12 @@
-const galaxyService = require('../../service/galaxy-service');
-const { User, Galaxy } = require('../../models/models');
-const ApiError = require('../../exceptions/api-error');
-const sequelize = require('../../db');
-const { Op } = require('sequelize');
-const loggerService = require('../../service/logger-service');
+const galaxyService = require("../../service/galaxy-service");
+const { User, Galaxy } = require("../../models/models");
+const ApiError = require("../../exceptions/api-error");
+const sequelize = require("../../db");
+const { Op } = require("sequelize");
+const loggerService = require("../../service/logger-service");
 
 // Мокаем модели и зависимости
-jest.mock('../../models/models', () => ({
+jest.mock("../../models/models", () => ({
 	User: {
 		findOne: jest.fn(),
 		findByPk: jest.fn(),
@@ -22,17 +22,17 @@ jest.mock('../../models/models', () => ({
 	},
 }));
 
-jest.mock('../../db', () => ({
+jest.mock("../../db", () => ({
 	transaction: jest.fn(),
 	random: jest.fn(),
 }));
 
-jest.mock('../../service/logger-service', () => ({
+jest.mock("../../service/logger-service", () => ({
 	info: jest.fn(),
 	error: jest.fn(),
 }));
 
-describe('GalaxyService', () => {
+describe("GalaxyService", () => {
 	// Мок для транзакции
 	const mockTransaction = {
 		commit: jest.fn().mockResolvedValue(undefined),
@@ -44,32 +44,32 @@ describe('GalaxyService', () => {
 		sequelize.transaction.mockResolvedValue(mockTransaction);
 	});
 
-	describe('getUserGalaxies', () => {
-		it('should return user galaxies', async () => {
+	describe("getUserGalaxies", () => {
+		it("should return user galaxies", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxiesData = [
 				{
 					id: 1,
 					userId,
-					seed: 'seed1',
+					seed: "seed1",
 					starCurrent: 500,
 					toJSON: jest.fn().mockReturnValue({
 						id: 1,
 						userId,
-						seed: 'seed1',
+						seed: "seed1",
 						starCurrent: 500,
 					}),
 				},
 				{
 					id: 2,
 					userId,
-					seed: 'seed2',
+					seed: "seed2",
 					starCurrent: 300,
 					toJSON: jest.fn().mockReturnValue({
 						id: 2,
 						userId,
-						seed: 'seed2',
+						seed: "seed2",
 						starCurrent: 300,
 					}),
 				},
@@ -84,7 +84,7 @@ describe('GalaxyService', () => {
 			expect(sequelize.transaction).toHaveBeenCalled();
 			expect(Galaxy.findAll).toHaveBeenCalledWith({
 				where: { userId },
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: mockTransaction,
 			});
 
@@ -92,23 +92,26 @@ describe('GalaxyService', () => {
 			expect(mockTransaction.rollback).not.toHaveBeenCalled();
 
 			// Проверяем результат
-			expect(result).toEqual([
-				{
-					id: 1,
-					userId,
-					seed: 'seed1',
-					starCurrent: 500,
-				},
-				{
-					id: 2,
-					userId,
-					seed: 'seed2',
-					starCurrent: 300,
-				},
-			]);
+			expect(result).toEqual({
+				galaxies: [
+					{
+						id: 1,
+						userId,
+						seed: "seed1",
+						starCurrent: 500,
+					},
+					{
+						id: 2,
+						userId,
+						seed: "seed2",
+						starCurrent: 300,
+					},
+				],
+				galaxiesThatGaveReward: [],
+			});
 		});
 
-		it('should return empty array if no galaxies found', async () => {
+		it("should return empty array if no galaxies found", async () => {
 			// Mock данных
 			const userId = 12345;
 			Galaxy.findAll.mockResolvedValue(null);
@@ -120,7 +123,7 @@ describe('GalaxyService', () => {
 			expect(sequelize.transaction).toHaveBeenCalled();
 			expect(Galaxy.findAll).toHaveBeenCalledWith({
 				where: { userId },
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: mockTransaction,
 			});
 
@@ -128,25 +131,28 @@ describe('GalaxyService', () => {
 			expect(mockTransaction.rollback).not.toHaveBeenCalled();
 
 			// Проверяем результат
-			expect(result).toEqual([]);
+			expect(result).toEqual({
+				galaxies: [],
+				galaxiesThatGaveReward: [],
+			});
 		});
 
-		it('should throw ApiError if database query fails', async () => {
+		it("should throw ApiError if database query fails", async () => {
 			// Mock данных
 			const userId = 12345;
-			const error = new Error('Database error');
+			const error = new Error("Database error");
 			Galaxy.findAll.mockRejectedValue(error);
 
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(galaxyService.getUserGalaxies(userId)).rejects.toThrow(
-				'Failed to get user galaxies: Database error'
+				"Failed to get user galaxies: Database error"
 			);
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
 			expect(Galaxy.findAll).toHaveBeenCalledWith({
 				where: { userId },
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: mockTransaction,
 			});
 
@@ -155,19 +161,19 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('getGalaxy', () => {
-		it('should return a galaxy by id', async () => {
+	describe("getGalaxy", () => {
+		it("should return a galaxy by id", async () => {
 			// Mock данных
 			const galaxyId = 1;
 			const galaxyData = {
 				id: galaxyId,
 				userId: 12345,
-				seed: 'seed1',
+				seed: "seed1",
 				starCurrent: 500,
 				User: {
 					id: 12345,
-					username: 'testuser',
-					role: 'user',
+					username: "testuser",
+					role: "user",
 				},
 			};
 
@@ -182,7 +188,7 @@ describe('GalaxyService', () => {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'role', 'id'],
+						attributes: ["username", "role", "id"],
 					},
 				],
 				transaction: mockTransaction,
@@ -195,14 +201,14 @@ describe('GalaxyService', () => {
 			expect(result).toEqual(galaxyData);
 		});
 
-		it('should throw ApiError if galaxy not found', async () => {
+		it("should throw ApiError if galaxy not found", async () => {
 			// Mock данных
 			const galaxyId = 999;
 			Galaxy.findByPk.mockResolvedValue(null);
 
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(galaxyService.getGalaxy(galaxyId)).rejects.toThrow(
-				'Galaxy not found'
+				"Galaxy not found"
 			);
 
 			// Проверяем, что были вызваны нужные методы
@@ -211,7 +217,7 @@ describe('GalaxyService', () => {
 				include: [
 					{
 						model: User,
-						attributes: ['username', 'role', 'id'],
+						attributes: ["username", "role", "id"],
 					},
 				],
 				transaction: mockTransaction,
@@ -222,17 +228,17 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('createUserGalaxy', () => {
-		it('should create a new galaxy', async () => {
+	describe("createUserGalaxy", () => {
+		it("should create a new galaxy", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxyData = {
-				seed: 'testseed123',
+				seed: "testseed123",
 				galaxyProperties: {
-					type: 'spiral',
+					type: "spiral",
 					colorPalette: {
-						insideColor: '#ff1493',
-						outsideColor: '#00ffff',
+						insideColor: "#ff1493",
+						outsideColor: "#00ffff",
 					},
 				},
 				particleCount: 1000,
@@ -254,10 +260,7 @@ describe('GalaxyService', () => {
 			Galaxy.findOrCreate.mockResolvedValue([createdGalaxy, true]);
 
 			// Вызываем тестируемый метод
-			const result = await galaxyService.createUserGalaxy(
-				userId,
-				galaxyData
-			);
+			const result = await galaxyService.createUserGalaxy(userId, galaxyData);
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
@@ -282,13 +285,13 @@ describe('GalaxyService', () => {
 			expect(result).toEqual(createdGalaxy);
 		});
 
-		it('should return existing galaxy if it already exists', async () => {
+		it("should return existing galaxy if it already exists", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxyData = {
-				seed: 'testseed123',
+				seed: "testseed123",
 				galaxyProperties: {
-					type: 'spiral',
+					type: "spiral",
 				},
 			};
 
@@ -302,17 +305,14 @@ describe('GalaxyService', () => {
 			Galaxy.findOrCreate.mockResolvedValue([existingGalaxy, false]);
 
 			// Вызываем тестируемый метод
-			const result = await galaxyService.createUserGalaxy(
-				userId,
-				galaxyData
-			);
+			const result = await galaxyService.createUserGalaxy(userId, galaxyData);
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
 			expect(loggerService.info).toHaveBeenCalledWith(userId, galaxyData);
 			expect(loggerService.info).toHaveBeenCalledWith(
 				userId,
-				'galaxy already exists'
+				"galaxy already exists"
 			);
 			expect(Galaxy.findOrCreate).toHaveBeenCalled();
 
@@ -323,7 +323,7 @@ describe('GalaxyService', () => {
 			expect(result).toEqual(existingGalaxy);
 		});
 
-		it('should throw ApiError if galaxy data is invalid', async () => {
+		it("should throw ApiError if galaxy data is invalid", async () => {
 			// Mock данных
 			const userId = 12345;
 			const invalidGalaxyData = {
@@ -334,7 +334,7 @@ describe('GalaxyService', () => {
 			await expect(
 				galaxyService.createUserGalaxy(userId, invalidGalaxyData)
 			).rejects.toThrow(
-				'Failed to create galaxy: Invalid galaxy data structure'
+				"Failed to create galaxy: Invalid galaxy data structure"
 			);
 
 			// Проверяем, что были вызваны нужные методы
@@ -346,8 +346,8 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('getShowGalaxies', () => {
-		it('should return random galaxies with pagination info', async () => {
+	describe("getShowGalaxies", () => {
+		it("should return random galaxies with pagination info", async () => {
 			// Mock данных
 			const userId = 12345;
 			const count = 50;
@@ -355,25 +355,25 @@ describe('GalaxyService', () => {
 				{
 					id: 1,
 					userId: 54321, // другой пользователь
-					seed: 'seed1',
+					seed: "seed1",
 					active: true,
 					toJSON: jest.fn().mockReturnValue({
 						id: 1,
 						userId: 54321,
-						seed: 'seed1',
-						User: { username: 'user1', role: 'user', id: 54321 },
+						seed: "seed1",
+						User: { username: "user1", role: "user", id: 54321 },
 					}),
 				},
 				{
 					id: 2,
 					userId: 98765, // другой пользователь
-					seed: 'seed2',
+					seed: "seed2",
 					active: true,
 					toJSON: jest.fn().mockReturnValue({
 						id: 2,
 						userId: 98765,
-						seed: 'seed2',
-						User: { username: 'user2', role: 'user', id: 98765 },
+						seed: "seed2",
+						User: { username: "user2", role: "user", id: 98765 },
 					}),
 				},
 			];
@@ -381,7 +381,7 @@ describe('GalaxyService', () => {
 			// Мокаем результаты запросов
 			Galaxy.count.mockResolvedValue(count);
 			Galaxy.findAll.mockResolvedValue(galaxiesData);
-			sequelize.random = jest.fn().mockReturnValue('RANDOM()');
+			sequelize.random = jest.fn().mockReturnValue("RANDOM()");
 
 			// Вызываем тестируемый метод
 			const result = await galaxyService.getShowGalaxies(userId);
@@ -402,11 +402,11 @@ describe('GalaxyService', () => {
 						userId: { [Op.ne]: userId },
 						active: true,
 					},
-					order: 'RANDOM()',
+					order: "RANDOM()",
 					include: [
 						{
 							model: User,
-							attributes: ['username', 'role', 'id'],
+							attributes: ["username", "role", "id"],
 						},
 					],
 					transaction: mockTransaction,
@@ -417,16 +417,16 @@ describe('GalaxyService', () => {
 			expect(mockTransaction.rollback).not.toHaveBeenCalled();
 
 			// Проверяем результат
-			expect(result).toHaveProperty('info');
-			expect(result).toHaveProperty('galaxies');
-			expect(result.info).toHaveProperty('count', count);
-			expect(result.info).toHaveProperty('totalPages');
-			expect(result.info).toHaveProperty('currentPage');
-			expect(result.info).toHaveProperty('itemsPerPage');
+			expect(result).toHaveProperty("info");
+			expect(result).toHaveProperty("galaxies");
+			expect(result.info).toHaveProperty("count", count);
+			expect(result.info).toHaveProperty("totalPages");
+			expect(result.info).toHaveProperty("currentPage");
+			expect(result.info).toHaveProperty("itemsPerPage");
 			expect(result.galaxies).toHaveLength(2);
 		});
 
-		it('should return empty result if no galaxies found', async () => {
+		it("should return empty result if no galaxies found", async () => {
 			// Mock данных
 			const userId = 12345;
 
@@ -458,15 +458,15 @@ describe('GalaxyService', () => {
 			});
 		});
 
-		it('should throw ApiError if database query fails', async () => {
+		it("should throw ApiError if database query fails", async () => {
 			// Mock данных
 			const userId = 12345;
-			const error = new Error('Database error');
+			const error = new Error("Database error");
 			Galaxy.count.mockRejectedValue(error);
 
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(galaxyService.getShowGalaxies(userId)).rejects.toThrow(
-				'Failed to get show galaxies: Database error'
+				"Failed to get show galaxies: Database error"
 			);
 
 			// Проверяем, что были вызваны нужные методы
@@ -477,34 +477,34 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('updateUserGalaxy', () => {
-		it('should update galaxy parameters', async () => {
+	describe("updateUserGalaxy", () => {
+		it("should update galaxy parameters", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxyData = {
-				seed: 'testseed123',
+				seed: "testseed123",
 				starCurrent: 500,
 				price: 200,
 				particleCount: 1500,
 				onParticleCountChange: false,
-				galaxyProperties: { type: 'spiral' },
+				galaxyProperties: { type: "spiral" },
 			};
 
 			const galaxy = {
 				id: 1,
 				userId,
-				seed: 'testseed123',
+				seed: "testseed123",
 				starCurrent: 300,
 				price: 100,
 				particleCount: 1000,
 				onParticleCountChange: true,
-				galaxyProperties: { type: 'elliptical' },
+				galaxyProperties: { type: "elliptical" },
 				save: jest.fn().mockResolvedValue(true),
 			};
 
 			const user = {
 				id: userId,
-				username: 'testuser',
+				username: "testuser",
 			};
 
 			// Мокаем результаты запросов
@@ -512,10 +512,7 @@ describe('GalaxyService', () => {
 			User.findOne.mockResolvedValue(user);
 
 			// Вызываем тестируемый метод
-			const result = await galaxyService.updateUserGalaxy(
-				userId,
-				galaxyData
-			);
+			const result = await galaxyService.updateUserGalaxy(userId, galaxyData);
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
@@ -549,12 +546,12 @@ describe('GalaxyService', () => {
 			expect(result).toBe(galaxy);
 		});
 
-		it('should throw ApiError if galaxy not found', async () => {
+		it("should throw ApiError if galaxy not found", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxyData = {
 				id: 999,
-				seed: 'nonexistent',
+				seed: "nonexistent",
 				starCurrent: 500,
 			};
 
@@ -564,7 +561,7 @@ describe('GalaxyService', () => {
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(
 				galaxyService.updateUserGalaxy(userId, galaxyData)
-			).rejects.toThrow('Galaxy not found');
+			).rejects.toThrow("Galaxy not found");
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
@@ -573,12 +570,12 @@ describe('GalaxyService', () => {
 			expect(mockTransaction.rollback).toHaveBeenCalled();
 		});
 
-		it('should throw ApiError if stars value is negative', async () => {
+		it("should throw ApiError if stars value is negative", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxyData = {
 				id: 1,
-				seed: 'testseed123',
+				seed: "testseed123",
 				starCurrent: -100,
 				price: 200,
 			};
@@ -586,14 +583,14 @@ describe('GalaxyService', () => {
 			const galaxy = {
 				id: 1,
 				userId,
-				seed: 'testseed123',
+				seed: "testseed123",
 				starCurrent: 300,
 				price: 100,
 			};
 
 			const user = {
 				id: userId,
-				username: 'testuser',
+				username: "testuser",
 			};
 
 			// Мокаем результаты запросов
@@ -603,7 +600,7 @@ describe('GalaxyService', () => {
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(
 				galaxyService.updateUserGalaxy(userId, galaxyData)
-			).rejects.toThrow('Stars cannot be negative');
+			).rejects.toThrow("Stars cannot be negative");
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
@@ -614,18 +611,18 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('batchCreateGalaxies', () => {
-		it('should create multiple galaxies', async () => {
+	describe("batchCreateGalaxies", () => {
+		it("should create multiple galaxies", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxiesData = [
 				{
-					seed: 'seed1',
-					galaxyProperties: { type: 'spiral' },
+					seed: "seed1",
+					galaxyProperties: { type: "spiral" },
 				},
 				{
-					seed: 'seed2',
-					galaxyProperties: { type: 'elliptical' },
+					seed: "seed2",
+					galaxyProperties: { type: "elliptical" },
 				},
 			];
 
@@ -634,8 +631,8 @@ describe('GalaxyService', () => {
 					{
 						id: 1,
 						userId,
-						seed: 'seed1',
-						galaxyProperties: { type: 'spiral' },
+						seed: "seed1",
+						galaxyProperties: { type: "spiral" },
 						active: true,
 					},
 					true,
@@ -644,8 +641,8 @@ describe('GalaxyService', () => {
 					{
 						id: 2,
 						userId,
-						seed: 'seed2',
-						galaxyProperties: { type: 'elliptical' },
+						seed: "seed2",
+						galaxyProperties: { type: "elliptical" },
 						active: true,
 					},
 					true,
@@ -653,7 +650,7 @@ describe('GalaxyService', () => {
 			];
 
 			// Мокаем Promise.all для возврата результатов findOrCreate
-			const mockPromiseAll = jest.spyOn(Promise, 'all');
+			const mockPromiseAll = jest.spyOn(Promise, "all");
 			mockPromiseAll.mockResolvedValue(createdGalaxies);
 
 			// Мокаем Galaxy.findOrCreate для каждого вызова
@@ -662,8 +659,8 @@ describe('GalaxyService', () => {
 					{
 						id: 1,
 						userId,
-						seed: 'seed1',
-						galaxyProperties: { type: 'spiral' },
+						seed: "seed1",
+						galaxyProperties: { type: "spiral" },
 						active: true,
 					},
 					true,
@@ -672,8 +669,8 @@ describe('GalaxyService', () => {
 					{
 						id: 2,
 						userId,
-						seed: 'seed2',
-						galaxyProperties: { type: 'elliptical' },
+						seed: "seed2",
+						galaxyProperties: { type: "elliptical" },
 						active: true,
 					},
 					true,
@@ -693,11 +690,11 @@ describe('GalaxyService', () => {
 			expect(Galaxy.findOrCreate).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
-					where: { seed: 'seed1' },
+					where: { seed: "seed1" },
 					defaults: expect.objectContaining({
 						userId,
-						seed: 'seed1',
-						galaxyProperties: { type: 'spiral' },
+						seed: "seed1",
+						galaxyProperties: { type: "spiral" },
 					}),
 					transaction: mockTransaction,
 				})
@@ -707,11 +704,11 @@ describe('GalaxyService', () => {
 			expect(Galaxy.findOrCreate).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({
-					where: { seed: 'seed2' },
+					where: { seed: "seed2" },
 					defaults: expect.objectContaining({
 						userId,
-						seed: 'seed2',
-						galaxyProperties: { type: 'elliptical' },
+						seed: "seed2",
+						galaxyProperties: { type: "elliptical" },
 					}),
 					transaction: mockTransaction,
 				})
@@ -727,25 +724,23 @@ describe('GalaxyService', () => {
 			mockPromiseAll.mockRestore();
 		});
 
-		it('should throw ApiError if database operation fails', async () => {
+		it("should throw ApiError if database operation fails", async () => {
 			// Mock данных
 			const userId = 12345;
 			const galaxiesData = [
-				{ seed: 'seed1', galaxyProperties: { type: 'spiral' } },
+				{ seed: "seed1", galaxyProperties: { type: "spiral" } },
 			];
 
-			const error = new Error('Database error');
+			const error = new Error("Database error");
 
 			// Мокаем Promise.all для выброса ошибки
-			const mockPromiseAll = jest.spyOn(Promise, 'all');
+			const mockPromiseAll = jest.spyOn(Promise, "all");
 			mockPromiseAll.mockRejectedValue(error);
 
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
 			await expect(
 				galaxyService.batchCreateGalaxies(userId, galaxiesData)
-			).rejects.toThrow(
-				'Failed to batch create galaxies: Database error'
-			);
+			).rejects.toThrow("Failed to batch create galaxies: Database error");
 
 			// Проверяем, что были вызваны нужные методы
 			expect(sequelize.transaction).toHaveBeenCalled();
@@ -757,13 +752,13 @@ describe('GalaxyService', () => {
 		});
 	});
 
-	describe('createSystemGalaxyWithOffer', () => {
+	describe("createSystemGalaxyWithOffer", () => {
 		// Пропускаем этот тест, так как он требует сложного мокирования динамических импортов
-		it.skip('should create a system galaxy with market offer', async () => {
+		it.skip("should create a system galaxy with market offer", async () => {
 			// Mock данных
 			const galaxyData = {
-				seed: 'systemseed123',
-				galaxyProperties: { type: 'special' },
+				seed: "systemseed123",
+				galaxyProperties: { type: "special" },
 				particleCount: 2000,
 			};
 
@@ -771,22 +766,22 @@ describe('GalaxyService', () => {
 
 			const offerData = {
 				price: 500,
-				currency: 'tgStars',
+				currency: "tgStars",
 			};
 
 			// Этот тест пропущен из-за сложности мокирования динамических импортов
 			// Функциональность проверяется через интеграционные тесты
 		});
 
-		it('should throw ApiError if galaxy already exists', async () => {
+		it("should throw ApiError if galaxy already exists", async () => {
 			// Mock данных
 			const galaxyData = {
-				seed: 'systemseed123',
-				galaxyProperties: { type: 'special' },
+				seed: "systemseed123",
+				galaxyProperties: { type: "special" },
 			};
 
 			const buyerId = 12345;
-			const offerData = { price: 500, currency: 'tgStars' };
+			const offerData = { price: 500, currency: "tgStars" };
 
 			// Мокаем findOrCreate для возврата существующей галактики
 			Galaxy.findOrCreate.mockResolvedValue([{}, false]);
@@ -799,7 +794,7 @@ describe('GalaxyService', () => {
 					offerData
 				)
 			).rejects.toThrow(
-				'Failed to create system galaxy with offer: Galaxy already exists'
+				"Failed to create system galaxy with offer: Galaxy already exists"
 			);
 
 			// Проверяем, что были вызваны нужные методы
@@ -809,17 +804,17 @@ describe('GalaxyService', () => {
 			expect(mockTransaction.rollback).toHaveBeenCalled();
 		});
 
-		it('should throw ApiError if database operation fails', async () => {
+		it("should throw ApiError if database operation fails", async () => {
 			// Mock данных
 			const galaxyData = {
-				seed: 'systemseed123',
-				galaxyProperties: { type: 'special' },
+				seed: "systemseed123",
+				galaxyProperties: { type: "special" },
 			};
 
 			const buyerId = 12345;
-			const offerData = { price: 500, currency: 'tgStars' };
+			const offerData = { price: 500, currency: "tgStars" };
 
-			const error = new Error('Database error');
+			const error = new Error("Database error");
 			Galaxy.findOrCreate.mockRejectedValue(error);
 
 			// Вызываем тестируемый метод и проверяем, что он выбрасывает ошибку
@@ -830,7 +825,7 @@ describe('GalaxyService', () => {
 					offerData
 				)
 			).rejects.toThrow(
-				'Failed to create system galaxy with offer: Database error'
+				"Failed to create system galaxy with offer: Database error"
 			);
 
 			// Проверяем, что были вызваны нужные методы

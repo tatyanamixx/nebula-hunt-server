@@ -1,10 +1,10 @@
 /**
  * created by Tatyana Mikhniukevich on 04.07.2025
  */
-const marketService = require('../service/market-service');
-const prometheusService = require('../service/prometheus-service');
-const { User } = require('../models/models'); // Правильный импорт модели User
-const { SYSTEM_USER_ID } = require('../config/constants');
+const marketService = require("../service/market-service");
+const prometheusService = require("../service/prometheus-service");
+const { User } = require("../models/models"); // Правильный импорт модели User
+const { SYSTEM_USER_ID } = require("../config/constants");
 
 class MarketController {
 	async getAllOffers(req, res) {
@@ -29,7 +29,7 @@ class MarketController {
 			});
 			res.json(offer);
 		} catch (e) {
-			prometheusService.incrementError('4xx');
+			prometheusService.incrementError("4xx");
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -44,7 +44,7 @@ class MarketController {
 			});
 			res.json(result);
 		} catch (e) {
-			prometheusService.incrementError('4xx');
+			prometheusService.incrementError("4xx");
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -58,7 +58,7 @@ class MarketController {
 			});
 			res.json(result);
 		} catch (e) {
-			prometheusService.incrementError('4xx');
+			prometheusService.incrementError("4xx");
 			res.status(400).json({ error: e.message });
 		}
 	}
@@ -66,12 +66,10 @@ class MarketController {
 	async getUserTransactions(req, res) {
 		try {
 			const userId = req.initdata.id;
-			const transactions = await marketService.getUserTransactions(
-				userId
-			);
+			const transactions = await marketService.getUserTransactions(userId);
 			res.json(transactions);
 		} catch (e) {
-			prometheusService.incrementError('5xx');
+			prometheusService.incrementError("5xx");
 			res.status(500).json({ error: e.message });
 		}
 	}
@@ -79,7 +77,17 @@ class MarketController {
 	async getPackageOffers(req, res, next) {
 		try {
 			const userId = req.initdata.id;
-			const offers = await marketService.getPackageOffers(userId);
+			const { category, actionType } = req.query;
+
+			// Получаем параметры фильтрации из query
+			const filterParams = {};
+			if (category) filterParams.category = category;
+			if (actionType) filterParams.actionType = actionType;
+
+			const offers = await marketService.getPackageOffers(
+				userId,
+				filterParams
+			);
 			res.json(offers);
 		} catch (e) {
 			next(e);
@@ -235,7 +243,7 @@ class MarketController {
 			// Обновляем адрес кошелька пользователя
 			const user = await User.findByPk(userId);
 			if (!user) {
-				return res.status(404).json({ error: 'User not found' });
+				return res.status(404).json({ error: "User not found" });
 			}
 
 			user.tonWallet = tonWallet;
@@ -254,7 +262,7 @@ class MarketController {
 			// Получаем адрес кошелька пользователя
 			const user = await User.findByPk(userId);
 			if (!user) {
-				return res.status(404).json({ error: 'User not found' });
+				return res.status(404).json({ error: "User not found" });
 			}
 
 			res.json({ tonWallet: user.tonWallet });
@@ -265,8 +273,7 @@ class MarketController {
 
 	async getOffers(req, res, next) {
 		try {
-			const { page, limit, itemType, offerType, status, currency } =
-				req.query;
+			const { page, limit, itemType, offerType, status, currency } = req.query;
 
 			const result = await marketService.getOffers({
 				page: parseInt(page) || 1,
@@ -388,7 +395,7 @@ class MarketController {
 		try {
 			// Проверяем, что запрос от администратора
 			if (req.initdata.id !== SYSTEM_USER_ID && !req.initdata.isAdmin) {
-				return res.status(403).json({ error: 'Access denied' });
+				return res.status(403).json({ error: "Access denied" });
 			}
 
 			const count = await marketService.processExpiredOffers();

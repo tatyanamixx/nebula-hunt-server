@@ -1,15 +1,11 @@
 /**
  * created by Claude on 15.07.2025
  */
-const {
-	UpgradeNodeTemplate,
-	UserUpgrade,
-	UserState,
-} = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
-const { Op } = require('sequelize');
-const logger = require('./logger-service');
+const { UpgradeNodeTemplate, UserUpgrade, UserState } = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const sequelize = require("../db");
+const { Op } = require("sequelize");
+const logger = require("./logger-service");
 class UpgradeService {
 	/**
 	 * Initialize the upgrade tree for a new user
@@ -22,7 +18,7 @@ class UpgradeService {
 		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 		try {
 			const userUpgrades = [];
-			logger.debug('initializeUserUpgradeTree', userId);
+			logger.debug("initializeUserUpgradeTree", userId);
 			// Get all root upgrade nodes (those without parent requirements)
 			const rootNodes = await UpgradeNodeTemplate.findAll({
 				where: {
@@ -35,14 +31,14 @@ class UpgradeService {
 				},
 				transaction: transaction,
 			});
-			logger.debug('rootNodes', rootNodes);
+			logger.debug("rootNodes", rootNodes);
 			// Create initial user upgrades for root nodes
 			if (rootNodes.length > 0) {
 				for (const node of rootNodes) {
 					const userUpgrade = await UserUpgrade.create(
 						{
 							userId,
-							upgradeNodeTemplateId: node.id,
+							upgradeTemplateSlug: node.slug,
 							level: 0,
 							progress: 0,
 							targetProgress: 100,
@@ -64,13 +60,13 @@ class UpgradeService {
 				}
 			}
 
-			if (shouldCommit && !t.finished) {
-				await t.commit();
+			if (shouldCommit && !transaction.finished) {
+				await transaction.commit();
 			}
 			return userUpgrades;
 		} catch (err) {
-			if (shouldCommit && !t.finished) {
-				await t.rollback();
+			if (shouldCommit && !transaction.finished) {
+				await transaction.rollback();
 			}
 			throw ApiError.Internal(
 				`Failed to initialize user upgrade tree: ${err.message}`
@@ -95,7 +91,7 @@ class UpgradeService {
 			// Create a map of user upgrades for quick lookup
 			const userUpgradeMap = {};
 			userUpgrades.forEach((upgrade) => {
-				userUpgradeMap[upgrade.upgradeNodeTemplateId] = upgrade;
+				userUpgradeMap[upgrade.upgradeTemplateSlug] = upgrade;
 			});
 
 			// Get all active upgrade nodes
@@ -108,7 +104,7 @@ class UpgradeService {
 			const nodesToActivate = [];
 			for (const node of upgradeNodes) {
 				// Skip if user already has this node
-				if (userUpgradeMap[node.id]) {
+				if (userUpgradeMap[node.slug]) {
 					continue;
 				}
 
@@ -126,8 +122,7 @@ class UpgradeService {
 							!parentUpgrade ||
 							!parentUpgrade.completed ||
 							(node.conditions.parentLevel &&
-								parentUpgrade.level <
-									node.conditions.parentLevel)
+								parentUpgrade.level < node.conditions.parentLevel)
 						) {
 							allParentsCompleted = false;
 							break;
@@ -146,7 +141,7 @@ class UpgradeService {
 				const userUpgrade = await UserUpgrade.create(
 					{
 						userId,
-						upgradeNodeTemplateId: node.id,
+						upgradeTemplateSlug: node.slug,
 						level: 0,
 						progress: 0,
 						targetProgress: 100,
@@ -176,6 +171,190 @@ class UpgradeService {
 	}
 
 	/**
+	 * Get all upgrades for a user
+	 * @param {number} userId - User ID
+	 * @returns {Promise<Array>} User upgrades
+	 */
+	async getUserUpgrades(userId) {
+		try {
+			let userUpgrades = await UserUpgrade.findAll({
+				where: { userId },
+				include: [
+					{
+						model: UpgradeNodeTemplate,
+						where: { active: true },
+						attributes: [
+							"id",
+							"slug",
+							"name",
+							"description",
+							"maxLevel",
+							"basePrice",
+							"effectPerLevel",
+							"priceMultiplier",
+							"currency",
+							"category",
+							"icon",
+							"stability",
+							"instability",
+							"modifiers",
+							"active",
+							"conditions",
+							"children",
+							"weight",
+						],
+					},
+				],
+			});
+
+			// Получаем все активные шаблоны улучшений
+			const allTemplates = await UpgradeNodeTemplate.findAll({
+				where: { active: true },
+				attributes: ["slug"],
+			});
+
+			// Создаем Set из существующих slugs пользователя
+			const existingSlugs = new Set(
+				userUpgrades
+					.map((u) => u.upgradeTemplateSlug)
+					.filter((slug) => slug !== null)
+			);
+
+			// Находим шаблоны, которых нет у пользователя
+			const missingSlugs = allTemplates
+				.map((t) => t.slug)
+				.filter((slug) => !existingSlugs.has(slug));
+
+			// Если есть отсутствующие улучшения, создаем их
+			if (missingSlugs.length > 0) {
+				logger.debug("Creating missing upgrades for user", {
+					userId,
+					missingCount: missingSlugs.length,
+					missingSlugs,
+				});
+
+				const transaction = await sequelize.transaction();
+				try {
+					// Создаем записи для отсутствующих улучшений
+					const newUpgrades = missingSlugs.map((slug) => ({
+						userId,
+						upgradeTemplateSlug: slug,
+						level: 0,
+						progress: 0,
+						targetProgress: 100,
+						completed: false,
+						stability: 0,
+						instability: 0,
+					}));
+
+					await UserUpgrade.bulkCreate(newUpgrades, { transaction });
+
+					// Обновляем playerParameters в userState
+					const userState = await UserState.findOne({
+						where: { userId },
+						transaction,
+					});
+
+					if (userState) {
+						const playerParams = {
+							...(userState.playerParameters || {}),
+						};
+
+						// Добавляем новые slugs с level 0
+						for (const slug of missingSlugs) {
+							if (!(slug in playerParams)) {
+								playerParams[slug] = 0;
+							}
+						}
+
+						userState.playerParameters = playerParams;
+						userState.changed("playerParameters", true);
+						await userState.save({ transaction });
+
+						logger.debug("Added new upgrades to playerParameters", {
+							userId,
+							newSlugs: missingSlugs,
+							playerParameters: userState.playerParameters,
+						});
+					}
+
+					await transaction.commit();
+
+					// Перезагружаем улучшения после создания
+					userUpgrades = await UserUpgrade.findAll({
+						where: { userId },
+						include: [
+							{
+								model: UpgradeNodeTemplate,
+								where: { active: true },
+								attributes: [
+									"id",
+									"slug",
+									"name",
+									"description",
+									"maxLevel",
+									"basePrice",
+									"effectPerLevel",
+									"priceMultiplier",
+									"currency",
+									"category",
+									"icon",
+									"stability",
+									"instability",
+									"modifiers",
+									"active",
+									"conditions",
+									"children",
+									"weight",
+								],
+							},
+						],
+					});
+					logger.debug("Upgrades initialized successfully", {
+						userId,
+						count: userUpgrades.length,
+					});
+				} catch (error) {
+					await transaction.rollback();
+					throw error;
+				}
+			}
+
+			// Синхронизируем playerParameters с реальными уровнями улучшений
+			const userState = await UserState.findOne({ where: { userId } });
+			if (userState && userUpgrades.length > 0) {
+				const playerParams = { ...(userState.playerParameters || {}) };
+				let needsUpdate = false;
+
+				for (const upgrade of userUpgrades) {
+					const slug = upgrade.upgradeTemplateSlug;
+					const currentLevel = upgrade.level || 0;
+
+					// Проверяем если level в playerParameters не совпадает с реальным
+					if (playerParams[slug] !== currentLevel) {
+						playerParams[slug] = currentLevel;
+						needsUpdate = true;
+					}
+				}
+
+				if (needsUpdate) {
+					userState.playerParameters = playerParams;
+					userState.changed("playerParameters", true);
+					await userState.save();
+					logger.debug("Synced playerParameters with upgrade levels", {
+						userId,
+						playerParameters: userState.playerParameters,
+					});
+				}
+			}
+
+			return userUpgrades;
+		} catch (err) {
+			throw ApiError.Internal(`Failed to get user upgrades: ${err.message}`);
+		}
+	}
+
+	/**
 	 * Get a specific upgrade for a user
 	 * @param {number} userId - User ID
 	 * @param {string} slug - Upgrade node ID
@@ -184,44 +363,45 @@ class UpgradeService {
 	async getUserUpgrade(userId, slug) {
 		try {
 			const upgradeNode = await UpgradeNodeTemplate.findOne({
-				where: { slug },
+				where: { slug, active: true },
 			});
 			if (!upgradeNode) {
-				throw ApiError.NotFound('Upgrade node not found');
+				throw ApiError.NotFound("Upgrade node not found");
 			}
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					upgradeNodeTemplateId: upgradeNode.id,
+					upgradeTemplateSlug: upgradeNode.slug,
 				},
 				include: [
 					{
 						model: UpgradeNodeTemplate,
+						where: { active: true },
 						attributes: [
-							'id',
-							'slug',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'active',
-							'conditions',
-							'children',
-							'weight',
+							"id",
+							"slug",
+							"name",
+							"description",
+							"maxLevel",
+							"basePrice",
+							"effectPerLevel",
+							"priceMultiplier",
+							"category",
+							"icon",
+							"stability",
+							"instability",
+							"modifiers",
+							"active",
+							"conditions",
+							"children",
+							"weight",
 						],
 					},
 				],
 			});
 
 			if (!userUpgrade) {
-				throw ApiError.NotFound('User upgrade not found');
+				throw ApiError.NotFound("User upgrade not found");
 			}
 
 			return userUpgrade;
@@ -229,9 +409,7 @@ class UpgradeService {
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(
-				`Failed to get user upgrade: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get user upgrade: ${err.message}`);
 		}
 	}
 
@@ -306,21 +484,18 @@ class UpgradeService {
 			// Create a map of user upgrades for quick lookup
 			const userUpgradeMap = {};
 			userUpgrades.forEach((upgrade) => {
-				userUpgradeMap[upgrade.upgradeNodeTemplateId] = upgrade;
+				userUpgradeMap[upgrade.upgradeTemplateSlug] = upgrade;
 			});
 
-			// Find upgrades that are available but not yet created for the user
+			// Filter upgrade nodes based on availability
 			const availableUpgrades = allActiveNodes.filter((node) => {
-				// If user already has this upgrade, it's available
-				if (userUpgradeMap[node.id]) {
+				// If the user already has this upgrade, it's available
+				if (userUpgradeMap[node.slug]) {
 					return true;
 				}
 
 				// Check if the upgrade has any conditions
-				if (
-					node.conditions &&
-					Object.keys(node.conditions).length > 0
-				) {
+				if (node.conditions && Object.keys(node.conditions).length > 0) {
 					// Check if the upgrade requires parent upgrades
 					if (
 						node.conditions.parents &&
@@ -350,25 +525,28 @@ class UpgradeService {
 
 			// Add existing user upgrades
 			userUpgrades.forEach((userUpgrade) => {
-				result.push({
-					...userUpgrade.upgradeNodeTemplate.toJSON(),
-					userProgress: {
-						id: userUpgrade.id,
-						level: userUpgrade.level,
-						progress: userUpgrade.progress,
-						targetProgress: userUpgrade.targetProgress,
-						completed: userUpgrade.completed,
-						stability: userUpgrade.stability,
-						instability: userUpgrade.instability,
-						progressHistory: userUpgrade.progressHistory,
-						lastProgressUpdate: userUpgrade.lastProgressUpdate,
-					},
-				});
+				const template = userUpgrade.UpgradeNodeTemplate || userUpgrade.upgradeNodeTemplate;
+				if (template) {
+					result.push({
+						...template.toJSON(),
+						userProgress: {
+							id: userUpgrade.id,
+							level: userUpgrade.level,
+							progress: userUpgrade.progress,
+							targetProgress: userUpgrade.targetProgress,
+							completed: userUpgrade.completed,
+							stability: userUpgrade.stability,
+							instability: userUpgrade.instability,
+							progressHistory: userUpgrade.progressHistory,
+							lastProgressUpdate: userUpgrade.lastProgressUpdate,
+						},
+					});
+				}
 			});
 
 			// Add available upgrades that don't exist yet
 			availableUpgrades.forEach((node) => {
-				if (!userUpgradeMap[node.id]) {
+				if (!userUpgradeMap[node.slug]) {
 					result.push({
 						...node.toJSON(),
 						userProgress: {
@@ -419,25 +597,20 @@ class UpgradeService {
 		try {
 			// Get the upgrade node
 			const upgradeNode = await UpgradeNodeTemplate.findOne({
-				where: { slug },
+				where: { slug, active: true },
 				transaction: t,
 			});
 
 			if (!upgradeNode) {
 				await t.rollback();
-				throw ApiError.NotFound('Upgrade not found');
-			}
-
-			if (!upgradeNode.active) {
-				await t.rollback();
-				throw ApiError.BadRequest('Upgrade is not active');
+				throw ApiError.NotFound("Upgrade not found or not active");
 			}
 
 			// Check if the user already has this upgrade
 			let userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					upgradeNodeTemplateId: upgradeNode.id,
+					upgradeTemplateSlug: upgradeNode.slug,
 				},
 				transaction: t,
 			});
@@ -450,7 +623,7 @@ class UpgradeService {
 
 			if (!userState) {
 				await t.rollback();
-				throw ApiError.NotFound('User state not found');
+				throw ApiError.NotFound("User state not found");
 			}
 
 			// Calculate the price based on the current level
@@ -459,7 +632,7 @@ class UpgradeService {
 			// Check if the upgrade is already at max level
 			if (currentLevel >= upgradeNode.maxLevel) {
 				await t.rollback();
-				throw ApiError.BadRequest('Upgrade already at max level');
+				throw ApiError.BadRequest("Upgrade already at max level");
 			}
 
 			const price = this.calculateUpgradePrice(
@@ -479,14 +652,13 @@ class UpgradeService {
 
 			// Deduct the resources
 			userState[resourceField] -= price;
-			await userState.save({ transaction: t });
 
 			// Create or update the user upgrade
 			if (!userUpgrade) {
 				userUpgrade = await UserUpgrade.create(
 					{
 						userId,
-						upgradeNodeTemplateId: upgradeNode.id,
+						upgradeTemplateSlug: upgradeNode.slug,
 						level: 1,
 						progress: 0,
 						targetProgress: 100,
@@ -532,6 +704,21 @@ class UpgradeService {
 				await userUpgrade.save({ transaction: t });
 			}
 
+			// Update playerParameters with the new upgrade level
+			// Важно: создаем новый объект для JSONB поля
+			const playerParams = { ...(userState.playerParameters || {}) };
+			playerParams[upgradeNode.slug] = userUpgrade.level;
+			userState.playerParameters = playerParams;
+			userState.changed("playerParameters", true); // Помечаем как измененное
+			await userState.save({ transaction: t });
+
+			logger.debug("Updated playerParameters", {
+				userId,
+				slug: upgradeNode.slug,
+				newLevel: userUpgrade.level,
+				playerParameters: userState.playerParameters,
+			});
+
 			// Unlock child upgrades if this upgrade is completed
 			if (
 				userUpgrade.completed &&
@@ -545,20 +732,24 @@ class UpgradeService {
 
 			await t.commit();
 
-			// Return the updated user upgrade with the upgrade node
+			// Reload userState to get updated playerParameters
+			const updatedUserState = await UserState.findOne({
+				where: { userId },
+			});
+
+			// Return the updated user upgrade with the upgrade node and updated state
 			return {
 				...userUpgrade.toJSON(),
 				upgradeNode: upgradeNode.toJSON(),
 				resourcesSpent: price,
+				playerParameters: updatedUserState.playerParameters,
 			};
 		} catch (err) {
 			await t.rollback();
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(
-				`Failed to purchase upgrade: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to purchase upgrade: ${err.message}`);
 		}
 	}
 
@@ -577,13 +768,13 @@ class UpgradeService {
 				where: { slug },
 			});
 			if (!upgradeNode) {
-				throw ApiError.NotFound('Upgrade node not found');
+				throw ApiError.NotFound("Upgrade node not found");
 			}
 			// Get the user upgrade
 			const userUpgrade = await UserUpgrade.findOne({
 				where: {
 					userId,
-					upgradeNodeTemplateId: upgradeNode.id,
+					upgradeTemplateSlug: upgradeNode.slug,
 				},
 				include: [
 					{
@@ -595,7 +786,7 @@ class UpgradeService {
 
 			if (!userUpgrade) {
 				await t.rollback();
-				throw ApiError.NotFound('User upgrade not found');
+				throw ApiError.NotFound("User upgrade not found");
 			}
 
 			// If the upgrade is already completed, don't update progress
@@ -605,10 +796,7 @@ class UpgradeService {
 			}
 
 			// Update progress
-			userUpgrade.progress = Math.min(
-				progress,
-				userUpgrade.targetProgress
-			);
+			userUpgrade.progress = Math.min(progress, userUpgrade.targetProgress);
 
 			// Check if the upgrade is now completed
 			if (userUpgrade.progress >= userUpgrade.targetProgress) {
@@ -676,7 +864,7 @@ class UpgradeService {
 				include: [
 					{
 						model: UpgradeNode,
-						attributes: ['category', 'resource'],
+						attributes: ["category", "resource"],
 					},
 				],
 			});
@@ -700,8 +888,8 @@ class UpgradeService {
 
 			// Calculate by category and resource
 			userUpgrades.forEach((upgrade) => {
-				const category = upgrade.upgradenode?.category || 'unknown';
-				const resource = upgrade.upgradenode?.resource || 'unknown';
+				const category = upgrade.upgradenode?.category || "unknown";
+				const resource = upgrade.upgradenode?.resource || "unknown";
 
 				// Count by category
 				if (!stats.byCategory[category]) {
@@ -747,16 +935,12 @@ class UpgradeService {
 			// Calculate level completion percentage
 			stats.levelCompletionPercentage =
 				stats.totalMaxLevels > 0
-					? Math.floor(
-							(stats.totalLevels / stats.totalMaxLevels) * 100
-					  )
+					? Math.floor((stats.totalLevels / stats.totalMaxLevels) * 100)
 					: 0;
 
 			return stats;
 		} catch (err) {
-			throw ApiError.Internal(
-				`Failed to get upgrade stats: ${err.message}`
-			);
+			throw ApiError.Internal(`Failed to get upgrade stats: ${err.message}`);
 		}
 	}
 
@@ -789,7 +973,7 @@ class UpgradeService {
 			await t.commit();
 			return {
 				success: true,
-				message: 'All upgrades reset successfully',
+				message: "All upgrades reset successfully",
 			};
 		} catch (err) {
 			await t.rollback();
