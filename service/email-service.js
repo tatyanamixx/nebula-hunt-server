@@ -156,6 +156,9 @@ class EmailService {
 	 */
 	async verifyConnection() {
 		try {
+			if (!this.transporter) {
+				throw new Error('SMTP transporter not initialized');
+			}
 			await this.transporter.verify();
 			logger.info('SMTP connection verified successfully');
 			return true;
@@ -165,6 +168,13 @@ class EmailService {
 			});
 			return false;
 		}
+	}
+
+	/**
+	 * Получить transporter (для тестирования)
+	 */
+	getTransporter() {
+		return this.transporter;
 	}
 }
 

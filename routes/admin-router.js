@@ -196,4 +196,12 @@ router.put(
 	adminController.updateGameConstants
 );
 
+// Test SMTP endpoint (для диагностики)
+router.get(
+	"/test-smtp",
+	adminAuthMiddleware,
+	rateLimitMiddleware(10, 60), // 10 requests per hour
+	adminController.testSMTP
+);
+
 module.exports = router;

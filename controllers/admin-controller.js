@@ -669,6 +669,47 @@ class AdminController {
 			next(e);
 		}
 	}
+
+	/**
+	 * Тестовый endpoint для проверки SMTP
+	 */
+	async testSMTP(req, res, next) {
+		try {
+			const emailService = require("../service/email-service");
+			
+			// Проверяем конфигурацию SMTP
+			const smtpConfig = {
+				SMTP_HOST: process.env.SMTP_HOST ? "set" : "missing",
+				SMTP_PORT: process.env.SMTP_PORT ? "set" : "missing",
+				SMTP_USER: process.env.SMTP_USER ? "set" : "missing",
+				SMTP_PASS: process.env.SMTP_PASS ? (process.env.SMTP_PASS.length > 0 ? "set" : "empty") : "missing",
+				SMTP_SECURE: process.env.SMTP_SECURE,
+				SMTP_FROM: process.env.SMTP_FROM,
+				FRONTEND_URL: process.env.FRONTEND_URL,
+			};
+
+			// Проверяем соединение с SMTP
+			let connectionStatus = "not_configured";
+			const transporter = emailService.getTransporter();
+			if (transporter) {
+				try {
+					await emailService.verifyConnection();
+					connectionStatus = "connected";
+				} catch (error) {
+					connectionStatus = `error: ${error.message}`;
+				}
+			}
+
+			return res.status(200).json({
+				smtpConfig,
+				connectionStatus,
+				transporterInitialized: transporter !== null,
+			});
+		} catch (e) {
+			logger.error("Test SMTP error", { error: e.message });
+			next(e);
+		}
+	}
 }
 
 module.exports = new AdminController();
