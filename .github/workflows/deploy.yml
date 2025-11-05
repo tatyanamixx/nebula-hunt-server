@@ -74,8 +74,9 @@ jobs:
                       docker rm nebulahunt-api || true
 
                       # Create logs directory with proper permissions
+                      # Use docker to create directory with correct ownership (node user UID 1000)
                       mkdir -p /var/www/nebulahunt/nebula-hunt-server/logs
-                      chmod 777 /var/www/nebulahunt/nebula-hunt-server/logs
+                      docker run --rm -v /var/www/nebulahunt/nebula-hunt-server/logs:/logs alpine:latest sh -c "chown -R 1000:1000 /logs && chmod -R 777 /logs" || chmod -R 777 /var/www/nebulahunt/nebula-hunt-server/logs
 
                       # Run new container with environment variables
                       docker run -d \
