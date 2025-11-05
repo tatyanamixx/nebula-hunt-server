@@ -1,0 +1,106 @@
+name: Deploy API Server
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Deploy to server
+              if: github.ref == 'refs/heads/main'
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script: |
+                      cd /var/www/nebulahunt/nebula-hunt-server
+
+                      # Login to GitHub Container Registry
+                      echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GITHUB_ACTOR }} --password-stdin
+
+                      # Pull latest image
+                      docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+                      # Stop and remove old container
+                      docker stop nebulahunt-api || true
+                      docker rm nebulahunt-api || true
+
+                      # Run new container with environment variables
+                      docker run -d \
+                        --name nebulahunt-api \
+                        --restart unless-stopped \
+                        --network host \
+                        -p 3002:3002 \
+                        -e NODE_ENV=production \
+                        -e PORT=3002 \
+                        -e DB_HOST_PROD=${{ secrets.DB_HOST_PROD }} \
+                        -e DB_PORT_PROD=${{ secrets.DB_PORT_PROD }} \
+                        -e DB_NAME_PROD=${{ secrets.DB_NAME_PROD }} \
+                        -e DB_USER_PROD=${{ secrets.DB_USER_PROD }} \
+                        -e DB_PASSWORD_PROD=${{ secrets.DB_PASSWORD_PROD }} \
+                        -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
+                        -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
+                        -e BOT_TOKEN=${{ secrets.BOT_TOKEN }} \
+                        -e JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }} \
+                        -e JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
+                        -e CORS_ORIGIN=${{ secrets.CORS_ORIGIN }} \
+                        -e CLIENT_URL=${{ secrets.CLIENT_URL }} \
+                        -v /var/www/nebulahunt/nebula-hunt-server/logs:/app/logs \
+                        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+                      # Wait for API to be ready
+                      sleep 10
+
+                      # Run migrations
+                      docker exec nebulahunt-api npm run migrate:prod || true
+
+                      # Clean up old images
+                      docker image prune -f

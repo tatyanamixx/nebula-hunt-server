@@ -14,7 +14,7 @@ const helmetMiddleware = helmet({
 			scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'], // Allow CDN for Swagger UI
 			styleSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'], // Allow CDN for Swagger UI
 			imgSrc: ["'self'", 'data:', 'cdn.jsdelivr.net'], // Allow data: for Swagger UI images
-			connectSrc: ["'self'"],
+			connectSrc: ["'self'", 'https://api.nebulahunt.site', 'https://nebulahunt.site'], // Allow API subdomain
 			fontSrc: ["'self'", 'cdn.jsdelivr.net'],
 			objectSrc: ["'none'"],
 			mediaSrc: ["'self'"],
