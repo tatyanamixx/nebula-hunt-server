@@ -1,5 +1,5 @@
-const nodemailer = require('nodemailer');
-const logger = require('../config/logger.config');
+const nodemailer = require("nodemailer");
+const logger = require("./logger-service");
 
 class EmailService {
 	constructor() {
@@ -12,24 +12,28 @@ class EmailService {
 	 */
 	initializeTransporter() {
 		// Для разработки используем Ethereal Email (тестовый сервис)
-		if (process.env.NODE_ENV === 'development') {
+		if (process.env.NODE_ENV === "development") {
 			this.transporter = nodemailer.createTransport({
-				host: 'smtp.ethereal.email',
+				host: "smtp.ethereal.email",
 				port: 587,
 				secure: false,
 				auth: {
-					user: process.env.ETHEREAL_USER || 'test@ethereal.email',
-					pass: process.env.ETHEREAL_PASS || 'test123',
+					user: process.env.ETHEREAL_USER || "test@ethereal.email",
+					pass: process.env.ETHEREAL_PASS || "test123",
 				},
 			});
 		} else {
 			// Для продакшена используем реальный SMTP
 			// Проверяем наличие обязательных переменных
-			if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-				logger.warn('SMTP configuration incomplete. Email sending will fail.', {
-					SMTP_HOST: process.env.SMTP_HOST ? 'set' : 'missing',
-					SMTP_USER: process.env.SMTP_USER ? 'set' : 'missing',
-					SMTP_PASS: process.env.SMTP_PASS ? 'set' : 'missing',
+			if (
+				!process.env.SMTP_HOST ||
+				!process.env.SMTP_USER ||
+				!process.env.SMTP_PASS
+			) {
+				logger.warn("SMTP configuration incomplete. Email sending will fail.", {
+					SMTP_HOST: process.env.SMTP_HOST ? "set" : "missing",
+					SMTP_USER: process.env.SMTP_USER ? "set" : "missing",
+					SMTP_PASS: process.env.SMTP_PASS ? "set" : "missing",
 				});
 				// Создаем "пустой" transporter, который будет падать с понятной ошибкой
 				this.transporter = null;
@@ -39,14 +43,14 @@ class EmailService {
 			const smtpConfig = {
 				host: process.env.SMTP_HOST,
 				port: parseInt(process.env.SMTP_PORT) || 587,
-				secure: process.env.SMTP_SECURE === 'true',
+				secure: process.env.SMTP_SECURE === "true",
 				auth: {
 					user: process.env.SMTP_USER,
 					pass: process.env.SMTP_PASS,
 				},
 			};
 
-			logger.info('Initializing SMTP transporter', {
+			logger.info("Initializing SMTP transporter", {
 				host: smtpConfig.host,
 				port: smtpConfig.port,
 				secure: smtpConfig.secure,
@@ -68,8 +72,10 @@ class EmailService {
 		try {
 			// Проверяем наличие транспорта
 			if (!this.transporter) {
-				const error = new Error('SMTP transporter not initialized. Check SMTP configuration (SMTP_HOST, SMTP_USER, SMTP_PASS)');
-				logger.error('Cannot send email: SMTP not configured', {
+				const error = new Error(
+					"SMTP transporter not initialized. Check SMTP configuration (SMTP_HOST, SMTP_USER, SMTP_PASS)"
+				);
+				logger.error("Cannot send email: SMTP not configured", {
 					email,
 					name,
 					role,
@@ -78,19 +84,28 @@ class EmailService {
 				throw error;
 			}
 
-			const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://admin.nebulahunt.site';
+			const frontendUrl =
+				process.env.FRONTEND_URL ||
+				process.env.CLIENT_URL ||
+				"https://admin.nebulahunt.site";
 			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
 
-			logger.info('Preparing to send admin invite email', {
+			logger.info("Preparing to send admin invite email", {
 				to: email,
-				from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@nebulahunt.com',
-				inviteUrl: inviteUrl.substring(0, 50) + '...',
+				from:
+					process.env.SMTP_FROM ||
+					process.env.SMTP_USER ||
+					"noreply@nebulahunt.com",
+				inviteUrl: inviteUrl.substring(0, 50) + "...",
 			});
 
 			const mailOptions = {
-				from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@nebulahunt.com',
+				from:
+					process.env.SMTP_FROM ||
+					process.env.SMTP_USER ||
+					"noreply@nebulahunt.com",
 				to: email,
-				subject: 'Invitation to join Nebulahunt Admin Panel',
+				subject: "Invitation to join Nebulahunt Admin Panel",
 				html: `
 					<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
 						<h2 style="color: #333;">Welcome to Nebulahunt Admin Panel</h2>
@@ -123,7 +138,7 @@ class EmailService {
 
 			const result = await this.transporter.sendMail(mailOptions);
 
-			logger.info('Admin invite email sent successfully', {
+			logger.info("Admin invite email sent successfully", {
 				email,
 				name,
 				role,
@@ -135,7 +150,7 @@ class EmailService {
 				messageId: result.messageId,
 			};
 		} catch (error) {
-			logger.error('Failed to send admin invite email', {
+			logger.error("Failed to send admin invite email", {
 				error: error.message,
 				errorCode: error.code,
 				email,
@@ -145,21 +160,24 @@ class EmailService {
 			});
 
 			// В режиме разработки показываем ссылку в консоли
-			if (process.env.NODE_ENV === 'development') {
-				const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+			if (process.env.NODE_ENV === "development") {
+				const frontendUrl =
+					process.env.FRONTEND_URL ||
+					process.env.CLIENT_URL ||
+					"http://localhost:3000";
 				const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
-				console.log('\n📧 DEVELOPMENT MODE - Email would be sent:');
+				console.log("\n📧 DEVELOPMENT MODE - Email would be sent:");
 				console.log(`📧 To: ${email}`);
-				console.log(
-					`📧 Subject: Invitation to join Nebulahunt Admin Panel`
-				);
+				console.log(`📧 Subject: Invitation to join Nebulahunt Admin Panel`);
 				console.log(`📧 Invite URL: ${inviteUrl}`);
-				console.log('📧 In production, this would be sent via email\n');
+				console.log("📧 In production, this would be sent via email\n");
 			}
 
 			// Более информативная ошибка
-			if (error.message.includes('SMTP transporter not initialized')) {
-				throw new Error('Email service not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
+			if (error.message.includes("SMTP transporter not initialized")) {
+				throw new Error(
+					"Email service not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables."
+				);
 			}
 
 			throw error;
@@ -172,13 +190,13 @@ class EmailService {
 	async verifyConnection() {
 		try {
 			if (!this.transporter) {
-				throw new Error('SMTP transporter not initialized');
+				throw new Error("SMTP transporter not initialized");
 			}
 			await this.transporter.verify();
-			logger.info('SMTP connection verified successfully');
+			logger.info("SMTP connection verified successfully", {});
 			return true;
 		} catch (error) {
-			logger.error('SMTP connection verification failed', {
+			logger.error("SMTP connection verification failed", {
 				error: error.message,
 			});
 			return false;
