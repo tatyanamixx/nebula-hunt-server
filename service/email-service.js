@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
 const logger = require("./logger-service");
 
 class EmailService {
@@ -43,6 +44,14 @@ class EmailService {
 				return;
 			}
 
+			// Для Yandex используем IPv4 адрес напрямую (избегаем проблем с IPv6)
+			let smtpHost = process.env.SMTP_HOST;
+			if (smtpHost === "smtp.yandex.ru") {
+				// Используем IPv4 адрес напрямую
+				smtpHost = "77.88.21.158";
+				console.log("📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP:", smtpHost);
+			}
+
 			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
 			// Автоматически устанавливаем secure в зависимости от порта
 			// Порт 465 = SSL (secure: true), Порт 587 = STARTTLS (secure: false)
@@ -56,18 +65,31 @@ class EmailService {
 			}
 
 			const smtpConfig = {
-				host: process.env.SMTP_HOST,
+				host: smtpHost,
 				port: smtpPort,
 				secure: smtpSecure,
 				auth: {
 					user: process.env.SMTP_USER,
 					pass: process.env.SMTP_PASS,
 				},
-				// Таймауты для подключения
-				connectionTimeout: 15000, // 15 секунд на подключение
-				socketTimeout: 15000, // 15 секунд на операции
+				// Таймауты для подключения (увеличены для медленных соединений)
+				connectionTimeout: 30000, // 30 секунд на подключение
+				socketTimeout: 30000, // 30 секунд на операции
+				greetingTimeout: 30000, // 30 секунд на приветствие
 				// Для порта 587 (STARTTLS)
 				requireTLS: smtpPort === 587,
+				// TLS опции для более надежного подключения
+				tls: {
+					rejectUnauthorized: false, // Не проверять сертификат (для некоторых провайдеров)
+					minVersion: 'TLSv1.2',
+					// Если используем IP вместо хоста, указываем правильный hostname для TLS
+					servername: process.env.SMTP_HOST === "smtp.yandex.ru" && smtpHost === "77.88.21.158" 
+						? "smtp.yandex.ru" 
+						: undefined,
+				},
+				// Дополнительные опции для подключения
+				pool: false, // Не использовать pool
+				debug: false, // Включить debug для отладки (можно временно включить)
 			};
 
 			console.log("📧 [EMAIL-SERVICE] Initializing SMTP transporter", {
