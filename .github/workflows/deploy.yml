@@ -73,6 +73,10 @@ jobs:
                       docker stop nebulahunt-api || true
                       docker rm nebulahunt-api || true
 
+                      # Create logs directory with proper permissions
+                      mkdir -p /var/www/nebulahunt/nebula-hunt-server/logs
+                      chmod 777 /var/www/nebulahunt/nebula-hunt-server/logs
+
                       # Run new container with environment variables
                       docker run -d \
                         --name nebulahunt-api \
