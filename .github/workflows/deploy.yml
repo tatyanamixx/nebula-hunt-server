@@ -111,7 +111,7 @@ jobs:
                         -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
                         -v /var/www/nebulahunt/nebula-hunt-server/logs:/app/logs \
                         ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-                      
+
                       # Check if container was created
                       if [ $? -ne 0 ]; then
                           echo "❌ Failed to create container"
