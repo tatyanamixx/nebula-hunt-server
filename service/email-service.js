@@ -24,9 +24,21 @@ class EmailService {
 			});
 		} else {
 			// Для продакшена используем реальный SMTP
+			// Проверяем наличие обязательных переменных
+			if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+				logger.warn('SMTP configuration incomplete. Email sending will fail.', {
+					SMTP_HOST: process.env.SMTP_HOST ? 'set' : 'missing',
+					SMTP_USER: process.env.SMTP_USER ? 'set' : 'missing',
+					SMTP_PASS: process.env.SMTP_PASS ? 'set' : 'missing',
+				});
+				// Создаем "пустой" transporter, который будет падать с понятной ошибкой
+				this.transporter = null;
+				return;
+			}
+
 			this.transporter = nodemailer.createTransport({
 				host: process.env.SMTP_HOST,
-				port: process.env.SMTP_PORT || 587,
+				port: parseInt(process.env.SMTP_PORT) || 587,
 				secure: process.env.SMTP_SECURE === 'true',
 				auth: {
 					user: process.env.SMTP_USER,
@@ -45,12 +57,23 @@ class EmailService {
 	 */
 	async sendAdminInvite(email, name, role, token) {
 		try {
-			const inviteUrl = `${
-				process.env.FRONTEND_URL || 'http://localhost:3000'
-			}/admin/register?token=${token}`;
+			// Проверяем наличие транспорта
+			if (!this.transporter) {
+				const error = new Error('SMTP transporter not initialized. Check SMTP configuration (SMTP_HOST, SMTP_USER, SMTP_PASS)');
+				logger.error('Cannot send email: SMTP not configured', {
+					email,
+					name,
+					role,
+					error: error.message,
+				});
+				throw error;
+			}
+
+			const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://admin.nebulahunt.site';
+			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
 
 			const mailOptions = {
-				from: process.env.SMTP_FROM || 'noreply@nebulahunt.com',
+				from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@nebulahunt.com',
 				to: email,
 				subject: 'Invitation to join Nebulahunt Admin Panel',
 				html: `
@@ -99,16 +122,17 @@ class EmailService {
 		} catch (error) {
 			logger.error('Failed to send admin invite email', {
 				error: error.message,
+				errorCode: error.code,
 				email,
 				name,
 				role,
+				stack: error.stack,
 			});
 
 			// В режиме разработки показываем ссылку в консоли
 			if (process.env.NODE_ENV === 'development') {
-				const inviteUrl = `${
-					process.env.FRONTEND_URL || 'http://localhost:3000'
-				}/admin/register?token=${token}`;
+				const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+				const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
 				console.log('\n📧 DEVELOPMENT MODE - Email would be sent:');
 				console.log(`📧 To: ${email}`);
 				console.log(
@@ -116,6 +140,11 @@ class EmailService {
 				);
 				console.log(`📧 Invite URL: ${inviteUrl}`);
 				console.log('📧 In production, this would be sent via email\n');
+			}
+
+			// Более информативная ошибка
+			if (error.message.includes('SMTP transporter not initialized')) {
+				throw new Error('Email service not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
 			}
 
 			throw error;

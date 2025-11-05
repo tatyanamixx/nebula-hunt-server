@@ -102,6 +102,13 @@ jobs:
                         -e SUPERVISOR_EMAIL=${{ secrets.SUPERVISOR_EMAIL }} \
                         -e SUPERVISOR_PASSWORD=${{ secrets.SUPERVISOR_PASSWORD }} \
                         -e ADMIN_INIT_SECRET=${{ secrets.ADMIN_INIT_SECRET }} \
+                        -e SMTP_HOST=${{ secrets.SMTP_HOST }} \
+                        -e SMTP_PORT=${{ secrets.SMTP_PORT }} \
+                        -e SMTP_USER=${{ secrets.SMTP_USER }} \
+                        -e SMTP_PASS=${{ secrets.SMTP_PASS }} \
+                        -e SMTP_SECURE=${{ secrets.SMTP_SECURE }} \
+                        -e SMTP_FROM=${{ secrets.SMTP_FROM }} \
+                        -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
                         -v /var/www/nebulahunt/nebula-hunt-server/logs:/app/logs \
                         ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
