@@ -40,6 +40,7 @@ COPY --from=build /app/migrations ./migrations
 COPY --from=build /app/models ./models
 COPY --from=build /app/routes ./routes
 COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/seeders ./seeders
 COPY --from=build /app/service ./service
 COPY --from=build /app/templates ./templates
 COPY --from=build /app/utils ./utils
