@@ -1148,18 +1148,27 @@ class AdminService {
 
 		// Отправляем email (если настроен)
 		try {
+			console.log("📧 [ADMIN-SERVICE] Attempting to send invite email", { email, name, role });
 			logger.info("Attempting to send invite email", {
 				email,
 				name,
 				role,
 			});
 			await this.sendInviteEmail(email, name, role, token);
+			console.log("✅ [ADMIN-SERVICE] Invite email sent successfully", { email, name, role });
 			logger.info("Invite email sent successfully", {
 				email,
 				name,
 				role,
 			});
 		} catch (error) {
+			console.error("❌ [ADMIN-SERVICE] Failed to send invite email", {
+				error: error.message,
+				errorCode: error.code,
+				email,
+				name,
+				role,
+			});
 			logger.error("Failed to send invite email", {
 				error: error.message,
 				errorCode: error.code,
@@ -1331,9 +1340,18 @@ class AdminService {
 	 */
 	async sendInviteEmail(email, name, role, token) {
 		try {
+			console.log("📧 [ADMIN-SERVICE] Calling email-service.sendAdminInvite", { email, name, role });
 			const emailService = require("./email-service");
 			await emailService.sendAdminInvite(email, name, role, token);
+			console.log("✅ [ADMIN-SERVICE] email-service.sendAdminInvite completed", { email, name, role });
 		} catch (error) {
+			console.error("❌ [ADMIN-SERVICE] email-service.sendAdminInvite failed", {
+				error: error.message,
+				errorCode: error.code,
+				email,
+				name,
+				role,
+			});
 			logger.error("Failed to send invite email", {
 				error: error.message,
 				email,

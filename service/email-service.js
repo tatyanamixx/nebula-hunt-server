@@ -30,11 +30,14 @@ class EmailService {
 				!process.env.SMTP_USER ||
 				!process.env.SMTP_PASS
 			) {
-				logger.warn("SMTP configuration incomplete. Email sending will fail.", {
-					SMTP_HOST: process.env.SMTP_HOST ? "set" : "missing",
-					SMTP_USER: process.env.SMTP_USER ? "set" : "missing",
-					SMTP_PASS: process.env.SMTP_PASS ? "set" : "missing",
-				});
+				logger.warn(
+					"SMTP configuration incomplete. Email sending will fail.",
+					{
+						SMTP_HOST: process.env.SMTP_HOST ? "set" : "missing",
+						SMTP_USER: process.env.SMTP_USER ? "set" : "missing",
+						SMTP_PASS: process.env.SMTP_PASS ? "set" : "missing",
+					}
+				);
 				// Создаем "пустой" transporter, который будет падать с понятной ошибкой
 				this.transporter = null;
 				return;
@@ -50,6 +53,12 @@ class EmailService {
 				},
 			};
 
+			console.log("📧 [EMAIL-SERVICE] Initializing SMTP transporter", {
+				host: smtpConfig.host,
+				port: smtpConfig.port,
+				secure: smtpConfig.secure,
+				user: smtpConfig.auth.user,
+			});
 			logger.info("Initializing SMTP transporter", {
 				host: smtpConfig.host,
 				port: smtpConfig.port,
@@ -58,6 +67,7 @@ class EmailService {
 			});
 
 			this.transporter = nodemailer.createTransport(smtpConfig);
+			console.log("✅ [EMAIL-SERVICE] SMTP transporter initialized");
 		}
 	}
 
@@ -90,6 +100,13 @@ class EmailService {
 				"https://admin.nebulahunt.site";
 			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
 
+			console.log("📧 [EMAIL-SERVICE] Preparing to send admin invite email", {
+				to: email,
+				from:
+					process.env.SMTP_FROM ||
+					process.env.SMTP_USER ||
+					"noreply@nebulahunt.com",
+			});
 			logger.info("Preparing to send admin invite email", {
 				to: email,
 				from:
@@ -136,7 +153,11 @@ class EmailService {
 				`,
 			};
 
+			console.log("📧 [EMAIL-SERVICE] Calling transporter.sendMail...");
 			const result = await this.transporter.sendMail(mailOptions);
+			console.log("✅ [EMAIL-SERVICE] transporter.sendMail completed", {
+				messageId: result.messageId,
+			});
 
 			logger.info("Admin invite email sent successfully", {
 				email,
@@ -150,6 +171,11 @@ class EmailService {
 				messageId: result.messageId,
 			};
 		} catch (error) {
+			console.error("❌ [EMAIL-SERVICE] Failed to send admin invite email", {
+				error: error.message,
+				errorCode: error.code,
+				email,
+			});
 			logger.error("Failed to send admin invite email", {
 				error: error.message,
 				errorCode: error.code,
