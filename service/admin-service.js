@@ -1148,10 +1148,25 @@ class AdminService {
 
 		// Отправляем email (если настроен)
 		try {
+			logger.info("Attempting to send invite email", {
+				email,
+				name,
+				role,
+			});
 			await this.sendInviteEmail(email, name, role, token);
+			logger.info("Invite email sent successfully", {
+				email,
+				name,
+				role,
+			});
 		} catch (error) {
-			logger.warn("Failed to send invite email", {
+			logger.error("Failed to send invite email", {
 				error: error.message,
+				errorCode: error.code,
+				errorStack: error.stack,
+				email,
+				name,
+				role,
 			});
 			// Не прерываем процесс, если email не отправлен
 		}

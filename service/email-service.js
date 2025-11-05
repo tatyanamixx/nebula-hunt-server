@@ -36,7 +36,7 @@ class EmailService {
 				return;
 			}
 
-			this.transporter = nodemailer.createTransport({
+			const smtpConfig = {
 				host: process.env.SMTP_HOST,
 				port: parseInt(process.env.SMTP_PORT) || 587,
 				secure: process.env.SMTP_SECURE === 'true',
@@ -44,7 +44,16 @@ class EmailService {
 					user: process.env.SMTP_USER,
 					pass: process.env.SMTP_PASS,
 				},
+			};
+
+			logger.info('Initializing SMTP transporter', {
+				host: smtpConfig.host,
+				port: smtpConfig.port,
+				secure: smtpConfig.secure,
+				user: smtpConfig.auth.user,
 			});
+
+			this.transporter = nodemailer.createTransport(smtpConfig);
 		}
 	}
 
@@ -71,6 +80,12 @@ class EmailService {
 
 			const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://admin.nebulahunt.site';
 			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
+
+			logger.info('Preparing to send admin invite email', {
+				to: email,
+				from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@nebulahunt.com',
+				inviteUrl: inviteUrl.substring(0, 50) + '...',
+			});
 
 			const mailOptions = {
 				from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@nebulahunt.com',
