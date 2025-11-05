@@ -110,11 +110,14 @@ jobs:
                         -e SMTP_FROM=${{ secrets.SMTP_FROM }} \
                         -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
                         -v /var/www/nebulahunt/nebula-hunt-server/logs:/app/logs \
-                        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || {
+                        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                      
+                      # Check if container was created
+                      if [ $? -ne 0 ]; then
                           echo "❌ Failed to create container"
                           docker logs nebulahunt-api 2>&1 || echo "No logs available"
                           exit 1
-                        }
+                      fi
 
                       # Check if container is running
                       sleep 5
