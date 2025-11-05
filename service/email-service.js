@@ -43,31 +43,47 @@ class EmailService {
 				return;
 			}
 
+			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
+			// Автоматически устанавливаем secure в зависимости от порта
+			// Порт 465 = SSL (secure: true), Порт 587 = STARTTLS (secure: false)
+			let smtpSecure;
+			if (smtpPort === 465) {
+				smtpSecure = true; // SSL для порта 465
+			} else if (smtpPort === 587) {
+				smtpSecure = false; // STARTTLS для порта 587 (игнорируем SMTP_SECURE)
+			} else {
+				smtpSecure = process.env.SMTP_SECURE === "true"; // Для других портов используем SMTP_SECURE
+			}
+
 			const smtpConfig = {
 				host: process.env.SMTP_HOST,
-				port: parseInt(process.env.SMTP_PORT) || 587,
-				secure: process.env.SMTP_SECURE === "true",
+				port: smtpPort,
+				secure: smtpSecure,
 				auth: {
 					user: process.env.SMTP_USER,
 					pass: process.env.SMTP_PASS,
 				},
 				// Таймауты для подключения
-				connectionTimeout: 10000, // 10 секунд на подключение
-				socketTimeout: 10000, // 10 секунд на операции
+				connectionTimeout: 15000, // 15 секунд на подключение
+				socketTimeout: 15000, // 15 секунд на операции
 				// Для порта 587 (STARTTLS)
-				requireTLS: process.env.SMTP_PORT === "587" || (!process.env.SMTP_PORT && !process.env.SMTP_SECURE),
+				requireTLS: smtpPort === 587,
 			};
 
 			console.log("📧 [EMAIL-SERVICE] Initializing SMTP transporter", {
 				host: smtpConfig.host,
 				port: smtpConfig.port,
 				secure: smtpConfig.secure,
+				requireTLS: smtpConfig.requireTLS,
+				connectionTimeout: smtpConfig.connectionTimeout,
+				socketTimeout: smtpConfig.socketTimeout,
 				user: smtpConfig.auth.user,
 			});
 			logger.info("Initializing SMTP transporter", {
 				host: smtpConfig.host,
 				port: smtpConfig.port,
 				secure: smtpConfig.secure,
+				requireTLS: smtpConfig.requireTLS,
 				user: smtpConfig.auth.user,
 			});
 
