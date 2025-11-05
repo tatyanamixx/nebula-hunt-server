@@ -98,6 +98,7 @@ jobs:
                         -e JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
                         -e CORS_ORIGIN=${{ secrets.CORS_ORIGIN }} \
                         -e CLIENT_URL=${{ secrets.CLIENT_URL }} \
+                        -e ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }} \
                         -e SUPERVISOR_EMAIL=${{ secrets.SUPERVISOR_EMAIL }} \
                         -e SUPERVISOR_PASSWORD=${{ secrets.SUPERVISOR_PASSWORD }} \
                         -e ADMIN_INIT_SECRET=${{ secrets.ADMIN_INIT_SECRET }} \
