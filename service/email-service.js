@@ -51,6 +51,11 @@ class EmailService {
 					user: process.env.SMTP_USER,
 					pass: process.env.SMTP_PASS,
 				},
+				// Таймауты для подключения
+				connectionTimeout: 10000, // 10 секунд на подключение
+				socketTimeout: 10000, // 10 секунд на операции
+				// Для порта 587 (STARTTLS)
+				requireTLS: process.env.SMTP_PORT === "587" || (!process.env.SMTP_PORT && !process.env.SMTP_SECURE),
 			};
 
 			console.log("📧 [EMAIL-SERVICE] Initializing SMTP transporter", {
