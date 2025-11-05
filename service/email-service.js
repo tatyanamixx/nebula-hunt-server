@@ -49,7 +49,10 @@ class EmailService {
 			if (smtpHost === "smtp.yandex.ru") {
 				// Используем IPv4 адрес напрямую
 				smtpHost = "77.88.21.158";
-				console.log("📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP:", smtpHost);
+				console.log(
+					"📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP:",
+					smtpHost
+				);
 			}
 
 			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
@@ -81,15 +84,17 @@ class EmailService {
 				// TLS опции для более надежного подключения
 				tls: {
 					rejectUnauthorized: false, // Не проверять сертификат (для некоторых провайдеров)
-					minVersion: 'TLSv1.2',
+					minVersion: "TLSv1.2",
 					// Если используем IP вместо хоста, указываем правильный hostname для TLS
-					servername: process.env.SMTP_HOST === "smtp.yandex.ru" && smtpHost === "77.88.21.158" 
-						? "smtp.yandex.ru" 
-						: undefined,
+					servername:
+						process.env.SMTP_HOST === "smtp.yandex.ru" &&
+						smtpHost === "77.88.21.158"
+							? "smtp.yandex.ru"
+							: undefined,
 				},
 				// Дополнительные опции для подключения
 				pool: false, // Не использовать pool
-				debug: false, // Включить debug для отладки (можно временно включить)
+				debug: true, // Включить debug для отладки SMTP соединения
 			};
 
 			console.log("📧 [EMAIL-SERVICE] Initializing SMTP transporter", {
