@@ -47,6 +47,9 @@ COPY --from=build /app/app.js ./app.js
 COPY --from=build /app/db.js ./db.js
 COPY --from=build /app/index.js ./index.js
 COPY --from=build /app/.sequelizerc ./.sequelizerc
+COPY --from=build /app/clear-database.js ./clear-database.js
+COPY --from=build /app/setup-with-server.js ./setup-with-server.js
+COPY --from=build /app/run-migrations.js ./run-migrations.js
 
 # Create directory for logs
 RUN mkdir -p /app/logs && \
