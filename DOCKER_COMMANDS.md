@@ -48,9 +48,10 @@ docker exec -it nebulahunt-api <команда>
 
 ## Последовательность действий для полной переустановки БД
 
-### 1. Остановить контейнер
+### 1. Запустить контейнер (если не запущен)
 ```bash
-docker stop nebulahunt-api
+docker start nebulahunt-api
+sleep 5
 ```
 
 ### 2. Очистить базу данных
@@ -58,6 +59,7 @@ docker stop nebulahunt-api
 docker exec -it nebulahunt-api npm run clear-db
 ```
 **⚠️ Внимание:** Это удалит ВСЕ данные из базы!
+**Важно:** Контейнер должен быть запущен!
 
 ### 3. Запустить миграции
 ```bash
@@ -68,22 +70,31 @@ docker exec -it nebulahunt-api npm run migrate:prod
 ### 4. Запустить контейнер (для создания system user)
 ```bash
 docker start nebulahunt-api
-# Подожди 10-15 секунд, пока создастся system user
+# Подожди 15 секунд, пока создастся system user
+sleep 15
 ```
 
 ### 5. Остановить контейнер
 ```bash
 docker stop nebulahunt-api
+sleep 2
 ```
 
-### 6. Запустить seeders
+### 6. Запустить контейнер для seeders
+```bash
+docker start nebulahunt-api
+sleep 5
+```
+
+### 7. Запустить seeders
 ```bash
 docker exec -it nebulahunt-api npm run seed
 ```
 
-### 7. Запустить контейнер обратно
+### 8. Контейнер уже запущен
 ```bash
-docker start nebulahunt-api
+# Проверь логи
+docker logs nebulahunt-api --tail 50
 ```
 
 ---

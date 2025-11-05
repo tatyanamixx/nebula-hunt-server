@@ -27,8 +27,9 @@ curl http://127.0.0.1:3002/api/health
 ## Полная переустановка БД (последовательность)
 
 ```bash
-# 1. Остановить
-docker stop nebulahunt-api
+# 1. Запустить контейнер (если не запущен)
+docker start nebulahunt-api
+sleep 5
 
 # 2. Очистить БД
 docker exec -it nebulahunt-api npm run clear-db
@@ -42,15 +43,20 @@ sleep 15
 
 # 5. Остановить
 docker stop nebulahunt-api
+sleep 2
 
-# 6. Seeders
+# 6. Запустить для seeders
+docker start nebulahunt-api
+sleep 5
+
+# 7. Seeders
 docker exec -it nebulahunt-api npm run seed
 
-# 7. Запустить обратно
-docker start nebulahunt-api
+# 8. Контейнер уже запущен, можно проверять
 ```
 
 **Или используй скрипт:**
+
 ```bash
 chmod +x reset-db.sh
 ./reset-db.sh
@@ -60,8 +66,7 @@ chmod +x reset-db.sh
 
 ## Важно
 
-- ❌ НЕ используй `npm run dev` в продакшене
-- ✅ Используй `migrate:prod` (не просто `migrate`)
-- ✅ System user создается автоматически при первом запуске
-- ✅ Все переменные окружения уже установлены в контейнере
-
+-   ❌ НЕ используй `npm run dev` в продакшене
+-   ✅ Используй `migrate:prod` (не просто `migrate`)
+-   ✅ System user создается автоматически при первом запуске
+-   ✅ Все переменные окружения уже установлены в контейнере
