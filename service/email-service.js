@@ -326,9 +326,13 @@ class EmailService {
 					to: email,
 					serviceId: this.emailjsConfig.serviceId,
 					templateId: this.emailjsConfig.templateId,
-					publicKeyPrefix: this.emailjsConfig.publicKey
+					usingPrivateKey: this.emailjsConfig.usingPrivateKey,
+					keyPrefix: this.emailjsConfig.publicKey
 						? this.emailjsConfig.publicKey.substring(0, 8) + "..."
 						: "missing",
+					keyType: this.emailjsConfig.usingPrivateKey
+						? "PRIVATE_KEY"
+						: "PUBLIC_KEY",
 				}
 			);
 
@@ -414,23 +418,44 @@ class EmailService {
 			});
 
 			// Более информативная ошибка для пользователя
-			if (error.response?.status === 403) {
+			if (error.response?.status === 400 || error.response?.status === 403) {
 				const responseData = error.response?.data;
-				let errorMessage =
-					"EmailJS API returned 403 Forbidden. Possible causes:\n";
-				errorMessage +=
-					"1. Invalid Public Key (EMAILJS_PUBLIC_KEY)\n";
-				errorMessage +=
-					"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
-				errorMessage +=
-					"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
-				errorMessage +=
-					"4. API rate limit exceeded\n";
-				errorMessage +=
-					"5. Security settings in EmailJS account (blockHeadless, blockList)\n";
-				if (responseData) {
-					errorMessage += `\nEmailJS response: ${JSON.stringify(responseData)}`;
+				let errorMessage = `EmailJS API returned ${error.response?.status} ${error.response?.statusText}. Possible causes:\n`;
+				
+				if (error.response?.status === 400) {
+					errorMessage +=
+						"1. ⚠️ Invalid Key - Use EMAILJS_PRIVATE_KEY for server-side requests (not EMAILJS_PUBLIC_KEY)\n";
+					errorMessage +=
+						"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
+					errorMessage +=
+						"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
+					errorMessage +=
+						"4. Key not found in EmailJS Dashboard\n";
+					errorMessage +=
+						"\n💡 Solution: Get Private Key from EmailJS Dashboard → Account → Private Keys\n";
+				} else if (error.response?.status === 403) {
+					errorMessage +=
+						"1. Invalid Private Key (EMAILJS_PRIVATE_KEY)\n";
+					errorMessage +=
+						"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
+					errorMessage +=
+						"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
+					errorMessage +=
+						"4. API rate limit exceeded\n";
+					errorMessage +=
+						"5. Security settings in EmailJS account (blockHeadless, blockList)\n";
 				}
+				
+				if (responseData) {
+					const responseText =
+						typeof responseData === "string"
+							? responseData
+							: JSON.stringify(responseData);
+					errorMessage += `\nEmailJS response: ${responseText}`;
+				}
+				
+				errorMessage += `\n\nCurrent config: usingPrivateKey=${this.emailjsConfig.usingPrivateKey}, serviceId=${this.emailjsConfig.serviceId}, templateId=${this.emailjsConfig.templateId}`;
+				
 				throw new Error(errorMessage);
 			}
 
