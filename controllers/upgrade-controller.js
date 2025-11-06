@@ -41,9 +41,20 @@ class UpgradeController {
 	async getAvailableUpgrades(req, res, next) {
 		try {
 			const userId = req.user.id;
+			console.log("📤 [UPGRADE-CONTROLLER] getAvailableUpgrades called for userId:", userId);
 			const upgrades = await upgradeService.getAvailableUpgrades(userId);
+			console.log("📥 [UPGRADE-CONTROLLER] getAvailableUpgrades result:", {
+				count: Array.isArray(upgrades) ? upgrades.length : "not an array",
+				isArray: Array.isArray(upgrades),
+				firstItem: Array.isArray(upgrades) && upgrades.length > 0 ? {
+					id: upgrades[0].id,
+					upgradeTemplateSlug: upgrades[0].upgradeTemplateSlug,
+					hasUpgradeNodeTemplate: !!(upgrades[0].UpgradeNodeTemplate || upgrades[0].upgradenodetemplate),
+				} : null,
+			});
 			return res.json(upgrades);
 		} catch (e) {
+			console.error("❌ [UPGRADE-CONTROLLER] getAvailableUpgrades error:", e.message);
 			next(e);
 		}
 	}

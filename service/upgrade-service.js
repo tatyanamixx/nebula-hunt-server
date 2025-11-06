@@ -481,16 +481,23 @@ class UpgradeService {
 				],
 				transaction,
 			});
-			
+
 			logger.debug("getAvailableUpgrades: userUpgrades with include", {
 				userId,
 				count: userUpgrades.length,
-				firstUpgrade: userUpgrades[0] ? {
-					id: userUpgrades[0].id,
-					upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
-					hasTemplate: !!(userUpgrades[0].UpgradeNodeTemplate || userUpgrades[0].upgradeNodeTemplate),
-					templateSlug: userUpgrades[0].UpgradeNodeTemplate?.slug || userUpgrades[0].upgradeNodeTemplate?.slug,
-				} : null,
+				firstUpgrade: userUpgrades[0]
+					? {
+							id: userUpgrades[0].id,
+							upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
+							hasTemplate: !!(
+								userUpgrades[0].UpgradeNodeTemplate ||
+								userUpgrades[0].upgradeNodeTemplate
+							),
+							templateSlug:
+								userUpgrades[0].UpgradeNodeTemplate?.slug ||
+								userUpgrades[0].upgradeNodeTemplate?.slug,
+					  }
+					: null,
 			});
 
 			// Get all active upgrade nodes to check for available upgrades
@@ -498,7 +505,7 @@ class UpgradeService {
 				where: { active: true },
 				transaction,
 			});
-			
+
 			logger.debug("getAvailableUpgrades: active nodes count", {
 				userId,
 				count: allActiveNodes.length,
@@ -510,14 +517,20 @@ class UpgradeService {
 				upgradesWithTemplates: userUpgrades.filter(
 					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
 				).length,
-				upgradeTemplateSlugs: userUpgrades.map(u => u.upgradeTemplateSlug),
-				firstUpgradeDetails: userUpgrades[0] ? {
-					id: userUpgrades[0].id,
-					upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
-					hasUpgradeNodeTemplate: !!userUpgrades[0].UpgradeNodeTemplate,
-					hasUpgradeNodeTemplateLower: !!userUpgrades[0].upgradeNodeTemplate,
-					templateSlug: userUpgrades[0].UpgradeNodeTemplate?.slug || userUpgrades[0].upgradeNodeTemplate?.slug,
-				} : null,
+				upgradeTemplateSlugs: userUpgrades.map((u) => u.upgradeTemplateSlug),
+				firstUpgradeDetails: userUpgrades[0]
+					? {
+							id: userUpgrades[0].id,
+							upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
+							hasUpgradeNodeTemplate:
+								!!userUpgrades[0].UpgradeNodeTemplate,
+							hasUpgradeNodeTemplateLower:
+								!!userUpgrades[0].upgradeNodeTemplate,
+							templateSlug:
+								userUpgrades[0].UpgradeNodeTemplate?.slug ||
+								userUpgrades[0].upgradeNodeTemplate?.slug,
+					  }
+					: null,
 			});
 
 			// Create a map of user upgrades for quick lookup
@@ -567,18 +580,22 @@ class UpgradeService {
 				const template =
 					userUpgrade.UpgradeNodeTemplate ||
 					userUpgrade.upgradeNodeTemplate;
-				
-				logger.debug(`getAvailableUpgrades: processing userUpgrade ${index}`, {
-					userId,
-					upgradeId: userUpgrade.id,
-					upgradeTemplateSlug: userUpgrade.upgradeTemplateSlug,
-					hasUpgradeNodeTemplate: !!userUpgrade.UpgradeNodeTemplate,
-					hasUpgradeNodeTemplateLower: !!userUpgrade.upgradeNodeTemplate,
-					hasTemplate: !!template,
-					templateSlug: template?.slug || template?.dataValues?.slug,
-					allKeys: Object.keys(userUpgrade),
-				});
-				
+
+				logger.debug(
+					`getAvailableUpgrades: processing userUpgrade ${index}`,
+					{
+						userId,
+						upgradeId: userUpgrade.id,
+						upgradeTemplateSlug: userUpgrade.upgradeTemplateSlug,
+						hasUpgradeNodeTemplate: !!userUpgrade.UpgradeNodeTemplate,
+						hasUpgradeNodeTemplateLower:
+							!!userUpgrade.upgradeNodeTemplate,
+						hasTemplate: !!template,
+						templateSlug: template?.slug || template?.dataValues?.slug,
+						allKeys: Object.keys(userUpgrade),
+					}
+				);
+
 				if (template) {
 					// Return structure expected by client: { UpgradeNodeTemplate: {...}, level: ..., ... }
 					result.push({
@@ -595,19 +612,27 @@ class UpgradeService {
 						UpgradeNodeTemplate: template.toJSON(),
 						upgradenodetemplate: template.toJSON(), // Also include lowercase for compatibility
 					});
-					logger.debug(`getAvailableUpgrades: added upgrade ${index} to result`, {
-						userId,
-						upgradeId: userUpgrade.id,
-						templateSlug: template.slug || template.dataValues?.slug,
-					});
+					logger.debug(
+						`getAvailableUpgrades: added upgrade ${index} to result`,
+						{
+							userId,
+							upgradeId: userUpgrade.id,
+							templateSlug: template.slug || template.dataValues?.slug,
+						}
+					);
 				} else {
-					logger.warn(`getAvailableUpgrades: template not found for upgrade ${index}`, {
-						userId,
-						upgradeId: userUpgrade.id,
-						upgradeTemplateSlug: userUpgrade.upgradeTemplateSlug,
-						hasUpgradeNodeTemplate: !!userUpgrade.UpgradeNodeTemplate,
-						hasUpgradeNodeTemplateLower: !!userUpgrade.upgradeNodeTemplate,
-					});
+					logger.warn(
+						`getAvailableUpgrades: template not found for upgrade ${index}`,
+						{
+							userId,
+							upgradeId: userUpgrade.id,
+							upgradeTemplateSlug: userUpgrade.upgradeTemplateSlug,
+							hasUpgradeNodeTemplate:
+								!!userUpgrade.UpgradeNodeTemplate,
+							hasUpgradeNodeTemplateLower:
+								!!userUpgrade.upgradeNodeTemplate,
+						}
+					);
 				}
 			});
 
@@ -638,13 +663,20 @@ class UpgradeService {
 				totalUpgrades: result.length,
 				existingUpgrades: userUpgrades.length,
 				availableUpgrades: availableUpgrades.length,
-				resultFirstItem: result[0] ? {
-					id: result[0].id,
-					upgradeTemplateSlug: result[0].upgradeTemplateSlug,
-					hasUpgradeNodeTemplate: !!(result[0].UpgradeNodeTemplate || result[0].upgradenodetemplate),
-					templateSlug: result[0].UpgradeNodeTemplate?.slug || result[0].upgradenodetemplate?.slug,
-					keys: Object.keys(result[0]),
-				} : null,
+				resultFirstItem: result[0]
+					? {
+							id: result[0].id,
+							upgradeTemplateSlug: result[0].upgradeTemplateSlug,
+							hasUpgradeNodeTemplate: !!(
+								result[0].UpgradeNodeTemplate ||
+								result[0].upgradenodetemplate
+							),
+							templateSlug:
+								result[0].UpgradeNodeTemplate?.slug ||
+								result[0].upgradenodetemplate?.slug,
+							keys: Object.keys(result[0]),
+					  }
+					: null,
 			});
 
 			return result;
