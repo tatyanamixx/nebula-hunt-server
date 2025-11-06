@@ -527,19 +527,20 @@ class UpgradeService {
 			userUpgrades.forEach((userUpgrade) => {
 				const template = userUpgrade.UpgradeNodeTemplate || userUpgrade.upgradeNodeTemplate;
 				if (template) {
+					// Return structure expected by client: { UpgradeNodeTemplate: {...}, level: ..., ... }
 					result.push({
-						...template.toJSON(),
-						userProgress: {
-							id: userUpgrade.id,
-							level: userUpgrade.level,
-							progress: userUpgrade.progress,
-							targetProgress: userUpgrade.targetProgress,
-							completed: userUpgrade.completed,
-							stability: userUpgrade.stability,
-							instability: userUpgrade.instability,
-							progressHistory: userUpgrade.progressHistory,
-							lastProgressUpdate: userUpgrade.lastProgressUpdate,
-						},
+						id: userUpgrade.id,
+						level: userUpgrade.level,
+						progress: userUpgrade.progress,
+						targetProgress: userUpgrade.targetProgress,
+						completed: userUpgrade.completed,
+						stability: userUpgrade.stability,
+						instability: userUpgrade.instability,
+						progressHistory: userUpgrade.progressHistory,
+						lastProgressUpdate: userUpgrade.lastProgressUpdate,
+						upgradeTemplateSlug: userUpgrade.upgradeTemplateSlug,
+						UpgradeNodeTemplate: template.toJSON(),
+						upgradenodetemplate: template.toJSON(), // Also include lowercase for compatibility
 					});
 				}
 			});
@@ -547,19 +548,20 @@ class UpgradeService {
 			// Add available upgrades that don't exist yet
 			availableUpgrades.forEach((node) => {
 				if (!userUpgradeMap[node.slug]) {
+					// Return structure expected by client for new upgrades
 					result.push({
-						...node.toJSON(),
-						userProgress: {
-							id: null,
-							level: 0,
-							progress: 0,
-							targetProgress: 100,
-							completed: false,
-							stability: node.stability || 0,
-							instability: node.instability || 0,
-							progressHistory: [],
-							lastProgressUpdate: null,
-						},
+						id: null,
+						level: 0,
+						progress: 0,
+						targetProgress: 100,
+						completed: false,
+						stability: node.stability || 0,
+						instability: node.instability || 0,
+						progressHistory: [],
+						lastProgressUpdate: null,
+						upgradeTemplateSlug: node.slug,
+						UpgradeNodeTemplate: node.toJSON(),
+						upgradenodetemplate: node.toJSON(), // Also include lowercase for compatibility
 					});
 				}
 			});
