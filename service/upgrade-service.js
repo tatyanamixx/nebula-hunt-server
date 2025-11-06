@@ -422,7 +422,7 @@ class UpgradeService {
 	async getAvailableUpgrades(userId) {
 		const transaction = await sequelize.transaction();
 		try {
-			logger.debug('getAvailableUpgrades: starting for user', { userId });
+			logger.debug("getAvailableUpgrades: starting for user", { userId });
 
 			// Check if user has any upgrades
 			const existingUpgrades = await UserUpgrade.findAll({
@@ -433,14 +433,14 @@ class UpgradeService {
 			// If user has no upgrades, initialize the upgrade tree
 			if (existingUpgrades.length === 0) {
 				logger.debug(
-					'getAvailableUpgrades: no existing upgrades, initializing tree',
+					"getAvailableUpgrades: no existing upgrades, initializing tree",
 					{ userId }
 				);
 				await this.initializeUserUpgradeTree(userId, transaction);
 			}
 
 			// Activate any new upgrade nodes that should be available
-			logger.debug('getAvailableUpgrades: activating new nodes', {
+			logger.debug("getAvailableUpgrades: activating new nodes", {
 				userId,
 			});
 			await this.activateUserUpgradeNodes(userId, transaction);
@@ -452,23 +452,23 @@ class UpgradeService {
 					{
 						model: UpgradeNodeTemplate,
 						attributes: [
-							'id',
-							'slug',
-							'name',
-							'description',
-							'maxLevel',
-							'basePrice',
-							'effectPerLevel',
-							'priceMultiplier',
-							'category',
-							'icon',
-							'stability',
-							'instability',
-							'modifiers',
-							'active',
-							'conditions',
-							'children',
-							'weight',
+							"id",
+							"slug",
+							"name",
+							"description",
+							"maxLevel",
+							"basePrice",
+							"effectPerLevel",
+							"priceMultiplier",
+							"category",
+							"icon",
+							"stability",
+							"instability",
+							"modifiers",
+							"active",
+							"conditions",
+							"children",
+							"weight",
 						],
 					},
 				],
@@ -525,7 +525,9 @@ class UpgradeService {
 
 			// Add existing user upgrades
 			userUpgrades.forEach((userUpgrade) => {
-				const template = userUpgrade.UpgradeNodeTemplate || userUpgrade.upgradeNodeTemplate;
+				const template =
+					userUpgrade.UpgradeNodeTemplate ||
+					userUpgrade.upgradeNodeTemplate;
 				if (template) {
 					// Return structure expected by client: { UpgradeNodeTemplate: {...}, level: ..., ... }
 					result.push({
@@ -567,7 +569,7 @@ class UpgradeService {
 			});
 
 			await transaction.commit();
-			logger.debug('getAvailableUpgrades: completed successfully', {
+			logger.debug("getAvailableUpgrades: completed successfully", {
 				userId,
 				totalUpgrades: result.length,
 				existingUpgrades: userUpgrades.length,
@@ -577,7 +579,7 @@ class UpgradeService {
 			return result;
 		} catch (err) {
 			await transaction.rollback();
-			logger.error('getAvailableUpgrades: failed', {
+			logger.error("getAvailableUpgrades: failed", {
 				userId,
 				error: err.message,
 			});
