@@ -15,27 +15,44 @@ class EmailService {
 	 */
 	initializeTransporter() {
 		// Проверяем, используется ли EmailJS (приоритет над SMTP)
-		// Для серверных запросов EmailJS может требовать Private Key вместо Public Key
-		const emailjsKey =
-			process.env.EMAILJS_PRIVATE_KEY || process.env.EMAILJS_PUBLIC_KEY;
-		if (emailjsKey && process.env.EMAILJS_SERVICE_ID) {
+		// Для серверных запросов EmailJS требует ОБА ключа:
+		// - Public Key в user_id (идентификация аккаунта)
+		// - Private Key в accessToken (аутентификация)
+		const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
+		const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
+		
+		if (emailjsPublicKey && emailjsPrivateKey && process.env.EMAILJS_SERVICE_ID) {
+			// Оба ключа требуются для серверных запросов
 			this.emailjsConfig = {
-				publicKey: emailjsKey, // Может быть Private Key или Public Key
+				publicKey: emailjsPublicKey, // Public Key для user_id
+				privateKey: emailjsPrivateKey, // Private Key для accessToken
 				serviceId: process.env.EMAILJS_SERVICE_ID,
 				templateId: process.env.EMAILJS_TEMPLATE_ID || "template_default",
-				usingPrivateKey: !!process.env.EMAILJS_PRIVATE_KEY,
 			};
 			console.log("📧 [EMAIL-SERVICE] Using EmailJS for email sending", {
 				serviceId: this.emailjsConfig.serviceId,
 				templateId: this.emailjsConfig.templateId,
-				usingPrivateKey: this.emailjsConfig.usingPrivateKey,
+				hasPublicKey: !!this.emailjsConfig.publicKey,
+				hasPrivateKey: !!this.emailjsConfig.privateKey,
 			});
 			logger.info("EmailJS configured", {
 				serviceId: this.emailjsConfig.serviceId,
 				hasTemplateId: !!this.emailjsConfig.templateId,
-				usingPrivateKey: this.emailjsConfig.usingPrivateKey,
+				hasPublicKey: !!this.emailjsConfig.publicKey,
+				hasPrivateKey: !!this.emailjsConfig.privateKey,
 			});
 			return; // EmailJS не требует transporter
+		} else if (emailjsPublicKey && process.env.EMAILJS_SERVICE_ID) {
+			// Только Public Key (для клиентских запросов, не рекомендуется для сервера)
+			this.emailjsConfig = {
+				publicKey: emailjsPublicKey,
+				privateKey: null,
+				serviceId: process.env.EMAILJS_SERVICE_ID,
+				templateId: process.env.EMAILJS_TEMPLATE_ID || "template_default",
+			};
+			console.log("⚠️ [EMAIL-SERVICE] Using EmailJS with Public Key only (not recommended for server-side)");
+			logger.warn("EmailJS configured with Public Key only (not recommended for server-side)");
+			return;
 		}
 
 		// Для разработки используем Ethereal Email (тестовый сервис)
@@ -326,13 +343,14 @@ class EmailService {
 					to: email,
 					serviceId: this.emailjsConfig.serviceId,
 					templateId: this.emailjsConfig.templateId,
-					usingPrivateKey: this.emailjsConfig.usingPrivateKey,
-					keyPrefix: this.emailjsConfig.publicKey
+					hasPublicKey: !!this.emailjsConfig.publicKey,
+					hasPrivateKey: !!this.emailjsConfig.privateKey,
+					publicKeyPrefix: this.emailjsConfig.publicKey
 						? this.emailjsConfig.publicKey.substring(0, 8) + "..."
 						: "missing",
-					keyType: this.emailjsConfig.usingPrivateKey
-						? "PRIVATE_KEY"
-						: "PUBLIC_KEY",
+					privateKeyPrefix: this.emailjsConfig.privateKey
+						? this.emailjsConfig.privateKey.substring(0, 8) + "..."
+						: "missing",
 				}
 			);
 
@@ -340,10 +358,13 @@ class EmailService {
 			const emailjsUrl = `https://api.emailjs.com/api/v1.0/email/send`;
 
 			// Данные для отправки через EmailJS
+			// EmailJS API требует ОБА ключа для серверных запросов:
+			// - user_id: Public Key (идентификация аккаунта)
+			// - accessToken: Private Key (аутентификация)
 			const emailjsData = {
 				service_id: this.emailjsConfig.serviceId,
 				template_id: this.emailjsConfig.templateId,
-				user_id: this.emailjsConfig.publicKey,
+				user_id: this.emailjsConfig.publicKey, // Public Key для идентификации
 				template_params: {
 					to_email: email,
 					to_name: name,
@@ -353,12 +374,22 @@ class EmailService {
 				},
 			};
 
+			// Добавляем Private Key в accessToken (если есть)
+			if (this.emailjsConfig.privateKey) {
+				emailjsData.accessToken = this.emailjsConfig.privateKey;
+			}
+
 			console.log("📧 [EMAIL-SERVICE] Calling EmailJS API...", {
 				url: emailjsUrl,
 				service_id: emailjsData.service_id,
 				template_id: emailjsData.template_id,
+				has_user_id: !!emailjsData.user_id,
+				has_accessToken: !!emailjsData.accessToken,
 				user_id_prefix: emailjsData.user_id
 					? emailjsData.user_id.substring(0, 8) + "..."
+					: "missing",
+				accessToken_prefix: emailjsData.accessToken
+					? emailjsData.accessToken.substring(0, 8) + "..."
 					: "missing",
 				template_params_keys: Object.keys(emailjsData.template_params),
 			});
@@ -421,31 +452,24 @@ class EmailService {
 			if (error.response?.status === 400 || error.response?.status === 403) {
 				const responseData = error.response?.data;
 				let errorMessage = `EmailJS API returned ${error.response?.status} ${error.response?.statusText}. Possible causes:\n`;
-				
+
 				if (error.response?.status === 400) {
 					errorMessage +=
 						"1. ⚠️ Invalid Key - Use EMAILJS_PRIVATE_KEY for server-side requests (not EMAILJS_PUBLIC_KEY)\n";
-					errorMessage +=
-						"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
-					errorMessage +=
-						"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
-					errorMessage +=
-						"4. Key not found in EmailJS Dashboard\n";
+					errorMessage += "2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
+					errorMessage += "3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
+					errorMessage += "4. Key not found in EmailJS Dashboard\n";
 					errorMessage +=
 						"\n💡 Solution: Get Private Key from EmailJS Dashboard → Account → Private Keys\n";
 				} else if (error.response?.status === 403) {
-					errorMessage +=
-						"1. Invalid Private Key (EMAILJS_PRIVATE_KEY)\n";
-					errorMessage +=
-						"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
-					errorMessage +=
-						"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
-					errorMessage +=
-						"4. API rate limit exceeded\n";
+					errorMessage += "1. Invalid Private Key (EMAILJS_PRIVATE_KEY)\n";
+					errorMessage += "2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
+					errorMessage += "3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
+					errorMessage += "4. API rate limit exceeded\n";
 					errorMessage +=
 						"5. Security settings in EmailJS account (blockHeadless, blockList)\n";
 				}
-				
+
 				if (responseData) {
 					const responseText =
 						typeof responseData === "string"
@@ -453,9 +477,9 @@ class EmailService {
 							: JSON.stringify(responseData);
 					errorMessage += `\nEmailJS response: ${responseText}`;
 				}
-				
-				errorMessage += `\n\nCurrent config: usingPrivateKey=${this.emailjsConfig.usingPrivateKey}, serviceId=${this.emailjsConfig.serviceId}, templateId=${this.emailjsConfig.templateId}`;
-				
+
+				errorMessage += `\n\nCurrent config: hasPublicKey=${!!this.emailjsConfig.publicKey}, hasPrivateKey=${!!this.emailjsConfig.privateKey}, serviceId=${this.emailjsConfig.serviceId}, templateId=${this.emailjsConfig.templateId}`;
+
 				throw new Error(errorMessage);
 			}
 
