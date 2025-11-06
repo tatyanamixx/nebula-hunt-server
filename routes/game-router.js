@@ -86,4 +86,17 @@ router.post(
 	gameController.completePayment
 );
 
+/**
+ * @route POST /api/game/send-collection-notification
+ * @desc Send collection notification to user via Telegram bot
+ * @access Private
+ */
+router.post(
+	"/send-collection-notification",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(30, 60), // 30 requests per hour
+	authMiddleware,
+	gameController.sendCollectionNotification
+);
+
 module.exports = router;

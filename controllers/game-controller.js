@@ -6,6 +6,7 @@ const gameService = require("../service/game-service");
 const ApiError = require("../exceptions/api-error");
 const { ERROR_CODES } = require("../config/error-codes");
 const logger = require("../service/logger-service");
+const axios = require("axios");
 
 class GameController {
 	/**
@@ -463,6 +464,113 @@ class GameController {
 				payment: req.body?.payment,
 				payload: req.body?.payload,
 				error: error.message,
+			});
+			next(error);
+		}
+	}
+
+	/**
+	 * Send collection notification to user via Telegram bot
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async sendCollectionNotification(req, res, next) {
+		try {
+			const { userId, stardustAmount, darkMatterAmount, language } = req.body;
+
+			// Validate required fields
+			if (!userId) {
+				throw ApiError.BadRequest(
+					"User ID is required",
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			// Determine message language (default: English)
+			const userLanguage = language || "en";
+
+			// Build message text based on language and resource amounts
+			let messageText = "";
+			let buttonText = "";
+
+			if (userLanguage === "ru") {
+				// Russian version
+				messageText = "🌟 Ваше хранилище ресурсов заполнено и готово к сбору!";
+
+				if (stardustAmount && stardustAmount > 0) {
+					messageText += `\n\n✨ Звездная пыль: ${stardustAmount.toLocaleString("ru-RU")}`;
+				}
+
+				if (darkMatterAmount && darkMatterAmount > 0) {
+					messageText += `\n\n🌑 Темная материя: ${darkMatterAmount.toLocaleString("ru-RU")}`;
+				}
+
+				messageText += "\n\nЗайдите в игру, чтобы собрать ваши ресурсы!";
+				buttonText = "🪐 Открыть игру";
+			} else {
+				// English version
+				messageText = "🌟 Your resource storage is full and ready to collect!";
+
+				if (stardustAmount && stardustAmount > 0) {
+					messageText += `\n\n✨ Stardust: ${stardustAmount.toLocaleString("en-US")}`;
+				}
+
+				if (darkMatterAmount && darkMatterAmount > 0) {
+					messageText += `\n\n🌑 Dark Matter: ${darkMatterAmount.toLocaleString("en-US")}`;
+				}
+
+				messageText += "\n\nOpen the game to collect your resources!";
+				buttonText = "🪐 Open Game";
+			}
+
+			// Get bot token and bot username from environment
+			const botToken = process.env.BOT_TOKEN;
+			if (!botToken) {
+				throw ApiError.InternalServerError(
+					"Bot token not configured",
+					ERROR_CODES.SYSTEM.CONFIGURATION_ERROR
+				);
+			}
+
+			// Get bot username from environment or use default
+			const botUsername = process.env.BOT_USERNAME || "nebulahunt_bot";
+			const myAppName = process.env.MINI_APP_NAME || "nebulahunt";
+			const webAppUrl = `https://t.me/${botUsername}/${myAppName}`;
+
+			// Send message via Telegram Bot API
+			const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+			const response = await axios.post(telegramApiUrl, {
+				chat_id: userId,
+				text: messageText,
+				parse_mode: "HTML",
+				reply_markup: {
+					inline_keyboard: [
+						[
+							{
+								text: buttonText,
+								url: webAppUrl,
+							},
+						],
+					],
+				},
+			});
+
+			logger.info("Collection notification sent successfully", {
+				userId,
+				language: userLanguage,
+				messageId: response.data?.result?.message_id,
+			});
+
+			res.status(200).json({
+				success: true,
+				message: "Notification sent successfully",
+			});
+		} catch (error) {
+			logger.error("Failed to send collection notification", {
+				userId: req.body?.userId,
+				error: error.message,
+				response: error.response?.data,
 			});
 			next(error);
 		}
