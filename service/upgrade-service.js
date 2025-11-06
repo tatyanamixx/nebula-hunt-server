@@ -450,9 +450,7 @@ class UpgradeService {
 			});
 			await this.activateUserUpgradeNodes(userId, transaction);
 
-			// Get all user upgrades with template data
-			// Note: Sequelize will use the belongsTo relationship defined in models.js
-			// which uses foreignKey: "upgradeTemplateSlug" and targetKey: "slug"
+			// Get all user upgrades with template data using include
 			const userUpgrades = await UserUpgrade.findAll({
 				where: { userId },
 				include: [
@@ -484,7 +482,7 @@ class UpgradeService {
 				transaction,
 			});
 			
-			logger.debug("getAvailableUpgrades: userUpgrades raw data", {
+			logger.debug("getAvailableUpgrades: userUpgrades with include", {
 				userId,
 				count: userUpgrades.length,
 				firstUpgrade: userUpgrades[0] ? {
@@ -500,7 +498,7 @@ class UpgradeService {
 				where: { active: true },
 				transaction,
 			});
-
+			
 			logger.debug("getAvailableUpgrades: active nodes count", {
 				userId,
 				count: allActiveNodes.length,
