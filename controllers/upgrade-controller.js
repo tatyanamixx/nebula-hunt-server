@@ -1,8 +1,8 @@
 /**
  * created by Claude on 15.07.2025
  */
-const upgradeService = require('../service/upgrade-service');
-const ApiError = require('../exceptions/api-error');
+const upgradeService = require("../service/upgrade-service");
+const ApiError = require("../exceptions/api-error");
 
 class UpgradeController {
 	/**
@@ -18,13 +18,10 @@ class UpgradeController {
 			const { upgradeId } = req.params;
 
 			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
+				return next(ApiError.BadRequest("Upgrade ID is required"));
 			}
 
-			const upgrade = await upgradeService.getUserUpgrade(
-				userId,
-				upgradeId
-			);
+			const upgrade = await upgradeService.getUserUpgrade(userId, upgradeId);
 			return res.json(upgrade);
 		} catch (e) {
 			next(e);
@@ -41,20 +38,32 @@ class UpgradeController {
 	async getAvailableUpgrades(req, res, next) {
 		try {
 			const userId = req.user.id;
-			console.log("📤 [UPGRADE-CONTROLLER] getAvailableUpgrades called for userId:", userId);
+			console.log(
+				"📤 [UPGRADE-CONTROLLER] getAvailableUpgrades called for userId:",
+				userId
+			);
 			const upgrades = await upgradeService.getAvailableUpgrades(userId);
 			console.log("📥 [UPGRADE-CONTROLLER] getAvailableUpgrades result:", {
 				count: Array.isArray(upgrades) ? upgrades.length : "not an array",
 				isArray: Array.isArray(upgrades),
-				firstItem: Array.isArray(upgrades) && upgrades.length > 0 ? {
-					id: upgrades[0].id,
-					upgradeTemplateSlug: upgrades[0].upgradeTemplateSlug,
-					hasUpgradeNodeTemplate: !!(upgrades[0].UpgradeNodeTemplate || upgrades[0].upgradenodetemplate),
-				} : null,
+				firstItem:
+					Array.isArray(upgrades) && upgrades.length > 0
+						? {
+								id: upgrades[0].id,
+								upgradeTemplateSlug: upgrades[0].upgradeTemplateSlug,
+								hasUpgradeNodeTemplate: !!(
+									upgrades[0].UpgradeNodeTemplate ||
+									upgrades[0].upgradenodetemplate
+								),
+						  }
+						: null,
 			});
 			return res.json(upgrades);
 		} catch (e) {
-			console.error("❌ [UPGRADE-CONTROLLER] getAvailableUpgrades error:", e.message);
+			console.error(
+				"❌ [UPGRADE-CONTROLLER] getAvailableUpgrades error:",
+				e.message
+			);
 			next(e);
 		}
 	}
@@ -72,13 +81,10 @@ class UpgradeController {
 			const { upgradeId } = req.params;
 
 			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
+				return next(ApiError.BadRequest("Upgrade ID is required"));
 			}
 
-			const result = await upgradeService.purchaseUpgrade(
-				userId,
-				upgradeId
-			);
+			const result = await upgradeService.purchaseUpgrade(userId, upgradeId);
 			return res.json(result);
 		} catch (e) {
 			next(e);
@@ -99,11 +105,11 @@ class UpgradeController {
 			const { progress } = req.body;
 
 			if (!upgradeId) {
-				return next(ApiError.BadRequest('Upgrade ID is required'));
+				return next(ApiError.BadRequest("Upgrade ID is required"));
 			}
 
 			if (progress === undefined || progress === null) {
-				return next(ApiError.BadRequest('Progress value is required'));
+				return next(ApiError.BadRequest("Progress value is required"));
 			}
 
 			const result = await upgradeService.updateUpgradeProgress(

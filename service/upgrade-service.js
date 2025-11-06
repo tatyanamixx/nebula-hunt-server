@@ -603,10 +603,18 @@ class UpgradeService {
 			const result = [];
 
 			// Add existing user upgrades
+			console.log("🔄 [UPGRADE-SERVICE] Processing userUpgrades, count:", userUpgrades.length);
 			userUpgrades.forEach((userUpgrade, index) => {
 				const template =
 					userUpgrade.UpgradeNodeTemplate ||
 					userUpgrade.upgradeNodeTemplate;
+
+				console.log(`  Processing upgrade ${index}:`);
+				console.log("    id:", userUpgrade.id);
+				console.log("    upgradeTemplateSlug:", userUpgrade.upgradeTemplateSlug);
+				console.log("    hasUpgradeNodeTemplate:", !!userUpgrade.UpgradeNodeTemplate);
+				console.log("    hasUpgradeNodeTemplateLower:", !!userUpgrade.upgradeNodeTemplate);
+				console.log("    hasTemplate:", !!template);
 
 				logger.debug(
 					`getAvailableUpgrades: processing userUpgrade ${index}`,
@@ -624,6 +632,7 @@ class UpgradeService {
 				);
 
 				if (template) {
+					console.log(`    ✅ Template found, adding to result`);
 					// Return structure expected by client: { UpgradeNodeTemplate: {...}, level: ..., ... }
 					result.push({
 						id: userUpgrade.id,
@@ -665,8 +674,10 @@ class UpgradeService {
 			});
 
 			// Add available upgrades that don't exist yet
+			console.log("🔄 [UPGRADE-SERVICE] Processing availableUpgrades, count:", availableUpgrades.length);
 			availableUpgrades.forEach((node) => {
 				if (!userUpgradeMap[node.slug]) {
+					console.log(`  Adding new upgrade: ${node.slug}`);
 					// Return structure expected by client for new upgrades
 					result.push({
 						id: null,
