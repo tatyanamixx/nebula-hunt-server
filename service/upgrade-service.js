@@ -450,36 +450,54 @@ class UpgradeService {
 			});
 			await this.activateUserUpgradeNodes(userId, transaction);
 
-			// Get all user upgrades with template data using include
+			// Get all user upgrades
 			const userUpgrades = await UserUpgrade.findAll({
 				where: { userId },
-				include: [
-					{
-						model: UpgradeNodeTemplate,
-						required: false, // Include upgrades even if template is missing
-						attributes: [
-							"id",
-							"slug",
-							"name",
-							"description",
-							"maxLevel",
-							"basePrice",
-							"effectPerLevel",
-							"priceMultiplier",
-							"category",
-							"icon",
-							"stability",
-							"instability",
-							"modifiers",
-							"active",
-							"conditions",
-							"children",
-							"weight",
-							"currency",
-						],
-					},
+				transaction,
+			});
+
+			// Manually load templates for each upgrade (include with targetKey doesn't work reliably)
+			const upgradeTemplateSlugs = userUpgrades.map(u => u.upgradeTemplateSlug).filter(Boolean);
+			const templates = await UpgradeNodeTemplate.findAll({
+				where: {
+					slug: upgradeTemplateSlugs,
+				},
+				attributes: [
+					"id",
+					"slug",
+					"name",
+					"description",
+					"maxLevel",
+					"basePrice",
+					"effectPerLevel",
+					"priceMultiplier",
+					"category",
+					"icon",
+					"stability",
+					"instability",
+					"modifiers",
+					"active",
+					"conditions",
+					"children",
+					"weight",
+					"currency",
 				],
 				transaction,
+			});
+
+			// Create a map of templates by slug
+			const templateMap = {};
+			templates.forEach(template => {
+				templateMap[template.slug] = template;
+			});
+
+			// Attach templates to user upgrades
+			userUpgrades.forEach(userUpgrade => {
+				const template = templateMap[userUpgrade.upgradeTemplateSlug];
+				if (template) {
+					userUpgrade.UpgradeNodeTemplate = template;
+					userUpgrade.upgradeNodeTemplate = template;
+				}
 			});
 
 			console.log("🔍 [UPGRADE-SERVICE] userUpgrades after findAll:");
