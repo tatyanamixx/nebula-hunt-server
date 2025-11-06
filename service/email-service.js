@@ -44,18 +44,22 @@ class EmailService {
 				return;
 			}
 
-			// Для Yandex используем IPv4 адрес напрямую (избегаем проблем с IPv6)
+			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
+			
+			// Для Yandex: для порта 465 (SSL) используем доменное имя (SSL требует правильный hostname)
+			// Для порта 587 (STARTTLS) можно попробовать IPv4 адрес
 			let smtpHost = process.env.SMTP_HOST;
 			if (smtpHost === "smtp.yandex.ru") {
-				// Используем IPv4 адрес напрямую
-				smtpHost = "77.88.21.158";
-				console.log(
-					"📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP:",
-					smtpHost
-				);
+				if (smtpPort === 465) {
+					// Для SSL используем доменное имя (сертификат привязан к домену)
+					smtpHost = "smtp.yandex.ru";
+					console.log("📧 [EMAIL-SERVICE] Using domain name for Yandex SMTP SSL (port 465):", smtpHost);
+				} else if (smtpPort === 587) {
+					// Для STARTTLS можно попробовать IPv4
+					smtpHost = "77.88.21.158";
+					console.log("📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP STARTTLS (port 587):", smtpHost);
+				}
 			}
-
-			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
 			// Автоматически устанавливаем secure в зависимости от порта
 			// Порт 465 = SSL (secure: true), Порт 587 = STARTTLS (secure: false)
 			let smtpSecure;
@@ -85,12 +89,11 @@ class EmailService {
 				tls: {
 					rejectUnauthorized: false, // Не проверять сертификат (для некоторых провайдеров)
 					minVersion: "TLSv1.2",
-					// Если используем IP вместо хоста, указываем правильный hostname для TLS
-					servername:
-						process.env.SMTP_HOST === "smtp.yandex.ru" &&
-						smtpHost === "77.88.21.158"
-							? "smtp.yandex.ru"
-							: undefined,
+					// Для SSL (порт 465) всегда используем правильный hostname
+					// Для STARTTLS (порт 587) с IP адресом тоже указываем hostname
+					servername: process.env.SMTP_HOST === "smtp.yandex.ru" 
+						? "smtp.yandex.ru" 
+						: undefined,
 				},
 				// Дополнительные опции для подключения
 				pool: false, // Не использовать pool
