@@ -45,7 +45,7 @@ class EmailService {
 			}
 
 			const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
-			
+
 			// Для Yandex: для порта 465 (SSL) используем доменное имя (SSL требует правильный hostname)
 			// Для порта 587 (STARTTLS) можно попробовать IPv4 адрес
 			let smtpHost = process.env.SMTP_HOST;
@@ -53,11 +53,17 @@ class EmailService {
 				if (smtpPort === 465) {
 					// Для SSL используем доменное имя (сертификат привязан к домену)
 					smtpHost = "smtp.yandex.ru";
-					console.log("📧 [EMAIL-SERVICE] Using domain name for Yandex SMTP SSL (port 465):", smtpHost);
+					console.log(
+						"📧 [EMAIL-SERVICE] Using domain name for Yandex SMTP SSL (port 465):",
+						smtpHost
+					);
 				} else if (smtpPort === 587) {
 					// Для STARTTLS можно попробовать IPv4
 					smtpHost = "77.88.21.158";
-					console.log("📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP STARTTLS (port 587):", smtpHost);
+					console.log(
+						"📧 [EMAIL-SERVICE] Using IPv4 address for Yandex SMTP STARTTLS (port 587):",
+						smtpHost
+					);
 				}
 			}
 			// Автоматически устанавливаем secure в зависимости от порта
@@ -80,8 +86,8 @@ class EmailService {
 					pass: process.env.SMTP_PASS,
 				},
 				// Таймауты для подключения (увеличены для медленных соединений)
-				connectionTimeout: 30000, // 30 секунд на подключение
-				socketTimeout: 30000, // 30 секунд на операции
+				connectionTimeout: 60000, // 60 секунд на подключение
+				socketTimeout: 60000, // 60 секунд на операции
 				greetingTimeout: 30000, // 30 секунд на приветствие
 				// Для порта 587 (STARTTLS)
 				requireTLS: smtpPort === 587,
@@ -91,9 +97,10 @@ class EmailService {
 					minVersion: "TLSv1.2",
 					// Для SSL (порт 465) всегда используем правильный hostname
 					// Для STARTTLS (порт 587) с IP адресом тоже указываем hostname
-					servername: process.env.SMTP_HOST === "smtp.yandex.ru" 
-						? "smtp.yandex.ru" 
-						: undefined,
+					servername:
+						process.env.SMTP_HOST === "smtp.yandex.ru" || process.env.SMTP_HOST === "smtp.gmail.com"
+							? process.env.SMTP_HOST
+							: undefined,
 				},
 				// Дополнительные опции для подключения
 				pool: false, // Не использовать pool
