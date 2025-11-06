@@ -52,9 +52,13 @@ COPY --from=build /app/clear-database.js ./clear-database.js
 COPY --from=build /app/setup-with-server.js ./setup-with-server.js
 COPY --from=build /app/run-migrations.js ./run-migrations.js
 
-# Create directory for logs
+# Create directory for logs and set permissions
 RUN mkdir -p /app/logs && \
     chown -R node:node /app/logs
+
+# Set permissions for config directory (to allow game-constants.js updates)
+RUN chown -R node:node /app/config && \
+    chmod -R 755 /app/config
 
 # Use non-root user for security
 USER node
