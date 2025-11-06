@@ -429,6 +429,11 @@ class UpgradeService {
 				where: { userId },
 				transaction,
 			});
+			
+			logger.debug("getAvailableUpgrades: existing upgrades count", { 
+				userId, 
+				count: existingUpgrades.length 
+			});
 
 			// If user has no upgrades, initialize the upgrade tree
 			if (existingUpgrades.length === 0) {
@@ -451,6 +456,9 @@ class UpgradeService {
 				include: [
 					{
 						model: UpgradeNodeTemplate,
+						foreignKey: "upgradeTemplateSlug",
+						targetKey: "slug",
+						required: false, // Include upgrades even if template is missing
 						attributes: [
 							"id",
 							"slug",
@@ -469,6 +477,7 @@ class UpgradeService {
 							"conditions",
 							"children",
 							"weight",
+							"currency", // Add currency field
 						],
 					},
 				],
@@ -479,6 +488,17 @@ class UpgradeService {
 			const allActiveNodes = await UpgradeNodeTemplate.findAll({
 				where: { active: true },
 				transaction,
+			});
+			
+			logger.debug("getAvailableUpgrades: active nodes count", { 
+				userId, 
+				count: allActiveNodes.length 
+			});
+			
+			logger.debug("getAvailableUpgrades: user upgrades with templates", { 
+				userId, 
+				count: userUpgrades.length,
+				upgradesWithTemplates: userUpgrades.filter(u => u.UpgradeNodeTemplate || u.upgradeNodeTemplate).length
 			});
 
 			// Create a map of user upgrades for quick lookup
