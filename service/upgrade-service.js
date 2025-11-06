@@ -482,22 +482,24 @@ class UpgradeService {
 				transaction,
 			});
 
-			console.log("🔍 [UPGRADE-SERVICE] userUpgrades after findAll:", {
-				userId,
-				count: userUpgrades.length,
-				firstUpgrade: userUpgrades[0]
-					? {
-							id: userUpgrades[0].id,
-							upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
-							hasUpgradeNodeTemplate: !!userUpgrades[0].UpgradeNodeTemplate,
-							hasUpgradeNodeTemplateLower: !!userUpgrades[0].upgradeNodeTemplate,
-							allKeys: Object.keys(userUpgrades[0]),
-							templateSlug:
-								userUpgrades[0].UpgradeNodeTemplate?.slug ||
-								userUpgrades[0].upgradeNodeTemplate?.slug,
-					  }
-					: null,
-			});
+			console.log("🔍 [UPGRADE-SERVICE] userUpgrades after findAll:");
+			console.log("  userId:", userId);
+			console.log("  count:", userUpgrades.length);
+			if (userUpgrades.length > 0) {
+				console.log("  firstUpgrade.id:", userUpgrades[0].id);
+				console.log("  firstUpgrade.upgradeTemplateSlug:", userUpgrades[0].upgradeTemplateSlug);
+				console.log("  firstUpgrade.hasUpgradeNodeTemplate:", !!userUpgrades[0].UpgradeNodeTemplate);
+				console.log("  firstUpgrade.hasUpgradeNodeTemplateLower:", !!userUpgrades[0].upgradeNodeTemplate);
+				console.log("  firstUpgrade.allKeys:", Object.keys(userUpgrades[0]));
+				if (userUpgrades[0].UpgradeNodeTemplate) {
+					console.log("  firstUpgrade.UpgradeNodeTemplate.slug:", userUpgrades[0].UpgradeNodeTemplate.slug);
+				}
+				if (userUpgrades[0].upgradeNodeTemplate) {
+					console.log("  firstUpgrade.upgradeNodeTemplate.slug:", userUpgrades[0].upgradeNodeTemplate.slug);
+				}
+			} else {
+				console.log("  ⚠️ No userUpgrades found!");
+			}
 			logger.debug("getAvailableUpgrades: userUpgrades with include", {
 				userId,
 				count: userUpgrades.length,
@@ -522,14 +524,15 @@ class UpgradeService {
 				transaction,
 			});
 
-			console.log("🔍 [UPGRADE-SERVICE] active nodes count:", {
-				userId,
-				count: allActiveNodes.length,
-				firstNode: allActiveNodes[0] ? {
-					id: allActiveNodes[0].id,
-					slug: allActiveNodes[0].slug,
-				} : null,
-			});
+			console.log("🔍 [UPGRADE-SERVICE] active nodes count:");
+			console.log("  userId:", userId);
+			console.log("  count:", allActiveNodes.length);
+			if (allActiveNodes.length > 0) {
+				console.log("  firstNode.id:", allActiveNodes[0].id);
+				console.log("  firstNode.slug:", allActiveNodes[0].slug);
+			} else {
+				console.log("  ⚠️ No active nodes found!");
+			}
 			logger.debug("getAvailableUpgrades: active nodes count", {
 				userId,
 				count: allActiveNodes.length,
@@ -645,6 +648,7 @@ class UpgradeService {
 						}
 					);
 				} else {
+					console.log(`    ⚠️ Template NOT found, skipping upgrade ${index}`);
 					logger.warn(
 						`getAvailableUpgrades: template not found for upgrade ${index}`,
 						{
@@ -682,29 +686,28 @@ class UpgradeService {
 			});
 
 			await transaction.commit();
-			console.log("✅ [UPGRADE-SERVICE] getAvailableUpgrades completed:", {
-				userId,
-				totalUpgrades: result.length,
-				existingUpgrades: userUpgrades.length,
-				availableUpgrades: availableUpgrades.length,
-				upgradesWithTemplates: userUpgrades.filter(
+			console.log("✅ [UPGRADE-SERVICE] getAvailableUpgrades completed:");
+			console.log("  userId:", userId);
+			console.log("  totalUpgrades (result.length):", result.length);
+			console.log("  existingUpgrades (userUpgrades.length):", userUpgrades.length);
+			console.log("  availableUpgrades (allActiveNodes.length):", availableUpgrades.length);
+			console.log("  upgradesWithTemplates:", userUpgrades.filter(
+				(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
+			).length);
+			if (result.length > 0) {
+				console.log("  result[0].id:", result[0].id);
+				console.log("  result[0].upgradeTemplateSlug:", result[0].upgradeTemplateSlug);
+				console.log("  result[0].hasUpgradeNodeTemplate:", !!(result[0].UpgradeNodeTemplate || result[0].upgradenodetemplate));
+				console.log("  result[0].keys:", Object.keys(result[0]));
+			} else {
+				console.log("  ⚠️ Result is empty!");
+				console.log("  Why? Let's check:");
+				console.log("    - userUpgrades.length:", userUpgrades.length);
+				console.log("    - availableUpgrades.length:", availableUpgrades.length);
+				console.log("    - upgradesWithTemplates:", userUpgrades.filter(
 					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
-				).length,
-				resultFirstItem: result[0]
-					? {
-							id: result[0].id,
-							upgradeTemplateSlug: result[0].upgradeTemplateSlug,
-							hasUpgradeNodeTemplate: !!(
-								result[0].UpgradeNodeTemplate ||
-								result[0].upgradenodetemplate
-							),
-							templateSlug:
-								result[0].UpgradeNodeTemplate?.slug ||
-								result[0].upgradenodetemplate?.slug,
-							keys: Object.keys(result[0]),
-					  }
-					: null,
-			});
+				).length);
+			}
 			logger.debug("getAvailableUpgrades: completed successfully", {
 				userId,
 				totalUpgrades: result.length,
