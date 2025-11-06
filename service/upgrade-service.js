@@ -429,10 +429,10 @@ class UpgradeService {
 				where: { userId },
 				transaction,
 			});
-			
-			logger.debug("getAvailableUpgrades: existing upgrades count", { 
-				userId, 
-				count: existingUpgrades.length 
+
+			logger.debug("getAvailableUpgrades: existing upgrades count", {
+				userId,
+				count: existingUpgrades.length,
 			});
 
 			// If user has no upgrades, initialize the upgrade tree
@@ -451,13 +451,13 @@ class UpgradeService {
 			await this.activateUserUpgradeNodes(userId, transaction);
 
 			// Get all user upgrades with template data
+			// Note: Sequelize will use the belongsTo relationship defined in models.js
+			// which uses foreignKey: "upgradeTemplateSlug" and targetKey: "slug"
 			const userUpgrades = await UserUpgrade.findAll({
 				where: { userId },
 				include: [
 					{
 						model: UpgradeNodeTemplate,
-						foreignKey: "upgradeTemplateSlug",
-						targetKey: "slug",
 						required: false, // Include upgrades even if template is missing
 						attributes: [
 							"id",
@@ -477,11 +477,22 @@ class UpgradeService {
 							"conditions",
 							"children",
 							"weight",
-							"currency", // Add currency field
+							"currency",
 						],
 					},
 				],
 				transaction,
+			});
+			
+			logger.debug("getAvailableUpgrades: userUpgrades raw data", {
+				userId,
+				count: userUpgrades.length,
+				firstUpgrade: userUpgrades[0] ? {
+					id: userUpgrades[0].id,
+					upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
+					hasTemplate: !!(userUpgrades[0].UpgradeNodeTemplate || userUpgrades[0].upgradeNodeTemplate),
+					templateSlug: userUpgrades[0].UpgradeNodeTemplate?.slug || userUpgrades[0].upgradeNodeTemplate?.slug,
+				} : null,
 			});
 
 			// Get all active upgrade nodes to check for available upgrades
@@ -489,16 +500,18 @@ class UpgradeService {
 				where: { active: true },
 				transaction,
 			});
-			
-			logger.debug("getAvailableUpgrades: active nodes count", { 
-				userId, 
-				count: allActiveNodes.length 
+
+			logger.debug("getAvailableUpgrades: active nodes count", {
+				userId,
+				count: allActiveNodes.length,
 			});
-			
-			logger.debug("getAvailableUpgrades: user upgrades with templates", { 
-				userId, 
+
+			logger.debug("getAvailableUpgrades: user upgrades with templates", {
+				userId,
 				count: userUpgrades.length,
-				upgradesWithTemplates: userUpgrades.filter(u => u.UpgradeNodeTemplate || u.upgradeNodeTemplate).length
+				upgradesWithTemplates: userUpgrades.filter(
+					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
+				).length,
 			});
 
 			// Create a map of user upgrades for quick lookup
