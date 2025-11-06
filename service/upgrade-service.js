@@ -482,6 +482,22 @@ class UpgradeService {
 				transaction,
 			});
 
+			console.log("🔍 [UPGRADE-SERVICE] userUpgrades after findAll:", {
+				userId,
+				count: userUpgrades.length,
+				firstUpgrade: userUpgrades[0]
+					? {
+							id: userUpgrades[0].id,
+							upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
+							hasUpgradeNodeTemplate: !!userUpgrades[0].UpgradeNodeTemplate,
+							hasUpgradeNodeTemplateLower: !!userUpgrades[0].upgradeNodeTemplate,
+							allKeys: Object.keys(userUpgrades[0]),
+							templateSlug:
+								userUpgrades[0].UpgradeNodeTemplate?.slug ||
+								userUpgrades[0].upgradeNodeTemplate?.slug,
+					  }
+					: null,
+			});
 			logger.debug("getAvailableUpgrades: userUpgrades with include", {
 				userId,
 				count: userUpgrades.length,
@@ -506,6 +522,14 @@ class UpgradeService {
 				transaction,
 			});
 
+			console.log("🔍 [UPGRADE-SERVICE] active nodes count:", {
+				userId,
+				count: allActiveNodes.length,
+				firstNode: allActiveNodes[0] ? {
+					id: allActiveNodes[0].id,
+					slug: allActiveNodes[0].slug,
+				} : null,
+			});
 			logger.debug("getAvailableUpgrades: active nodes count", {
 				userId,
 				count: allActiveNodes.length,
@@ -658,6 +682,29 @@ class UpgradeService {
 			});
 
 			await transaction.commit();
+			console.log("✅ [UPGRADE-SERVICE] getAvailableUpgrades completed:", {
+				userId,
+				totalUpgrades: result.length,
+				existingUpgrades: userUpgrades.length,
+				availableUpgrades: availableUpgrades.length,
+				upgradesWithTemplates: userUpgrades.filter(
+					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
+				).length,
+				resultFirstItem: result[0]
+					? {
+							id: result[0].id,
+							upgradeTemplateSlug: result[0].upgradeTemplateSlug,
+							hasUpgradeNodeTemplate: !!(
+								result[0].UpgradeNodeTemplate ||
+								result[0].upgradenodetemplate
+							),
+							templateSlug:
+								result[0].UpgradeNodeTemplate?.slug ||
+								result[0].upgradenodetemplate?.slug,
+							keys: Object.keys(result[0]),
+					  }
+					: null,
+			});
 			logger.debug("getAvailableUpgrades: completed successfully", {
 				userId,
 				totalUpgrades: result.length,
