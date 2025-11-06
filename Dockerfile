@@ -57,8 +57,10 @@ RUN mkdir -p /app/logs && \
     chown -R node:node /app/logs
 
 # Set permissions for config directory (to allow game-constants.js updates)
+# Change ownership to node user and set write permissions
 RUN chown -R node:node /app/config && \
-    chmod -R 755 /app/config
+    chmod -R 755 /app/config && \
+    chmod 664 /app/config/game-constants.js
 
 # Use non-root user for security
 USER node
