@@ -98,6 +98,7 @@ jobs:
                         -e SUPERVISOR_EMAIL="${{ secrets.SUPERVISOR_EMAIL }}" \
                         -e SUPERVISOR_PASSWORD="${{ secrets.SUPERVISOR_PASSWORD }}" \
                         -e ADMIN_INIT_SECRET="${{ secrets.ADMIN_INIT_SECRET }}" \
+                        -e EMAILJS_PRIVATE_KEY="${{ secrets.EMAILJS_PRIVATE_KEY }}" \
                         -e EMAILJS_PUBLIC_KEY="${{ secrets.EMAILJS_PUBLIC_KEY }}" \
                         -e EMAILJS_SERVICE_ID="${{ secrets.EMAILJS_SERVICE_ID }}" \
                         -e EMAILJS_TEMPLATE_ID="${{ secrets.EMAILJS_TEMPLATE_ID }}" \

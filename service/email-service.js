@@ -15,16 +15,25 @@ class EmailService {
 	 */
 	initializeTransporter() {
 		// Проверяем, используется ли EmailJS (приоритет над SMTP)
-		if (process.env.EMAILJS_PUBLIC_KEY && process.env.EMAILJS_SERVICE_ID) {
+		// Для серверных запросов EmailJS может требовать Private Key вместо Public Key
+		const emailjsKey =
+			process.env.EMAILJS_PRIVATE_KEY || process.env.EMAILJS_PUBLIC_KEY;
+		if (emailjsKey && process.env.EMAILJS_SERVICE_ID) {
 			this.emailjsConfig = {
-				publicKey: process.env.EMAILJS_PUBLIC_KEY,
+				publicKey: emailjsKey, // Может быть Private Key или Public Key
 				serviceId: process.env.EMAILJS_SERVICE_ID,
 				templateId: process.env.EMAILJS_TEMPLATE_ID || "template_default",
+				usingPrivateKey: !!process.env.EMAILJS_PRIVATE_KEY,
 			};
-			console.log("📧 [EMAIL-SERVICE] Using EmailJS for email sending");
+			console.log("📧 [EMAIL-SERVICE] Using EmailJS for email sending", {
+				serviceId: this.emailjsConfig.serviceId,
+				templateId: this.emailjsConfig.templateId,
+				usingPrivateKey: this.emailjsConfig.usingPrivateKey,
+			});
 			logger.info("EmailJS configured", {
 				serviceId: this.emailjsConfig.serviceId,
 				hasTemplateId: !!this.emailjsConfig.templateId,
+				usingPrivateKey: this.emailjsConfig.usingPrivateKey,
 			});
 			return; // EmailJS не требует transporter
 		}
@@ -158,7 +167,12 @@ class EmailService {
 		try {
 			// Если настроен EmailJS, используем его
 			if (this.emailjsConfig) {
-				return await this.sendAdminInviteViaEmailJS(email, name, role, token);
+				return await this.sendAdminInviteViaEmailJS(
+					email,
+					name,
+					role,
+					token
+				);
 			}
 
 			// Проверяем наличие транспорта для SMTP
@@ -306,10 +320,17 @@ class EmailService {
 				"https://admin.nebulahunt.site";
 			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
 
-			console.log("📧 [EMAIL-SERVICE] Preparing to send admin invite via EmailJS", {
-				to: email,
-				serviceId: this.emailjsConfig.serviceId,
-			});
+			console.log(
+				"📧 [EMAIL-SERVICE] Preparing to send admin invite via EmailJS",
+				{
+					to: email,
+					serviceId: this.emailjsConfig.serviceId,
+					templateId: this.emailjsConfig.templateId,
+					publicKeyPrefix: this.emailjsConfig.publicKey
+						? this.emailjsConfig.publicKey.substring(0, 8) + "..."
+						: "missing",
+				}
+			);
 
 			// EmailJS API endpoint
 			const emailjsUrl = `https://api.emailjs.com/api/v1.0/email/send`;
@@ -328,7 +349,16 @@ class EmailService {
 				},
 			};
 
-			console.log("📧 [EMAIL-SERVICE] Calling EmailJS API...");
+			console.log("📧 [EMAIL-SERVICE] Calling EmailJS API...", {
+				url: emailjsUrl,
+				service_id: emailjsData.service_id,
+				template_id: emailjsData.template_id,
+				user_id_prefix: emailjsData.user_id
+					? emailjsData.user_id.substring(0, 8) + "..."
+					: "missing",
+				template_params_keys: Object.keys(emailjsData.template_params),
+			});
+
 			const response = await axios.post(emailjsUrl, emailjsData, {
 				headers: {
 					"Content-Type": "application/json",
@@ -337,7 +367,10 @@ class EmailService {
 			});
 
 			if (response.status === 200) {
-				console.log("✅ [EMAIL-SERVICE] EmailJS API response:", response.data);
+				console.log(
+					"✅ [EMAIL-SERVICE] EmailJS API response:",
+					response.data
+				);
 				logger.info("Admin invite email sent via EmailJS", {
 					email,
 					name,
@@ -354,19 +387,52 @@ class EmailService {
 				throw new Error(`EmailJS API returned status ${response.status}`);
 			}
 		} catch (error) {
-			console.error("❌ [EMAIL-SERVICE] Failed to send admin invite via EmailJS", {
+			// Детальная информация об ошибке
+			const errorDetails = {
 				error: error.message,
 				errorCode: error.code,
 				email,
-			});
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				responseData: error.response?.data,
+			};
+
+			console.error(
+				"❌ [EMAIL-SERVICE] Failed to send admin invite via EmailJS",
+				errorDetails
+			);
 			logger.error("Failed to send admin invite via EmailJS", {
 				error: error.message,
 				errorCode: error.code,
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				responseData: error.response?.data,
 				email,
 				name,
 				role,
 				stack: error.stack,
 			});
+
+			// Более информативная ошибка для пользователя
+			if (error.response?.status === 403) {
+				const responseData = error.response?.data;
+				let errorMessage =
+					"EmailJS API returned 403 Forbidden. Possible causes:\n";
+				errorMessage +=
+					"1. Invalid Public Key (EMAILJS_PUBLIC_KEY)\n";
+				errorMessage +=
+					"2. Invalid Service ID (EMAILJS_SERVICE_ID)\n";
+				errorMessage +=
+					"3. Invalid Template ID (EMAILJS_TEMPLATE_ID)\n";
+				errorMessage +=
+					"4. API rate limit exceeded\n";
+				errorMessage +=
+					"5. Security settings in EmailJS account (blockHeadless, blockList)\n";
+				if (responseData) {
+					errorMessage += `\nEmailJS response: ${JSON.stringify(responseData)}`;
+				}
+				throw new Error(errorMessage);
+			}
 
 			// В режиме разработки показываем ссылку в консоли
 			if (process.env.NODE_ENV === "development") {
