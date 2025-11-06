@@ -14,7 +14,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour (5 per minute) - часто вызывается при открытии магазина
 	authMiddleware,
 	upgradeController.getAvailableUpgrades
 );
@@ -23,7 +23,7 @@ router.get(
 router.get(
 	'/stats',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(200, 60), // 200 requests per hour
 	authMiddleware,
 	upgradeController.getUpgradeStats
 );
@@ -32,7 +32,7 @@ router.get(
 router.get(
 	'/:upgradeId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(200, 60), // 200 requests per hour
 	authMiddleware,
 	upgradeController.getUserUpgrade
 );
@@ -41,7 +41,7 @@ router.get(
 router.post(
 	'/purchase/:upgradeId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(100, 60), // 100 requests per hour (покупки не должны быть слишком частыми)
 	authMiddleware,
 	upgradeController.purchaseUpgrade
 );
@@ -50,7 +50,7 @@ router.post(
 router.put(
 	'/:upgradeId/progress',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(100, 60), // 100 requests per hour
 	authMiddleware,
 	upgradeController.updateUpgradeProgress
 );
