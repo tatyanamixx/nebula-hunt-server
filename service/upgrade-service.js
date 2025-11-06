@@ -702,9 +702,11 @@ class UpgradeService {
 			console.log("  totalUpgrades (result.length):", result.length);
 			console.log("  existingUpgrades (userUpgrades.length):", userUpgrades.length);
 			console.log("  availableUpgrades (allActiveNodes.length):", availableUpgrades.length);
-			console.log("  upgradesWithTemplates:", userUpgrades.filter(
+			const upgradesWithTemplates = userUpgrades.filter(
 				(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
-			).length);
+			).length;
+			console.log("  upgradesWithTemplates:", upgradesWithTemplates);
+			console.log("  upgradesWithoutTemplates:", userUpgrades.length - upgradesWithTemplates);
 			if (result.length > 0) {
 				console.log("  result[0].id:", result[0].id);
 				console.log("  result[0].upgradeTemplateSlug:", result[0].upgradeTemplateSlug);
@@ -715,9 +717,18 @@ class UpgradeService {
 				console.log("  Why? Let's check:");
 				console.log("    - userUpgrades.length:", userUpgrades.length);
 				console.log("    - availableUpgrades.length:", availableUpgrades.length);
-				console.log("    - upgradesWithTemplates:", userUpgrades.filter(
-					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
-				).length);
+				console.log("    - upgradesWithTemplates:", upgradesWithTemplates);
+				console.log("    - upgradesWithoutTemplates:", userUpgrades.length - upgradesWithTemplates);
+				if (userUpgrades.length > 0) {
+					console.log("    - First userUpgrade keys:", Object.keys(userUpgrades[0]));
+					console.log("    - First userUpgrade.upgradeTemplateSlug:", userUpgrades[0].upgradeTemplateSlug);
+					console.log("    - First userUpgrade.hasUpgradeNodeTemplate:", !!userUpgrades[0].UpgradeNodeTemplate);
+					console.log("    - First userUpgrade.hasUpgradeNodeTemplateLower:", !!userUpgrades[0].upgradeNodeTemplate);
+				}
+				if (availableUpgrades.length > 0) {
+					console.log("    - First availableUpgrade.slug:", availableUpgrades[0].slug);
+					console.log("    - First availableUpgrade in userUpgradeMap:", !!userUpgradeMap[availableUpgrades[0].slug]);
+				}
 			}
 			logger.debug("getAvailableUpgrades: completed successfully", {
 				userId,
