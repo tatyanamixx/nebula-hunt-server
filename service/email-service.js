@@ -20,8 +20,12 @@ class EmailService {
 		// - Private Key в accessToken (аутентификация)
 		const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY;
 		const emailjsPrivateKey = process.env.EMAILJS_PRIVATE_KEY;
-		
-		if (emailjsPublicKey && emailjsPrivateKey && process.env.EMAILJS_SERVICE_ID) {
+
+		if (
+			emailjsPublicKey &&
+			emailjsPrivateKey &&
+			process.env.EMAILJS_SERVICE_ID
+		) {
 			// Оба ключа требуются для серверных запросов
 			this.emailjsConfig = {
 				publicKey: emailjsPublicKey, // Public Key для user_id
@@ -50,8 +54,12 @@ class EmailService {
 				serviceId: process.env.EMAILJS_SERVICE_ID,
 				templateId: process.env.EMAILJS_TEMPLATE_ID || "template_default",
 			};
-			console.log("⚠️ [EMAIL-SERVICE] Using EmailJS with Public Key only (not recommended for server-side)");
-			logger.warn("EmailJS configured with Public Key only (not recommended for server-side)");
+			console.log(
+				"⚠️ [EMAIL-SERVICE] Using EmailJS with Public Key only (not recommended for server-side)"
+			);
+			logger.warn(
+				"EmailJS configured with Public Key only (not recommended for server-side)"
+			);
 			return;
 		}
 
@@ -478,7 +486,11 @@ class EmailService {
 					errorMessage += `\nEmailJS response: ${responseText}`;
 				}
 
-				errorMessage += `\n\nCurrent config: hasPublicKey=${!!this.emailjsConfig.publicKey}, hasPrivateKey=${!!this.emailjsConfig.privateKey}, serviceId=${this.emailjsConfig.serviceId}, templateId=${this.emailjsConfig.templateId}`;
+				errorMessage += `\n\nCurrent config: hasPublicKey=${!!this
+					.emailjsConfig.publicKey}, hasPrivateKey=${!!this.emailjsConfig
+					.privateKey}, serviceId=${
+					this.emailjsConfig.serviceId
+				}, templateId=${this.emailjsConfig.templateId}`;
 
 				throw new Error(errorMessage);
 			}
