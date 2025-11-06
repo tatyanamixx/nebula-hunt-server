@@ -1,10 +1,12 @@
 const nodemailer = require("nodemailer");
 const dns = require("dns");
+const axios = require("axios");
 const logger = require("./logger-service");
 
 class EmailService {
 	constructor() {
 		this.transporter = null;
+		this.emailjsConfig = null;
 		this.initializeTransporter();
 	}
 
@@ -12,6 +14,21 @@ class EmailService {
 	 * Инициализация транспорта для отправки email
 	 */
 	initializeTransporter() {
+		// Проверяем, используется ли EmailJS (приоритет над SMTP)
+		if (process.env.EMAILJS_PUBLIC_KEY && process.env.EMAILJS_SERVICE_ID) {
+			this.emailjsConfig = {
+				publicKey: process.env.EMAILJS_PUBLIC_KEY,
+				serviceId: process.env.EMAILJS_SERVICE_ID,
+				templateId: process.env.EMAILJS_TEMPLATE_ID || "template_default",
+			};
+			console.log("📧 [EMAIL-SERVICE] Using EmailJS for email sending");
+			logger.info("EmailJS configured", {
+				serviceId: this.emailjsConfig.serviceId,
+				hasTemplateId: !!this.emailjsConfig.templateId,
+			});
+			return; // EmailJS не требует transporter
+		}
+
 		// Для разработки используем Ethereal Email (тестовый сервис)
 		if (process.env.NODE_ENV === "development") {
 			this.transporter = nodemailer.createTransport({
@@ -98,7 +115,8 @@ class EmailService {
 					// Для SSL (порт 465) всегда используем правильный hostname
 					// Для STARTTLS (порт 587) с IP адресом тоже указываем hostname
 					servername:
-						process.env.SMTP_HOST === "smtp.yandex.ru" || process.env.SMTP_HOST === "smtp.gmail.com"
+						process.env.SMTP_HOST === "smtp.yandex.ru" ||
+						process.env.SMTP_HOST === "smtp.gmail.com"
 							? process.env.SMTP_HOST
 							: undefined,
 				},
@@ -138,12 +156,17 @@ class EmailService {
 	 */
 	async sendAdminInvite(email, name, role, token) {
 		try {
-			// Проверяем наличие транспорта
+			// Если настроен EmailJS, используем его
+			if (this.emailjsConfig) {
+				return await this.sendAdminInviteViaEmailJS(email, name, role, token);
+			}
+
+			// Проверяем наличие транспорта для SMTP
 			if (!this.transporter) {
 				const error = new Error(
-					"SMTP transporter not initialized. Check SMTP configuration (SMTP_HOST, SMTP_USER, SMTP_PASS)"
+					"Email service not configured. Please set EMAILJS_PUBLIC_KEY and EMAILJS_SERVICE_ID, or SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables."
 				);
-				logger.error("Cannot send email: SMTP not configured", {
+				logger.error("Cannot send email: Email service not configured", {
 					email,
 					name,
 					role,
@@ -269,6 +292,101 @@ class EmailService {
 	}
 
 	/**
+	 * Отправка приглашения через EmailJS API
+	 * @param {string} email - Email получателя
+	 * @param {string} name - Имя получателя
+	 * @param {string} role - Роль
+	 * @param {string} token - Токен приглашения
+	 */
+	async sendAdminInviteViaEmailJS(email, name, role, token) {
+		try {
+			const frontendUrl =
+				process.env.FRONTEND_URL ||
+				process.env.CLIENT_URL ||
+				"https://admin.nebulahunt.site";
+			const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
+
+			console.log("📧 [EMAIL-SERVICE] Preparing to send admin invite via EmailJS", {
+				to: email,
+				serviceId: this.emailjsConfig.serviceId,
+			});
+
+			// EmailJS API endpoint
+			const emailjsUrl = `https://api.emailjs.com/api/v1.0/email/send`;
+
+			// Данные для отправки через EmailJS
+			const emailjsData = {
+				service_id: this.emailjsConfig.serviceId,
+				template_id: this.emailjsConfig.templateId,
+				user_id: this.emailjsConfig.publicKey,
+				template_params: {
+					to_email: email,
+					to_name: name,
+					role: role,
+					invite_url: inviteUrl,
+					from_name: "Nebulahunt Admin Panel",
+				},
+			};
+
+			console.log("📧 [EMAIL-SERVICE] Calling EmailJS API...");
+			const response = await axios.post(emailjsUrl, emailjsData, {
+				headers: {
+					"Content-Type": "application/json",
+				},
+				timeout: 30000, // 30 секунд таймаут
+			});
+
+			if (response.status === 200) {
+				console.log("✅ [EMAIL-SERVICE] EmailJS API response:", response.data);
+				logger.info("Admin invite email sent via EmailJS", {
+					email,
+					name,
+					role,
+					status: response.status,
+				});
+
+				return {
+					success: true,
+					messageId: response.data?.message_id || "emailjs_sent",
+					method: "emailjs",
+				};
+			} else {
+				throw new Error(`EmailJS API returned status ${response.status}`);
+			}
+		} catch (error) {
+			console.error("❌ [EMAIL-SERVICE] Failed to send admin invite via EmailJS", {
+				error: error.message,
+				errorCode: error.code,
+				email,
+			});
+			logger.error("Failed to send admin invite via EmailJS", {
+				error: error.message,
+				errorCode: error.code,
+				email,
+				name,
+				role,
+				stack: error.stack,
+			});
+
+			// В режиме разработки показываем ссылку в консоли
+			if (process.env.NODE_ENV === "development") {
+				const frontendUrl =
+					process.env.FRONTEND_URL ||
+					process.env.CLIENT_URL ||
+					"http://localhost:3000";
+				const inviteUrl = `${frontendUrl}/admin/register?token=${token}`;
+				console.log("\n📧 DEVELOPMENT MODE - Email would be sent:");
+				console.log(`📧 To: ${email}`);
+				console.log(`📧 Subject: Invitation to join Nebulahunt Admin Panel`);
+				console.log(`📧 Invite URL: ${inviteUrl}`);
+				console.log("📧 In production, this would be sent via EmailJS\n");
+			}
+
+			throw error;
+		}
+	}
+
+	/**
 	 * Проверка соединения с SMTP сервером
 	 */
 	async verifyConnection() {
@@ -292,6 +410,13 @@ class EmailService {
 	 */
 	getTransporter() {
 		return this.transporter;
+	}
+
+	/**
+	 * Получить конфигурацию EmailJS (для тестирования)
+	 */
+	getEmailJSConfig() {
+		return this.emailjsConfig;
 	}
 }
 

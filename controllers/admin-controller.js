@@ -677,6 +677,21 @@ class AdminController {
 		try {
 			const emailService = require("../service/email-service");
 			
+			// Проверяем конфигурацию EmailJS (приоритет)
+			const emailjsConfig = emailService.getEmailJSConfig();
+			if (emailjsConfig) {
+				return res.status(200).json({
+					method: "emailjs",
+					emailjsConfig: {
+						serviceId: emailjsConfig.serviceId,
+						templateId: emailjsConfig.templateId,
+						publicKey: emailjsConfig.publicKey ? "set" : "missing",
+					},
+					connectionStatus: "configured",
+					transporterInitialized: false,
+				});
+			}
+
 			// Проверяем конфигурацию SMTP
 			const smtpConfig = {
 				SMTP_HOST: process.env.SMTP_HOST ? "set" : "missing",
@@ -701,6 +716,7 @@ class AdminController {
 			}
 
 			return res.status(200).json({
+				method: "smtp",
 				smtpConfig,
 				connectionStatus,
 				transporterInitialized: transporter !== null,

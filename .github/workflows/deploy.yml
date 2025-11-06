@@ -98,6 +98,9 @@ jobs:
                         -e SUPERVISOR_EMAIL="${{ secrets.SUPERVISOR_EMAIL }}" \
                         -e SUPERVISOR_PASSWORD="${{ secrets.SUPERVISOR_PASSWORD }}" \
                         -e ADMIN_INIT_SECRET="${{ secrets.ADMIN_INIT_SECRET }}" \
+                        -e EMAILJS_PUBLIC_KEY="${{ secrets.EMAILJS_PUBLIC_KEY }}" \
+                        -e EMAILJS_SERVICE_ID="${{ secrets.EMAILJS_SERVICE_ID }}" \
+                        -e EMAILJS_TEMPLATE_ID="${{ secrets.EMAILJS_TEMPLATE_ID }}" \
                         -e SMTP_HOST="${{ secrets.SMTP_HOST }}" \
                         -e SMTP_PORT="${{ secrets.SMTP_PORT }}" \
                         -e SMTP_USER="${{ secrets.SMTP_USER }}" \
