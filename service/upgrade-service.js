@@ -839,7 +839,11 @@ class UpgradeService {
 			);
 
 			// Check if the user has enough resources
-			const resourceField = upgradeNode.resource;
+			// В модели поле называется currency, а не resource
+			const currency = upgradeNode.currency;
+			
+			// Преобразуем "darkmatter" из модели в "darkMatter" для UserState
+			const resourceField = currency === "darkmatter" ? "darkMatter" : currency;
 			
 			// Handle BigInt resources (stardust, darkMatter, stars, tgStars)
 			const isBigIntResource = ["stardust", "darkMatter", "stars", "tgStars"].includes(resourceField);
@@ -854,12 +858,15 @@ class UpgradeService {
 				}
 				
 				// Deduct the resources using BigInt
+				const newResourceValue = BigInt(userState[resourceField]) - BigInt(price);
 				await userState.update(
 					{
-						[resourceField]: BigInt(userState[resourceField]) - BigInt(price),
+						[resourceField]: newResourceValue,
 					},
 					{ transaction: t }
 				);
+				// Сохраняем изменения в базу данных
+				await userState.save({ transaction: t });
 			} else {
 				// Handle non-BigInt resources (tonToken, etc.)
 				if (userState[resourceField] < price) {
@@ -870,12 +877,15 @@ class UpgradeService {
 				}
 				
 				// Deduct the resources
+				const newResourceValue = parseFloat(userState[resourceField]) - parseFloat(price);
 				await userState.update(
 					{
-						[resourceField]: parseFloat(userState[resourceField]) - parseFloat(price),
+						[resourceField]: newResourceValue,
 					},
 					{ transaction: t }
 				);
+				// Сохраняем изменения в базу данных
+				await userState.save({ transaction: t });
 			}
 			
 			// Reload userState to get updated values
