@@ -321,13 +321,38 @@ class UpgradeService {
 			}
 
 			// Синхронизируем playerParameters с реальными уровнями улучшений
+			// ✅ Учитываем только активные улучшения
 			const userState = await UserState.findOne({ where: { userId } });
-			if (userState && userUpgrades.length > 0) {
+			if (userState) {
 				const playerParams = { ...(userState.playerParameters || {}) };
 				let needsUpdate = false;
 
+				// Получаем все активные шаблоны для проверки
+				const allActiveTemplates = await UpgradeNodeTemplate.findAll({
+					where: { active: true },
+					attributes: ["slug"],
+				});
+				const activeSlugs = new Set(allActiveTemplates.map((t) => t.slug));
+
+				// Обновляем уровни только для активных улучшений
 				for (const upgrade of userUpgrades) {
 					const slug = upgrade.upgradeTemplateSlug;
+					const template =
+						upgrade.UpgradeNodeTemplate || upgrade.upgradeNodeTemplate;
+
+					// ✅ Проверяем, что шаблон активен
+					if (!template || template.active !== true) {
+						// Если улучшение неактивно, обнуляем его уровень в playerParameters
+						if (
+							playerParams[slug] !== undefined &&
+							playerParams[slug] !== 0
+						) {
+							playerParams[slug] = 0;
+							needsUpdate = true;
+						}
+						continue;
+					}
+
 					const currentLevel = upgrade.level || 0;
 
 					// Проверяем если level в playerParameters не совпадает с реальным
@@ -337,14 +362,25 @@ class UpgradeService {
 					}
 				}
 
+				// ✅ Удаляем из playerParameters все неактивные улучшения
+				for (const slug in playerParams) {
+					if (!activeSlugs.has(slug) && playerParams[slug] !== 0) {
+						playerParams[slug] = 0;
+						needsUpdate = true;
+					}
+				}
+
 				if (needsUpdate) {
 					userState.playerParameters = playerParams;
 					userState.changed("playerParameters", true);
 					await userState.save();
-					logger.debug("Synced playerParameters with upgrade levels", {
-						userId,
-						playerParameters: userState.playerParameters,
-					});
+					logger.debug(
+						"Synced playerParameters with upgrade levels (only active)",
+						{
+							userId,
+							playerParameters: userState.playerParameters,
+						}
+					);
 				}
 			}
 
@@ -1038,12 +1074,22 @@ class UpgradeService {
 			}
 
 			// Update playerParameters with the new upgrade level
-			// Важно: создаем новый объект для JSONB поля
-			const playerParams = { ...(userState.playerParameters || {}) };
-			playerParams[upgradeNode.slug] = userUpgrade.level;
-			userState.playerParameters = playerParams;
-			userState.changed("playerParameters", true); // Помечаем как измененное
-			await userState.save({ transaction: t });
+			// ✅ Проверяем, что улучшение активно перед обновлением
+			if (upgradeNode.active === true) {
+				// Важно: создаем новый объект для JSONB поля
+				const playerParams = { ...(userState.playerParameters || {}) };
+				playerParams[upgradeNode.slug] = userUpgrade.level;
+				userState.playerParameters = playerParams;
+				userState.changed("playerParameters", true); // Помечаем как измененное
+				await userState.save({ transaction: t });
+			} else {
+				// Если улучшение неактивно, обнуляем его уровень
+				const playerParams = { ...(userState.playerParameters || {}) };
+				playerParams[upgradeNode.slug] = 0;
+				userState.playerParameters = playerParams;
+				userState.changed("playerParameters", true);
+				await userState.save({ transaction: t });
+			}
 
 			logger.debug("Updated playerParameters", {
 				userId,
@@ -1317,6 +1363,58 @@ class UpgradeService {
 		} catch (err) {
 			await t.rollback();
 			throw ApiError.Internal(`Failed to reset upgrades: ${err.message}`);
+		}
+	}
+
+	/**
+	 * Reset upgrade levels for all users when upgrade is deactivated
+	 * @param {string} slug - Upgrade template slug
+	 * @returns {Promise<number>} Number of users affected
+	 */
+	async resetUpgradeLevelsForAllUsers(slug) {
+		const t = await sequelize.transaction();
+		try {
+			logger.debug("resetUpgradeLevelsForAllUsers on start", { slug });
+
+			// Find all user states that have this upgrade in playerParameters
+			const userStates = await UserState.findAll({
+				where: sequelize.literal(
+					`player_parameters->>'${slug}' IS NOT NULL AND (player_parameters->>'${slug}')::int > 0`
+				),
+				transaction: t,
+			});
+
+			let affectedCount = 0;
+
+			// Reset the upgrade level to 0 for all affected users
+			for (const userState of userStates) {
+				const playerParams = { ...(userState.playerParameters || {}) };
+				if (playerParams[slug] !== undefined && playerParams[slug] !== 0) {
+					playerParams[slug] = 0;
+					userState.playerParameters = playerParams;
+					userState.changed("playerParameters", true);
+					await userState.save({ transaction: t });
+					affectedCount++;
+				}
+			}
+
+			await t.commit();
+
+			logger.info("Reset upgrade levels for all users", {
+				slug,
+				affectedCount,
+			});
+
+			return affectedCount;
+		} catch (err) {
+			await t.rollback();
+			logger.error("Failed to reset upgrade levels for all users", {
+				slug,
+				error: err.message,
+			});
+			throw ApiError.Internal(
+				`Failed to reset upgrade levels: ${err.message}`
+			);
 		}
 	}
 }
