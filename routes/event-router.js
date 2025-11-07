@@ -12,7 +12,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.getAllUserEvents
 );
@@ -21,7 +21,7 @@ router.get(
 router.get(
 	'/active',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.getActiveUserEvents
 );
@@ -30,7 +30,7 @@ router.get(
 router.post(
 	'/check',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.checkAndTriggerEvents
 );
@@ -39,7 +39,7 @@ router.post(
 router.get(
 	'/settings',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.getUserEventSettings
 );
@@ -48,7 +48,7 @@ router.get(
 router.put(
 	'/settings',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	authMiddleware,
 	eventController.updateUserEventSettings
 );
@@ -57,7 +57,7 @@ router.put(
 router.get(
 	'/stats',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.getUserEventStats
 );
@@ -66,7 +66,7 @@ router.get(
 router.get(
 	'/:eventId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	authMiddleware,
 	eventController.getUserEvent
 );
@@ -75,7 +75,7 @@ router.get(
 router.post(
 	'/trigger/:eventId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	authMiddleware,
 	eventController.triggerEvent
 );
@@ -84,7 +84,7 @@ router.post(
 router.post(
 	'/complete/:eventId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	authMiddleware,
 	eventController.completeEvent
 );
@@ -93,7 +93,7 @@ router.post(
 router.post(
 	'/cancel/:eventId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	authMiddleware,
 	eventController.cancelEvent
 );

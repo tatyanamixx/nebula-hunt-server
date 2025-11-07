@@ -12,7 +12,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/users',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	adminUserController.getUsers
 );
 
@@ -20,7 +20,7 @@ router.get(
 router.get(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	adminUserController.getUserById
 );
 
@@ -28,7 +28,7 @@ router.get(
 router.get(
 	'/users/stats',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	adminUserController.getUserStats
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.post(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	adminUserController.blockUser
 );
 
@@ -44,7 +44,7 @@ router.post(
 router.post(
 	'/users/:userId/unblock',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	adminUserController.unblockUser
 );
 
@@ -52,7 +52,7 @@ router.post(
 router.patch(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	adminUserController.toggleUserBlock
 );
 
@@ -60,7 +60,7 @@ router.patch(
 router.patch(
 	'/users/:userId/role',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	adminUserController.updateUserRole
 );
 
@@ -68,7 +68,7 @@ router.patch(
 router.delete(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour,
+	rateLimitMiddleware(50, 60), // 50 requests per hour,
 	adminUserController.deleteUser
 );
 

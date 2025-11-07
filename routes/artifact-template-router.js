@@ -11,7 +11,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	artifactTemplateController.getAllArtifactTemplates
 );
 
@@ -19,7 +19,7 @@ router.get(
 router.get(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	artifactTemplateController.getArtifactTemplateBySlug
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.post(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	artifactTemplateController.createArtifactTemplates
 );
 
@@ -35,7 +35,7 @@ router.post(
 router.put(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	artifactTemplateController.updateArtifactTemplate
 );
 
@@ -43,7 +43,7 @@ router.put(
 router.delete(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour,
+	rateLimitMiddleware(50, 60), // 50 requests per hour,
 	artifactTemplateController.deleteArtifactTemplate
 );
 

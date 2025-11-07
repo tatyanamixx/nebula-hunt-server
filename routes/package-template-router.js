@@ -11,7 +11,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	packageTemplateController.getAllPackageTemplates
 );
 
@@ -19,7 +19,7 @@ router.get(
 router.get(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 60), // 300 requests per hour,
 	packageTemplateController.getPackageTemplate
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.post(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	packageTemplateController.createPackageTemplates
 );
 
@@ -35,7 +35,7 @@ router.post(
 router.put(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	packageTemplateController.updatePackageTemplate
 );
 
@@ -43,7 +43,7 @@ router.put(
 router.delete(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour,
+	rateLimitMiddleware(50, 60), // 50 requests per hour,
 	packageTemplateController.deletePackageTemplate
 );
 
@@ -51,7 +51,7 @@ router.delete(
 router.put(
 	"/:slug/toggle",
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	packageTemplateController.togglePackageTemplateStatus
 );
 

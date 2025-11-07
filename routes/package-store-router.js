@@ -25,7 +25,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60),
+	rateLimitMiddleware(300),
 	authMiddleware,
 	packageStoreController.getUserPackages
 );
@@ -56,7 +56,7 @@ router.get(
 router.get(
 	"/:slug",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60),
+	rateLimitMiddleware(300),
 	authMiddleware,
 	packageStoreController.getUserPackageBySlug
 );
@@ -87,7 +87,7 @@ router.get(
 router.post(
 	"/:slug/use",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(20),
+	rateLimitMiddleware(100),
 	authMiddleware,
 	packageStoreController.usePackage
 );

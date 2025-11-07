@@ -17,7 +17,7 @@ const router = Router();
 router.get(
 	'/retention',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.retention
 );
 /**
@@ -35,7 +35,7 @@ router.get(
 router.get(
 	'/arpu',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.arpu
 );
 /**
@@ -53,7 +53,7 @@ router.get(
 router.get(
 	'/ltv',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.ltv
 );
 /**
@@ -71,7 +71,7 @@ router.get(
 router.get(
 	'/kfactor',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.kfactor
 );
 /**
@@ -89,7 +89,7 @@ router.get(
 router.get(
 	'/conversion',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.conversion
 );
 /**
@@ -107,7 +107,7 @@ router.get(
 router.get(
 	'/update-active-users',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 60), // 150 requests per hour,
 	gameMetricsController.updateActiveUsers
 );
 /**
