@@ -585,7 +585,8 @@ class GameController {
 	async createInvoice(req, res, next) {
 		try {
 			const { title, description, price, payload, currency = "XTR" } = req.body;
-			const userId = req.initdata?.id;
+			// ✅ Используем req.user.id после authMiddleware, fallback на req.initdata?.id
+			const userId = req.user?.id || req.initdata?.id;
 
 			// Validate required fields
 			if (!title || !description || !price || price <= 0) {
@@ -596,6 +597,12 @@ class GameController {
 			}
 
 			if (!userId) {
+				logger.error("createInvoice: User not authenticated", {
+					hasUser: !!req.user,
+					hasInitData: !!req.initdata,
+					userIdFromUser: req.user?.id,
+					userIdFromInitData: req.initdata?.id,
+				});
 				throw ApiError.Unauthorized(
 					"User not authenticated",
 					ERROR_CODES.AUTH.UNAUTHORIZED
@@ -612,17 +619,31 @@ class GameController {
 			}
 
 			// Prepare invoice payload
-			const invoicePayload = payload || JSON.stringify({
-				userId,
-				title,
-				description,
-				price,
-				timestamp: Date.now(),
-			});
+			// Telegram ограничивает payload до 128 байт, поэтому используем минимальные данные
+			let invoicePayload = payload;
+			if (!invoicePayload) {
+				// Создаем минимальный payload только с userId и timestamp
+				const minimalPayload = {
+					u: userId, // сокращенное имя для экономии места
+					t: Date.now(), // timestamp
+				};
+				invoicePayload = JSON.stringify(minimalPayload);
+			}
+
+			// Проверяем длину payload (Telegram ограничивает до 128 байт)
+			if (invoicePayload.length > 128) {
+				logger.warn("Invoice payload too long, truncating", {
+					userId,
+					originalLength: invoicePayload.length,
+				});
+				// Обрезаем payload до 128 байт
+				invoicePayload = invoicePayload.substring(0, 128);
+			}
 
 			// Create invoice via Telegram Bot API
 			const telegramApiUrl = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
-			const response = await axios.post(telegramApiUrl, {
+			
+			const invoiceData = {
 				title: title,
 				description: description,
 				payload: invoicePayload,
@@ -633,11 +654,40 @@ class GameController {
 						amount: Math.round(price), // For Stars, amount is in Stars (not multiplied by 100)
 					},
 				],
+			};
+
+			logger.debug("Creating Telegram invoice", {
+				userId,
+				title,
+				price,
+				currency,
+				payloadLength: invoicePayload.length,
 			});
 
-			if (!response.data?.ok || !response.data?.result) {
+			let response;
+			try {
+				response = await axios.post(telegramApiUrl, invoiceData);
+			} catch (axiosError) {
+				logger.error("Telegram Bot API error", {
+					userId,
+					status: axiosError.response?.status,
+					statusText: axiosError.response?.statusText,
+					data: axiosError.response?.data,
+					message: axiosError.message,
+				});
 				throw ApiError.InternalServerError(
-					"Failed to create invoice",
+					`Failed to create invoice: ${axiosError.response?.data?.description || axiosError.message}`,
+					ERROR_CODES.SYSTEM.EXTERNAL_API_ERROR
+				);
+			}
+
+			if (!response.data?.ok || !response.data?.result) {
+				logger.error("Telegram Bot API returned error", {
+					userId,
+					responseData: response.data,
+				});
+				throw ApiError.InternalServerError(
+					`Failed to create invoice: ${response.data?.description || "Unknown error"}`,
 					ERROR_CODES.SYSTEM.EXTERNAL_API_ERROR
 				);
 			}
