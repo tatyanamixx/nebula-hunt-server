@@ -177,12 +177,15 @@ class UpgradeService {
 	 */
 	async getUserUpgrades(userId) {
 		try {
+			// ✅ Получаем ВСЕ userUpgrades БЕЗ фильтра по active
+			// Это нужно для синхронизации playerParameters со всеми уровнями
 			let userUpgrades = await UserUpgrade.findAll({
 				where: { userId },
 				include: [
 					{
 						model: UpgradeNodeTemplate,
-						where: { active: true },
+						// ❌ УБИРАЕМ where: { active: true } - нужны ВСЕ шаблоны для синхронизации
+						required: false, // LEFT JOIN, чтобы получить userUpgrades даже без шаблона
 						attributes: [
 							"id",
 							"slug",
@@ -336,34 +339,53 @@ class UpgradeService {
 
 				// ✅ ОБНОВЛЯЕМ playerParameters из userUpgrades (источник правды)
 				// Проходим по всем userUpgrades и берем реальные уровни
+				logger.info(
+					`🔄 Starting sync for ${userUpgrades.length} userUpgrades for user ${userId}`
+				);
 				for (const upgrade of userUpgrades) {
 					const slug = upgrade.upgradeTemplateSlug;
-					const template =
-						upgrade.UpgradeNodeTemplate || upgrade.upgradeNodeTemplate;
-
-					// ✅ Проверяем, что шаблон активен
-					if (!template || template.active !== true) {
-						// Если улучшение неактивно, обнуляем его уровень в playerParameters
-						if (
-							playerParams[slug] !== undefined &&
-							playerParams[slug] !== 0
-						) {
-							playerParams[slug] = 0;
-							needsUpdate = true;
-						}
+					if (!slug) {
+						logger.warn(`UserUpgrade without slug found: ${upgrade.id}`);
 						continue;
 					}
 
 					// ✅ БЕРЕМ РЕАЛЬНЫЙ УРОВЕНЬ ИЗ userUpgrades (источник правды)
 					const realLevel = upgrade.level || 0;
 
+					const template =
+						upgrade.UpgradeNodeTemplate || upgrade.upgradeNodeTemplate;
+
+					// ✅ Проверяем active из upgradenodetemplates (таблица upgradenodetemplates)
+					const isActive = template && template.active === true;
+					const currentPlayerParam = playerParams[slug] || 0;
+
+					logger.info(
+						`📊 ${slug}: realLevel=${realLevel}, hasTemplate=${!!template}, templateActive=${
+							template?.active
+						}, currentPlayerParam=${currentPlayerParam}`
+					);
+
+					// ✅ Если шаблон неактивен (из upgradenodetemplates), обнуляем его уровень в playerParameters
+					if (!isActive) {
+						if (currentPlayerParam !== 0) {
+							playerParams[slug] = 0;
+							needsUpdate = true;
+							logger.info(
+								`❌ Deactivating ${slug}: setting level to 0 (was ${currentPlayerParam})`
+							);
+						}
+						continue;
+					}
+
 					// Обновляем playerParameters реальным уровнем из userUpgrades
-					if (playerParams[slug] !== realLevel) {
+					if (currentPlayerParam !== realLevel) {
 						playerParams[slug] = realLevel;
 						needsUpdate = true;
-						logger.debug(
-							`Syncing ${slug}: playerParams was ${playerParams[slug]}, realLevel is ${realLevel}`
+						logger.info(
+							`✅ Syncing ${slug}: playerParams was ${currentPlayerParam}, realLevel is ${realLevel} -> UPDATED`
 						);
+					} else {
+						logger.debug(`✓ ${slug}: already synced (${realLevel})`);
 					}
 				}
 
