@@ -320,8 +320,8 @@ class UpgradeService {
 				}
 			}
 
-			// Синхронизируем playerParameters с реальными уровнями улучшений
-			// ✅ Учитываем только активные улучшения
+			// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
+			// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
 			const userState = await UserState.findOne({ where: { userId } });
 			if (userState) {
 				const playerParams = { ...(userState.playerParameters || {}) };
@@ -334,7 +334,8 @@ class UpgradeService {
 				});
 				const activeSlugs = new Set(allActiveTemplates.map((t) => t.slug));
 
-				// Обновляем уровни только для активных улучшений
+				// ✅ ОБНОВЛЯЕМ playerParameters из userUpgrades (источник правды)
+				// Проходим по всем userUpgrades и берем реальные уровни
 				for (const upgrade of userUpgrades) {
 					const slug = upgrade.upgradeTemplateSlug;
 					const template =
@@ -353,16 +354,20 @@ class UpgradeService {
 						continue;
 					}
 
-					const currentLevel = upgrade.level || 0;
+					// ✅ БЕРЕМ РЕАЛЬНЫЙ УРОВЕНЬ ИЗ userUpgrades (источник правды)
+					const realLevel = upgrade.level || 0;
 
-					// Проверяем если level в playerParameters не совпадает с реальным
-					if (playerParams[slug] !== currentLevel) {
-						playerParams[slug] = currentLevel;
+					// Обновляем playerParameters реальным уровнем из userUpgrades
+					if (playerParams[slug] !== realLevel) {
+						playerParams[slug] = realLevel;
 						needsUpdate = true;
+						logger.debug(
+							`Syncing ${slug}: playerParams was ${playerParams[slug]}, realLevel is ${realLevel}`
+						);
 					}
 				}
 
-				// ✅ Удаляем из playerParameters все неактивные улучшения
+				// ✅ Обнуляем все неактивные улучшения в playerParameters
 				for (const slug in playerParams) {
 					if (!activeSlugs.has(slug) && playerParams[slug] !== 0) {
 						playerParams[slug] = 0;
@@ -375,7 +380,7 @@ class UpgradeService {
 					userState.changed("playerParameters", true);
 					await userState.save();
 					logger.debug(
-						"Synced playerParameters with upgrade levels (only active)",
+						"Synced playerParameters with upgrade levels from userUpgrades (only active)",
 						{
 							userId,
 							playerParameters: userState.playerParameters,
@@ -1414,6 +1419,71 @@ class UpgradeService {
 			});
 			throw ApiError.Internal(
 				`Failed to reset upgrade levels: ${err.message}`
+			);
+		}
+	}
+
+	/**
+	 * Restore upgrade levels for all users when upgrade is activated
+	 * Восстанавливает уровни из userUpgrades в playerParameters
+	 * @param {string} slug - Upgrade template slug
+	 * @returns {Promise<number>} Number of users affected
+	 */
+	async restoreUpgradeLevelsForAllUsers(slug) {
+		const t = await sequelize.transaction();
+		try {
+			logger.debug("restoreUpgradeLevelsForAllUsers on start", { slug });
+
+			// Находим всех пользователей, у которых есть это улучшение в userUpgrades
+			const userUpgrades = await UserUpgrade.findAll({
+				where: { upgradeTemplateSlug: slug },
+				attributes: ["userId", "level"],
+				transaction: t,
+			});
+
+			let affectedCount = 0;
+
+			// Восстанавливаем уровни из userUpgrades в playerParameters
+			for (const userUpgrade of userUpgrades) {
+				const userState = await UserState.findOne({
+					where: { userId: userUpgrade.userId },
+					transaction: t,
+				});
+
+				if (userState) {
+					const playerParams = { ...(userState.playerParameters || {}) };
+					const realLevel = userUpgrade.level || 0;
+
+					// Восстанавливаем реальный уровень из userUpgrades
+					if (playerParams[slug] !== realLevel) {
+						playerParams[slug] = realLevel;
+						userState.playerParameters = playerParams;
+						userState.changed("playerParameters", true);
+						await userState.save({ transaction: t });
+						affectedCount++;
+						logger.debug(
+							`Restored ${slug} level ${realLevel} for user ${userUpgrade.userId}`
+						);
+					}
+				}
+			}
+
+			await t.commit();
+
+			logger.info("Restored upgrade levels for all users", {
+				slug,
+				affectedCount,
+			});
+
+			return affectedCount;
+		} catch (err) {
+			await t.rollback();
+			logger.error("Failed to restore upgrade levels for all users", {
+				slug,
+				error: err.message,
+			});
+			throw ApiError.Internal(
+				`Failed to restore upgrade levels: ${err.message}`
 			);
 		}
 	}

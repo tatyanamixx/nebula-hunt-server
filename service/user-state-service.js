@@ -79,47 +79,28 @@ class UserStateService {
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
 
-				// ✅ Синхронизируем playerParameters с активными улучшениями
-				// Это гарантирует, что неактивные улучшения имеют уровень 0
+				// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
+				// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
 				try {
-					const { UpgradeNodeTemplate } = require("../models/models");
-					// Получаем все активные шаблоны
-					const allActiveTemplates = await UpgradeNodeTemplate.findAll({
-						where: { active: true },
-						attributes: ["slug"],
-						transaction: t,
-					});
-					const activeSlugs = new Set(
-						allActiveTemplates.map((t) => t.slug)
-					);
-
-					// Обнуляем уровни неактивных улучшений в playerParameters
-					const playerParams = { ...(userState.playerParameters || {}) };
-					let needsUpdate = false;
-
-					for (const slug in playerParams) {
-						if (!activeSlugs.has(slug) && playerParams[slug] !== 0) {
-							playerParams[slug] = 0;
-							needsUpdate = true;
+					const upgradeService = require("./upgrade-service");
+					// Вызываем getUserUpgrades, который синхронизирует playerParameters с userUpgrades
+					await upgradeService.getUserUpgrades(userId);
+					// Перезагружаем userState, чтобы получить обновленные playerParameters
+					await userState.reload({ transaction: t });
+					logger.debug(
+						"Synced playerParameters with userUpgrades in getUserState",
+						{
+							userId,
 						}
-					}
-
-					if (needsUpdate) {
-						userState.playerParameters = playerParams;
-						userState.changed("playerParameters", true);
-						await userState.save({ transaction: t });
-						logger.debug(
-							"Synced playerParameters with active upgrades in getUserState",
-							{
-								userId,
-							}
-						);
-					}
+					);
 				} catch (error) {
-					logger.warn("Failed to sync playerParameters with upgrades", {
-						userId,
-						error: error.message,
-					});
+					logger.warn(
+						"Failed to sync playerParameters with userUpgrades",
+						{
+							userId,
+							error: error.message,
+						}
+					);
 					// Не прерываем выполнение, так как это не критично
 				}
 
