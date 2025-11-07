@@ -1320,6 +1320,122 @@ class GameService {
 			throw error;
 		}
 	}
+
+	/**
+	 * Complete package payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completePackagePayment(userId, payload, payment) {
+		try {
+			logger.info("Completing package payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// Получаем slug пакета из payload
+			// Payload использует сокращенные имена для экономии места (t=type, s=slug, a=amount, r=resource, at=actionType, p=price, ts=timestamp)
+			let packageSlug = payload.s || payload.packageSlug;
+			
+			// Если не нашли, пробуем из metadata
+			if (!packageSlug && payload.metadata) {
+				if (typeof payload.metadata === "string") {
+					try {
+						const metadataObj = JSON.parse(payload.metadata);
+						packageSlug = metadataObj.s || metadataObj.packageSlug;
+					} catch (e) {
+						// metadata не JSON, игнорируем
+					}
+				} else if (typeof payload.metadata === "object") {
+					packageSlug = payload.metadata.s || payload.metadata.packageSlug;
+				}
+			}
+			
+			if (!packageSlug) {
+				logger.error("Package slug not found in payload", {
+					userId,
+					payloadKeys: Object.keys(payload),
+					payload,
+				});
+				throw new Error("Package slug is required in payload");
+			}
+
+			// Подготавливаем offer для usePackage
+			// Payload использует сокращенные имена: s=slug, a=amount, r=resource, at=actionType
+			const offer = {};
+			
+			// Извлекаем данные из payload (сокращенные имена)
+			const amount = payload.a || payload.amount;
+			const actionType = payload.at || payload.packageActionType;
+			
+			// Если есть amount, используем его для variableAmount пакетов
+			if (amount) {
+				if (actionType === "variableAmount") {
+					offer.amount = amount;
+				} else {
+					// Fallback для старой структуры
+					offer.amount = amount;
+				}
+			}
+			
+			// Для updateField пакетов нужны field и value, но их нет в минимальном payload
+			// Они будут получены из packageTemplate при вызове usePackage
+
+			// Используем packageStoreService для выдачи ресурсов
+			const packageStoreService = require("./package-store-service");
+			const result = await packageStoreService.usePackage(
+				packageSlug,
+				userId,
+				offer
+			);
+
+			// Создаем offer для записи в БД через marketService для аудита
+			// Payload использует сокращенные имена: p=price, r=resource
+			const paymentPrice = payload.p || payload.price;
+			const resource = payload.r || payload.resource || null;
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: paymentPrice,
+				currency: "tgStars",
+				itemId: result.package?.id || null,
+				itemType: "package",
+				amount: 1,
+				resource: resource,
+				offerType: "SYSTEM",
+				txType: "PACKAGE_PURCHASE",
+			};
+
+			// Регистрируем offer через marketService для полного аудита
+			const marketService = require("./market-service");
+			const marketResult = await marketService.registerOffer(offerData);
+
+			logger.info("Package payment completed", {
+				userId,
+				packageSlug,
+				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.id,
+			});
+
+			return {
+				success: true,
+				message: "Package payment completed successfully",
+				userState: result.userState,
+				package: result.package,
+				marketOffer: marketResult,
+			};
+		} catch (error) {
+			logger.error("Failed to complete package payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
 }
 
 module.exports = new GameService();

@@ -398,16 +398,20 @@ class GameController {
 			}
 
 			// Validate payload
-			if (!payload.type || !payload.price) {
+			// Payload использует сокращенные имена: t=type, p=price
+			const paymentType = payload.t || payload.type;
+			const paymentPrice = payload.p || payload.price;
+			if (!paymentType || !paymentPrice) {
 				throw ApiError.BadRequest(
-					"Invalid payload data",
+					"Invalid payload data: type and price are required",
 					ERROR_CODES.VALIDATION.INVALID_PAYLOAD_DATA
 				);
 			}
 
 			// Process payment based on type
+			// Payload использует сокращенные имена: t=type, s=slug
 			let result;
-			switch (payload.type) {
+			switch (paymentType) {
 				case "galaxyCapture":
 					// Handle galaxy capture payment
 					result = await gameService.completeGalaxyCapturePayment(
@@ -417,16 +421,44 @@ class GameController {
 					);
 					break;
 				case "stardust":
-					// Handle stardust purchase payment
-					result = await gameService.completeStardustPayment(
-						user?.id,
-						payload,
-						payment
-					);
+					// ✅ Для пакетов используем usePackage, для прямых покупок - старую логику
+					// Проверяем наличие slug (сокращенное имя s или полное packageSlug)
+					if (payload.s || payload.packageSlug) {
+						result = await gameService.completePackagePayment(
+							user?.id,
+							payload,
+							payment
+						);
+					} else {
+						// Handle stardust purchase payment (legacy)
+						result = await gameService.completeStardustPayment(
+							user?.id,
+							payload,
+							payment
+						);
+					}
 					break;
 				case "darkMatter":
-					// Handle dark matter purchase payment
-					result = await gameService.completeDarkMatterPayment(
+					// ✅ Для пакетов используем usePackage, для прямых покупок - старую логику
+					// Проверяем наличие slug (сокращенное имя s или полное packageSlug)
+					if (payload.s || payload.packageSlug) {
+						result = await gameService.completePackagePayment(
+							user?.id,
+							payload,
+							payment
+						);
+					} else {
+						// Handle dark matter purchase payment (legacy)
+						result = await gameService.completeDarkMatterPayment(
+							user?.id,
+							payload,
+							payment
+						);
+					}
+					break;
+				case "package":
+					// ✅ Handle package payment
+					result = await gameService.completePackagePayment(
 						user?.id,
 						payload,
 						payment
@@ -449,7 +481,7 @@ class GameController {
 
 			logger.info("Payment completed successfully", {
 				paymentId: payment.telegram_payment_charge_id,
-				type: payload.type,
+				type: payload.t || payload.type,
 				userId: user?.id,
 				result,
 			});
@@ -496,28 +528,38 @@ class GameController {
 
 			if (userLanguage === "ru") {
 				// Russian version
-				messageText = "🌟 Ваше хранилище ресурсов заполнено и готово к сбору!";
+				messageText =
+					"🌟 Ваше хранилище ресурсов заполнено и готово к сбору!";
 
 				if (stardustAmount && stardustAmount > 0) {
-					messageText += `\n\n✨ Звездная пыль: ${stardustAmount.toLocaleString("ru-RU")}`;
+					messageText += `\n\n✨ Звездная пыль: ${stardustAmount.toLocaleString(
+						"ru-RU"
+					)}`;
 				}
 
 				if (darkMatterAmount && darkMatterAmount > 0) {
-					messageText += `\n\n🌑 Темная материя: ${darkMatterAmount.toLocaleString("ru-RU")}`;
+					messageText += `\n\n🌑 Темная материя: ${darkMatterAmount.toLocaleString(
+						"ru-RU"
+					)}`;
 				}
 
 				messageText += "\n\nЗайдите в игру, чтобы собрать ваши ресурсы!";
 				buttonText = "🪐 Открыть игру";
 			} else {
 				// English version
-				messageText = "🌟 Your resource storage is full and ready to collect!";
+				messageText =
+					"🌟 Your resource storage is full and ready to collect!";
 
 				if (stardustAmount && stardustAmount > 0) {
-					messageText += `\n\n✨ Stardust: ${stardustAmount.toLocaleString("en-US")}`;
+					messageText += `\n\n✨ Stardust: ${stardustAmount.toLocaleString(
+						"en-US"
+					)}`;
 				}
 
 				if (darkMatterAmount && darkMatterAmount > 0) {
-					messageText += `\n\n🌑 Dark Matter: ${darkMatterAmount.toLocaleString("en-US")}`;
+					messageText += `\n\n🌑 Dark Matter: ${darkMatterAmount.toLocaleString(
+						"en-US"
+					)}`;
 				}
 
 				messageText += "\n\nOpen the game to collect your resources!";
@@ -584,7 +626,13 @@ class GameController {
 	 */
 	async createInvoice(req, res, next) {
 		try {
-			const { title, description, price, payload, currency = "XTR" } = req.body;
+			const {
+				title,
+				description,
+				price,
+				payload,
+				currency = "XTR",
+			} = req.body;
 			// ✅ Используем req.user.id после authMiddleware, fallback на req.initdata?.id
 			const userId = req.user?.id || req.initdata?.id;
 
@@ -642,7 +690,7 @@ class GameController {
 
 			// Create invoice via Telegram Bot API
 			const telegramApiUrl = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
-			
+
 			const invoiceData = {
 				title: title,
 				description: description,
@@ -676,7 +724,9 @@ class GameController {
 					message: axiosError.message,
 				});
 				throw ApiError.InternalServerError(
-					`Failed to create invoice: ${axiosError.response?.data?.description || axiosError.message}`,
+					`Failed to create invoice: ${
+						axiosError.response?.data?.description || axiosError.message
+					}`,
 					ERROR_CODES.SYSTEM.EXTERNAL_API_ERROR
 				);
 			}
@@ -687,7 +737,9 @@ class GameController {
 					responseData: response.data,
 				});
 				throw ApiError.InternalServerError(
-					`Failed to create invoice: ${response.data?.description || "Unknown error"}`,
+					`Failed to create invoice: ${
+						response.data?.description || "Unknown error"
+					}`,
 					ERROR_CODES.SYSTEM.EXTERNAL_API_ERROR
 				);
 			}
