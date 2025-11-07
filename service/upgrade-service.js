@@ -840,15 +840,46 @@ class UpgradeService {
 
 			// Check if the user has enough resources
 			const resourceField = upgradeNode.resource;
-			if (userState[resourceField] < price) {
-				await t.rollback();
-				throw ApiError.BadRequest(
-					`Not enough ${resourceField} to purchase upgrade`
+			
+			// Handle BigInt resources (stardust, darkMatter, stars, tgStars)
+			const isBigIntResource = ["stardust", "darkMatter", "stars", "tgStars"].includes(resourceField);
+			
+			if (isBigIntResource) {
+				// Check with BigInt comparison
+				if (BigInt(userState[resourceField]) < BigInt(price)) {
+					await t.rollback();
+					throw ApiError.BadRequest(
+						`Not enough ${resourceField} to purchase upgrade`
+					);
+				}
+				
+				// Deduct the resources using BigInt
+				await userState.update(
+					{
+						[resourceField]: BigInt(userState[resourceField]) - BigInt(price),
+					},
+					{ transaction: t }
+				);
+			} else {
+				// Handle non-BigInt resources (tonToken, etc.)
+				if (userState[resourceField] < price) {
+					await t.rollback();
+					throw ApiError.BadRequest(
+						`Not enough ${resourceField} to purchase upgrade`
+					);
+				}
+				
+				// Deduct the resources
+				await userState.update(
+					{
+						[resourceField]: parseFloat(userState[resourceField]) - parseFloat(price),
+					},
+					{ transaction: t }
 				);
 			}
-
-			// Deduct the resources
-			userState[resourceField] -= price;
+			
+			// Reload userState to get updated values
+			await userState.reload({ transaction: t });
 
 			// Create or update the user upgrade
 			if (!userUpgrade) {
@@ -929,7 +960,7 @@ class UpgradeService {
 
 			await t.commit();
 
-			// Reload userState to get updated playerParameters
+			// Reload userState to get updated playerParameters and resources
 			const updatedUserState = await UserState.findOne({
 				where: { userId },
 			});
@@ -940,6 +971,12 @@ class UpgradeService {
 				upgradeNode: upgradeNode.toJSON(),
 				resourcesSpent: price,
 				playerParameters: updatedUserState.playerParameters,
+				// Return updated resources to sync client state
+				userState: {
+					stardust: updatedUserState.stardust,
+					darkMatter: updatedUserState.darkMatter,
+					stars: updatedUserState.stars,
+				},
 			};
 		} catch (err) {
 			await t.rollback();
