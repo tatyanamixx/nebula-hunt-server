@@ -457,10 +457,14 @@ class UpgradeService {
 			});
 
 			// Manually load templates for each upgrade (include with targetKey doesn't work reliably)
-			const upgradeTemplateSlugs = userUpgrades.map(u => u.upgradeTemplateSlug).filter(Boolean);
+			// ✅ Фильтруем только активные шаблоны
+			const upgradeTemplateSlugs = userUpgrades
+				.map((u) => u.upgradeTemplateSlug)
+				.filter(Boolean);
 			const templates = await UpgradeNodeTemplate.findAll({
 				where: {
 					slug: upgradeTemplateSlugs,
+					active: true, // ✅ Только активные шаблоны
 				},
 				attributes: [
 					"id",
@@ -487,17 +491,23 @@ class UpgradeService {
 
 			// Create a map of templates by slug
 			const templateMap = {};
-			templates.forEach(template => {
+			templates.forEach((template) => {
 				templateMap[template.slug] = template;
 			});
 
 			// Attach templates to user upgrades
-			userUpgrades.forEach(userUpgrade => {
+			// ✅ Фильтруем только улучшения с активными шаблонами
+			userUpgrades.forEach((userUpgrade) => {
 				const template = templateMap[userUpgrade.upgradeTemplateSlug];
-				if (template) {
+				if (template && template.active === true) {
 					userUpgrade.UpgradeNodeTemplate = template;
 					userUpgrade.upgradeNodeTemplate = template;
 				}
+			});
+
+			// ✅ Отфильтровываем улучшения без активных шаблонов
+			const activeUserUpgrades = userUpgrades.filter((upgrade) => {
+				return upgrade.UpgradeNodeTemplate || upgrade.upgradeNodeTemplate;
 			});
 
 			console.log("🔍 [UPGRADE-SERVICE] userUpgrades after findAll:");
@@ -505,15 +515,30 @@ class UpgradeService {
 			console.log("  count:", userUpgrades.length);
 			if (userUpgrades.length > 0) {
 				console.log("  firstUpgrade.id:", userUpgrades[0].id);
-				console.log("  firstUpgrade.upgradeTemplateSlug:", userUpgrades[0].upgradeTemplateSlug);
-				console.log("  firstUpgrade.hasUpgradeNodeTemplate:", !!userUpgrades[0].UpgradeNodeTemplate);
-				console.log("  firstUpgrade.hasUpgradeNodeTemplateLower:", !!userUpgrades[0].upgradeNodeTemplate);
+				console.log(
+					"  firstUpgrade.upgradeTemplateSlug:",
+					userUpgrades[0].upgradeTemplateSlug
+				);
+				console.log(
+					"  firstUpgrade.hasUpgradeNodeTemplate:",
+					!!userUpgrades[0].UpgradeNodeTemplate
+				);
+				console.log(
+					"  firstUpgrade.hasUpgradeNodeTemplateLower:",
+					!!userUpgrades[0].upgradeNodeTemplate
+				);
 				console.log("  firstUpgrade.allKeys:", Object.keys(userUpgrades[0]));
 				if (userUpgrades[0].UpgradeNodeTemplate) {
-					console.log("  firstUpgrade.UpgradeNodeTemplate.slug:", userUpgrades[0].UpgradeNodeTemplate.slug);
+					console.log(
+						"  firstUpgrade.UpgradeNodeTemplate.slug:",
+						userUpgrades[0].UpgradeNodeTemplate.slug
+					);
 				}
 				if (userUpgrades[0].upgradeNodeTemplate) {
-					console.log("  firstUpgrade.upgradeNodeTemplate.slug:", userUpgrades[0].upgradeNodeTemplate.slug);
+					console.log(
+						"  firstUpgrade.upgradeNodeTemplate.slug:",
+						userUpgrades[0].upgradeNodeTemplate.slug
+					);
 				}
 			} else {
 				console.log("  ⚠️ No userUpgrades found!");
@@ -558,29 +583,32 @@ class UpgradeService {
 
 			logger.debug("getAvailableUpgrades: user upgrades with templates", {
 				userId,
-				count: userUpgrades.length,
-				upgradesWithTemplates: userUpgrades.filter(
+				count: activeUserUpgrades.length,
+				upgradesWithTemplates: activeUserUpgrades.filter(
 					(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
 				).length,
-				upgradeTemplateSlugs: userUpgrades.map((u) => u.upgradeTemplateSlug),
-				firstUpgradeDetails: userUpgrades[0]
+				upgradeTemplateSlugs: activeUserUpgrades.map(
+					(u) => u.upgradeTemplateSlug
+				),
+				firstUpgradeDetails: activeUserUpgrades[0]
 					? {
-							id: userUpgrades[0].id,
-							upgradeTemplateSlug: userUpgrades[0].upgradeTemplateSlug,
+							id: activeUserUpgrades[0].id,
+							upgradeTemplateSlug:
+								activeUserUpgrades[0].upgradeTemplateSlug,
 							hasUpgradeNodeTemplate:
-								!!userUpgrades[0].UpgradeNodeTemplate,
+								!!activeUserUpgrades[0].UpgradeNodeTemplate,
 							hasUpgradeNodeTemplateLower:
-								!!userUpgrades[0].upgradeNodeTemplate,
+								!!activeUserUpgrades[0].upgradeNodeTemplate,
 							templateSlug:
-								userUpgrades[0].UpgradeNodeTemplate?.slug ||
-								userUpgrades[0].upgradeNodeTemplate?.slug,
+								activeUserUpgrades[0].UpgradeNodeTemplate?.slug ||
+								activeUserUpgrades[0].upgradeNodeTemplate?.slug,
 					  }
 					: null,
 			});
 
-			// Create a map of user upgrades for quick lookup
+			// Create a map of user upgrades for quick lookup (только активные)
 			const userUpgradeMap = {};
-			userUpgrades.forEach((upgrade) => {
+			activeUserUpgrades.forEach((upgrade) => {
 				userUpgradeMap[upgrade.upgradeTemplateSlug] = upgrade;
 			});
 
@@ -620,18 +648,30 @@ class UpgradeService {
 			// Combine existing user upgrades with available upgrades that don't exist yet
 			const result = [];
 
-			// Add existing user upgrades
-			console.log("🔄 [UPGRADE-SERVICE] Processing userUpgrades, count:", userUpgrades.length);
-			userUpgrades.forEach((userUpgrade, index) => {
+			// Add existing user upgrades (только с активными шаблонами)
+			console.log(
+				"🔄 [UPGRADE-SERVICE] Processing activeUserUpgrades, count:",
+				activeUserUpgrades.length
+			);
+			activeUserUpgrades.forEach((userUpgrade, index) => {
 				const template =
 					userUpgrade.UpgradeNodeTemplate ||
 					userUpgrade.upgradeNodeTemplate;
 
 				console.log(`  Processing upgrade ${index}:`);
 				console.log("    id:", userUpgrade.id);
-				console.log("    upgradeTemplateSlug:", userUpgrade.upgradeTemplateSlug);
-				console.log("    hasUpgradeNodeTemplate:", !!userUpgrade.UpgradeNodeTemplate);
-				console.log("    hasUpgradeNodeTemplateLower:", !!userUpgrade.upgradeNodeTemplate);
+				console.log(
+					"    upgradeTemplateSlug:",
+					userUpgrade.upgradeTemplateSlug
+				);
+				console.log(
+					"    hasUpgradeNodeTemplate:",
+					!!userUpgrade.UpgradeNodeTemplate
+				);
+				console.log(
+					"    hasUpgradeNodeTemplateLower:",
+					!!userUpgrade.upgradeNodeTemplate
+				);
 				console.log("    hasTemplate:", !!template);
 
 				logger.debug(
@@ -675,7 +715,9 @@ class UpgradeService {
 						}
 					);
 				} else {
-					console.log(`    ⚠️ Template NOT found, skipping upgrade ${index}`);
+					console.log(
+						`    ⚠️ Template NOT found, skipping upgrade ${index}`
+					);
 					logger.warn(
 						`getAvailableUpgrades: template not found for upgrade ${index}`,
 						{
@@ -692,7 +734,10 @@ class UpgradeService {
 			});
 
 			// Add available upgrades that don't exist yet
-			console.log("🔄 [UPGRADE-SERVICE] Processing availableUpgrades, count:", availableUpgrades.length);
+			console.log(
+				"🔄 [UPGRADE-SERVICE] Processing availableUpgrades, count:",
+				availableUpgrades.length
+			);
 			availableUpgrades.forEach((node) => {
 				if (!userUpgradeMap[node.slug]) {
 					console.log(`  Adding new upgrade: ${node.slug}`);
@@ -718,34 +763,76 @@ class UpgradeService {
 			console.log("✅ [UPGRADE-SERVICE] getAvailableUpgrades completed:");
 			console.log("  userId:", userId);
 			console.log("  totalUpgrades (result.length):", result.length);
-			console.log("  existingUpgrades (userUpgrades.length):", userUpgrades.length);
-			console.log("  availableUpgrades (allActiveNodes.length):", availableUpgrades.length);
+			console.log(
+				"  existingUpgrades (userUpgrades.length):",
+				userUpgrades.length
+			);
+			console.log(
+				"  availableUpgrades (allActiveNodes.length):",
+				availableUpgrades.length
+			);
 			const upgradesWithTemplates = userUpgrades.filter(
 				(u) => u.UpgradeNodeTemplate || u.upgradeNodeTemplate
 			).length;
 			console.log("  upgradesWithTemplates:", upgradesWithTemplates);
-			console.log("  upgradesWithoutTemplates:", userUpgrades.length - upgradesWithTemplates);
+			console.log(
+				"  upgradesWithoutTemplates:",
+				userUpgrades.length - upgradesWithTemplates
+			);
 			if (result.length > 0) {
 				console.log("  result[0].id:", result[0].id);
-				console.log("  result[0].upgradeTemplateSlug:", result[0].upgradeTemplateSlug);
-				console.log("  result[0].hasUpgradeNodeTemplate:", !!(result[0].UpgradeNodeTemplate || result[0].upgradenodetemplate));
+				console.log(
+					"  result[0].upgradeTemplateSlug:",
+					result[0].upgradeTemplateSlug
+				);
+				console.log(
+					"  result[0].hasUpgradeNodeTemplate:",
+					!!(
+						result[0].UpgradeNodeTemplate ||
+						result[0].upgradenodetemplate
+					)
+				);
 				console.log("  result[0].keys:", Object.keys(result[0]));
 			} else {
 				console.log("  ⚠️ Result is empty!");
 				console.log("  Why? Let's check:");
 				console.log("    - userUpgrades.length:", userUpgrades.length);
-				console.log("    - availableUpgrades.length:", availableUpgrades.length);
+				console.log(
+					"    - availableUpgrades.length:",
+					availableUpgrades.length
+				);
 				console.log("    - upgradesWithTemplates:", upgradesWithTemplates);
-				console.log("    - upgradesWithoutTemplates:", userUpgrades.length - upgradesWithTemplates);
+				console.log(
+					"    - upgradesWithoutTemplates:",
+					userUpgrades.length - upgradesWithTemplates
+				);
 				if (userUpgrades.length > 0) {
-					console.log("    - First userUpgrade keys:", Object.keys(userUpgrades[0]));
-					console.log("    - First userUpgrade.upgradeTemplateSlug:", userUpgrades[0].upgradeTemplateSlug);
-					console.log("    - First userUpgrade.hasUpgradeNodeTemplate:", !!userUpgrades[0].UpgradeNodeTemplate);
-					console.log("    - First userUpgrade.hasUpgradeNodeTemplateLower:", !!userUpgrades[0].upgradeNodeTemplate);
+					console.log(
+						"    - First userUpgrade keys:",
+						Object.keys(userUpgrades[0])
+					);
+					console.log(
+						"    - First userUpgrade.upgradeTemplateSlug:",
+						userUpgrades[0].upgradeTemplateSlug
+					);
+					console.log(
+						"    - First userUpgrade.hasUpgradeNodeTemplate:",
+						!!userUpgrades[0].UpgradeNodeTemplate
+					);
+					console.log(
+						"    - First userUpgrade.hasUpgradeNodeTemplateLower:",
+						!!userUpgrades[0].upgradeNodeTemplate
+					);
 				}
 				if (availableUpgrades.length > 0) {
-					console.log("    - First availableUpgrade.slug:", availableUpgrades[0].slug);
-					console.log("    - First availableUpgrade in userUpgradeMap:", !!userUpgradeMap[availableUpgrades[0].slug]);
+					console.log(
+						"    - First availableUpgrade.slug:",
+						availableUpgrades[0].slug
+					);
+					console.log(
+						"    - First availableUpgrade in userUpgradeMap:",
+						!!userUpgradeMap[availableUpgrades[0].slug]
+					);
 				}
 			}
 			logger.debug("getAvailableUpgrades: completed successfully", {
@@ -841,13 +928,19 @@ class UpgradeService {
 			// Check if the user has enough resources
 			// В модели поле называется currency, а не resource
 			const currency = upgradeNode.currency;
-			
+
 			// Преобразуем "darkmatter" из модели в "darkMatter" для UserState
-			const resourceField = currency === "darkmatter" ? "darkMatter" : currency;
-			
+			const resourceField =
+				currency === "darkmatter" ? "darkMatter" : currency;
+
 			// Handle BigInt resources (stardust, darkMatter, stars, tgStars)
-			const isBigIntResource = ["stardust", "darkMatter", "stars", "tgStars"].includes(resourceField);
-			
+			const isBigIntResource = [
+				"stardust",
+				"darkMatter",
+				"stars",
+				"tgStars",
+			].includes(resourceField);
+
 			if (isBigIntResource) {
 				// Check with BigInt comparison
 				if (BigInt(userState[resourceField]) < BigInt(price)) {
@@ -856,9 +949,10 @@ class UpgradeService {
 						`Not enough ${resourceField} to purchase upgrade`
 					);
 				}
-				
+
 				// Deduct the resources using BigInt
-				const newResourceValue = BigInt(userState[resourceField]) - BigInt(price);
+				const newResourceValue =
+					BigInt(userState[resourceField]) - BigInt(price);
 				await userState.update(
 					{
 						[resourceField]: newResourceValue,
@@ -875,9 +969,10 @@ class UpgradeService {
 						`Not enough ${resourceField} to purchase upgrade`
 					);
 				}
-				
+
 				// Deduct the resources
-				const newResourceValue = parseFloat(userState[resourceField]) - parseFloat(price);
+				const newResourceValue =
+					parseFloat(userState[resourceField]) - parseFloat(price);
 				await userState.update(
 					{
 						[resourceField]: newResourceValue,
@@ -887,7 +982,7 @@ class UpgradeService {
 				// Сохраняем изменения в базу данных
 				await userState.save({ transaction: t });
 			}
-			
+
 			// Reload userState to get updated values
 			await userState.reload({ transaction: t });
 

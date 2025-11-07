@@ -137,11 +137,16 @@ class TaskService {
 			}
 
 			// Получаем все задачи пользователя с информацией о задачах
+			// ✅ Фильтруем только задачи с активными шаблонами
 			const userTasks = await UserTask.findAll({
 				where: { userId },
 				include: [
 					{
 						model: TaskTemplate,
+						where: {
+							active: true, // ✅ Только активные шаблоны заданий
+						},
+						required: true, // ✅ INNER JOIN - только задачи с активными шаблонами
 						attributes: [
 							"slug",
 							"title",
@@ -159,7 +164,7 @@ class TaskService {
 				transaction: t,
 			});
 
-			// Получаем только активные задачи для оценки
+			// Получаем только активные задачи для оценки (фильтруем по userTask.active)
 			const activeTasks = userTasks.filter((task) => task.active);
 
 			// Оцениваем доступность задач и обновляем их статусы
