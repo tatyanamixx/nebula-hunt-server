@@ -67,7 +67,9 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
-			logger.debug("getUserState on start", { userId });
+			logger.info(
+				`🔄 [USER-STATE-SERVICE] getUserState called for userId: ${userId}, hasTransaction: ${!!transaction}`
+			);
 			// Get basic user state
 			let userState = await UserState.findOne({
 				where: { userId: userId },
@@ -113,7 +115,16 @@ class UserStateService {
 					await t.commit();
 				}
 
-				logger.debug("getUserState completed successfully", { userId });
+				logger.info(
+					`✅ [USER-STATE-SERVICE] getUserState completed successfully for userId: ${userId}`,
+					{
+						userId,
+						hasPlayerParameters: !!userState.playerParameters,
+						playerParametersKeys: userState.playerParameters
+							? Object.keys(userState.playerParameters)
+							: [],
+					}
+				);
 				return userState.toJSON();
 			}
 			if (shouldCommit) {
