@@ -177,6 +177,9 @@ class UpgradeService {
 	 */
 	async getUserUpgrades(userId) {
 		try {
+			logger.info(
+				`🔄 [UPGRADE-SERVICE] getUserUpgrades called for userId: ${userId}`
+			);
 			// ✅ Получаем ВСЕ userUpgrades БЕЗ фильтра по active
 			// Это нужно для синхронизации playerParameters со всеми уровнями
 			let userUpgrades = await UserUpgrade.findAll({
@@ -401,16 +404,27 @@ class UpgradeService {
 					userState.playerParameters = playerParams;
 					userState.changed("playerParameters", true);
 					await userState.save();
-					logger.debug(
-						"Synced playerParameters with upgrade levels from userUpgrades (only active)",
+					logger.info(
+						`✅ [UPGRADE-SERVICE] Synced playerParameters with upgrade levels from userUpgrades for user ${userId}`,
 						{
 							userId,
 							playerParameters: userState.playerParameters,
 						}
 					);
+				} else {
+					logger.info(
+						`✓ [UPGRADE-SERVICE] No sync needed for user ${userId}, playerParameters already up to date`
+					);
 				}
+			} else {
+				logger.warn(
+					`⚠️ [UPGRADE-SERVICE] UserState not found for user ${userId}`
+				);
 			}
 
+			logger.info(
+				`✅ [UPGRADE-SERVICE] getUserUpgrades completed for userId: ${userId}, returning ${userUpgrades.length} upgrades`
+			);
 			return userUpgrades;
 		} catch (err) {
 			throw ApiError.Internal(`Failed to get user upgrades: ${err.message}`);

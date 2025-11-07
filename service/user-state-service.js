@@ -82,23 +82,28 @@ class UserStateService {
 				// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
 				// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
 				try {
+					logger.info(
+						`🔄 [USER-STATE-SERVICE] Calling getUserUpgrades to sync playerParameters for user ${userId}`
+					);
 					const upgradeService = require("./upgrade-service");
 					// Вызываем getUserUpgrades, который синхронизирует playerParameters с userUpgrades
 					await upgradeService.getUserUpgrades(userId);
 					// Перезагружаем userState, чтобы получить обновленные playerParameters
 					await userState.reload({ transaction: t });
-					logger.debug(
-						"Synced playerParameters with userUpgrades in getUserState",
+					logger.info(
+						`✅ [USER-STATE-SERVICE] Synced playerParameters with userUpgrades in getUserState for user ${userId}`,
 						{
 							userId,
+							playerParameters: userState.playerParameters,
 						}
 					);
 				} catch (error) {
-					logger.warn(
-						"Failed to sync playerParameters with userUpgrades",
+					logger.error(
+						`❌ [USER-STATE-SERVICE] Failed to sync playerParameters with userUpgrades for user ${userId}`,
 						{
 							userId,
 							error: error.message,
+							stack: error.stack,
 						}
 					);
 					// Не прерываем выполнение, так как это не критично
