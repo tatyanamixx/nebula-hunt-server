@@ -99,4 +99,17 @@ router.post(
 	gameController.sendCollectionNotification
 );
 
+/**
+ * @route POST /api/game/create-invoice
+ * @desc Create Telegram invoice for payment
+ * @access Private
+ */
+router.post(
+	"/create-invoice",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(500, 10), // 500 requests per 10 minutes
+	authMiddleware,
+	gameController.createInvoice
+);
+
 module.exports = router;

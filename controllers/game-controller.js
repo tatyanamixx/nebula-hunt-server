@@ -575,6 +575,93 @@ class GameController {
 			next(error);
 		}
 	}
+
+	/**
+	 * Create Telegram invoice for payment
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async createInvoice(req, res, next) {
+		try {
+			const { title, description, price, payload, currency = "XTR" } = req.body;
+			const userId = req.initdata?.id;
+
+			// Validate required fields
+			if (!title || !description || !price || price <= 0) {
+				throw ApiError.BadRequest(
+					"Title, description, and valid price are required",
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			if (!userId) {
+				throw ApiError.Unauthorized(
+					"User not authenticated",
+					ERROR_CODES.AUTH.UNAUTHORIZED
+				);
+			}
+
+			// Get bot token
+			const botToken = process.env.BOT_TOKEN;
+			if (!botToken) {
+				throw ApiError.InternalServerError(
+					"Bot token not configured",
+					ERROR_CODES.SYSTEM.CONFIGURATION_ERROR
+				);
+			}
+
+			// Prepare invoice payload
+			const invoicePayload = payload || JSON.stringify({
+				userId,
+				title,
+				description,
+				price,
+				timestamp: Date.now(),
+			});
+
+			// Create invoice via Telegram Bot API
+			const telegramApiUrl = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
+			const response = await axios.post(telegramApiUrl, {
+				title: title,
+				description: description,
+				payload: invoicePayload,
+				currency: currency, // XTR for Telegram Stars
+				prices: [
+					{
+						label: title,
+						amount: Math.round(price), // For Stars, amount is in Stars (not multiplied by 100)
+					},
+				],
+			});
+
+			if (!response.data?.ok || !response.data?.result) {
+				throw ApiError.InternalServerError(
+					"Failed to create invoice",
+					ERROR_CODES.SYSTEM.EXTERNAL_API_ERROR
+				);
+			}
+
+			logger.info("Invoice created successfully", {
+				userId,
+				title,
+				price,
+				invoiceUrl: response.data.result,
+			});
+
+			res.status(200).json({
+				success: true,
+				invoiceLink: response.data.result,
+			});
+		} catch (error) {
+			logger.error("Failed to create invoice", {
+				userId: req.initdata?.id,
+				error: error.message,
+				response: error.response?.data,
+			});
+			next(error);
+		}
+	}
 }
 
 module.exports = new GameController();
