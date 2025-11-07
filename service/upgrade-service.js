@@ -177,6 +177,9 @@ class UpgradeService {
 	 */
 	async getUserUpgrades(userId) {
 		try {
+			console.log(
+				`🔄 [UPGRADE-SERVICE] getUserUpgrades called for userId: ${userId}`
+			);
 			logger.info(
 				`🔄 [UPGRADE-SERVICE] getUserUpgrades called for userId: ${userId}`
 			);
@@ -342,6 +345,9 @@ class UpgradeService {
 
 				// ✅ ОБНОВЛЯЕМ playerParameters из userUpgrades (источник правды)
 				// Проходим по всем userUpgrades и берем реальные уровни
+				console.log(
+					`🔄 [UPGRADE-SERVICE] Starting sync for ${userUpgrades.length} userUpgrades for user ${userId}`
+				);
 				logger.info(
 					`🔄 Starting sync for ${userUpgrades.length} userUpgrades for user ${userId}`
 				);
@@ -362,6 +368,11 @@ class UpgradeService {
 					const isActive = template && template.active === true;
 					const currentPlayerParam = playerParams[slug] || 0;
 
+					console.log(
+						`📊 [UPGRADE-SERVICE] ${slug}: realLevel=${realLevel}, hasTemplate=${!!template}, templateActive=${
+							template?.active
+						}, currentPlayerParam=${currentPlayerParam}`
+					);
 					logger.info(
 						`📊 ${slug}: realLevel=${realLevel}, hasTemplate=${!!template}, templateActive=${
 							template?.active
@@ -384,6 +395,9 @@ class UpgradeService {
 					if (currentPlayerParam !== realLevel) {
 						playerParams[slug] = realLevel;
 						needsUpdate = true;
+						console.log(
+							`✅ [UPGRADE-SERVICE] Syncing ${slug}: playerParams was ${currentPlayerParam}, realLevel is ${realLevel} -> UPDATED`
+						);
 						logger.info(
 							`✅ Syncing ${slug}: playerParams was ${currentPlayerParam}, realLevel is ${realLevel} -> UPDATED`
 						);

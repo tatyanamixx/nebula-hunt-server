@@ -67,6 +67,9 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
+			console.log(
+				`🔄 [USER-STATE-SERVICE] getUserState called for userId: ${userId}, hasTransaction: ${!!transaction}`
+			);
 			logger.info(
 				`🔄 [USER-STATE-SERVICE] getUserState called for userId: ${userId}, hasTransaction: ${!!transaction}`
 			);
@@ -84,6 +87,9 @@ class UserStateService {
 				// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
 				// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
 				try {
+					console.log(
+						`🔄 [USER-STATE-SERVICE] Calling getUserUpgrades to sync playerParameters for user ${userId}`
+					);
 					logger.info(
 						`🔄 [USER-STATE-SERVICE] Calling getUserUpgrades to sync playerParameters for user ${userId}`
 					);
@@ -92,6 +98,10 @@ class UserStateService {
 					await upgradeService.getUserUpgrades(userId);
 					// Перезагружаем userState, чтобы получить обновленные playerParameters
 					await userState.reload({ transaction: t });
+					console.log(
+						`✅ [USER-STATE-SERVICE] Synced playerParameters for user ${userId}:`,
+						JSON.stringify(userState.playerParameters, null, 2)
+					);
 					logger.info(
 						`✅ [USER-STATE-SERVICE] Synced playerParameters with userUpgrades in getUserState for user ${userId}`,
 						{
