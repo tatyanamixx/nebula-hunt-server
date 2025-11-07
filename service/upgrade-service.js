@@ -351,6 +351,18 @@ class UpgradeService {
 				logger.info(
 					`🔄 Starting sync for ${userUpgrades.length} userUpgrades for user ${userId}`
 				);
+				// ✅ Загружаем все шаблоны заранее для быстрого доступа
+				const allTemplates = await UpgradeNodeTemplate.findAll({
+					attributes: ["slug", "active"],
+				});
+				const templateMap = new Map();
+				allTemplates.forEach((t) => {
+					templateMap.set(t.slug, t);
+				});
+				console.log(
+					`📦 [UPGRADE-SERVICE] Loaded ${allTemplates.length} templates for sync`
+				);
+
 				for (const upgrade of userUpgrades) {
 					const slug = upgrade.upgradeTemplateSlug;
 					if (!slug) {
@@ -361,8 +373,14 @@ class UpgradeService {
 					// ✅ БЕРЕМ РЕАЛЬНЫЙ УРОВЕНЬ ИЗ userUpgrades (источник правды)
 					const realLevel = upgrade.level || 0;
 
-					const template =
+					// ✅ Получаем шаблон из include или из загруженной карты
+					let template =
 						upgrade.UpgradeNodeTemplate || upgrade.upgradeNodeTemplate;
+
+					// Если шаблон не загружен через include, берем из карты
+					if (!template) {
+						template = templateMap.get(slug);
+					}
 
 					// ✅ Проверяем active из upgradenodetemplates (таблица upgradenodetemplates)
 					const isActive = template && template.active === true;
