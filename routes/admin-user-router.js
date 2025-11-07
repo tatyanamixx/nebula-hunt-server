@@ -12,7 +12,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/users',
 	adminAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	adminUserController.getUsers
 );
 
@@ -20,7 +20,7 @@ router.get(
 router.get(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	adminUserController.getUserById
 );
 
@@ -28,7 +28,7 @@ router.get(
 router.get(
 	'/users/stats',
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.getUserStats
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.post(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.blockUser
 );
 
@@ -44,7 +44,7 @@ router.post(
 router.post(
 	'/users/:userId/unblock',
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.unblockUser
 );
 
@@ -52,7 +52,7 @@ router.post(
 router.patch(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.toggleUserBlock
 );
 
@@ -60,7 +60,7 @@ router.patch(
 router.patch(
 	'/users/:userId/role',
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.updateUserRole
 );
 
@@ -68,7 +68,7 @@ router.patch(
 router.delete(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // 50 requests per hour,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes,
 	adminUserController.deleteUser
 );
 

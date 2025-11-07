@@ -31,7 +31,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	authMiddleware,
 	userStateController.getUserState
 );
@@ -51,7 +51,7 @@ router.get(
 router.get(
 	"/resources",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	authMiddleware,
 	userStateController.getUserResources
 );
@@ -71,7 +71,7 @@ router.get(
 router.get(
 	"/leaderboard",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	authMiddleware,
 	userStateController.getLeaderboard
 );
@@ -91,7 +91,7 @@ router.get(
 router.put(
 	"/",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	authMiddleware,
 	userStateController.updateUserState
 );
@@ -122,7 +122,7 @@ router.put(
 router.post(
 	"/update-initial-resources",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(50, 3600), // 50 requests per hour
+	rateLimitMiddleware(50, 600), // 50 requests per 10 hours (было 60 часов, теперь 10 часов)
 	authMiddleware,
 	userStateController.updateInitialResourcesForAllUsers
 );

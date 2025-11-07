@@ -11,7 +11,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	taskTemplateController.getTaskTemplates
 );
 
@@ -19,7 +19,7 @@ router.get(
 router.get(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	taskTemplateController.getTaskTemplateBySlug
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.post(
 	"/",
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	taskTemplateController.createTaskTemplates
 );
 
@@ -35,7 +35,7 @@ router.post(
 router.put(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	taskTemplateController.updateTaskTemplate
 );
 
@@ -43,7 +43,7 @@ router.put(
 router.delete(
 	"/:slug",
 	adminAuthMiddleware,
-	rateLimitMiddleware(50, 60), // 50 requests per hour,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes,
 	taskTemplateController.deleteTaskTemplate
 );
 
@@ -51,7 +51,7 @@ router.delete(
 router.put(
 	"/:slug/toggle",
 	adminAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	taskTemplateController.toggleTaskTemplateStatus
 );
 

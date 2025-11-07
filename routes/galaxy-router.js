@@ -32,7 +32,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getUserGalaxies
 );
@@ -58,7 +58,7 @@ router.get(
 router.get(
 	"/:seed",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getUserGalaxy
 );
@@ -94,7 +94,7 @@ router.get(
 router.patch(
 	"/:seed",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	galaxyController.updateGalaxy
 );
@@ -114,7 +114,7 @@ router.patch(
 router.get(
 	"/show",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(300, 60), // 300 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getShowGalaxies
 );
@@ -144,7 +144,7 @@ router.get(
 router.post(
 	"/create",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(50, 60), // 50 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	authMiddleware,
 	galaxyController.createGalaxyWithOffer
 );
@@ -164,7 +164,7 @@ router.post(
 router.post(
 	"/daily-bonus",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	gameController.claimDailyReward
 );
@@ -196,7 +196,7 @@ router.post(
 router.post(
 	"/transferstars",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(150, 60), // 150 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	galaxyController.transferStarsToUserGalaxy
 );
@@ -223,7 +223,7 @@ router.delete(
 	"/:seed",
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(50, 60), // 50 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	galaxyController.deleteUserGalaxy
 );
 
