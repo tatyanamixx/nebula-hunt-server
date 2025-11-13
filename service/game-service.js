@@ -376,8 +376,9 @@ class GameService {
 			// Cap hours to max collection time
 			const cappedHours = Math.min(hoursSinceLastCollect, maxCollectionHours);
 
-			// Calculate stardust generation
-			const starCount = galaxy.stars || 0;
+			// ✅ Calculate stardust generation
+			// ✅ Используем starCurrent, а не stars (в модели Galaxy поле называется starCurrent)
+			const starCount = galaxy.starCurrent || 0;
 			const stardustPerHour = this.calculateStardustRate(
 				starCount,
 				playerParameters
