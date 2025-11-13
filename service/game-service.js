@@ -230,10 +230,14 @@ class GameService {
 			// If no resources to add, return early
 			if (offerData.length === 0) {
 				// Still update lastCollectTime to prevent immediate re-collection
+				const newLastCollectTime = new Date();
 				await galaxy.update(
-					{ lastCollectTime: new Date() },
+					{ lastCollectTime: newLastCollectTime },
 					{ transaction: t }
 				);
+
+				// Reload galaxy to get updated lastCollectTime
+				await galaxy.reload({ transaction: t });
 
 				if (shouldCommit && !t.finished) {
 					await t.commit();
@@ -244,7 +248,8 @@ class GameService {
 					message: "No resources to collect",
 					data: {
 						rewards: [],
-						lastCollectTime: new Date(),
+						lastCollectTime:
+							galaxy.lastCollectTime || newLastCollectTime,
 						userState: {
 							stardust: userState.stardust,
 							darkMatter: userState.darkMatter,
@@ -292,7 +297,14 @@ class GameService {
 			}
 
 			// Update galaxy lastCollectTime to current time
-			await galaxy.update({ lastCollectTime: new Date() }, { transaction: t });
+			const newLastCollectTime = new Date();
+			await galaxy.update(
+				{ lastCollectTime: newLastCollectTime },
+				{ transaction: t }
+			);
+
+			// Reload galaxy to get updated lastCollectTime
+			await galaxy.reload({ transaction: t });
 
 			// Get updated user state
 			const updatedUserState = await userStateService.getUserState(userId, t);
@@ -318,7 +330,7 @@ class GameService {
 				message: "Farming rewards transferred to user successfully",
 				data: {
 					rewards: results,
-					lastCollectTime: galaxy.lastCollectTime,
+					lastCollectTime: galaxy.lastCollectTime || newLastCollectTime,
 					userState: {
 						stardust: updatedUserState.stardust,
 						darkMatter: updatedUserState.darkMatter,
