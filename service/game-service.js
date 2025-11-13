@@ -72,16 +72,23 @@ class GameService {
 		const starEffect = Math.sqrt(safeStarCount) * 60;
 		const baseRate = baseStardustPerHour + starEffect;
 
-		// Get modifiers from playerParameters
+		// ✅ Get modifiers from playerParameters - все улучшения из сиддера
+		// PRODUCTION UPGRADES
 		const stardustProduction = (playerParameters.stardust_production || 0) * 0.1; // +10% per level
-		const stardustMultiplier = (playerParameters.stardust_multiplier || 0) * 0.2; // +20% per level
+		const starEfficiency = (playerParameters.star_efficiency || 0) * 0.08; // +8% per level (из сиддера)
 		const cosmicHarmony = playerParameters.cosmic_harmony || 0;
+
+		// MULTIPLIER UPGRADES
+		const stardustMultiplier = (playerParameters.stardust_multiplier || 0) * 0.2; // +20% per level
 		const darkEnergyInfusion =
 			(playerParameters.dark_energy_infusion || 0) * 0.1; // +10% per level
 		const cosmicAcceleration = (playerParameters.cosmic_acceleration || 0) * 0.1; // +10% per level
 
 		// Apply production bonus
 		const productionBonus = 1 + stardustProduction;
+
+		// ✅ Apply star efficiency bonus (учитывает количество звезд)
+		const efficiencyBonus = 1 + starEfficiency;
 
 		// Apply multiplier bonus
 		const multiplierBonus = 1 + stardustMultiplier;
@@ -102,10 +109,11 @@ class GameService {
 		// Apply speed bonus
 		const speedBonus = 1 + cosmicAcceleration;
 
-		// Calculate final rate
+		// ✅ Calculate final rate - учитываем ВСЕ улучшения
 		const finalRate = Math.floor(
 			baseRate *
 				productionBonus *
+				efficiencyBonus *
 				multiplierBonus *
 				harmonyBonus *
 				darkEnergyBonus *
@@ -124,18 +132,30 @@ class GameService {
 		const GAME_CONSTANTS = require("../config/game-constants");
 		const baseDarkMatterRate = GAME_CONSTANTS.ECONOMY.BASE_DARK_MATTER_RATE || 5;
 
-		// Dark matter upgrades
+		// ✅ Dark matter upgrades - все улучшения из сиддера
+		// CHANCE UPGRADES
 		const darkMatterChance = (playerParameters.dark_matter_chance || 0) * 0.5; // +50% per level
+		const quantumInstability =
+			(playerParameters.quantum_instability || 0) * 0.02; // +2% per level (из сиддера)
+		const voidResonance = (playerParameters.void_resonance || 0) * 0.05; // +5% per level (из сиддера)
+
+		// SPECIAL UPGRADES
 		const darkMatterSynthesis =
 			(playerParameters.dark_matter_synthesis || 0) * 0.1; // +10% per level
 
-		// Apply bonuses
+		// ✅ Apply bonuses - учитываем ВСЕ улучшения
 		const chanceBonus = 1 + darkMatterChance;
+		const instabilityBonus = 1 + quantumInstability;
+		const resonanceBonus = 1 + voidResonance;
 		const synthesisBonus = 1 + darkMatterSynthesis;
 
-		// Calculate final rate
+		// ✅ Calculate final rate - учитываем ВСЕ улучшения
 		const finalRate = Math.floor(
-			baseDarkMatterRate * chanceBonus * synthesisBonus
+			baseDarkMatterRate *
+				chanceBonus *
+				instabilityBonus *
+				resonanceBonus *
+				synthesisBonus
 		);
 
 		return finalRate;
