@@ -57,80 +57,201 @@ class GameService {
 	}
 
 	/**
-	 * Register farming reward for internal currency
-	 * @param {BigInt} userId - User ID
-	 * @param {Array} offerData - Array of farming rewards [{"resource": "stardust", "amount": 3890}, {"resource": "darkMatter", "amount": X}]
-	 * @param {Object} galaxyData - Galaxy data for updating lastCollectTime
-	 * @param {Object} transaction - Transaction object
-	 * @returns {Promise<Object>} Result of the operation
+	 * Calculate stardust generation rate based on star count and upgrades
+	 * @param {number} starCount - Current star count in galaxy
+	 * @param {Object} playerParameters - Player upgrade parameters
+	 * @returns {number} Stardust per hour
 	 */
-	async registerFarmingReward(userId, offerData, galaxyData = null, transaction) {
+	calculateStardustRate(starCount, playerParameters) {
+		const GAME_CONSTANTS = require("../config/game-constants");
+		const baseStardustPerHour =
+			GAME_CONSTANTS.ECONOMY.BASE_STARDUST_PER_HOUR || 5000;
+
+		// Formula: base rate + (star count effect)
+		const safeStarCount = Math.max(0, Number(starCount) || 0);
+		const starEffect = Math.sqrt(safeStarCount) * 60;
+		const baseRate = baseStardustPerHour + starEffect;
+
+		// Get modifiers from playerParameters
+		const stardustProduction = (playerParameters.stardust_production || 0) * 0.1; // +10% per level
+		const stardustMultiplier = (playerParameters.stardust_multiplier || 0) * 0.2; // +20% per level
+		const cosmicHarmony = playerParameters.cosmic_harmony || 0;
+		const darkEnergyInfusion =
+			(playerParameters.dark_energy_infusion || 0) * 0.1; // +10% per level
+		const cosmicAcceleration = (playerParameters.cosmic_acceleration || 0) * 0.1; // +10% per level
+
+		// Apply production bonus
+		const productionBonus = 1 + stardustProduction;
+
+		// Apply multiplier bonus
+		const multiplierBonus = 1 + stardustMultiplier;
+
+		// Apply cosmic harmony bonus (depends on star count)
+		let harmonyBonus = 1;
+		if (cosmicHarmony > 0) {
+			const starFactor =
+				safeStarCount === 0
+					? 0
+					: Math.log10(Math.max(10, safeStarCount)) / Math.log10(10);
+			harmonyBonus = 1 + cosmicHarmony * 0.15 * starFactor; // +15% per level
+		}
+
+		// Apply dark energy bonus
+		const darkEnergyBonus = 1 + darkEnergyInfusion;
+
+		// Apply speed bonus
+		const speedBonus = 1 + cosmicAcceleration;
+
+		// Calculate final rate
+		const finalRate = Math.floor(
+			baseRate *
+				productionBonus *
+				multiplierBonus *
+				harmonyBonus *
+				darkEnergyBonus *
+				speedBonus
+		);
+
+		return finalRate;
+	}
+
+	/**
+	 * Calculate dark matter generation rate based on upgrades
+	 * @param {Object} playerParameters - Player upgrade parameters
+	 * @returns {number} Dark matter per hour
+	 */
+	calculateDarkMatterRate(playerParameters) {
+		const GAME_CONSTANTS = require("../config/game-constants");
+		const baseDarkMatterRate = GAME_CONSTANTS.ECONOMY.BASE_DARK_MATTER_RATE || 5;
+
+		// Dark matter upgrades
+		const darkMatterChance = (playerParameters.dark_matter_chance || 0) * 0.5; // +50% per level
+		const darkMatterSynthesis =
+			(playerParameters.dark_matter_synthesis || 0) * 0.1; // +10% per level
+
+		// Apply bonuses
+		const chanceBonus = 1 + darkMatterChance;
+		const synthesisBonus = 1 + darkMatterSynthesis;
+
+		// Calculate final rate
+		const finalRate = Math.floor(
+			baseDarkMatterRate * chanceBonus * synthesisBonus
+		);
+
+		return finalRate;
+	}
+
+	/**
+	 * Register farming reward for internal currency
+	 * Now calculates resources on server based on lastCollectTime from DB
+	 * @param {BigInt} userId - User ID
+	 * @param {Object} galaxyData - Galaxy data with seed (required)
+	 * @param {Object} transaction - Transaction object
+	 * @returns {Promise<Object>} Result of the operation with calculated resources
+	 */
+	async registerFarmingReward(userId, galaxyData = null, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
-		logger.debug("registerFarmingReward", { userId, offerData });
+		logger.debug("registerFarmingReward", { userId, galaxyData });
 
 		try {
-			// Validate farming data structure
-			if (
-				!Array.isArray(offerData) ||
-				offerData.length === 0 ||
-				offerData.length > 2
-			) {
+			// Validate galaxyData
+			if (!galaxyData || !galaxyData.seed) {
 				throw ApiError.BadRequest(
-					"Farming data must be an array with 1 or 2 elements",
-					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
-				);
-			}
-
-			// Validate each farming reward
-			const validResources = ["stardust", "darkMatter"];
-			const processedResources = new Set();
-
-			for (const offer of offerData) {
-				// Validate required fields
-				if (!offer.resource || !offer.amount) {
-					throw ApiError.BadRequest(
-						"Each farming reward must have resource and amount",
-						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-					);
-				}
-
-				// Validate resource type
-				if (!validResources.includes(offer.resource)) {
-					throw ApiError.BadRequest(
-						`Invalid resource: ${
-							offer.resource
-						}. Must be one of: ${validResources.join(", ")}`,
-						ERROR_CODES.VALIDATION.INVALID_RESOURCE
-					);
-				}
-
-				// Validate amount is positive
-				if (offer.amount <= 0) {
-					throw ApiError.BadRequest(
-						`Amount must be positive for resource: ${offer.resource}`,
-						ERROR_CODES.VALIDATION.INVALID_AMOUNT
-					);
-				}
-
-				// Check for duplicate resources
-				if (processedResources.has(offer.resource)) {
-					throw ApiError.BadRequest(
-						`Duplicate resource: ${offer.resource}`,
-						ERROR_CODES.VALIDATION.DUPLICATE_RESOURCE
-					);
-				}
-
-				processedResources.add(offer.resource);
-			}
-
-			// Ensure at least one resource is present
-			if (processedResources.size === 0) {
-				throw ApiError.BadRequest(
-					"Farming data must include at least one resource with positive amount",
+					"galaxyData with seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
+			}
+
+			// Find galaxy by seed
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxyData.seed },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				throw ApiError.BadRequest(
+					`Galaxy with seed ${galaxyData.seed} not found`,
+					ERROR_CODES.VALIDATION.NOT_FOUND
+				);
+			}
+
+			// Verify galaxy belongs to user
+			if (galaxy.userId !== userId) {
+				throw ApiError.BadRequest(
+					"Galaxy does not belong to user",
+					ERROR_CODES.VALIDATION.UNAUTHORIZED
+				);
+			}
+
+			// Get user state with playerParameters
+			const userState = await userStateService.getUserState(userId, t);
+			const playerParameters = userState.playerParameters || {};
+
+			// Get lastCollectTime from DB (source of truth)
+			const lastCollectTime = galaxy.lastCollectTime
+				? new Date(galaxy.lastCollectTime).getTime()
+				: Date.now();
+
+			// Calculate time since last collection
+			const now = Date.now();
+			const timeDiff = Math.max(0, now - lastCollectTime);
+			const hoursSinceLastCollect = timeDiff / (1000 * 60 * 60);
+
+			// Get auto_collector level to determine max collection hours
+			const autoCollectorLevel = playerParameters.auto_collector || 0;
+			const maxCollectionHours = autoCollectorLevel > 0 ? 3 : 1;
+
+			// Cap hours to max collection time
+			const cappedHours = Math.min(hoursSinceLastCollect, maxCollectionHours);
+
+			// Calculate stardust generation
+			const starCount = galaxy.stars || 0;
+			const stardustPerHour = this.calculateStardustRate(
+				starCount,
+				playerParameters
+			);
+			const stardustToAdd = Math.floor(stardustPerHour * cappedHours);
+
+			// Calculate dark matter generation
+			const darkMatterPerHour = this.calculateDarkMatterRate(playerParameters);
+			const darkMatterToAdd = Math.floor(darkMatterPerHour * cappedHours);
+
+			// Prepare offer data for resources
+			const offerData = [];
+			if (stardustToAdd > 0) {
+				offerData.push({ resource: "stardust", amount: stardustToAdd });
+			}
+			if (darkMatterToAdd > 0) {
+				offerData.push({ resource: "darkMatter", amount: darkMatterToAdd });
+			}
+
+			// If no resources to add, return early
+			if (offerData.length === 0) {
+				// Still update lastCollectTime to prevent immediate re-collection
+				await galaxy.update(
+					{ lastCollectTime: new Date() },
+					{ transaction: t }
+				);
+
+				if (shouldCommit && !t.finished) {
+					await t.commit();
+				}
+
+				return {
+					success: true,
+					message: "No resources to collect",
+					data: {
+						rewards: [],
+						lastCollectTime: new Date(),
+						userState: {
+							stardust: userState.stardust,
+							darkMatter: userState.darkMatter,
+							stars: userState.stars,
+						},
+					},
+				};
 			}
 
 			// Process each farming reward using marketService.registerOffer
@@ -143,9 +264,9 @@ class GameService {
 					sellerId: SYSTEM_USER_ID,
 					buyerId: userId,
 					txType: "FARMING_REWARD",
-					itemType: "resource", // Используем 'resource' вместо 'farming'
+					itemType: "resource",
 					itemId: this.getResourceId(offer.resource),
-					price: 0, // Free from system user
+					price: 0,
 					currency: "tonToken",
 					amount: offer.amount,
 					resource: offer.resource,
@@ -170,40 +291,11 @@ class GameService {
 				});
 			}
 
-			// Update galaxy lastCollectTime if galaxyData.seed is provided
-			if (galaxyData && galaxyData.seed) {
-				try {
-					// Find galaxy by seed
-					const galaxy = await Galaxy.findOne({
-						where: { seed: galaxyData.seed },
-						transaction: t,
-					});
-
-					if (galaxy) {
-						// Update lastCollectTime to current time
-						await galaxy.update(
-							{ lastCollectTime: new Date() },
-							{ transaction: t }
-						);
-
-						logger.debug("Updated galaxy lastCollectTime", {
-							galaxyId: galaxy.id,
-							galaxySeed: galaxy.seed,
-							newLastCollectTime: new Date(),
-						});
-					}
-				} catch (error) {
-					logger.warn("Failed to update galaxy lastCollectTime", {
-						userId,
-						galaxySeed: galaxyData.seed,
-						error: error.message,
-					});
-					// Don't fail the entire operation for this update
-				}
-			}
+			// Update galaxy lastCollectTime to current time
+			await galaxy.update({ lastCollectTime: new Date() }, { transaction: t });
 
 			// Get updated user state
-			const userState = await userStateService.getUserState(userId, t);
+			const updatedUserState = await userStateService.getUserState(userId, t);
 
 			if (shouldCommit && !t.finished) {
 				await t.commit();
@@ -211,11 +303,13 @@ class GameService {
 
 			logger.info("Farming rewards registered successfully", {
 				userId,
+				galaxySeed: galaxyData.seed,
 				rewards: results,
+				hoursSinceLastCollect: cappedHours,
 				userState: {
-					stardust: userState.stardust,
-					darkMatter: userState.darkMatter,
-					stars: userState.stars,
+					stardust: updatedUserState.stardust,
+					darkMatter: updatedUserState.darkMatter,
+					stars: updatedUserState.stars,
 				},
 			});
 
@@ -224,10 +318,11 @@ class GameService {
 				message: "Farming rewards transferred to user successfully",
 				data: {
 					rewards: results,
+					lastCollectTime: galaxy.lastCollectTime,
 					userState: {
-						stardust: userState.stardust,
-						darkMatter: userState.darkMatter,
-						stars: userState.stars,
+						stardust: updatedUserState.stardust,
+						darkMatter: updatedUserState.darkMatter,
+						stars: updatedUserState.stars,
 					},
 				},
 			};
@@ -238,7 +333,7 @@ class GameService {
 
 			logger.error("Failed to register farming reward", {
 				userId,
-				offerData,
+				galaxyData,
 				error: err.message,
 			});
 
@@ -1339,7 +1434,7 @@ class GameService {
 			// Получаем slug пакета из payload
 			// Payload использует сокращенные имена для экономии места (t=type, s=slug, a=amount, r=resource, at=actionType, p=price, ts=timestamp)
 			let packageSlug = payload.s || payload.packageSlug;
-			
+
 			// Если не нашли, пробуем из metadata
 			if (!packageSlug && payload.metadata) {
 				if (typeof payload.metadata === "string") {
@@ -1353,7 +1448,7 @@ class GameService {
 					packageSlug = payload.metadata.s || payload.metadata.packageSlug;
 				}
 			}
-			
+
 			if (!packageSlug) {
 				logger.error("Package slug not found in payload", {
 					userId,
@@ -1366,11 +1461,11 @@ class GameService {
 			// Подготавливаем offer для usePackage
 			// Payload использует сокращенные имена: s=slug, a=amount, r=resource, at=actionType
 			const offer = {};
-			
+
 			// Извлекаем данные из payload (сокращенные имена)
 			const amount = payload.a || payload.amount;
 			const actionType = payload.at || payload.packageActionType;
-			
+
 			// Если есть amount, используем его для variableAmount пакетов
 			if (amount) {
 				if (actionType === "variableAmount") {
@@ -1380,7 +1475,7 @@ class GameService {
 					offer.amount = amount;
 				}
 			}
-			
+
 			// Для updateField пакетов нужны field и value, но их нет в минимальном payload
 			// Они будут получены из packageTemplate при вызове usePackage
 

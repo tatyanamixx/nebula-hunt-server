@@ -17,27 +17,26 @@ class GameController {
 	 */
 	async registerFarmingReward(req, res, next) {
 		try {
-			const { offerData, galaxyData } = req.body;
+			const { galaxyData } = req.body;
 
-			logger.debug("registerFarmingReward request", { offerData, galaxyData });
+			logger.debug("registerFarmingReward request", { galaxyData });
 
 			// Validate required fields
-			if (!offerData) {
+			if (!galaxyData || !galaxyData.seed) {
 				throw ApiError.BadRequest(
-					"offerData is required",
+					"galaxyData with seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
 
+			// Server now calculates resources based on lastCollectTime from DB
 			const result = await gameService.registerFarmingReward(
 				req.user.id,
-				offerData,
 				galaxyData
 			);
 
 			logger.info("Farming reward registered successfully", {
 				userId: req.user.id,
-				offerData,
 				galaxyData,
 			});
 
