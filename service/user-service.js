@@ -297,7 +297,10 @@ class UserService {
 
 					// Временные метки
 					birthDate: galaxy.birthDate,
-					lastCollectTime: galaxy.lastCollectTime,
+					// ✅ Преобразуем lastCollectTime в timestamp для клиента
+					lastCollectTime: galaxy.lastCollectTime
+						? new Date(galaxy.lastCollectTime).getTime()
+						: null,
 
 					// Визуальные свойства
 					galaxyType: galaxy.galaxyType,

@@ -243,13 +243,17 @@ class GameService {
 					await t.commit();
 				}
 
+				// ✅ Преобразуем lastCollectTime в timestamp для клиента
+				const lastCollectTimeTimestamp = galaxy.lastCollectTime
+					? new Date(galaxy.lastCollectTime).getTime()
+					: newLastCollectTime.getTime();
+
 				return {
 					success: true,
 					message: "No resources to collect",
 					data: {
 						rewards: [],
-						lastCollectTime:
-							galaxy.lastCollectTime || newLastCollectTime,
+						lastCollectTime: lastCollectTimeTimestamp,
 						userState: {
 							stardust: userState.stardust,
 							darkMatter: userState.darkMatter,
@@ -325,12 +329,17 @@ class GameService {
 				},
 			});
 
+			// ✅ Преобразуем lastCollectTime в timestamp для клиента
+			const lastCollectTimeTimestamp = galaxy.lastCollectTime
+				? new Date(galaxy.lastCollectTime).getTime()
+				: newLastCollectTime.getTime();
+
 			return {
 				success: true,
 				message: "Farming rewards transferred to user successfully",
 				data: {
 					rewards: results,
-					lastCollectTime: galaxy.lastCollectTime || newLastCollectTime,
+					lastCollectTime: lastCollectTimeTimestamp,
 					userState: {
 						stardust: updatedUserState.stardust,
 						darkMatter: updatedUserState.darkMatter,

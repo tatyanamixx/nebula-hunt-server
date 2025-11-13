@@ -37,13 +37,17 @@ class GalaxyService {
 			const galaxies = galaxiesRaw.map((item) => {
 				const galaxy = item.toJSON();
 				// Преобразуем данные для совместимости с клиентом
+				// ✅ Преобразуем lastCollectTime в timestamp для клиента
+				const lastCollectTimeTimestamp = galaxy.lastCollectTime
+					? new Date(galaxy.lastCollectTime).getTime()
+					: null;
 				return {
 					seed: galaxy.seed,
 					name: galaxy.name,
 					stars: galaxy.starCurrent || 0,
 					maxStars: galaxy.maxStars || 100000,
 					birthDate: galaxy.birthDate,
-					lastCollectTime: galaxy.lastCollectTime,
+					lastCollectTime: lastCollectTimeTimestamp,
 					type: galaxy.type,
 					colorPalette: galaxy.colorPalette,
 					background: galaxy.background,
