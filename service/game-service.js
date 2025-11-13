@@ -74,15 +74,59 @@ class GameService {
 
 		// ✅ Get modifiers from playerParameters - все улучшения из сиддера
 		// PRODUCTION UPGRADES
-		const stardustProduction = (playerParameters.stardust_production || 0) * 0.1; // +10% per level
-		const starEfficiency = (playerParameters.star_efficiency || 0) * 0.08; // +8% per level (из сиддера)
-		const cosmicHarmony = playerParameters.cosmic_harmony || 0;
+		const stardustProductionLevel =
+			Number(playerParameters.stardust_production) || 0;
+		const stardustProduction = stardustProductionLevel * 0.1; // +10% per level
+
+		const starEfficiencyLevel = Number(playerParameters.star_efficiency) || 0;
+		const starEfficiency = starEfficiencyLevel * 0.08; // +8% per level (из сиддера)
+
+		const cosmicHarmonyLevel = Number(playerParameters.cosmic_harmony) || 0;
+		const cosmicHarmony = cosmicHarmonyLevel;
 
 		// MULTIPLIER UPGRADES
-		const stardustMultiplier = (playerParameters.stardust_multiplier || 0) * 0.2; // +20% per level
-		const darkEnergyInfusion =
-			(playerParameters.dark_energy_infusion || 0) * 0.1; // +10% per level
-		const cosmicAcceleration = (playerParameters.cosmic_acceleration || 0) * 0.1; // +10% per level
+		const stardustMultiplierLevel =
+			Number(playerParameters.stardust_multiplier) || 0;
+		const stardustMultiplier = stardustMultiplierLevel * 0.2; // +20% per level
+
+		const darkEnergyInfusionLevel =
+			Number(playerParameters.dark_energy_infusion) || 0;
+		const darkEnergyInfusion = darkEnergyInfusionLevel * 0.1; // +10% per level
+
+		const cosmicAccelerationLevel =
+			Number(playerParameters.cosmic_acceleration) || 0;
+		const cosmicAcceleration = cosmicAccelerationLevel * 0.1; // +10% per level
+
+		// ✅ Логируем уровни улучшений для отладки (INFO + console.log для гарантированного вывода)
+		const upgradeLevelsData = {
+			starCount: safeStarCount,
+			baseRate,
+			upgrades: {
+				stardust_production: {
+					level: stardustProductionLevel,
+					bonus: stardustProduction,
+				},
+				star_efficiency: {
+					level: starEfficiencyLevel,
+					bonus: starEfficiency,
+				},
+				cosmic_harmony: { level: cosmicHarmonyLevel },
+				stardust_multiplier: {
+					level: stardustMultiplierLevel,
+					bonus: stardustMultiplier,
+				},
+				dark_energy_infusion: {
+					level: darkEnergyInfusionLevel,
+					bonus: darkEnergyInfusion,
+				},
+				cosmic_acceleration: {
+					level: cosmicAccelerationLevel,
+					bonus: cosmicAcceleration,
+				},
+			},
+		};
+		logger.info("🔍 [calculateStardustRate] Upgrade levels:", upgradeLevelsData);
+		console.log("🔍 [calculateStardustRate] Upgrade levels:", JSON.stringify(upgradeLevelsData, null, 2));
 
 		// Apply production bonus
 		const productionBonus = 1 + stardustProduction;
@@ -120,6 +164,20 @@ class GameService {
 				speedBonus
 		);
 
+		// ✅ Логируем финальный расчет для отладки (INFO + console.log для гарантированного вывода)
+		const finalCalcData = {
+			baseRate,
+			productionBonus,
+			efficiencyBonus,
+			multiplierBonus,
+			harmonyBonus,
+			darkEnergyBonus,
+			speedBonus,
+			finalRate,
+		};
+		logger.info("📊 [calculateStardustRate] Final calculation:", finalCalcData);
+		console.log("📊 [calculateStardustRate] Final calculation:", JSON.stringify(finalCalcData, null, 2));
+
 		return finalRate;
 	}
 
@@ -134,14 +192,43 @@ class GameService {
 
 		// ✅ Dark matter upgrades - все улучшения из сиддера
 		// CHANCE UPGRADES
-		const darkMatterChance = (playerParameters.dark_matter_chance || 0) * 0.5; // +50% per level
-		const quantumInstability =
-			(playerParameters.quantum_instability || 0) * 0.02; // +2% per level (из сиддера)
-		const voidResonance = (playerParameters.void_resonance || 0) * 0.05; // +5% per level (из сиддера)
+		const darkMatterChanceLevel =
+			Number(playerParameters.dark_matter_chance) || 0;
+		const darkMatterChance = darkMatterChanceLevel * 0.5; // +50% per level
+
+		const quantumInstabilityLevel =
+			Number(playerParameters.quantum_instability) || 0;
+		const quantumInstability = quantumInstabilityLevel * 0.02; // +2% per level (из сиддера)
+
+		const voidResonanceLevel = Number(playerParameters.void_resonance) || 0;
+		const voidResonance = voidResonanceLevel * 0.05; // +5% per level (из сиддера)
 
 		// SPECIAL UPGRADES
-		const darkMatterSynthesis =
-			(playerParameters.dark_matter_synthesis || 0) * 0.1; // +10% per level
+		const darkMatterSynthesisLevel =
+			Number(playerParameters.dark_matter_synthesis) || 0;
+		const darkMatterSynthesis = darkMatterSynthesisLevel * 0.1; // +10% per level
+
+		// ✅ Логируем уровни улучшений для отладки (INFO + console.log для гарантированного вывода)
+		const darkMatterUpgradeLevelsData = {
+			baseDarkMatterRate,
+			upgrades: {
+				dark_matter_chance: {
+					level: darkMatterChanceLevel,
+					bonus: darkMatterChance,
+				},
+				quantum_instability: {
+					level: quantumInstabilityLevel,
+					bonus: quantumInstability,
+				},
+				void_resonance: { level: voidResonanceLevel, bonus: voidResonance },
+				dark_matter_synthesis: {
+					level: darkMatterSynthesisLevel,
+					bonus: darkMatterSynthesis,
+				},
+			},
+		};
+		logger.info("🔍 [calculateDarkMatterRate] Upgrade levels:", darkMatterUpgradeLevelsData);
+		console.log("🔍 [calculateDarkMatterRate] Upgrade levels:", JSON.stringify(darkMatterUpgradeLevelsData, null, 2));
 
 		// ✅ Apply bonuses - учитываем ВСЕ улучшения
 		const chanceBonus = 1 + darkMatterChance;
@@ -157,6 +244,18 @@ class GameService {
 				resonanceBonus *
 				synthesisBonus
 		);
+
+		// ✅ Логируем финальный расчет для отладки (INFO + console.log для гарантированного вывода)
+		const darkMatterFinalCalcData = {
+			baseDarkMatterRate,
+			chanceBonus,
+			instabilityBonus,
+			resonanceBonus,
+			synthesisBonus,
+			finalRate,
+		};
+		logger.info("📊 [calculateDarkMatterRate] Final calculation:", darkMatterFinalCalcData);
+		console.log("📊 [calculateDarkMatterRate] Final calculation:", JSON.stringify(darkMatterFinalCalcData, null, 2));
 
 		return finalRate;
 	}
@@ -209,6 +308,25 @@ class GameService {
 			const userState = await userStateService.getUserState(userId, t);
 			const playerParameters = userState.playerParameters || {};
 
+			// ✅ Логируем playerParameters для отладки (INFO + console.log для гарантированного вывода)
+			const logData = {
+				userId,
+				galaxySeed: galaxyData.seed,
+				playerParameters,
+				hasStardustProduction: !!playerParameters.stardust_production,
+				hasStarEfficiency: !!playerParameters.star_efficiency,
+				hasCosmicHarmony: !!playerParameters.cosmic_harmony,
+				hasStardustMultiplier: !!playerParameters.stardust_multiplier,
+				hasDarkEnergyInfusion: !!playerParameters.dark_energy_infusion,
+				hasCosmicAcceleration: !!playerParameters.cosmic_acceleration,
+				hasDarkMatterChance: !!playerParameters.dark_matter_chance,
+				hasQuantumInstability: !!playerParameters.quantum_instability,
+				hasVoidResonance: !!playerParameters.void_resonance,
+				hasDarkMatterSynthesis: !!playerParameters.dark_matter_synthesis,
+			};
+			logger.info("🔍 [registerFarmingReward] Player parameters:", logData);
+			console.log("🔍 [registerFarmingReward] Player parameters:", JSON.stringify(logData, null, 2));
+
 			// Get lastCollectTime from DB (source of truth)
 			const lastCollectTime = galaxy.lastCollectTime
 				? new Date(galaxy.lastCollectTime).getTime()
@@ -234,9 +352,47 @@ class GameService {
 			);
 			const stardustToAdd = Math.floor(stardustPerHour * cappedHours);
 
+			// ✅ Логируем расчет stardust для отладки (INFO + console.log для гарантированного вывода)
+			const stardustLogData = {
+				userId,
+				galaxySeed: galaxyData.seed,
+				starCount,
+				stardustPerHour,
+				cappedHours,
+				stardustToAdd,
+				playerParameters: {
+					stardust_production: playerParameters.stardust_production || 0,
+					star_efficiency: playerParameters.star_efficiency || 0,
+					cosmic_harmony: playerParameters.cosmic_harmony || 0,
+					stardust_multiplier: playerParameters.stardust_multiplier || 0,
+					dark_energy_infusion: playerParameters.dark_energy_infusion || 0,
+					cosmic_acceleration: playerParameters.cosmic_acceleration || 0,
+				},
+			};
+			logger.info("📊 [registerFarmingReward] Stardust calculation:", stardustLogData);
+			console.log("📊 [registerFarmingReward] Stardust calculation:", JSON.stringify(stardustLogData, null, 2));
+
 			// Calculate dark matter generation
 			const darkMatterPerHour = this.calculateDarkMatterRate(playerParameters);
 			const darkMatterToAdd = Math.floor(darkMatterPerHour * cappedHours);
+
+			// ✅ Логируем расчет dark matter для отладки (INFO + console.log для гарантированного вывода)
+			const darkMatterLogData = {
+				userId,
+				galaxySeed: galaxyData.seed,
+				darkMatterPerHour,
+				cappedHours,
+				darkMatterToAdd,
+				playerParameters: {
+					dark_matter_chance: playerParameters.dark_matter_chance || 0,
+					quantum_instability: playerParameters.quantum_instability || 0,
+					void_resonance: playerParameters.void_resonance || 0,
+					dark_matter_synthesis:
+						playerParameters.dark_matter_synthesis || 0,
+				},
+			};
+			logger.info("📊 [registerFarmingReward] Dark matter calculation:", darkMatterLogData);
+			console.log("📊 [registerFarmingReward] Dark matter calculation:", JSON.stringify(darkMatterLogData, null, 2));
 
 			// Prepare offer data for resources
 			const offerData = [];
