@@ -17,14 +17,23 @@ class GameController {
 	 */
 	async registerFarmingReward(req, res, next) {
 		try {
-			const { galaxyData } = req.body;
+			const { galaxyData, offerData } = req.body;
 
-			logger.debug("registerFarmingReward request", { galaxyData });
+			logger.debug("registerFarmingReward request", { galaxyData, offerData });
+
+			// ✅ Обратная совместимость: если пришел старый формат с offerData, игнорируем его
+			// и требуем galaxyData (новый формат)
+			if (offerData) {
+				logger.warn(
+					"⚠️ Old format detected (offerData), ignoring. Please update client to use galaxyData format.",
+					{ userId: req.user.id, offerData }
+				);
+			}
 
 			// Validate required fields
 			if (!galaxyData || !galaxyData.seed) {
 				throw ApiError.BadRequest(
-					"galaxyData with seed is required",
+					"galaxyData with seed is required. Old format with offerData is no longer supported. Please update your client.",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
