@@ -80,19 +80,25 @@ class UserStateService {
 
 				// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
 				// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
+				// ✅ Добавляем таймаут для getUserUpgrades, чтобы избежать зависания
 				try {
 					const upgradeService = require("./upgrade-service");
-					// Вызываем getUserUpgrades, который синхронизирует playerParameters с userUpgrades
-					await upgradeService.getUserUpgrades(userId);
+					// Вызываем getUserUpgrades с таймаутом (5 секунд)
+					const upgradePromise = upgradeService.getUserUpgrades(userId);
+					const timeoutPromise = new Promise((_, reject) =>
+						setTimeout(() => reject(new Error("getUserUpgrades timeout")), 5000)
+					);
+					
+					await Promise.race([upgradePromise, timeoutPromise]);
 					// Перезагружаем userState, чтобы получить обновленные playerParameters
 					await userState.reload({ transaction: t });
 				} catch (error) {
-					logger.error(
-						`❌ [USER-STATE-SERVICE] Failed to sync playerParameters with userUpgrades for user ${userId}`,
+					// Если таймаут или другая ошибка - логируем, но не прерываем выполнение
+					logger.warn(
+						`⚠️ [USER-STATE-SERVICE] Failed to sync playerParameters with userUpgrades for user ${userId}: ${error.message}`,
 						{
 							userId,
 							error: error.message,
-							stack: error.stack,
 						}
 					);
 					// Не прерываем выполнение, так как это не критично
