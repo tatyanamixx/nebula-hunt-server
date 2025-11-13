@@ -108,31 +108,6 @@ class UserStateService {
 					await t.commit();
 				}
 
-				// ✅ Логируем playerParameters для отладки
-				const playerParams = userState.playerParameters || {};
-				logger.info(
-					`✅ [USER-STATE-SERVICE] getUserState completed successfully for userId: ${userId}`,
-					{
-						userId,
-						hasPlayerParameters: !!userState.playerParameters,
-						playerParametersKeys: userState.playerParameters
-							? Object.keys(userState.playerParameters)
-							: [],
-						// ✅ Логируем конкретные уровни улучшений для отладки
-						upgradeLevels: {
-							stardust_production: playerParams.stardust_production || 0,
-							star_efficiency: playerParams.star_efficiency || 0,
-							cosmic_harmony: playerParams.cosmic_harmony || 0,
-							stardust_multiplier: playerParams.stardust_multiplier || 0,
-							dark_energy_infusion: playerParams.dark_energy_infusion || 0,
-							cosmic_acceleration: playerParams.cosmic_acceleration || 0,
-							dark_matter_chance: playerParams.dark_matter_chance || 0,
-							quantum_instability: playerParams.quantum_instability || 0,
-							void_resonance: playerParams.void_resonance || 0,
-							dark_matter_synthesis: playerParams.dark_matter_synthesis || 0,
-						},
-					}
-				);
 				return userState.toJSON();
 			}
 			if (shouldCommit) {
