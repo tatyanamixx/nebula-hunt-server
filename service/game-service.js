@@ -126,7 +126,10 @@ class GameService {
 			},
 		};
 		logger.info("🔍 [calculateStardustRate] Upgrade levels:", upgradeLevelsData);
-		console.log("🔍 [calculateStardustRate] Upgrade levels:", JSON.stringify(upgradeLevelsData, null, 2));
+		console.log(
+			"🔍 [calculateStardustRate] Upgrade levels:",
+			JSON.stringify(upgradeLevelsData, null, 2)
+		);
 
 		// Apply production bonus
 		const productionBonus = 1 + stardustProduction;
@@ -176,7 +179,10 @@ class GameService {
 			finalRate,
 		};
 		logger.info("📊 [calculateStardustRate] Final calculation:", finalCalcData);
-		console.log("📊 [calculateStardustRate] Final calculation:", JSON.stringify(finalCalcData, null, 2));
+		console.log(
+			"📊 [calculateStardustRate] Final calculation:",
+			JSON.stringify(finalCalcData, null, 2)
+		);
 
 		return finalRate;
 	}
@@ -227,8 +233,14 @@ class GameService {
 				},
 			},
 		};
-		logger.info("🔍 [calculateDarkMatterRate] Upgrade levels:", darkMatterUpgradeLevelsData);
-		console.log("🔍 [calculateDarkMatterRate] Upgrade levels:", JSON.stringify(darkMatterUpgradeLevelsData, null, 2));
+		logger.info(
+			"🔍 [calculateDarkMatterRate] Upgrade levels:",
+			darkMatterUpgradeLevelsData
+		);
+		console.log(
+			"🔍 [calculateDarkMatterRate] Upgrade levels:",
+			JSON.stringify(darkMatterUpgradeLevelsData, null, 2)
+		);
 
 		// ✅ Apply bonuses - учитываем ВСЕ улучшения
 		const chanceBonus = 1 + darkMatterChance;
@@ -254,8 +266,14 @@ class GameService {
 			synthesisBonus,
 			finalRate,
 		};
-		logger.info("📊 [calculateDarkMatterRate] Final calculation:", darkMatterFinalCalcData);
-		console.log("📊 [calculateDarkMatterRate] Final calculation:", JSON.stringify(darkMatterFinalCalcData, null, 2));
+		logger.info(
+			"📊 [calculateDarkMatterRate] Final calculation:",
+			darkMatterFinalCalcData
+		);
+		console.log(
+			"📊 [calculateDarkMatterRate] Final calculation:",
+			JSON.stringify(darkMatterFinalCalcData, null, 2)
+		);
 
 		return finalRate;
 	}
@@ -325,7 +343,10 @@ class GameService {
 				hasDarkMatterSynthesis: !!playerParameters.dark_matter_synthesis,
 			};
 			logger.info("🔍 [registerFarmingReward] Player parameters:", logData);
-			console.log("🔍 [registerFarmingReward] Player parameters:", JSON.stringify(logData, null, 2));
+			console.log(
+				"🔍 [registerFarmingReward] Player parameters:",
+				JSON.stringify(logData, null, 2)
+			);
 
 			// Get lastCollectTime from DB (source of truth)
 			const lastCollectTime = galaxy.lastCollectTime
@@ -369,8 +390,14 @@ class GameService {
 					cosmic_acceleration: playerParameters.cosmic_acceleration || 0,
 				},
 			};
-			logger.info("📊 [registerFarmingReward] Stardust calculation:", stardustLogData);
-			console.log("📊 [registerFarmingReward] Stardust calculation:", JSON.stringify(stardustLogData, null, 2));
+			logger.info(
+				"📊 [registerFarmingReward] Stardust calculation:",
+				stardustLogData
+			);
+			console.log(
+				"📊 [registerFarmingReward] Stardust calculation:",
+				JSON.stringify(stardustLogData, null, 2)
+			);
 
 			// Calculate dark matter generation
 			const darkMatterPerHour = this.calculateDarkMatterRate(playerParameters);
@@ -391,8 +418,14 @@ class GameService {
 						playerParameters.dark_matter_synthesis || 0,
 				},
 			};
-			logger.info("📊 [registerFarmingReward] Dark matter calculation:", darkMatterLogData);
-			console.log("📊 [registerFarmingReward] Dark matter calculation:", JSON.stringify(darkMatterLogData, null, 2));
+			logger.info(
+				"📊 [registerFarmingReward] Dark matter calculation:",
+				darkMatterLogData
+			);
+			console.log(
+				"📊 [registerFarmingReward] Dark matter calculation:",
+				JSON.stringify(darkMatterLogData, null, 2)
+			);
 
 			// Prepare offer data for resources
 			const offerData = [];
