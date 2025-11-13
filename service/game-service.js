@@ -290,7 +290,10 @@ class GameService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
-		logger.debug("registerFarmingReward", { userId, galaxyData });
+		// ✅ Преобразуем userId в число для логирования (BigInt не сериализуется)
+		const debugUserId =
+			typeof userId === "bigint" ? Number(userId) : Number(userId);
+		logger.debug("registerFarmingReward", { userId: debugUserId, galaxyData });
 
 		try {
 			// Validate galaxyData
@@ -327,8 +330,11 @@ class GameService {
 			const playerParameters = userState.playerParameters || {};
 
 			// ✅ Логируем playerParameters для отладки (INFO + console.log для гарантированного вывода)
+			// ✅ Преобразуем userId в число для сериализации (BigInt не сериализуется)
+			const numericUserId =
+				typeof userId === "bigint" ? Number(userId) : Number(userId);
 			const logData = {
-				userId,
+				userId: numericUserId,
 				galaxySeed: galaxyData.seed,
 				playerParameters,
 				hasStardustProduction: !!playerParameters.stardust_production,
@@ -375,7 +381,7 @@ class GameService {
 
 			// ✅ Логируем расчет stardust для отладки (INFO + console.log для гарантированного вывода)
 			const stardustLogData = {
-				userId,
+				userId: numericUserId,
 				galaxySeed: galaxyData.seed,
 				starCount,
 				stardustPerHour,
@@ -405,7 +411,7 @@ class GameService {
 
 			// ✅ Логируем расчет dark matter для отладки (INFO + console.log для гарантированного вывода)
 			const darkMatterLogData = {
-				userId,
+				userId: numericUserId,
 				galaxySeed: galaxyData.seed,
 				darkMatterPerHour,
 				cappedHours,
@@ -492,7 +498,7 @@ class GameService {
 				};
 
 				logger.debug("Processing farming reward", {
-					userId,
+					userId: numericUserId,
 					resource: offer.resource,
 					amount: offer.amount,
 				});
@@ -500,12 +506,22 @@ class GameService {
 				// Use marketService.registerOffer for creating the transaction
 				const result = await marketService.registerOffer(systemOffer, t);
 
+				// ✅ Преобразуем BigInt в число для сериализации
+				const offerId =
+					typeof result.offer.id === "bigint"
+						? Number(result.offer.id)
+						: Number(result.offer.id);
+				const marketTransactionId =
+					typeof result.marketTransaction.id === "bigint"
+						? Number(result.marketTransaction.id)
+						: Number(result.marketTransaction.id);
+
 				results.push({
 					resource: offer.resource,
 					amount: offer.amount,
 					success: true,
-					offerId: result.offer.id,
-					marketTransactionId: result.marketTransaction.id,
+					offerId: offerId,
+					marketTransactionId: marketTransactionId,
 				});
 			}
 
@@ -527,7 +543,7 @@ class GameService {
 			}
 
 			logger.info("Farming rewards registered successfully", {
-				userId,
+				userId: numericUserId,
 				galaxySeed: galaxyData.seed,
 				rewards: results,
 				hoursSinceLastCollect: cappedHours,
@@ -561,8 +577,11 @@ class GameService {
 				await t.rollback();
 			}
 
+			// ✅ Преобразуем userId в число для логирования (BigInt не сериализуется)
+			const errorUserId =
+				typeof userId === "bigint" ? Number(userId) : Number(userId);
 			logger.error("Failed to register farming reward", {
-				userId,
+				userId: errorUserId,
 				galaxyData,
 				error: err.message,
 			});
