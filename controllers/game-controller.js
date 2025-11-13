@@ -19,19 +19,96 @@ class GameController {
 		try {
 			const { galaxyData, offerData } = req.body;
 
-			logger.debug("registerFarmingReward request", { galaxyData, offerData });
+			logger.debug("registerFarmingReward request", {
+				galaxyData,
+				offerData,
+				fullBody: req.body,
+			});
 
 			// ✅ Обратная совместимость: если пришел старый формат с offerData, игнорируем его
 			// и требуем galaxyData (новый формат)
 			if (offerData) {
 				logger.warn(
 					"⚠️ Old format detected (offerData), ignoring. Please update client to use galaxyData format.",
-					{ userId: req.user.id, offerData }
+					{
+						userId: req.user.id,
+						offerData,
+						hasGalaxyData: !!galaxyData,
+						requestBody: req.body,
+					}
 				);
 			}
 
 			// Validate required fields
 			if (!galaxyData || !galaxyData.seed) {
+				// ✅ Если есть offerData, но нет galaxyData, пытаемся получить seed из домашней галактики пользователя
+				// Это временная мера для обратной совместимости со старым клиентом
+				if (offerData) {
+					logger.warn(
+						"⚠️ Old format detected (offerData without galaxyData), trying to get seed from user's home galaxy",
+						{ userId: req.user.id, offerData }
+					);
+
+					try {
+						// Получаем домашнюю галактику пользователя
+						const { Galaxy } = require("../models/models");
+						const homeGalaxy = await Galaxy.findOne({
+							where: {
+								userId: req.user.id,
+								isHome: true,
+							},
+							order: [["createdAt", "ASC"]], // Первая созданная галактика
+						});
+
+						if (homeGalaxy) {
+							logger.warn("⚠️ Using home galaxy seed as fallback", {
+								userId: req.user.id,
+								seed: homeGalaxy.seed,
+							});
+							// Создаем galaxyData из домашней галактики
+							const fallbackGalaxyData = { seed: homeGalaxy.seed };
+							const result = await gameService.registerFarmingReward(
+								req.user.id,
+								fallbackGalaxyData
+							);
+							return res.status(200).json({
+								success: true,
+								data: result,
+							});
+						} else {
+							// Если нет домашней галактики, берем первую галактику пользователя
+							const firstGalaxy = await Galaxy.findOne({
+								where: { userId: req.user.id },
+								order: [["createdAt", "ASC"]],
+							});
+
+							if (firstGalaxy) {
+								logger.warn(
+									"⚠️ Using first galaxy seed as fallback",
+									{ userId: req.user.id, seed: firstGalaxy.seed }
+								);
+								const fallbackGalaxyData = {
+									seed: firstGalaxy.seed,
+								};
+								const result =
+									await gameService.registerFarmingReward(
+										req.user.id,
+										fallbackGalaxyData
+									);
+								return res.status(200).json({
+									success: true,
+									data: result,
+								});
+							}
+						}
+					} catch (error) {
+						logger.error("Failed to get fallback galaxy seed", {
+							userId: req.user.id,
+							error: error.message,
+						});
+					}
+				}
+
 				throw ApiError.BadRequest(
 					"galaxyData with seed is required. Old format with offerData is no longer supported. Please update your client.",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
