@@ -141,13 +141,18 @@ class GameService {
 		const multiplierBonus = 1 + stardustMultiplier;
 
 		// Apply cosmic harmony bonus (depends on star count)
+		// ✅ Даже при 0 звездах даем минимальный бонус, если уровень > 0
 		let harmonyBonus = 1;
 		if (cosmicHarmony > 0) {
-			const starFactor =
-				safeStarCount === 0
-					? 0
-					: Math.log10(Math.max(10, safeStarCount)) / Math.log10(10);
-			harmonyBonus = 1 + cosmicHarmony * 0.15 * starFactor; // +15% per level
+			if (safeStarCount === 0) {
+				// Минимальный бонус при 0 звездах: +15% за уровень
+				harmonyBonus = 1 + cosmicHarmony * 0.15;
+			} else {
+				// Бонус растет с количеством звезд
+				const starFactor =
+					Math.log10(Math.max(10, safeStarCount)) / Math.log10(10);
+				harmonyBonus = 1 + cosmicHarmony * 0.15 * starFactor; // +15% per level * starFactor
+			}
 		}
 
 		// Apply dark energy bonus
