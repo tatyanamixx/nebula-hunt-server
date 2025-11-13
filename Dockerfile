@@ -51,6 +51,7 @@ COPY --from=build /app/.sequelizerc ./.sequelizerc
 COPY --from=build /app/clear-database.js ./clear-database.js
 COPY --from=build /app/setup-with-server.js ./setup-with-server.js
 COPY --from=build /app/run-migrations.js ./run-migrations.js
+COPY --from=build /app/reset-admin-password.js ./reset-admin-password.js
 
 # Create directory for logs and set permissions
 RUN mkdir -p /app/logs && \
