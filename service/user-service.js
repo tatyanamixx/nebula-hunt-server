@@ -428,17 +428,24 @@ class UserService {
 				// Объявляем переменную для галактики
 				let userGalaxy = null;
 
-				// Генерируем JWT токены
-				const tokens = tokenService.generateTokens({ ...userDto });
-				await tokenService.saveToken(
-					user.id,
-					tokens.refreshToken,
-					transaction
-				);
+			// Генерируем JWT токены
+			const tokens = tokenService.generateTokens({ ...userDto });
+			await tokenService.saveToken(
+				user.id,
+				tokens.refreshToken,
+				transaction
+			);
 
-			// ✅ Обрабатываем реферальную систему если есть referral код
+			// Коммитим основную транзакцию СНАЧАЛА
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+				transaction,
+			});
+			await transaction.commit();
+			console.log("✅ Main transaction committed");
+
+			// ✅ Обрабатываем реферальную систему ПОСЛЕ коммита (в отдельной транзакции)
 			if (referral && referral !== 0) {
-				console.log("🎁 === REFERRAL CODE DETECTED ===");
+				console.log("🎁 === REFERRAL CODE DETECTED (after commit) ===");
 				console.log(`👤 New user ID: ${user.id}`);
 				console.log(`👤 Referrer ID: ${referral}`);
 				
@@ -449,10 +456,11 @@ class UserService {
 
 				try {
 					console.log("⏳ Calling referralService.processReferral...");
+					// Передаем null как transaction - referralService создаст свою
 					await referralService.processReferral(
 						referral,
 						user.id,
-						transaction
+						null  // ✅ Новая транзакция
 					);
 					console.log("✅ Referral processed successfully!");
 					logger.info("Referral rewards processed successfully", {
@@ -474,18 +482,10 @@ class UserService {
 							errorCode: referralError.errorCode,
 						}
 					);
-					// ⚠️ ВРЕМЕННО: бросаем ошибку чтобы увидеть проблему
-					// throw referralError;
 				}
 			} else {
 				console.log("ℹ️ No referral code provided for new user");
 			}
-
-				// Коммитим всю транзакцию
-				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
-					transaction,
-				});
-				await transaction.commit();
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});

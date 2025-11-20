@@ -51,6 +51,36 @@ class ReferralService {
 				refereeId: numericRefereeId.toString(),
 			});
 
+			// ✅ Проверка: уже обработан ли этот реферал?
+			const existingReward = await PaymentTransaction.findOne({
+				where: {
+					buyerId: numericRefereeId,
+					txType: "REFEREE_REWARD",
+				},
+				transaction: t,
+			});
+
+			if (existingReward) {
+				console.log("⚠️ Referral already processed, skipping...");
+				logger.warn("Referral rewards already processed", {
+					referrerId: numericReferrerId.toString(),
+					refereeId: numericRefereeId.toString(),
+					existingTransactionId: existingReward.id,
+				});
+				
+				if (shouldCommit) {
+					await t.commit();
+				}
+				
+				return {
+					success: true,
+					alreadyProcessed: true,
+					message: "Referral rewards already processed",
+				};
+			}
+			
+			console.log("✅ First time processing this referral");
+
 			// 1. Validate that referrer exists and is not the same as referee
 			if (numericReferrerId === numericRefereeId) {
 				throw ApiError.withCode(
