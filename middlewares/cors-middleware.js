@@ -17,6 +17,14 @@ console.log("  Final allowedOrigins:", allowedOrigins);
 
 // Custom CORS middleware
 module.exports = function corsMiddleware(req, res, next) {
+	// Prevent double execution
+	if (res._corsProcessed) {
+		console.error(`\n❌❌❌ CORS MIDDLEWARE CALLED TWICE! ❌❌❌`);
+		console.error(`URL: ${req.method} ${req.url}`);
+		return next();
+	}
+	res._corsProcessed = true;
+	
 	const origin = req.headers.origin;
 
 	console.log(`\n🔵 ========== CORS MIDDLEWARE START ==========`);
