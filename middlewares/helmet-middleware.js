@@ -22,10 +22,10 @@ const helmetMiddleware = helmet({
 			sandbox: ['allow-forms', 'allow-scripts', 'allow-same-origin'],
 		},
 	},
-	// Cross-Origin settings
-	crossOriginEmbedderPolicy: { policy: 'require-corp' },
-	crossOriginOpenerPolicy: { policy: 'same-origin' },
-	crossOriginResourcePolicy: { policy: 'same-origin' },
+	// Cross-Origin settings (disabled to prevent CORS conflicts)
+	crossOriginEmbedderPolicy: false,
+	crossOriginOpenerPolicy: false,
+	crossOriginResourcePolicy: false,
 	// DNS prefetching
 	dnsPrefetchControl: { allow: false },
 	// Prevent iframe embedding
