@@ -31,6 +31,16 @@ module.exports = function corsMiddleware(req, res, next) {
 	if (!origin || allowedOrigins.indexOf(origin) !== -1) {
 		// Set the EXACT origin that made the request (not multiple, not array)
 		const allowedOrigin = origin || allowedOrigins[0];
+
+		// Remove any existing CORS headers first to prevent duplicates
+		res.removeHeader("Access-Control-Allow-Origin");
+		res.removeHeader("Access-Control-Allow-Credentials");
+		res.removeHeader("Access-Control-Allow-Methods");
+		res.removeHeader("Access-Control-Allow-Headers");
+		res.removeHeader("Access-Control-Expose-Headers");
+		res.removeHeader("Access-Control-Max-Age");
+
+		// Set fresh CORS headers
 		res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
 		res.setHeader("Access-Control-Allow-Credentials", "true");
 		res.setHeader(
