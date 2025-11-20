@@ -66,16 +66,16 @@ router.get(
  *             type: object
  *             required:
  *               - message
- *               - userIds
  *             properties:
  *               message:
  *                 type: string
  *                 description: Custom message text
  *               userIds:
  *                 type: array
+ *                 nullable: true
  *                 items:
  *                   type: string
- *                 description: Array of user IDs to send notification to
+ *                 description: Array of user IDs to send notification to (null = send to all users)
  *               showOpenGameButton:
  *                 type: boolean
  *                 description: Show "Open Game" button

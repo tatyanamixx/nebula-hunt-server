@@ -129,7 +129,11 @@ class AdminReminderController {
 			console.log(`\n📨 ========== SEND CUSTOM NOTIFICATION ==========`);
 			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
 			console.log(`💬 Message: ${message}`);
-			console.log(`👥 User IDs: ${userIds?.length || 0} users`);
+			console.log(
+				`👥 User IDs: ${
+					userIds === null ? "ALL USERS" : userIds?.length || 0
+				} users`
+			);
 			console.log(`🎮 Open Game button: ${showOpenGameButton}`);
 			console.log(`💬 Community button: ${showCommunityButton}`);
 
@@ -143,11 +147,27 @@ class AdminReminderController {
 				);
 			}
 
-			if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+			// If userIds is null, get all users
+			let finalUserIds = userIds;
+			if (userIds === null || userIds === undefined) {
+				console.log(`📋 Fetching all users from database...`);
+				const { User } = require("../models/models");
+				const allUsers = await User.findAll({
+					where: {
+						role: "USER",
+						blocked: false,
+					},
+					attributes: ["id"],
+					limit: 50000, // High limit for all users
+				});
+
+				finalUserIds = allUsers.map((user) => user.id.toString());
+				console.log(`✅ Found ${finalUserIds.length} users to notify`);
+			} else if (!Array.isArray(userIds) || userIds.length === 0) {
 				return next(
 					ApiError.withCode(
 						400,
-						"User IDs array is required and must not be empty",
+						"User IDs must be null (for all users) or a non-empty array",
 						ERROR_CODES.VALIDATION.INVALID_INPUT
 					)
 				);
@@ -165,18 +185,19 @@ class AdminReminderController {
 			}
 
 			console.log(`📡 Calling bot: ${BOT_URL}/api/send-custom-notification`);
+			console.log(`👥 Sending to ${finalUserIds.length} users`);
 
 			const response = await axios.post(
 				`${BOT_URL}/api/send-custom-notification`,
 				{
 					secret: REMINDER_SECRET,
 					message: message.trim(),
-					userIds: userIds,
+					userIds: finalUserIds,
 					showOpenGameButton,
 					showCommunityButton,
 				},
 				{
-					timeout: 60000, // 60 seconds for multiple users
+					timeout: 300000, // 5 minutes for all users
 					headers: { "Content-Type": "application/json" },
 				}
 			);
@@ -186,7 +207,7 @@ class AdminReminderController {
 
 			logger.info("Custom notification sent successfully", {
 				adminId: req.user?.id || "unknown",
-				userCount: userIds.length,
+				userCount: finalUserIds.length,
 			});
 
 			res.json({
