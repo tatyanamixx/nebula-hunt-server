@@ -9,14 +9,24 @@ const { ERROR_CODES } = require("../config/error-codes");
 
 // Helper function to sanitize secret value
 // Removes all control characters and invalid characters
+// Note: HTTP headers should ideally contain only ASCII characters
 function sanitizeSecret(value) {
 	if (!value) return "";
-	// Remove all control characters (0x00-0x1F except TAB 0x09) and DEL (0x7F)
-	// Also remove carriage return and line feed
-	return String(value)
+	let sanitized = String(value)
 		.trim()
 		.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "")
 		.replace(/[\r\n]/g, "");
+
+	// Check for non-ASCII characters and warn
+	// HTTP headers with non-ASCII may cause issues with some clients/servers
+	const hasNonASCII = /[^\x20-\x7E]/.test(sanitized);
+	if (hasNonASCII) {
+		logger.warn(
+			`⚠️ WARNING: REMINDER_SECRET contains non-ASCII characters. This may cause issues with HTTP headers. Consider using only ASCII characters (a-z, A-Z, 0-9, and common symbols).`
+		);
+	}
+
+	return sanitized;
 }
 
 class AdminReminderController {
@@ -48,14 +58,6 @@ class AdminReminderController {
 			console.log(`🤖 BOT_URL: ${BOT_URL}`);
 			console.log(
 				`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`
-			);
-			console.log(
-				`🔐 REMINDER_SECRET length: ${REMINDER_SECRET?.length || 0}`
-			);
-			console.log(
-				`🔐 REMINDER_SECRET chars: ${JSON.stringify(
-					REMINDER_SECRET?.split("").map((c) => c.charCodeAt(0))
-				)}`
 			);
 
 			if (!REMINDER_SECRET) {
