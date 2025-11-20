@@ -19,6 +19,14 @@ console.log("  Final allowedOrigins:", allowedOrigins);
 module.exports = function corsMiddleware(req, res, next) {
 	const origin = req.headers.origin;
 
+	// Check if headers already set (prevent duplicate calls)
+	if (res.getHeader("Access-Control-Allow-Origin")) {
+		logger.warn(
+			`CORS: Headers already set! Skipping duplicate call for ${req.url}`
+		);
+		return next();
+	}
+
 	// Always set CORS headers (for allowed origins or requests without origin)
 	if (!origin || allowedOrigins.indexOf(origin) !== -1) {
 		// Set the EXACT origin that made the request (not multiple, not array)
@@ -39,7 +47,7 @@ module.exports = function corsMiddleware(req, res, next) {
 		);
 		res.setHeader("Access-Control-Max-Age", "86400");
 
-		logger.debug(`CORS: Allowed origin: ${allowedOrigin}`);
+		logger.debug(`CORS: Set headers for origin: ${allowedOrigin}`);
 
 		// Handle preflight OPTIONS request
 		if (req.method === "OPTIONS") {
