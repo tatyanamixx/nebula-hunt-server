@@ -91,6 +91,7 @@ jobs:
                         -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
                         -e BOT_TOKEN="${{ secrets.BOT_TOKEN }}" \
                         -e BOT_URL="${{ secrets.BOT_URL }}" \
+                        -e API_URL="${{ secrets.API_URL }}" \
                         -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
                         -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}" \
                         -e CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" \

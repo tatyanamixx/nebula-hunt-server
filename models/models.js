@@ -20,6 +20,23 @@ const User = sequelize.define(
 			allowNull: true,
 			comment: "TON wallet address of the user",
 		},
+		language: {
+			type: DataTypes.STRING(10),
+			allowNull: true,
+			defaultValue: "en",
+			comment: "User's preferred language (en, ru, etc.)",
+		},
+		lastReminderSentAt: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			comment: "Timestamp of the last reminder notification sent to user",
+		},
+		reminderEnabled: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: true,
+			comment: "Whether user wants to receive reminder notifications",
+		},
 	},
 	{
 		indexes: [

@@ -12,6 +12,7 @@ class UserController {
 		try {
 			const id = req.initdata.id;
 			const username = req.initdata.username;
+			const language = req.initdata.language_code || "en"; // Extract language from Telegram
 
 			let { referral, galaxy } = req.body;
 
@@ -48,14 +49,15 @@ class UserController {
 				referral = null;
 			}
 
-			logger.debug("User login/registration", {
-				userId: id,
-				username,
-				referral: referral || "not provided",
-				hasGalaxy: !!galaxy,
-			});
+		logger.debug("User login/registration", {
+			userId: id,
+			username,
+			referral: referral || "not provided",
+			hasGalaxy: !!galaxy,
+			language,
+		});
 
-			const result = await userService.login(id, username, referral, galaxy);
+		const result = await userService.login(id, username, referral, galaxy, language);
 			logger.debug("User login result", { result });
 
 			res.cookie("refreshToken", result.data.auth.refreshToken, {

@@ -347,7 +347,13 @@ class UserService {
 	 * @param {Object} galaxyData - Данные о галактике пользователя (для регистрации) - может быть null
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async login(userId, username, referral = null, galaxyData = null) {
+	async login(
+		userId,
+		username,
+		referral = null,
+		galaxyData = null,
+		language = "en"
+	) {
 		const transaction = await sequelize.transaction();
 		try {
 			// Откладываем проверку всех deferrable ограничений в начале транзакции
@@ -378,11 +384,18 @@ class UserService {
 						username: username || null,
 						referral: referral || 0,
 						role: "USER",
+						language: language || "en",
 					},
 					{
 						transaction: transaction,
 					}
 				);
+			} else {
+				// ✅ Update language on each login (user may have changed their Telegram language)
+				if (language && user.language !== language) {
+					await user.update({ language }, { transaction });
+					logger.debug("Updated user language", { userId, language });
+				}
 
 				isNewUser = true;
 			}
@@ -428,64 +441,64 @@ class UserService {
 				// Объявляем переменную для галактики
 				let userGalaxy = null;
 
-			// Генерируем JWT токены
-			const tokens = tokenService.generateTokens({ ...userDto });
-			await tokenService.saveToken(
-				user.id,
-				tokens.refreshToken,
-				transaction
-			);
+				// Генерируем JWT токены
+				const tokens = tokenService.generateTokens({ ...userDto });
+				await tokenService.saveToken(
+					user.id,
+					tokens.refreshToken,
+					transaction
+				);
 
-			// Коммитим основную транзакцию СНАЧАЛА
-			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
-				transaction,
-			});
-			await transaction.commit();
-			console.log("✅ Main transaction committed");
-
-			// ✅ Обрабатываем реферальную систему ПОСЛЕ коммита (в отдельной транзакции)
-			if (referral && referral !== 0) {
-				console.log("🎁 === REFERRAL CODE DETECTED (after commit) ===");
-				console.log(`👤 New user ID: ${user.id}`);
-				console.log(`👤 Referrer ID: ${referral}`);
-				
-				logger.debug("Processing referral for new user", {
-					refereeId: user.id,
-					referrerId: referral,
+				// Коммитим основную транзакцию СНАЧАЛА
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+					transaction,
 				});
+				await transaction.commit();
+				console.log("✅ Main transaction committed");
 
-				try {
-					console.log("⏳ Calling referralService.processReferral...");
-					// Передаем null как transaction - referralService создаст свою
-					await referralService.processReferral(
-						referral,
-						user.id,
-						null  // ✅ Новая транзакция
-					);
-					console.log("✅ Referral processed successfully!");
-					logger.info("Referral rewards processed successfully", {
+				// ✅ Обрабатываем реферальную систему ПОСЛЕ коммита (в отдельной транзакции)
+				if (referral && referral !== 0) {
+					console.log("🎁 === REFERRAL CODE DETECTED (after commit) ===");
+					console.log(`👤 New user ID: ${user.id}`);
+					console.log(`👤 Referrer ID: ${referral}`);
+
+					logger.debug("Processing referral for new user", {
 						refereeId: user.id,
 						referrerId: referral,
 					});
-				} catch (referralError) {
-					// Логируем ошибку с полным стеком
-					console.error("❌ REFERRAL ERROR:", referralError.message);
-					console.error("Stack:", referralError.stack);
-					logger.error(
-						"Failed to process referral rewards, but registration will continue",
-						{
+
+					try {
+						console.log("⏳ Calling referralService.processReferral...");
+						// Передаем null как transaction - referralService создаст свою
+						await referralService.processReferral(
+							referral,
+							user.id,
+							null // ✅ Новая транзакция
+						);
+						console.log("✅ Referral processed successfully!");
+						logger.info("Referral rewards processed successfully", {
 							refereeId: user.id,
 							referrerId: referral,
-							error: referralError.message,
-							stack: referralError.stack,
-							code: referralError.code,
-							errorCode: referralError.errorCode,
-						}
-					);
+						});
+					} catch (referralError) {
+						// Логируем ошибку с полным стеком
+						console.error("❌ REFERRAL ERROR:", referralError.message);
+						console.error("Stack:", referralError.stack);
+						logger.error(
+							"Failed to process referral rewards, but registration will continue",
+							{
+								refereeId: user.id,
+								referrerId: referral,
+								error: referralError.message,
+								stack: referralError.stack,
+								code: referralError.code,
+								errorCode: referralError.errorCode,
+							}
+						);
+					}
+				} else {
+					console.log("ℹ️ No referral code provided for new user");
 				}
-			} else {
-				console.log("ℹ️ No referral code provided for new user");
-			}
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});
