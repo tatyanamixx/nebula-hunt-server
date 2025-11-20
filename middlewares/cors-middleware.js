@@ -88,7 +88,29 @@ module.exports = function corsMiddleware(req, res, next) {
 
 		// Intercept response to check final headers before sending
 		const originalEnd = res.end;
+		const originalWriteHead = res.writeHead;
+		let endCalled = false;
+		
+		// Intercept writeHead to see all headers being set
+		res.writeHead = function(statusCode, statusMessage, headers) {
+			console.log(`\n📝 ========== WRITEHEAD CALLED ==========`);
+			console.log(`Status: ${statusCode}`);
+			if (headers) {
+				const corsHeader = headers["Access-Control-Allow-Origin"] || 
+					(headers instanceof Array ? headers.find(h => h[0] === "Access-Control-Allow-Origin")?.[1] : null);
+				console.log(`CORS in writeHead: ${corsHeader || 'none'}`);
+			}
+			console.log(`📝 ========== WRITEHEAD END ==========\n`);
+			return originalWriteHead.apply(this, arguments);
+		};
+		
 		res.end = function (...args) {
+			if (endCalled) {
+				console.error(`\n❌❌❌ res.end() CALLED TWICE! ❌❌❌\n`);
+				return;
+			}
+			endCalled = true;
+			
 			console.log(`\n📤 ========== RESPONSE SENDING ==========`);
 			const finalOrigin = res.getHeader("Access-Control-Allow-Origin");
 			const finalCreds = res.getHeader("Access-Control-Allow-Credentials");
