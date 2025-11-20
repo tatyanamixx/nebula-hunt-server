@@ -227,4 +227,42 @@ router.delete(
 	galaxyController.deleteUserGalaxy
 );
 
+/**
+ * @swagger
+ * /galaxies/{seed}/upgrade:
+ *   post:
+ *     summary: Upgrade a galaxy (change name, type, color, background)
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: seed
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               upgradeType:
+ *                 type: string
+ *                 enum: [name, type, color, background]
+ *               upgradeValue:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Galaxy upgraded successfully
+ */
+router.post(
+	"/:seed/upgrade",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
+	authMiddleware,
+	galaxyController.upgradeGalaxy
+);
+
 module.exports = router;

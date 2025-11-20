@@ -1475,13 +1475,57 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
-			// TODO: Реализовать логику улучшения галактики
-			// Пока просто логируем успешный платеж
+			// Extract upgrade data from payload (using short keys: gs=galaxySeed, ut=upgradeType, uv=upgradeValue)
+			const galaxySeed = payload.gs || payload.galaxySeed;
+			const upgradeType = payload.ut || payload.upgradeType;
+			const upgradeValue = payload.uv || payload.upgradeValue;
+
+			if (!galaxySeed || !upgradeType || !upgradeValue) {
+				throw new Error(
+					"Missing required upgrade data: galaxySeed, upgradeType, upgradeValue"
+				);
+			}
+
+			// Validate upgrade type
+			const validUpgradeTypes = ["name", "type", "color", "background"];
+			if (!validUpgradeTypes.includes(upgradeType)) {
+				throw new Error(
+					`Invalid upgrade type: ${upgradeType}. Must be one of: ${validUpgradeTypes.join(", ")}`
+				);
+			}
+
+			// Find galaxy
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxySeed, userId },
+			});
+
+			if (!galaxy) {
+				throw new Error(
+					"Galaxy not found or not owned by user"
+				);
+			}
+
+			// Apply upgrade
+			const galaxyProperties = galaxy.galaxyProperties || {};
+
+			if (upgradeType === "name") {
+				galaxy.name = upgradeValue;
+			} else if (upgradeType === "type") {
+				galaxyProperties.type = upgradeValue;
+			} else if (upgradeType === "color") {
+				galaxyProperties.colorPalette = upgradeValue;
+			} else if (upgradeType === "background") {
+				galaxyProperties.background = upgradeValue;
+			}
+
+			galaxy.galaxyProperties = galaxyProperties;
+			await galaxy.save();
 
 			logger.info("Galaxy upgrade payment completed", {
 				userId,
-				upgradeType: payload.upgradeType,
-				galaxyName: payload.galaxyName,
+				galaxySeed,
+				upgradeType,
+				upgradeValue,
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
@@ -1489,8 +1533,10 @@ class GameService {
 				success: true,
 				message: "Galaxy upgrade payment completed",
 				data: {
-					upgradeType: payload.upgradeType,
-					galaxyName: payload.galaxyName,
+					galaxySeed,
+					upgradeType,
+					upgradeValue,
+					galaxyName: galaxy.name,
 				},
 			};
 		} catch (error) {
