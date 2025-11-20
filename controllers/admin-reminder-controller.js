@@ -14,14 +14,23 @@ class AdminReminderController {
 	 */
 	async triggerReminders(req, res, next) {
 		try {
+			console.log(`\n🚀 ========== TRIGGER REMINDERS START ==========`);
+			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
+			console.log(`🌐 Origin: ${req.headers.origin || "none"}`);
+			console.log(`🔑 Auth: ${req.headers.authorization ? "YES" : "NO"}`);
+			
 			logger.info("Admin manually triggered reminders", {
 				adminId: req.user?.id || "unknown",
 			});
 
 			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
 			const REMINDER_SECRET = process.env.REMINDER_SECRET;
+			
+			console.log(`🤖 BOT_URL: ${BOT_URL}`);
+			console.log(`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`);
 
 			if (!REMINDER_SECRET) {
+				console.error(`❌ REMINDER_SECRET not configured!`);
 				throw ApiError.withCode(
 					500,
 					"REMINDER_SECRET is not configured",
@@ -29,6 +38,7 @@ class AdminReminderController {
 				);
 			}
 
+			console.log(`📡 Calling bot: ${BOT_URL}/api/trigger-reminders`);
 			// Call bot's trigger endpoint
 			const response = await axios.post(
 				`${BOT_URL}/api/trigger-reminders`,
@@ -40,18 +50,29 @@ class AdminReminderController {
 					headers: { "Content-Type": "application/json" },
 				}
 			);
+			
+			console.log(`✅ Bot response:`, response.data);
 
 			logger.info("Reminders triggered successfully", {
 				adminId: req.user?.id || "unknown",
 				result: response.data,
 			});
 
+			console.log(`✅ Sending success response to admin`);
 			res.json({
 				success: true,
 				message: "Reminders sent successfully",
 				data: response.data,
 			});
+			console.log(`🚀 ========== TRIGGER REMINDERS END (SUCCESS) ==========\n`);
 		} catch (error) {
+			console.error(`\n❌ ========== TRIGGER REMINDERS ERROR ==========`);
+			console.error(`Error message: ${error.message}`);
+			console.error(`Error code: ${error.code}`);
+			console.error(`Error response:`, error.response?.data);
+			console.error(`Error stack:`, error.stack);
+			console.error(`❌ ========== ERROR END ==========\n`);
+			
 			logger.error("Failed to trigger reminders", {
 				adminId: req.user?.id || "unknown",
 				error: error.message,
