@@ -436,40 +436,50 @@ class UserService {
 					transaction
 				);
 
-				// ✅ Обрабатываем реферальную систему если есть referral код
-				if (referral && referral !== 0) {
-					logger.debug("Processing referral for new user", {
+			// ✅ Обрабатываем реферальную систему если есть referral код
+			if (referral && referral !== 0) {
+				console.log("🎁 === REFERRAL CODE DETECTED ===");
+				console.log(`👤 New user ID: ${user.id}`);
+				console.log(`👤 Referrer ID: ${referral}`);
+				
+				logger.debug("Processing referral for new user", {
+					refereeId: user.id,
+					referrerId: referral,
+				});
+
+				try {
+					console.log("⏳ Calling referralService.processReferral...");
+					await referralService.processReferral(
+						referral,
+						user.id,
+						transaction
+					);
+					console.log("✅ Referral processed successfully!");
+					logger.info("Referral rewards processed successfully", {
 						refereeId: user.id,
 						referrerId: referral,
 					});
-
-					try {
-						await referralService.processReferral(
-							referral,
-							user.id,
-							transaction
-						);
-						logger.info("Referral rewards processed successfully", {
+				} catch (referralError) {
+					// Логируем ошибку с полным стеком
+					console.error("❌ REFERRAL ERROR:", referralError.message);
+					console.error("Stack:", referralError.stack);
+					logger.error(
+						"Failed to process referral rewards, but registration will continue",
+						{
 							refereeId: user.id,
 							referrerId: referral,
-						});
-					} catch (referralError) {
-						// Логируем ошибку с полным стеком
-						logger.error(
-							"Failed to process referral rewards, but registration will continue",
-							{
-								refereeId: user.id,
-								referrerId: referral,
-								error: referralError.message,
-								stack: referralError.stack,
-								code: referralError.code,
-								errorCode: referralError.errorCode,
-							}
-						);
-						// ⚠️ ВРЕМЕННО: бросаем ошибку чтобы увидеть проблему
-						// throw referralError;
-					}
+							error: referralError.message,
+							stack: referralError.stack,
+							code: referralError.code,
+							errorCode: referralError.errorCode,
+						}
+					);
+					// ⚠️ ВРЕМЕННО: бросаем ошибку чтобы увидеть проблему
+					// throw referralError;
 				}
+			} else {
+				console.log("ℹ️ No referral code provided for new user");
+			}
 
 				// Коммитим всю транзакцию
 				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
