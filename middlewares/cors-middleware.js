@@ -10,157 +10,85 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl)
 	.split(",")
 	.map((origin) => origin.trim());
 
-console.log("🔍 CORS DEBUG:");
-console.log("  CLIENT_URL:", process.env.CLIENT_URL);
-console.log("  ALLOWED_ORIGINS:", process.env.ALLOWED_ORIGINS);
-console.log("  Final allowedOrigins:", allowedOrigins);
-
 // Custom CORS middleware
 module.exports = function corsMiddleware(req, res, next) {
 	// Prevent double execution
 	if (res._corsProcessed) {
-		console.error(`\n❌❌❌ CORS MIDDLEWARE CALLED TWICE! ❌❌❌`);
-		console.error(`URL: ${req.method} ${req.url}`);
+		logger.warn(`CORS: Middleware called twice for ${req.method} ${req.url}`);
 		return next();
 	}
 	res._corsProcessed = true;
 	
 	const origin = req.headers.origin;
 
-	console.log(`\n🔵 ========== CORS MIDDLEWARE START ==========`);
-	console.log(`📍 URL: ${req.method} ${req.url}`);
-	console.log(`🌐 Origin: ${origin || "undefined"}`);
-	console.log(`🔑 Auth: ${req.headers.authorization ? "YES" : "NO"}`);
-
 	// Check if headers already set (prevent duplicate calls)
 	const existingOrigin = res.getHeader("Access-Control-Allow-Origin");
-	console.log(`🔍 Existing CORS: ${existingOrigin || "none"}`);
-
 	if (existingOrigin) {
-		console.log(`⚠️ SKIPPING: Headers already exist!`);
-		console.log(`🔵 ========== CORS END (SKIP) ==========\n`);
-		logger.warn(
-			`CORS: Headers already set! Skipping duplicate call for ${req.url}`
-		);
+		logger.warn(`CORS: Headers already set! Skipping duplicate call for ${req.url}`);
 		return next();
 	}
-
-	console.log(`✅ No existing headers, proceeding...`);
 
 	// Always set CORS headers (for allowed origins or requests without origin)
 	if (!origin || allowedOrigins.indexOf(origin) !== -1) {
 		// Set the EXACT origin that made the request (not multiple, not array)
 		const allowedOrigin = origin || allowedOrigins[0];
-		console.log(`🎯 Allowed origin will be: ${allowedOrigin}`);
 
 		// Remove any existing CORS headers first to prevent duplicates
-		console.log(`🗑️  Removing existing headers...`);
 		res.removeHeader("Access-Control-Allow-Origin");
 		res.removeHeader("Access-Control-Allow-Credentials");
 		res.removeHeader("Access-Control-Allow-Methods");
 		res.removeHeader("Access-Control-Allow-Headers");
 		res.removeHeader("Access-Control-Expose-Headers");
 		res.removeHeader("Access-Control-Max-Age");
-		console.log(`✅ Removed all CORS headers`);
 
 		// Set fresh CORS headers
-		console.log(`📝 Setting fresh CORS headers...`);
 		res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
-		console.log(`   ✓ Origin: ${allowedOrigin}`);
-
 		res.setHeader("Access-Control-Allow-Credentials", "true");
-		console.log(`   ✓ Credentials: true`);
-
 		res.setHeader(
 			"Access-Control-Allow-Methods",
 			"GET, POST, PUT, PATCH, DELETE, OPTIONS"
 		);
-		console.log(`   ✓ Methods set`);
-
 		res.setHeader(
 			"Access-Control-Allow-Headers",
 			"Content-Type, Authorization, x-telegram-init-data"
 		);
-		console.log(`   ✓ Headers set`);
-
 		res.setHeader(
 			"Access-Control-Expose-Headers",
 			"Content-Length, Content-Type"
 		);
-		console.log(`   ✓ Expose headers set`);
-
 		res.setHeader("Access-Control-Max-Age", "86400");
-		console.log(`   ✓ Max-Age set`);
 
-		console.log(`✅ All CORS headers set successfully!`);
-
-		// Intercept response to check final headers before sending
+		// Intercept response to check for duplicates (only log errors)
 		const originalEnd = res.end;
-		const originalWriteHead = res.writeHead;
 		let endCalled = false;
-		
-		// Intercept writeHead to see all headers being set
-		res.writeHead = function(statusCode, statusMessage, headers) {
-			console.log(`\n📝 ========== WRITEHEAD CALLED ==========`);
-			console.log(`Status: ${statusCode}`);
-			if (headers) {
-				const corsHeader = headers["Access-Control-Allow-Origin"] || 
-					(headers instanceof Array ? headers.find(h => h[0] === "Access-Control-Allow-Origin")?.[1] : null);
-				console.log(`CORS in writeHead: ${corsHeader || 'none'}`);
-			}
-			console.log(`📝 ========== WRITEHEAD END ==========\n`);
-			return originalWriteHead.apply(this, arguments);
-		};
 		
 		res.end = function (...args) {
 			if (endCalled) {
-				console.error(`\n❌❌❌ res.end() CALLED TWICE! ❌❌❌\n`);
+				logger.error(`CORS: res.end() called twice for ${req.method} ${req.url}`);
 				return;
 			}
 			endCalled = true;
 			
-			console.log(`\n📤 ========== RESPONSE SENDING ==========`);
 			const finalOrigin = res.getHeader("Access-Control-Allow-Origin");
-			const finalCreds = res.getHeader("Access-Control-Allow-Credentials");
-			const finalMethods = res.getHeader("Access-Control-Allow-Methods");
-
-			console.log(`🔍 Final CORS headers:`);
-			console.log(`   Origin: ${finalOrigin}`);
-			console.log(`   Credentials: ${finalCreds}`);
-			console.log(`   Methods: ${finalMethods}`);
-
 			if (
 				Array.isArray(finalOrigin) ||
 				(typeof finalOrigin === "string" && finalOrigin.includes(","))
 			) {
-				console.error(`\n❌❌❌ DUPLICATE DETECTED! ❌❌❌`);
-				console.error(`Final Origin value: ${finalOrigin}`);
-				console.error(`Type: ${typeof finalOrigin}`);
-				console.error(`Is Array: ${Array.isArray(finalOrigin)}`);
-			} else {
-				console.log(`✅ No duplicates detected`);
+				logger.error(`CORS: Duplicate header detected! Origin: ${finalOrigin}, Type: ${typeof finalOrigin}, Is Array: ${Array.isArray(finalOrigin)}`);
 			}
-			console.log(`📤 ========== RESPONSE END ==========\n`);
+			
 			return originalEnd.apply(res, args);
 		};
 
 		// Handle preflight OPTIONS request
 		if (req.method === "OPTIONS") {
-			console.log(`⚡ OPTIONS request - responding immediately`);
-			console.log(`🔵 ========== CORS END (OPTIONS) ==========\n`);
 			return res.status(204).end();
 		}
 
-		console.log(`➡️  Calling next() - passing to route handlers...`);
-		console.log(`🔵 ========== CORS MIDDLEWARE END ==========\n`);
 		next();
 	} else {
 		// Block unauthorized origin
-		console.log(`\n🚫 ========== BLOCKED! ==========`);
-		console.log(`❌ Origin not in allowed list: ${origin}`);
-		console.log(`📋 Allowed origins:`, allowedOrigins);
-		console.log(`🚫 ========== BLOCKED END ==========\n`);
-		logger.warn(`CORS: Blocked request from unauthorized origin: ${origin}`);
+		logger.warn(`CORS: Blocked request from unauthorized origin: ${origin}, Allowed: ${allowedOrigins.join(", ")}`);
 		return res.status(403).json({ error: "Origin not allowed" });
 	}
 };

@@ -49,6 +49,14 @@ class AdminReminderController {
 			console.log(
 				`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`
 			);
+			console.log(
+				`🔐 REMINDER_SECRET length: ${REMINDER_SECRET?.length || 0}`
+			);
+			console.log(
+				`🔐 REMINDER_SECRET chars: ${JSON.stringify(
+					REMINDER_SECRET?.split("").map((c) => c.charCodeAt(0))
+				)}`
+			);
 
 			if (!REMINDER_SECRET) {
 				console.error(`❌ REMINDER_SECRET not configured!`);
