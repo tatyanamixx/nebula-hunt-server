@@ -9,6 +9,7 @@ const sequelize = require("../db");
 const logger = require("./logger-service");
 const ApiError = require("../exceptions/api-error");
 const { ERROR_CODES } = require("../config/error-codes");
+const axios = require("axios");
 
 // Referral rewards configuration
 const REFERRAL_REWARDS = {
@@ -130,6 +131,20 @@ class ReferralService {
 				refereeId: numericRefereeId.toString(),
 				referrerReward,
 				refereeReward,
+			});
+
+			// ✅ Отправляем уведомление реферу через бот
+			this._sendReferralNotification(
+				numericRefereeId,
+				numericReferrerId,
+				referee
+			).catch((notifError) => {
+				// Логируем ошибку, но не прерываем выполнение
+				logger.error("Failed to send referral notification", {
+					referrerId: numericReferrerId.toString(),
+					refereeId: numericRefereeId.toString(),
+					error: notifError.message,
+				});
 			});
 
 			return {
@@ -276,6 +291,57 @@ class ReferralService {
 				`Failed to get referrals: ${error.message}`,
 				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 			);
+		}
+	}
+
+	/**
+	 * Send referral notification to referrer via Telegram bot
+	 * @param {BigInt} refereeId - New user ID
+	 * @param {BigInt} referrerId - Referrer user ID
+	 * @param {Object} referee - Referee user object (to get language)
+	 * @returns {Promise<void>}
+	 * @private
+	 */
+	async _sendReferralNotification(refereeId, referrerId, referee) {
+		try {
+			// Получаем язык пользователя из БД (если есть)
+			const referrerUser = await User.findByPk(referrerId);
+			const language = referrerUser?.language || referee?.language || "en";
+
+			const BOT_URL = process.env.BOT_URL || "http://localhost:3001";
+
+			logger.debug("Sending referral notification to bot", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				language,
+				botUrl: BOT_URL,
+			});
+
+			const response = await axios.post(
+				`${BOT_URL}/api/process-referral`,
+				{
+					userId: refereeId.toString(),
+					referrerId: referrerId.toString(),
+					language: language,
+				},
+				{
+					timeout: 5000, // 5 секунд таймаут
+				}
+			);
+
+			logger.info("Referral notification sent successfully", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				response: response.data,
+			});
+		} catch (error) {
+			// Не бросаем ошибку, просто логируем
+			logger.warn("Failed to send referral notification to bot", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				error: error.message,
+				stack: error.stack,
+			});
 		}
 	}
 }

@@ -6,6 +6,7 @@ const { User, UserState } = require("../models/models");
 const tokenService = require("./token-service");
 const galaxyService = require("./galaxy-service");
 const userStateService = require("./user-state-service");
+const referralService = require("./referral-service");
 const logger = require("./logger-service");
 // Removed: eventService, upgradeService, taskService imports - no longer used in login
 const UserDto = require("../dtos/user-dto");
@@ -434,6 +435,36 @@ class UserService {
 					tokens.refreshToken,
 					transaction
 				);
+
+				// ✅ Обрабатываем реферальную систему если есть referral код
+				if (referral && referral !== 0) {
+					logger.debug("Processing referral for new user", {
+						refereeId: user.id,
+						referrerId: referral,
+					});
+
+					try {
+						await referralService.processReferral(
+							referral,
+							user.id,
+							transaction
+						);
+						logger.info("Referral rewards processed successfully", {
+							refereeId: user.id,
+							referrerId: referral,
+						});
+					} catch (referralError) {
+						// Логируем ошибку, но не прерываем регистрацию
+						logger.error(
+							"Failed to process referral rewards, but registration will continue",
+							{
+								refereeId: user.id,
+								referrerId: referral,
+								error: referralError.message,
+							}
+						);
+					}
+				}
 
 				// Коммитим всю транзакцию
 				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
