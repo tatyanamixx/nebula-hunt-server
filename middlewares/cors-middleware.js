@@ -22,12 +22,18 @@ module.exports = function corsMiddleware(req, res, next) {
 		// Set CORS headers only once
 		res.setHeader("Access-Control-Allow-Origin", origin || "*");
 		res.setHeader("Access-Control-Allow-Credentials", "true");
-		res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+		res.setHeader(
+			"Access-Control-Allow-Methods",
+			"GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		);
 		res.setHeader(
 			"Access-Control-Allow-Headers",
 			"Content-Type, Authorization, x-telegram-init-data"
 		);
-		res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Type");
+		res.setHeader(
+			"Access-Control-Expose-Headers",
+			"Content-Length, Content-Type"
+		);
 		res.setHeader("Access-Control-Max-Age", "86400");
 
 		logger.debug(`CORS: Allowed origin: ${origin || "no origin"}`);
