@@ -38,13 +38,6 @@ class AdminReminderController {
 		try {
 			const { force = false, userIds = null } = req.body;
 
-			console.log(`\n🚀 ========== TRIGGER REMINDERS START ==========`);
-			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
-			console.log(`🌐 Origin: ${req.headers.origin || "none"}`);
-			console.log(`🔑 Auth: ${req.headers.authorization ? "YES" : "NO"}`);
-			console.log(`⚡ Force mode: ${force}`);
-			console.log(`👥 User IDs: ${userIds ? JSON.stringify(userIds) : "all"}`);
-
 			logger.info("Admin manually triggered reminders", {
 				adminId: req.user?.id || "unknown",
 				force,
@@ -55,13 +48,8 @@ class AdminReminderController {
 			const REMINDER_SECRET_RAW = process.env.REMINDER_SECRET;
 			const REMINDER_SECRET = sanitizeSecret(REMINDER_SECRET_RAW);
 
-			console.log(`🤖 BOT_URL: ${BOT_URL}`);
-			console.log(
-				`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`
-			);
-
 			if (!REMINDER_SECRET) {
-				console.error(`❌ REMINDER_SECRET not configured!`);
+				logger.error("REMINDER_SECRET not configured!");
 				throw ApiError.withCode(
 					500,
 					"REMINDER_SECRET is not configured",
@@ -69,7 +57,6 @@ class AdminReminderController {
 				);
 			}
 
-			console.log(`📡 Calling bot: ${BOT_URL}/api/trigger-reminders`);
 			// Call bot's trigger endpoint
 			const response = await axios.post(
 				`${BOT_URL}/api/trigger-reminders`,
@@ -84,29 +71,23 @@ class AdminReminderController {
 				}
 			);
 
-			console.log(`✅ Bot response:`, response.data);
-
 			logger.info("Reminders triggered successfully", {
 				adminId: req.user?.id || "unknown",
 				result: response.data,
 			});
 
-			console.log(`✅ Sending success response to admin`);
 			res.json({
 				success: true,
 				message: "Reminders sent successfully",
 				data: response.data,
 			});
-			console.log(
-				`🚀 ========== TRIGGER REMINDERS END (SUCCESS) ==========\n`
-			);
 		} catch (error) {
-			console.error(`\n❌ ========== TRIGGER REMINDERS ERROR ==========`);
-			console.error(`Error message: ${error.message}`);
-			console.error(`Error code: ${error.code}`);
-			console.error(`Error response:`, error.response?.data);
-			console.error(`Error stack:`, error.stack);
-			console.error(`❌ ========== ERROR END ==========\n`);
+			logger.error("Failed to trigger reminders", {
+				adminId: req.user?.id || "unknown",
+				error: error.message,
+				errorCode: error.code,
+				errorResponse: error.response?.data,
+			});
 
 			logger.error("Failed to trigger reminders", {
 				adminId: req.user?.id || "unknown",
@@ -149,17 +130,6 @@ class AdminReminderController {
 				showCommunityButton = false,
 			} = req.body;
 
-			console.log(`\n📨 ========== SEND CUSTOM NOTIFICATION ==========`);
-			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
-			console.log(`💬 Message: ${message}`);
-			console.log(
-				`👥 User IDs: ${
-					userIds === null ? "ALL USERS" : userIds?.length || 0
-				} users`
-			);
-			console.log(`🎮 Open Game button: ${showOpenGameButton}`);
-			console.log(`💬 Community button: ${showCommunityButton}`);
-
 			if (!message || !message.trim()) {
 				return next(
 					ApiError.withCode(
@@ -173,7 +143,6 @@ class AdminReminderController {
 			// If userIds is null, get all users
 			let finalUserIds = userIds;
 			if (userIds === null || userIds === undefined) {
-				console.log(`📋 Fetching all users from database...`);
 				const { User } = require("../models/models");
 				const allUsers = await User.findAll({
 					where: {
@@ -185,7 +154,9 @@ class AdminReminderController {
 				});
 
 				finalUserIds = allUsers.map((user) => user.id.toString());
-				console.log(`✅ Found ${finalUserIds.length} users to notify`);
+				logger.info(
+					`Fetched ${finalUserIds.length} users for custom notification`
+				);
 			} else if (!Array.isArray(userIds) || userIds.length === 0) {
 				return next(
 					ApiError.withCode(
@@ -208,9 +179,6 @@ class AdminReminderController {
 				);
 			}
 
-			console.log(`📡 Calling bot: ${BOT_URL}/api/send-custom-notification`);
-			console.log(`👥 Sending to ${finalUserIds.length} users`);
-
 			const response = await axios.post(
 				`${BOT_URL}/api/send-custom-notification`,
 				{
@@ -226,12 +194,10 @@ class AdminReminderController {
 				}
 			);
 
-			console.log(`✅ Bot response:`, response.data);
-			console.log(`📨 ========== SEND CUSTOM NOTIFICATION END ==========\n`);
-
 			logger.info("Custom notification sent successfully", {
 				adminId: req.user?.id || "unknown",
 				userCount: finalUserIds.length,
+				result: response.data,
 			});
 
 			res.json({
@@ -240,13 +206,10 @@ class AdminReminderController {
 				data: response.data,
 			});
 		} catch (error) {
-			console.error(`\n❌ ========== CUSTOM NOTIFICATION ERROR ==========`);
-			console.error(`Error: ${error.message}`);
-			console.error(`❌ ========== ERROR END ==========\n`);
-
 			logger.error("Failed to send custom notification", {
 				adminId: req.user?.id || "unknown",
 				error: error.message,
+				errorResponse: error.response?.data,
 			});
 
 			if (error.response) {

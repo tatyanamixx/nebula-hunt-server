@@ -10,20 +10,6 @@ const logger = require("../service/logger-service");
 
 module.exports = async function adminAuthMiddleware(req, res, next) {
 	try {
-		// DEBUG: Log all headers for debugging
-		console.log("🔐 Admin Auth Middleware - Request received for:", req.url);
-		console.log("🔐 Admin Auth Middleware - Method:", req.method);
-		console.log("🔐 Admin Auth Middleware - Request headers:", {
-			authorization: req.headers.authorization ? "present" : "missing",
-			authorizationPreview: req.headers.authorization
-				? req.headers.authorization.substring(0, 50) + "..."
-				: "none",
-			userAgent: req.get("User-Agent"),
-			ip: req.ip,
-			url: req.url,
-			method: req.method,
-		});
-
 		// Проверяем наличие заголовка Authorization
 		const authorizationHeader = req.headers.authorization;
 		if (!authorizationHeader) {
@@ -68,18 +54,7 @@ module.exports = async function adminAuthMiddleware(req, res, next) {
 		// Валидируем access token
 		let userData;
 		try {
-			console.log("🔐 Admin Auth Middleware - Validating token:", {
-				tokenPreview: accessToken.substring(0, 50) + "...",
-				tokenLength: accessToken.length,
-			});
-
 			userData = tokenService.validateAccessToken(accessToken);
-
-			console.log("🔐 Admin Auth Middleware - Token validation result:", {
-				userData: userData ? "valid" : "null",
-				userId: userData?.id,
-				userEmail: userData?.email,
-			});
 		} catch (error) {
 			logger.warn("Admin JWT: Token validation failed", {
 				ip: req.ip,
