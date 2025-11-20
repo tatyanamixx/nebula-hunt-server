@@ -5,8 +5,8 @@
 const Router = require("express").Router;
 const router = new Router();
 const adminReminderController = require("../controllers/admin-reminder-controller");
-const authMiddleware = require("../middlewares/auth-middleware");
-const adminMiddleware = require("../middlewares/admin-middleware");
+const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
+const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 
 /**
  * @swagger
@@ -26,8 +26,8 @@ const adminMiddleware = require("../middlewares/admin-middleware");
  */
 router.post(
 	"/trigger",
-	authMiddleware,
-	adminMiddleware,
+	adminAuthMiddleware,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	adminReminderController.triggerReminders
 );
 
@@ -45,10 +45,9 @@ router.post(
  */
 router.get(
 	"/stats",
-	authMiddleware,
-	adminMiddleware,
+	adminAuthMiddleware,
+	rateLimitMiddleware(100, 10), // 100 requests per 10 minutes
 	adminReminderController.getReminderStats
 );
 
 module.exports = router;
-
