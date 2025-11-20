@@ -459,56 +459,41 @@ class UserService {
 					transaction
 				);
 
-				// Коммитим основную транзакцию СНАЧАЛА
-				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
-					transaction,
+			// Commit main transaction first
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+				transaction,
+			});
+			await transaction.commit();
+
+			// Process referral system AFTER commit (in separate transaction)
+			if (referral && referral !== 0) {
+				logger.debug("Processing referral for new user", {
+					refereeId: user.id,
+					referrerId: referral,
 				});
-				await transaction.commit();
-				console.log("✅ Main transaction committed");
 
-				// ✅ Обрабатываем реферальную систему ПОСЛЕ коммита (в отдельной транзакции)
-				if (referral && referral !== 0) {
-					console.log("🎁 === REFERRAL CODE DETECTED (after commit) ===");
-					console.log(`👤 New user ID: ${user.id}`);
-					console.log(`👤 Referrer ID: ${referral}`);
-
-					logger.debug("Processing referral for new user", {
+				try {
+					// Pass null as transaction - referralService will create its own
+					await referralService.processReferral(
+						referral,
+						user.id,
+						null
+					);
+					logger.info("Referral rewards processed successfully", {
 						refereeId: user.id,
 						referrerId: referral,
 					});
-
-					try {
-						console.log("⏳ Calling referralService.processReferral...");
-						// Передаем null как transaction - referralService создаст свою
-						await referralService.processReferral(
-							referral,
-							user.id,
-							null // ✅ Новая транзакция
-						);
-						console.log("✅ Referral processed successfully!");
-						logger.info("Referral rewards processed successfully", {
+				} catch (referralError) {
+					logger.error(
+						"Failed to process referral rewards, but registration will continue",
+						{
 							refereeId: user.id,
 							referrerId: referral,
-						});
-					} catch (referralError) {
-						// Логируем ошибку с полным стеком
-						console.error("❌ REFERRAL ERROR:", referralError.message);
-						console.error("Stack:", referralError.stack);
-						logger.error(
-							"Failed to process referral rewards, but registration will continue",
-							{
-								refereeId: user.id,
-								referrerId: referral,
-								error: referralError.message,
-								stack: referralError.stack,
-								code: referralError.code,
-								errorCode: referralError.errorCode,
-							}
-						);
-					}
-				} else {
-					console.log("ℹ️ No referral code provided for new user");
+							error: referralError.message,
+						}
+					);
 				}
+			}
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});

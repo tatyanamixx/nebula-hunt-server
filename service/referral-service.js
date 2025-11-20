@@ -41,10 +41,6 @@ class ReferralService {
 			// Convert to BigInt for consistency
 			const numericReferrerId = BigInt(referrerId);
 			const numericRefereeId = BigInt(refereeId);
-
-			console.log("🎯 === REFERRAL PROCESSING START ===");
-			console.log(`📋 Referrer ID: ${numericReferrerId.toString()}`);
-			console.log(`📋 Referee ID: ${numericRefereeId.toString()}`);
 			
 			logger.info("Processing referral rewards", {
 				referrerId: numericReferrerId.toString(),
@@ -62,7 +58,6 @@ class ReferralService {
 			});
 
 			if (existingReward) {
-				console.log("⚠️ Referral already processed, skipping...");
 				logger.warn("Referral rewards already processed", {
 					referrerId: numericReferrerId.toString(),
 					refereeId: numericRefereeId.toString(),
@@ -79,8 +74,6 @@ class ReferralService {
 					message: "Referral rewards already processed",
 				};
 			}
-			
-			console.log("✅ First time processing this referral");
 
 			// 1. Validate that referrer exists and is not the same as referee
 			if (numericReferrerId === numericRefereeId) {
@@ -142,7 +135,6 @@ class ReferralService {
 		}
 
 		// 6. Give reward to REFERRER (person who invited)
-		console.log(`💰 Giving reward to REFERRER ${numericReferrerId.toString()}...`);
 		const referrerReward = await this._giveReferralReward(
 			numericReferrerId,
 			REFERRAL_REWARDS.REFERRER,
@@ -153,10 +145,8 @@ class ReferralService {
 			},
 			t
 		);
-		console.log(`✅ Referrer reward given: ${JSON.stringify(referrerReward)}`);
 
 		// 7. Give reward to REFEREE (new user)
-		console.log(`💰 Giving reward to REFEREE ${numericRefereeId.toString()}...`);
 		const refereeReward = await this._giveReferralReward(
 			numericRefereeId,
 			REFERRAL_REWARDS.REFEREE,
@@ -167,7 +157,6 @@ class ReferralService {
 			},
 			t
 		);
-		console.log(`✅ Referee reward given: ${JSON.stringify(refereeReward)}`);
 
 			if (shouldCommit) {
 				await t.commit();
@@ -180,32 +169,17 @@ class ReferralService {
 				refereeReward,
 			});
 
-		// ✅ Отправляем уведомление реферу через бот
-		console.log("🔔 === SENDING NOTIFICATION TO BOT ===");
-		console.log(`📡 BOT_URL: ${process.env.BOT_URL || "NOT SET"}`);
-		console.log(`👤 Referee ID: ${numericRefereeId.toString()}`);
-		console.log(`👤 Referrer ID: ${numericReferrerId.toString()}`);
-		
-		logger.info("🔔 Attempting to send referral notification to bot", {
-			refereeId: numericRefereeId.toString(),
-			referrerId: numericReferrerId.toString(),
-			botUrl: process.env.BOT_URL || "NOT SET",
-		});
-		
+		// Send notification to referrer via bot
 		this._sendReferralNotification(
 			numericRefereeId,
 			numericReferrerId,
 			referee
 		).catch((notifError) => {
-			// Логируем ошибку, но не прерываем выполнение
-			console.error("❌ NOTIFICATION FAILED:", notifError.message);
-			console.error("Stack:", notifError.stack);
-			logger.error("❌ Failed to send referral notification", {
+			// Log error but don't interrupt execution
+			logger.error("Failed to send referral notification", {
 				referrerId: numericReferrerId.toString(),
 				refereeId: numericRefereeId.toString(),
 				error: notifError.message,
-				stack: notifError.stack,
-				botUrl: process.env.BOT_URL || "NOT SET",
 			});
 		});
 
@@ -366,52 +340,41 @@ class ReferralService {
 	 */
 	async _sendReferralNotification(refereeId, referrerId, referee) {
 		try {
-			console.log("📨 _sendReferralNotification called");
-			
-			// Получаем язык пользователя из БД (если есть)
+			// Get user language from database
 			const referrerUser = await User.findByPk(referrerId);
 			const language = referrerUser?.language || referee?.language || "en";
-			console.log(`🌐 Language: ${language}`);
-
 			const BOT_URL = process.env.BOT_URL || "http://localhost:3001";
-			console.log(`🔗 Using BOT_URL: ${BOT_URL}`);
 
 			const payload = {
 				userId: refereeId.toString(),
 				referrerId: referrerId.toString(),
 				language: language,
 			};
-			console.log(`📦 Payload:`, JSON.stringify(payload, null, 2));
 
 			logger.debug("Sending referral notification to bot", {
 				refereeId: refereeId.toString(),
 				referrerId: referrerId.toString(),
 				language,
-				botUrl: BOT_URL,
 			});
 
-			console.log(`🚀 Sending POST to ${BOT_URL}/api/process-referral...`);
 			const response = await axios.post(
 				`${BOT_URL}/api/process-referral`,
 				payload,
 				{
-					timeout: 5000, // 5 секунд таймаут
+					timeout: 5000,
 				}
 			);
 
-			console.log(`✅ Response received:`, response.data);
 			logger.info("Referral notification sent successfully", {
 				refereeId: refereeId.toString(),
 				referrerId: referrerId.toString(),
-				response: response.data,
 			});
 		} catch (error) {
-			// Не бросаем ошибку, просто логируем
+			// Don't throw error, just log
 			logger.warn("Failed to send referral notification to bot", {
 				refereeId: refereeId.toString(),
 				referrerId: referrerId.toString(),
 				error: error.message,
-				stack: error.stack,
 			});
 		}
 	}
