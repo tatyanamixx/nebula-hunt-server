@@ -390,14 +390,24 @@ class UserService {
 						transaction: transaction,
 					}
 				);
-			} else {
-				// ✅ Update language on each login (user may have changed their Telegram language)
-				if (language && user.language !== language) {
-					await user.update({ language }, { transaction });
-					logger.debug("Updated user language", { userId, language });
-				}
 
 				isNewUser = true;
+			} else if (user) {
+				// ✅ Update language and username on each login (users can change these in Telegram)
+				const updates = {};
+
+				if (language && user.language !== language) {
+					updates.language = language;
+				}
+
+				if (username && user.username !== username) {
+					updates.username = username;
+				}
+
+				if (Object.keys(updates).length > 0) {
+					await user.update(updates, { transaction });
+					logger.debug("Updated user profile", { userId, updates });
+				}
 			}
 
 			// Если пользователь все еще не найден
