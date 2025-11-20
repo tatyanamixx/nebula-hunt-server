@@ -141,19 +141,27 @@ class ReferralService {
 				refereeReward,
 			});
 
-			// ✅ Отправляем уведомление реферу через бот
-			this._sendReferralNotification(
-				numericRefereeId,
-				numericReferrerId,
-				referee
-			).catch((notifError) => {
-				// Логируем ошибку, но не прерываем выполнение
-				logger.error("Failed to send referral notification", {
-					referrerId: numericReferrerId.toString(),
-					refereeId: numericRefereeId.toString(),
-					error: notifError.message,
-				});
+		// ✅ Отправляем уведомление реферу через бот
+		logger.info("🔔 Attempting to send referral notification to bot", {
+			refereeId: numericRefereeId.toString(),
+			referrerId: numericReferrerId.toString(),
+			botUrl: process.env.BOT_URL || "NOT SET",
+		});
+		
+		this._sendReferralNotification(
+			numericRefereeId,
+			numericReferrerId,
+			referee
+		).catch((notifError) => {
+			// Логируем ошибку, но не прерываем выполнение
+			logger.error("❌ Failed to send referral notification", {
+				referrerId: numericReferrerId.toString(),
+				refereeId: numericRefereeId.toString(),
+				error: notifError.message,
+				stack: notifError.stack,
+				botUrl: process.env.BOT_URL || "NOT SET",
 			});
+		});
 
 			return {
 				success: true,
