@@ -80,23 +80,31 @@ class ReferralService {
 				);
 			}
 
-			// 4. Check if referee already has a referrer (prevent multiple referrals)
-			if (referee.referral && referee.referral !== 0) {
-				throw ApiError.withCode(
-					400,
-					"User already has a referrer",
-					ERROR_CODES.VALIDATION.INVALID_REFERRAL
-				);
-			}
+		// 4. Check if referee already has a referrer (prevent multiple referrals)
+		// Разрешаем если referral уже установлен на того же реферера (из User.create)
+		if (referee.referral && referee.referral !== 0 && BigInt(referee.referral) !== numericReferrerId) {
+			throw ApiError.withCode(
+				400,
+				"User already has a different referrer",
+				ERROR_CODES.VALIDATION.INVALID_REFERRAL
+			);
+		}
 
-			// 5. Update referee's referral field
+		// 5. Update referee's referral field (если еще не установлено)
+		if (!referee.referral || referee.referral === 0 || referee.referral === "0") {
 			referee.referral = numericReferrerId;
 			await referee.save({ transaction: t });
-
+			
 			logger.debug("Updated referee's referral field", {
 				refereeId: numericRefereeId.toString(),
 				referrerId: numericReferrerId.toString(),
 			});
+		} else {
+			logger.debug("Referee's referral field already set correctly", {
+				refereeId: numericRefereeId.toString(),
+				referrerId: numericReferrerId.toString(),
+			});
+		}
 
 			// 6. Give reward to REFERRER (person who invited)
 			const referrerReward = await this._giveReferralReward(

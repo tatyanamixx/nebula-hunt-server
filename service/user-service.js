@@ -454,15 +454,20 @@ class UserService {
 							referrerId: referral,
 						});
 					} catch (referralError) {
-						// Логируем ошибку, но не прерываем регистрацию
+						// Логируем ошибку с полным стеком
 						logger.error(
 							"Failed to process referral rewards, but registration will continue",
 							{
 								refereeId: user.id,
 								referrerId: referral,
 								error: referralError.message,
+								stack: referralError.stack,
+								code: referralError.code,
+								errorCode: referralError.errorCode,
 							}
 						);
+						// ⚠️ ВРЕМЕННО: бросаем ошибку чтобы увидеть проблему
+						// throw referralError;
 					}
 				}
 
