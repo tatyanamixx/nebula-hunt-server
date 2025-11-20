@@ -18,8 +18,8 @@ class ReminderController {
 	async getInactiveUsers(req, res, next) {
 		try {
 			const now = new Date();
-			const oneDayAgo = new Date(now.getTime() - 1 * 60 * 1000);
-			const twoDaysAgo = new Date(now.getTime() - 2 * 60 * 1000);
+			const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+			const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
 			logger.debug("Fetching inactive users for reminders", {
 				now: now.toISOString(),
