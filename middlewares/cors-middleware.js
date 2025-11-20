@@ -42,11 +42,5 @@ const corsOptions = {
 	optionsSuccessStatus: 204,
 };
 
-// Create the middleware
-const corsMiddleware = cors(corsOptions);
-
-// Wrapper for logging
-module.exports = function (req, res, next) {
-	logger.debug("Applying CORS policy");
-	return corsMiddleware(req, res, next);
-};
+// Export the middleware directly (without wrapper to avoid duplicate headers)
+module.exports = cors(corsOptions);
