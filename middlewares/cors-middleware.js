@@ -8,7 +8,7 @@ const logger = require("../service/logger-service");
 const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl)
 	.split(",")
-	.map(origin => origin.trim());
+	.map((origin) => origin.trim());
 
 console.log("🔍 CORS DEBUG:");
 console.log("  CLIENT_URL:", process.env.CLIENT_URL);
@@ -40,12 +40,12 @@ module.exports = function corsMiddleware(req, res, next) {
 		res.setHeader("Access-Control-Max-Age", "86400");
 
 		logger.debug(`CORS: Allowed origin: ${allowedOrigin}`);
-		
+
 		// Handle preflight OPTIONS request
 		if (req.method === "OPTIONS") {
 			return res.status(204).end();
 		}
-		
+
 		next();
 	} else {
 		// Block unauthorized origin
