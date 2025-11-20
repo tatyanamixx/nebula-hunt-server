@@ -7,6 +7,18 @@ const logger = require("../service/logger-service");
 const ApiError = require("../exceptions/api-error");
 const { ERROR_CODES } = require("../config/error-codes");
 
+// Helper function to sanitize secret value
+// Removes all control characters and invalid characters
+function sanitizeSecret(value) {
+	if (!value) return "";
+	// Remove all control characters (0x00-0x1F except TAB 0x09) and DEL (0x7F)
+	// Also remove carriage return and line feed
+	return String(value)
+		.trim()
+		.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "")
+		.replace(/[\r\n]/g, "");
+}
+
 class AdminReminderController {
 	/**
 	 * Manually trigger reminder notifications
@@ -30,7 +42,8 @@ class AdminReminderController {
 			});
 
 			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
-			const REMINDER_SECRET = process.env.REMINDER_SECRET;
+			const REMINDER_SECRET_RAW = process.env.REMINDER_SECRET;
+			const REMINDER_SECRET = sanitizeSecret(REMINDER_SECRET_RAW);
 
 			console.log(`🤖 BOT_URL: ${BOT_URL}`);
 			console.log(
@@ -174,7 +187,8 @@ class AdminReminderController {
 			}
 
 			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
-			const REMINDER_SECRET = process.env.REMINDER_SECRET;
+			const REMINDER_SECRET_RAW = process.env.REMINDER_SECRET;
+			const REMINDER_SECRET = sanitizeSecret(REMINDER_SECRET_RAW);
 
 			if (!REMINDER_SECRET) {
 				throw ApiError.withCode(

@@ -5,9 +5,20 @@
 const ApiError = require("../exceptions/api-error");
 const logger = require("../service/logger-service");
 
+// Helper function to sanitize secret value
+function sanitizeSecret(value) {
+	if (!value) return "";
+	return String(value)
+		.trim()
+		.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "")
+		.replace(/[\r\n]/g, "");
+}
+
 module.exports = function botSecretMiddleware(req, res, next) {
-	const secret = req.headers["x-bot-secret"] || req.body?.secret;
-	const expectedSecret = process.env.REMINDER_SECRET;
+	const secretRaw = req.headers["x-bot-secret"] || req.body?.secret;
+	const secret = sanitizeSecret(secretRaw);
+	const expectedSecretRaw = process.env.REMINDER_SECRET;
+	const expectedSecret = sanitizeSecret(expectedSecretRaw);
 
 	if (!expectedSecret) {
 		logger.error("REMINDER_SECRET not configured in environment");
