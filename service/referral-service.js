@@ -2,7 +2,7 @@
  * Referral Service
  * Handles referral rewards for both referrer and referee
  */
-const { User, UserState, PaymentTransaction, MarketTransaction, MarketOffer } = require("../models/models");
+const { User, UserState, PaymentTransaction } = require("../models/models");
 const { SYSTEM_USER_ID } = require("../config/constants");
 const marketService = require("./market-service");
 const sequelize = require("../db");
@@ -52,19 +52,12 @@ class ReferralService {
 			});
 
 			// ✅ Проверка: уже обработан ли этот реферал?
-			const existingReward = await MarketTransaction.findOne({
+			// Ищем PaymentTransaction с txType='REFEREE_REWARD' для этого referee
+			const existingReward = await PaymentTransaction.findOne({
 				where: {
-					buyerId: numericRefereeId,
+					txType: "REFEREE_REWARD",
+					toAccount: numericRefereeId, // Награда начислена referee
 				},
-				include: [
-					{
-						model: MarketOffer,
-						where: {
-							txType: "REFEREE_REWARD",
-						},
-						required: true,
-					},
-				],
 				transaction: t,
 			});
 
