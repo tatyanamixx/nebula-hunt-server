@@ -5,6 +5,7 @@
 const Router = require("express").Router;
 const router = new Router();
 const reminderController = require("../controllers/reminder-controller");
+const botSecretMiddleware = require("../middlewares/bot-secret-middleware");
 
 /**
  * @swagger
@@ -16,7 +17,23 @@ const reminderController = require("../controllers/reminder-controller");
  *       200:
  *         description: List of inactive users
  */
-router.get("/inactive", reminderController.getInactiveUsers);
+router.get("/inactive", botSecretMiddleware, reminderController.getInactiveUsers);
+
+/**
+ * @swagger
+ * /users/all-for-reminders:
+ *   get:
+ *     summary: Get all users with reminders enabled (for force sending)
+ *     tags: [Reminders]
+ *     responses:
+ *       200:
+ *         description: List of all users with reminders enabled
+ */
+router.get(
+	"/all-for-reminders",
+	botSecretMiddleware,
+	reminderController.getAllUsersForReminders
+);
 
 /**
  * @swagger
@@ -40,6 +57,10 @@ router.get("/inactive", reminderController.getInactiveUsers);
  *       200:
  *         description: Timestamp updated successfully
  */
-router.post("/update-reminder-time", reminderController.updateReminderTime);
+router.post(
+	"/update-reminder-time",
+	botSecretMiddleware,
+	reminderController.updateReminderTime
+);
 
 module.exports = router;

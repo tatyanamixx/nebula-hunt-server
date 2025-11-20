@@ -50,4 +50,47 @@ router.get(
 	adminReminderController.getReminderStats
 );
 
+/**
+ * @swagger
+ * /admin/reminders/send-custom:
+ *   post:
+ *     summary: Send custom notification to users
+ *     tags: [Admin, Reminders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *               - userIds
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Custom message text
+ *               userIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to send notification to
+ *               showOpenGameButton:
+ *                 type: boolean
+ *                 description: Show "Open Game" button
+ *               showCommunityButton:
+ *                 type: boolean
+ *                 description: Show "Community" button
+ *     responses:
+ *       200:
+ *         description: Custom notification sent successfully
+ */
+router.post(
+	"/send-custom",
+	adminAuthMiddleware,
+	rateLimitMiddleware(20, 10), // 20 requests per 10 minutes
+	adminReminderController.sendCustomNotification
+);
+
 module.exports = router;

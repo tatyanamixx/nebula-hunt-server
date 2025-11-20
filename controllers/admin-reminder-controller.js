@@ -14,20 +14,28 @@ class AdminReminderController {
 	 */
 	async triggerReminders(req, res, next) {
 		try {
+			const { force = false, userIds = null } = req.body;
+
 			console.log(`\n🚀 ========== TRIGGER REMINDERS START ==========`);
 			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
 			console.log(`🌐 Origin: ${req.headers.origin || "none"}`);
 			console.log(`🔑 Auth: ${req.headers.authorization ? "YES" : "NO"}`);
-			
+			console.log(`⚡ Force mode: ${force}`);
+			console.log(`👥 User IDs: ${userIds ? JSON.stringify(userIds) : "all"}`);
+
 			logger.info("Admin manually triggered reminders", {
 				adminId: req.user?.id || "unknown",
+				force,
+				userIds,
 			});
 
 			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
 			const REMINDER_SECRET = process.env.REMINDER_SECRET;
-			
+
 			console.log(`🤖 BOT_URL: ${BOT_URL}`);
-			console.log(`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`);
+			console.log(
+				`🔐 REMINDER_SECRET: ${REMINDER_SECRET ? "SET" : "NOT SET"}`
+			);
 
 			if (!REMINDER_SECRET) {
 				console.error(`❌ REMINDER_SECRET not configured!`);
@@ -44,13 +52,15 @@ class AdminReminderController {
 				`${BOT_URL}/api/trigger-reminders`,
 				{
 					secret: REMINDER_SECRET,
+					force: force,
+					userIds: userIds,
 				},
 				{
 					timeout: 30000,
 					headers: { "Content-Type": "application/json" },
 				}
 			);
-			
+
 			console.log(`✅ Bot response:`, response.data);
 
 			logger.info("Reminders triggered successfully", {
@@ -64,7 +74,9 @@ class AdminReminderController {
 				message: "Reminders sent successfully",
 				data: response.data,
 			});
-			console.log(`🚀 ========== TRIGGER REMINDERS END (SUCCESS) ==========\n`);
+			console.log(
+				`🚀 ========== TRIGGER REMINDERS END (SUCCESS) ==========\n`
+			);
 		} catch (error) {
 			console.error(`\n❌ ========== TRIGGER REMINDERS ERROR ==========`);
 			console.error(`Error message: ${error.message}`);
@@ -72,7 +84,7 @@ class AdminReminderController {
 			console.error(`Error response:`, error.response?.data);
 			console.error(`Error stack:`, error.stack);
 			console.error(`❌ ========== ERROR END ==========\n`);
-			
+
 			logger.error("Failed to trigger reminders", {
 				adminId: req.user?.id || "unknown",
 				error: error.message,
@@ -84,7 +96,9 @@ class AdminReminderController {
 				return next(
 					ApiError.withCode(
 						500,
-						`Bot returned error: ${error.response.data?.error || error.message}`,
+						`Bot returned error: ${
+							error.response.data?.error || error.message
+						}`,
 						ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 					)
 				);
@@ -94,6 +108,118 @@ class AdminReminderController {
 				ApiError.withCode(
 					500,
 					`Failed to trigger reminders: ${error.message}`,
+					ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+				)
+			);
+		}
+	}
+
+	/**
+	 * Send custom notification to specified users
+	 */
+	async sendCustomNotification(req, res, next) {
+		try {
+			const {
+				message,
+				userIds,
+				showOpenGameButton = false,
+				showCommunityButton = false,
+			} = req.body;
+
+			console.log(`\n📨 ========== SEND CUSTOM NOTIFICATION ==========`);
+			console.log(`👤 Admin ID: ${req.user?.id || "unknown"}`);
+			console.log(`💬 Message: ${message}`);
+			console.log(`👥 User IDs: ${userIds?.length || 0} users`);
+			console.log(`🎮 Open Game button: ${showOpenGameButton}`);
+			console.log(`💬 Community button: ${showCommunityButton}`);
+
+			if (!message || !message.trim()) {
+				return next(
+					ApiError.withCode(
+						400,
+						"Message is required",
+						ERROR_CODES.VALIDATION.INVALID_INPUT
+					)
+				);
+			}
+
+			if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+				return next(
+					ApiError.withCode(
+						400,
+						"User IDs array is required and must not be empty",
+						ERROR_CODES.VALIDATION.INVALID_INPUT
+					)
+				);
+			}
+
+			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
+			const REMINDER_SECRET = process.env.REMINDER_SECRET;
+
+			if (!REMINDER_SECRET) {
+				throw ApiError.withCode(
+					500,
+					"REMINDER_SECRET is not configured",
+					ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+				);
+			}
+
+			console.log(`📡 Calling bot: ${BOT_URL}/api/send-custom-notification`);
+
+			const response = await axios.post(
+				`${BOT_URL}/api/send-custom-notification`,
+				{
+					secret: REMINDER_SECRET,
+					message: message.trim(),
+					userIds: userIds,
+					showOpenGameButton,
+					showCommunityButton,
+				},
+				{
+					timeout: 60000, // 60 seconds for multiple users
+					headers: { "Content-Type": "application/json" },
+				}
+			);
+
+			console.log(`✅ Bot response:`, response.data);
+			console.log(`📨 ========== SEND CUSTOM NOTIFICATION END ==========\n`);
+
+			logger.info("Custom notification sent successfully", {
+				adminId: req.user?.id || "unknown",
+				userCount: userIds.length,
+			});
+
+			res.json({
+				success: true,
+				message: "Custom notification sent successfully",
+				data: response.data,
+			});
+		} catch (error) {
+			console.error(`\n❌ ========== CUSTOM NOTIFICATION ERROR ==========`);
+			console.error(`Error: ${error.message}`);
+			console.error(`❌ ========== ERROR END ==========\n`);
+
+			logger.error("Failed to send custom notification", {
+				adminId: req.user?.id || "unknown",
+				error: error.message,
+			});
+
+			if (error.response) {
+				return next(
+					ApiError.withCode(
+						500,
+						`Bot returned error: ${
+							error.response.data?.error || error.message
+						}`,
+						ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+					)
+				);
+			}
+
+			next(
+				ApiError.withCode(
+					500,
+					`Failed to send custom notification: ${error.message}`,
 					ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 				)
 			);
@@ -145,7 +271,8 @@ class AdminReminderController {
 				success: true,
 				stats: {
 					enabled: stats.find((s) => s.reminderEnabled)?.get("count") || 0,
-					disabled: stats.find((s) => !s.reminderEnabled)?.get("count") || 0,
+					disabled:
+						stats.find((s) => !s.reminderEnabled)?.get("count") || 0,
 					recentlyNotified,
 					neverNotified,
 					lastCheck: now.toISOString(),
@@ -161,4 +288,3 @@ class AdminReminderController {
 }
 
 module.exports = new AdminReminderController();
-
