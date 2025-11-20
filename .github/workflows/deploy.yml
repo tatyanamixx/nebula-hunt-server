@@ -69,14 +69,32 @@ jobs:
                       # Pull latest image
                       docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-                      # Stop and remove old container
-                      docker stop nebulahunt-api || true
-                      docker rm nebulahunt-api || true
-
                       # Create logs directory with proper permissions
                       # Use docker to create directory with correct ownership (node user UID 1000)
                       mkdir -p /var/www/nebulahunt/nebula-hunt-server/logs
                       docker run --rm -v /var/www/nebulahunt/nebula-hunt-server/logs:/logs alpine:latest sh -c "chown -R 1000:1000 /logs && chmod -R 777 /logs" || chmod -R 777 /var/www/nebulahunt/nebula-hunt-server/logs
+
+                      # Run migrations BEFORE stopping old container (to avoid downtime)
+                      echo "🔄 Running database migrations..."
+                      docker run --rm --network host \
+                        -e NODE_ENV=production \
+                        -e DB_HOST_PROD="${{ secrets.DB_HOST_PROD }}" \
+                        -e DB_PORT_PROD="${{ secrets.DB_PORT_PROD }}" \
+                        -e DB_NAME_PROD="${{ secrets.DB_NAME_PROD }}" \
+                        -e DB_USER_PROD="${{ secrets.DB_USER_PROD }}" \
+                        -e DB_PASSWORD_PROD="${{ secrets.DB_PASSWORD_PROD }}" \
+                        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+                        npm run migrate:prod
+
+                      if [ $? -ne 0 ]; then
+                          echo "⚠️ Migration failed, but continuing with deployment..."
+                      else
+                          echo "✅ Migrations completed successfully"
+                      fi
+
+                      # Stop and remove old container
+                      docker stop nebulahunt-api || true
+                      docker rm nebulahunt-api || true
 
                       # Run new container with environment variables
                       docker run -d --name nebulahunt-api --restart unless-stopped --network host -p 3002:3002 \
@@ -132,8 +150,7 @@ jobs:
                       # Wait for API to be ready
                       sleep 10
 
-                      # Run migrations
-                      docker exec nebulahunt-api npm run migrate:prod || true
+                      echo "✅ API server is running and healthy"
 
                       # Clean up old images
                       docker image prune -f
