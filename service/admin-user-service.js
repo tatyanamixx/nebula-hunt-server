@@ -459,6 +459,11 @@ class AdminUserService {
 		const userIdStr =
 			typeof userId === "bigint" ? userId.toString() : String(userId);
 
+		// Сохраняем currency и amount для использования в catch
+		const currencyStr = String(currency || "unknown");
+		const amountNum =
+			typeof amount === "bigint" ? Number(amount) : Number(amount || 0);
+
 		try {
 			logger.info(`💰 Giving ${amount} ${currency} to user ${userIdStr}...`);
 
@@ -575,11 +580,8 @@ class AdminUserService {
 			// Сериализуем контекст перед логированием
 			const errorContext = serializeBigInt({
 				userId: userIdStr,
-				currency: String(currency || "unknown"),
-				amount:
-					typeof amount === "bigint"
-						? amount.toString()
-						: String(amount || 0),
+				currency: currencyStr,
+				amount: String(amountNum),
 				error: errorMessage,
 				stack: errorStack,
 			});
