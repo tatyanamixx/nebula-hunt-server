@@ -126,10 +126,16 @@ class AdminReminderController {
 			const {
 				message,
 				userIds,
-				showOpenGameButton = false,
-				showCommunityButton = false,
-				photoUrl = null,
+				showOpenGameButton,
+				showCommunityButton,
 			} = req.body;
+
+			// Convert string booleans from FormData to actual booleans
+			const showOpenGame = showOpenGameButton === true || showOpenGameButton === "true";
+			const showCommunity = showCommunityButton === true || showCommunityButton === "true";
+
+			// Get file from multer if uploaded
+			const photoFile = req.file;
 
 			if (!message || !message.trim()) {
 				return next(
@@ -141,8 +147,19 @@ class AdminReminderController {
 				);
 			}
 
+			// Parse userIds if it's a JSON string (from FormData)
+			let parsedUserIds = userIds;
+			if (typeof userIds === "string") {
+				try {
+					parsedUserIds = JSON.parse(userIds);
+				} catch (e) {
+					// If parsing fails, treat as null (send to all)
+					parsedUserIds = null;
+				}
+			}
+
 			// If userIds is null, get all users
-			let finalUserIds = userIds;
+			let finalUserIds = parsedUserIds;
 			if (userIds === null || userIds === undefined) {
 				const { User } = require("../models/models");
 				const allUsers = await User.findAll({
@@ -180,21 +197,45 @@ class AdminReminderController {
 				);
 			}
 
-			const response = await axios.post(
-				`${BOT_URL}/api/send-custom-notification`,
-				{
-					secret: REMINDER_SECRET,
-					message: message.trim(),
-					userIds: finalUserIds,
-					showOpenGameButton,
-					showCommunityButton,
-					photoUrl: photoUrl || null,
-				},
-				{
-					timeout: 300000, // 5 minutes for all users
-					headers: { "Content-Type": "application/json" },
-				}
-			);
+			// Use FormData if file is present, otherwise JSON
+			let response;
+			if (photoFile) {
+				const FormData = require("form-data");
+				const formData = new FormData();
+				formData.append("secret", REMINDER_SECRET);
+				formData.append("message", message.trim());
+				formData.append("userIds", JSON.stringify(finalUserIds));
+				formData.append("showOpenGameButton", showOpenGame);
+				formData.append("showCommunityButton", showCommunity);
+				formData.append("photo", photoFile.buffer, {
+					filename: photoFile.originalname,
+					contentType: photoFile.mimetype,
+				});
+
+				response = await axios.post(
+					`${BOT_URL}/api/send-custom-notification`,
+					formData,
+					{
+						timeout: 300000, // 5 minutes for all users
+						headers: formData.getHeaders(),
+					}
+				);
+			} else {
+				response = await axios.post(
+					`${BOT_URL}/api/send-custom-notification`,
+					{
+						secret: REMINDER_SECRET,
+						message: message.trim(),
+						userIds: finalUserIds,
+						showOpenGameButton: showOpenGame,
+						showCommunityButton: showCommunity,
+					},
+					{
+						timeout: 300000, // 5 minutes for all users
+						headers: { "Content-Type": "application/json" },
+					}
+				);
+			}
 
 			logger.info("Custom notification sent successfully", {
 				adminId: req.user?.id || "unknown",

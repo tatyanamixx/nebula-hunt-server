@@ -4,9 +4,26 @@
  */
 const Router = require("express").Router;
 const router = new Router();
+const multer = require("multer");
 const adminReminderController = require("../controllers/admin-reminder-controller");
 const adminAuthMiddleware = require("../middlewares/admin-auth-middleware");
 const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+	storage: multer.memoryStorage(),
+	limits: {
+		fileSize: 10 * 1024 * 1024, // 10MB limit
+	},
+	fileFilter: (req, file, cb) => {
+		// Accept only image files
+		if (file.mimetype.startsWith("image/")) {
+			cb(null, true);
+		} else {
+			cb(new Error("Only image files are allowed"), false);
+		}
+	},
+});
 
 /**
  * @swagger
@@ -61,7 +78,7 @@ router.get(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -71,21 +88,18 @@ router.get(
  *                 type: string
  *                 description: Custom message text
  *               userIds:
- *                 type: array
- *                 nullable: true
- *                 items:
- *                   type: string
- *                 description: Array of user IDs to send notification to (null = send to all users)
+ *                 type: string
+ *                 description: JSON string of user IDs array (null = send to all users)
  *               showOpenGameButton:
  *                 type: boolean
  *                 description: Show "Open Game" button
  *               showCommunityButton:
  *                 type: boolean
  *                 description: Show "Community" button
- *               photoUrl:
+ *               photo:
  *                 type: string
- *                 nullable: true
- *                 description: Optional photo URL to attach to the message
+ *                 format: binary
+ *                 description: Optional image file to attach to the message
  *     responses:
  *       200:
  *         description: Custom notification sent successfully
@@ -94,6 +108,7 @@ router.post(
 	"/send-custom",
 	adminAuthMiddleware,
 	rateLimitMiddleware(20, 10), // 20 requests per 10 minutes
+	upload.single("photo"), // Handle file upload
 	adminReminderController.sendCustomNotification
 );
 
