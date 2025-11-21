@@ -208,11 +208,25 @@ class AdminReminderController {
 				formData.append("secret", REMINDER_SECRET);
 				formData.append("message", message.trim());
 				formData.append("userIds", JSON.stringify(finalUserIds));
-				formData.append("showOpenGameButton", showOpenGame);
-				formData.append("showCommunityButton", showCommunity);
-				formData.append("photo", photoFile.buffer, {
+				formData.append("showOpenGameButton", String(showOpenGame));
+				formData.append("showCommunityButton", String(showCommunity));
+				
+				// Ensure buffer is a proper Buffer instance
+				const photoBuffer = Buffer.isBuffer(photoFile.buffer)
+					? photoFile.buffer
+					: Buffer.from(photoFile.buffer);
+				
+				// Log buffer info for debugging
+				logger.debug("Sending photo to bot", {
+					bufferSize: photoBuffer.length,
+					bufferType: photoBuffer.constructor.name,
 					filename: photoFile.originalname,
-					contentType: photoFile.mimetype,
+					mimetype: photoFile.mimetype,
+				});
+				
+				formData.append("photo", photoBuffer, {
+					filename: photoFile.originalname || "photo.jpg",
+					contentType: photoFile.mimetype || "image/jpeg",
 				});
 
 				response = await axios.post(
