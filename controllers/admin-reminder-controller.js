@@ -158,9 +158,9 @@ class AdminReminderController {
 				}
 			}
 
-			// If userIds is null, get all users
+			// If parsedUserIds is null or undefined, get all users
 			let finalUserIds = parsedUserIds;
-			if (userIds === null || userIds === undefined) {
+			if (parsedUserIds === null || parsedUserIds === undefined) {
 				const { User } = require("../models/models");
 				const allUsers = await User.findAll({
 					where: {
@@ -175,7 +175,7 @@ class AdminReminderController {
 				logger.info(
 					`Fetched ${finalUserIds.length} users for custom notification`
 				);
-			} else if (!Array.isArray(userIds) || userIds.length === 0) {
+			} else if (!Array.isArray(parsedUserIds) || parsedUserIds.length === 0) {
 				return next(
 					ApiError.withCode(
 						400,
@@ -183,6 +183,9 @@ class AdminReminderController {
 						ERROR_CODES.VALIDATION.INVALID_INPUT
 					)
 				);
+			} else {
+				// parsedUserIds is a valid array, use it
+				finalUserIds = parsedUserIds;
 			}
 
 			const BOT_URL = process.env.BOT_URL || "https://bot.nebulahunt.site";
