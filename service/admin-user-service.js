@@ -460,7 +460,9 @@ class AdminUserService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.info(`💰 Giving ${amount} ${currency} to user ${userId}...`);
+			// Преобразуем userId в строку для логирования, чтобы избежать проблем с BigInt
+			const userIdStr = typeof userId === 'bigint' ? userId.toString() : String(userId);
+			logger.info(`💰 Giving ${amount} ${currency} to user ${userIdStr}...`);
 
 			// Validate currency type
 			const validCurrencies = ['stardust', 'darkMatter', 'stars'];
@@ -515,23 +517,37 @@ class AdminUserService {
 			);
 
 			await t.commit();
-			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userId}`);
+			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userIdStr}`);
 
 			// Return all values as strings/numbers to avoid BigInt serialization issues
-			return {
-				userId: userId.toString(),
+			// Используем serializeBigInt для гарантированной сериализации
+			const { serializeBigInt } = require('../utils/serialization');
+			const result = {
+				userId: userIdStr,
 				currency,
 				amount: Math.floor(amount),
 				previousAmount: currentAmount.toString(),
 				newAmount: newAmount.toString(),
 			};
+			
+			// Дополнительная сериализация на случай, если что-то пропустили
+			return serializeBigInt(result);
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in giveCurrency:', err);
+			// Преобразуем все значения в строки для логирования, чтобы избежать проблем с BigInt
+			const errorMessage = err.message || 'Unknown error';
+			const errorStack = err.stack || '';
+			logger.error(`❌ Database error in giveCurrency: ${errorMessage}`, {
+				userId: userIdStr,
+				currency,
+				amount,
+				error: errorMessage,
+				stack: errorStack,
+			});
 			if (err instanceof ApiError) {
 				throw err;
 			}
-			throw ApiError.Internal(`Failed to give currency: ${err.message}`);
+			throw ApiError.Internal(`Failed to give currency: ${errorMessage}`);
 		}
 	}
 

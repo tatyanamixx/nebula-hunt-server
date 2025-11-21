@@ -172,27 +172,37 @@ class AdminUserController {
 			const { currency, amount, reason } = req.body;
 			const adminId = req.user?.id || null;
 
+			// Преобразуем все значения в строки для логирования
+			const adminIdStr = adminId ? String(adminId) : 'system';
+			const userIdStr = String(userId);
 			logger.info(
-				`💰 Admin ${adminId} giving ${amount} ${currency} to user ${userId}...`
+				`💰 Admin ${adminIdStr} giving ${amount} ${currency} to user ${userIdStr}...`
 			);
 
 			if (!currency || !amount) {
 				throw ApiError.BadRequest('currency and amount are required');
 			}
 
+			// Преобразуем userId в число для сервиса (он сам обработает BigInt)
+			const numericUserId = typeof userId === 'string' ? BigInt(userId) : userId;
+			
 			const result = await adminUserService.giveCurrency(
-				userId,
+				numericUserId,
 				currency,
 				amount,
 				reason || 'Admin grant',
 				adminId
 			);
 
-			return res.json({
+			// Используем serializeBigInt для гарантированной сериализации ответа
+			const { serializeBigInt } = require('../utils/serialization');
+			const response = {
 				success: true,
 				message: `Successfully gave ${amount} ${currency} to user`,
 				data: result,
-			});
+			};
+
+			return res.json(serializeBigInt(response));
 		} catch (e) {
 			logger.error('❌ Error giving currency:', e);
 			next(e);
