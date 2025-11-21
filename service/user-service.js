@@ -260,6 +260,7 @@ class UserService {
 					user: {
 						id: user.id,
 						role: user.role,
+						blocked: user.blocked || false,
 					},
 				},
 
