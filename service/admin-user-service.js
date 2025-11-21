@@ -465,12 +465,16 @@ class AdminUserService {
 			typeof amount === "bigint" ? Number(amount) : Number(amount || 0);
 
 		try {
+			// Используем console.log для гарантированного вывода в консоль
+			console.log(
+				`💰 [ADMIN GRANT] Starting: userId=${userIdStr}, currency=${currencyStr}, amount=${amountNum}`
+			);
 			logger.info(
 				`💰 [ADMIN GRANT] Starting: userId=${userIdStr}, currency=${currencyStr}, amount=${amountNum}`
 			);
 
-			// Validate currency type
-			const validCurrencies = ["stardust", "darkMatter", "stars"];
+			// Validate currency type (stars нельзя давать через админку)
+			const validCurrencies = ["stardust", "darkMatter"];
 			if (!validCurrencies.includes(currency)) {
 				await t.rollback();
 				throw ApiError.BadRequest(
@@ -511,6 +515,11 @@ class AdminUserService {
 
 			// Создаем PaymentTransaction для учета через marketService.registerOffer
 			// (как это делается для farming rewards)
+			console.log(
+				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
+					amount
+				)}, currency=${currency}`
+			);
 			logger.info(
 				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
 					amount
@@ -536,6 +545,12 @@ class AdminUserService {
 				},
 			};
 
+			console.log(`💰 [ADMIN GRANT] System offer created:`, {
+				sellerId: systemOffer.sellerId.toString(),
+				buyerId: systemOffer.buyerId.toString(),
+				amount: systemOffer.amount,
+				resource: systemOffer.resource,
+			});
 			logger.info(`💰 [ADMIN GRANT] System offer created:`, {
 				sellerId: systemOffer.sellerId.toString(),
 				buyerId: systemOffer.buyerId.toString(),
@@ -546,6 +561,13 @@ class AdminUserService {
 			// Используем marketService.registerOffer для создания транзакции
 			const registerResult = await marketService.registerOffer(systemOffer, t);
 
+			console.log(`💰 [ADMIN GRANT] Transaction created:`, {
+				marketTransactionId:
+					registerResult?.marketTransaction?.id?.toString(),
+				transferResourceId: registerResult?.transferResource?.id?.toString(),
+				transferResourceAmount:
+					registerResult?.transferResource?.priceOrAmount?.toString(),
+			});
 			logger.info(`💰 [ADMIN GRANT] Transaction created:`, {
 				marketTransactionId:
 					registerResult?.marketTransaction?.id?.toString(),
@@ -599,6 +621,16 @@ class AdminUserService {
 			}
 
 			// Логируем ошибку с полным контекстом ДО сериализации
+			console.error(
+				`❌ [ADMIN GRANT] Error in giveCurrency: ${errorMessage}`,
+				{
+					userId: userIdStr || "NOT_DEFINED",
+					currency: currencyStr || "NOT_DEFINED",
+					amount: String(amountNum || "NOT_DEFINED"),
+					errorMessage,
+					errorStack: errorStack.substring(0, 500), // Ограничиваем длину стека
+				}
+			);
 			logger.error(`❌ [ADMIN GRANT] Error in giveCurrency: ${errorMessage}`, {
 				userId: userIdStr || "NOT_DEFINED",
 				currency: currencyStr || "NOT_DEFINED",

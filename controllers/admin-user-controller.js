@@ -207,13 +207,15 @@ class AdminUserController {
 			// Сериализуем ошибку перед логированием, чтобы избежать проблем с BigInt
 			const { serializeBigInt } = require('../utils/serialization');
 			const errorMessage = e.message || 'Unknown error';
+			const userIdStr = String(userId || 'unknown');
 			const errorContext = serializeBigInt({
 				userId: userIdStr,
-				currency,
-				amount,
+				currency: currency || 'unknown',
+				amount: amount || 0,
 				error: errorMessage,
 				stack: e.stack || '',
 			});
+			console.error(`❌ [CONTROLLER] Error giving currency: ${errorMessage}`, errorContext);
 			logger.error(`❌ Error giving currency: ${errorMessage}`, errorContext);
 			next(e);
 		}
