@@ -499,12 +499,6 @@ class AdminUserService {
 				throw ApiError.BadRequest("User state not found");
 			}
 
-			// Update currency
-			const currentAmount = BigInt(userState[currency] || 0);
-			const newAmount = currentAmount + BigInt(Math.floor(amount));
-			userState[currency] = newAmount;
-			await userState.save({ transaction: t });
-
 			// Преобразуем userId в BigInt для транзакций
 			const numericUserId =
 				typeof userId === "bigint" ? userId : BigInt(userId);
@@ -513,64 +507,70 @@ class AdminUserService {
 					? SYSTEM_USER_ID
 					: BigInt(SYSTEM_USER_ID);
 
-			// Создаем PaymentTransaction напрямую для admin grants
-			// НЕ используем marketService.registerOffer, так как он списывает валюту у системы
+			// Используем marketService.registerOffer как для farming rewards
+			// deductCurrency для SYSTEM_USER_ID пропускает проверку на достаточность средств
 			console.log(
-				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
+				`💰 [ADMIN GRANT] Creating transaction via registerOffer: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
 					amount
 				)}, currency=${currency}`
 			);
 			logger.info(
-				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
+				`💰 [ADMIN GRANT] Creating transaction via registerOffer: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
 					amount
 				)}, currency=${currency}`
 			);
 
-			// Создаем фиктивную MarketTransaction для foreign key constraint
-			const { MarketTransaction } = require("../models/models");
-			const systemMarketTransaction = await MarketTransaction.create(
-				{
-					offerId: 0, // Фиктивное значение
-					buyerId: numericUserId,
-					sellerId: numericSystemUserId,
-					status: "COMPLETED",
-					completedAt: new Date(),
+			const marketService = require("./market-service");
+			const systemOffer = {
+				sellerId: numericSystemUserId,
+				buyerId: numericUserId,
+				txType: "RESOURCE_TRANSFER",
+				itemType: "resource",
+				itemId: 0, // Для admin grants не нужен конкретный item
+				price: 0,
+				currency: "tonToken",
+				amount: Math.floor(amount),
+				resource: currency,
+				offerType: "SYSTEM",
+				metadata: {
+					reason: String(reason || "Admin grant"),
+					adminGrant: true,
+					adminId: adminId ? String(adminId) : "system",
 				},
-				{ transaction: t }
-			);
+			};
 
-			// Создаем PaymentTransaction для учета
-			const paymentTransaction = await PaymentTransaction.create(
-				{
-					marketTransactionId: systemMarketTransaction.id,
-					fromAccount: numericSystemUserId,
-					toAccount: numericUserId,
-					priceOrAmount: Math.floor(amount),
-					currencyOrResource: currency,
-					txType: "RESOURCE_TRANSFER",
-					status: "CONFIRMED",
-					metadata: {
-						reason: String(reason || "Admin grant"),
-						adminGrant: true,
-						adminId: adminId ? String(adminId) : "system",
-					},
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
+			console.log(`💰 [ADMIN GRANT] System offer:`, {
+				sellerId: systemOffer.sellerId.toString(),
+				buyerId: systemOffer.buyerId.toString(),
+				amount: systemOffer.amount,
+				resource: systemOffer.resource,
+			});
+
+			// Используем registerOffer - он добавит валюту пользователю и создаст транзакции
+			// deductCurrency для системы пропустит проверку на достаточность средств
+			const registerResult = await marketService.registerOffer(systemOffer, t);
 
 			console.log(`💰 [ADMIN GRANT] Transaction created:`, {
-				marketTransactionId: systemMarketTransaction.id.toString(),
-				paymentTransactionId: paymentTransaction.id.toString(),
-				amount: Math.floor(amount),
-				currency: currency,
+				marketTransactionId:
+					registerResult?.marketTransaction?.id?.toString(),
+				transferResourceId: registerResult?.transferResource?.id?.toString(),
+				transferResourceAmount:
+					registerResult?.transferResource?.priceOrAmount?.toString(),
 			});
 			logger.info(`💰 [ADMIN GRANT] Transaction created:`, {
-				marketTransactionId: systemMarketTransaction.id.toString(),
-				paymentTransactionId: paymentTransaction.id.toString(),
-				amount: Math.floor(amount),
-				currency: currency,
+				marketTransactionId:
+					registerResult?.marketTransaction?.id?.toString(),
+				transferResourceId: registerResult?.transferResource?.id?.toString(),
+				transferResourceAmount:
+					registerResult?.transferResource?.priceOrAmount?.toString(),
 			});
+
+			// Получаем обновленное состояние пользователя после registerOffer (до коммита)
+			const updatedUserState = await UserState.findOne({
+				where: { userId },
+				transaction: t,
+			});
+			const newAmount = BigInt(updatedUserState[currency] || 0);
 
 			await t.commit();
 
