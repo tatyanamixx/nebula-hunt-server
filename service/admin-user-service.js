@@ -494,8 +494,37 @@ class AdminUserService {
 			userState[currency] = newAmount;
 			await userState.save({ transaction: t });
 
-			// Для admin grants просто обновляем баланс пользователя
-			// Не создаем PaymentTransaction, так как это не рыночная транзакция
+			// Преобразуем userId в BigInt для транзакций
+			const numericUserId =
+				typeof userId === "bigint" ? userId : BigInt(userId);
+			const numericSystemUserId =
+				typeof SYSTEM_USER_ID === "bigint"
+					? SYSTEM_USER_ID
+					: BigInt(SYSTEM_USER_ID);
+
+			// Создаем PaymentTransaction для учета через marketService.registerOffer
+			// (как это делается для farming rewards)
+			const marketService = require("./market-service");
+			const systemOffer = {
+				sellerId: numericSystemUserId,
+				buyerId: numericUserId,
+				txType: "RESOURCE_TRANSFER", // Используем существующий тип
+				itemType: "resource",
+				itemId: 0, // Для admin grants не нужен конкретный item
+				price: 0,
+				currency: "tonToken",
+				amount: Math.floor(amount),
+				resource: currency,
+				offerType: "SYSTEM",
+				metadata: {
+					reason: String(reason || "Admin grant"),
+					adminGrant: true,
+					adminId: adminId ? String(adminId) : "system",
+				},
+			};
+
+			// Используем marketService.registerOffer для создания транзакции
+			await marketService.registerOffer(systemOffer, t);
 
 			await t.commit();
 
