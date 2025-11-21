@@ -572,8 +572,6 @@ class AdminUserService {
 			});
 			const newAmount = BigInt(updatedUserState[currency] || 0);
 
-			await t.commit();
-
 			// Return all values as strings/numbers to avoid BigInt serialization issues
 			// Используем serializeBigInt для гарантированной сериализации
 			const result = {
@@ -583,6 +581,14 @@ class AdminUserService {
 				previousAmount: currentAmount.toString(),
 				newAmount: newAmount.toString(),
 			};
+
+			// Коммитим транзакцию только если она еще не закоммичена
+			if (!t.finished) {
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+					transaction: t,
+				});
+				await t.commit();
+			}
 
 			// Сериализуем результат перед логированием
 			const serializedResult = serializeBigInt(result);
@@ -596,7 +602,10 @@ class AdminUserService {
 			// Возвращаем сериализованный результат
 			return serializedResult;
 		} catch (err) {
-			await t.rollback();
+			// Откатываем транзакцию только если она еще не завершена
+			if (!t.finished) {
+				await t.rollback();
+			}
 
 			// Безопасно извлекаем сообщение об ошибке, преобразуя все BigInt в строки
 			let errorMessage = "Unknown error";
