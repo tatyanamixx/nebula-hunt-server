@@ -54,24 +54,18 @@ class AdminUserService {
 
 			// Get referrals count for each user
 			// We'll do this in a separate query for better performance
-			const userIds = users.map((u) => u.id);
-			const referralsCounts = await User.findAll({
-				attributes: [
-					'referral',
-					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-				],
-				where: {
-					referral: { [Op.in]: userIds },
-				},
-				group: ['referral'],
-				raw: true,
-			});
-
-			// Create a map of referral -> count
+			const userIds = users.map((u) => BigInt(u.id));
+			
+			// Используем count для каждого пользователя отдельно для надежности
 			const referralsMap = {};
-			referralsCounts.forEach((item) => {
-				referralsMap[item.referral.toString()] = parseInt(item.count);
-			});
+			await Promise.all(
+				userIds.map(async (userId) => {
+					const count = await User.count({
+						where: { referral: userId },
+					});
+					referralsMap[userId.toString()] = count;
+				})
+			);
 
 			// Convert Sequelize instances to plain objects for JSON response
 			const plainUsers = users.map((user) => {
@@ -523,8 +517,9 @@ class AdminUserService {
 			await t.commit();
 			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userId}`);
 
+			// Return all values as strings/numbers to avoid BigInt serialization issues
 			return {
-				userId,
+				userId: userId.toString(),
 				currency,
 				amount: Math.floor(amount),
 				previousAmount: currentAmount.toString(),
