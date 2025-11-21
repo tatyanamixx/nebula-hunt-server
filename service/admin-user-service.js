@@ -465,7 +465,9 @@ class AdminUserService {
 			typeof amount === "bigint" ? Number(amount) : Number(amount || 0);
 
 		try {
-			logger.info(`💰 Giving ${amount} ${currency} to user ${userIdStr}...`);
+			logger.info(
+				`💰 [ADMIN GRANT] Starting: userId=${userIdStr}, currency=${currencyStr}, amount=${amountNum}`
+			);
 
 			// Validate currency type
 			const validCurrencies = ["stardust", "darkMatter", "stars"];
@@ -509,6 +511,12 @@ class AdminUserService {
 
 			// Создаем PaymentTransaction для учета через marketService.registerOffer
 			// (как это делается для farming rewards)
+			logger.info(
+				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
+					amount
+				)}, currency=${currency}`
+			);
+
 			const marketService = require("./market-service");
 			const systemOffer = {
 				sellerId: numericSystemUserId,
@@ -518,7 +526,7 @@ class AdminUserService {
 				itemId: 0, // Для admin grants не нужен конкретный item
 				price: 0,
 				currency: "tonToken",
-				amount: Math.floor(amount),
+				amount: Math.floor(amount), // Положительное значение - система отдает пользователю
 				resource: currency,
 				offerType: "SYSTEM",
 				metadata: {
@@ -528,8 +536,23 @@ class AdminUserService {
 				},
 			};
 
+			logger.info(`💰 [ADMIN GRANT] System offer created:`, {
+				sellerId: systemOffer.sellerId.toString(),
+				buyerId: systemOffer.buyerId.toString(),
+				amount: systemOffer.amount,
+				resource: systemOffer.resource,
+			});
+
 			// Используем marketService.registerOffer для создания транзакции
-			await marketService.registerOffer(systemOffer, t);
+			const registerResult = await marketService.registerOffer(systemOffer, t);
+
+			logger.info(`💰 [ADMIN GRANT] Transaction created:`, {
+				marketTransactionId:
+					registerResult?.marketTransaction?.id?.toString(),
+				transferResourceId: registerResult?.transferResource?.id?.toString(),
+				transferResourceAmount:
+					registerResult?.transferResource?.priceOrAmount?.toString(),
+			});
 
 			await t.commit();
 
@@ -575,28 +598,24 @@ class AdminUserService {
 				errorStack = "Stack serialization failed";
 			}
 
-			// Преобразуем все значения в строки для логирования, чтобы избежать проблем с BigInt
-
-			// Сериализуем контекст перед логированием
-			const errorContext = serializeBigInt({
-				userId: userIdStr,
-				currency: currencyStr,
-				amount: String(amountNum),
-				error: errorMessage,
-				stack: errorStack,
+			// Логируем ошибку с полным контекстом ДО сериализации
+			logger.error(`❌ [ADMIN GRANT] Error in giveCurrency: ${errorMessage}`, {
+				userId: userIdStr || "NOT_DEFINED",
+				currency: currencyStr || "NOT_DEFINED",
+				amount: String(amountNum || "NOT_DEFINED"),
+				errorMessage,
+				errorStack: errorStack.substring(0, 500), // Ограничиваем длину стека
 			});
 
-			// Безопасное логирование
-			try {
-				logger.error(
-					`❌ Database error in giveCurrency: ${errorMessage}`,
-					errorContext
-				);
-			} catch (logError) {
-				// Если логирование тоже падает, просто выводим в консоль
-				console.error("Failed to log error:", logError);
-				console.error("Original error:", errorMessage);
-			}
+			// Преобразуем все значения в строки для логирования, чтобы избежать проблем с BigInt
+			// Сериализуем контекст перед логированием
+			const errorContext = serializeBigInt({
+				userId: userIdStr || "NOT_DEFINED",
+				currency: currencyStr || "NOT_DEFINED",
+				amount: String(amountNum || "NOT_DEFINED"),
+				error: errorMessage,
+				stack: errorStack.substring(0, 500),
+			});
 
 			if (err instanceof ApiError) {
 				// Создаем новую ошибку с безопасным сообщением
