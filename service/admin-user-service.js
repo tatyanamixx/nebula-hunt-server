@@ -458,10 +458,12 @@ class AdminUserService {
 
 	async giveCurrency(userId, currency, amount, reason = 'Admin grant', adminId = null) {
 		const t = await sequelize.transaction();
+		
+		// Преобразуем userId в строку для логирования, чтобы избежать проблем с BigInt
+		// Делаем это ДО try блока, чтобы использовать в catch
+		const userIdStr = typeof userId === 'bigint' ? userId.toString() : String(userId);
 
 		try {
-			// Преобразуем userId в строку для логирования, чтобы избежать проблем с BigInt
-			const userIdStr = typeof userId === 'bigint' ? userId.toString() : String(userId);
 			logger.info(`💰 Giving ${amount} ${currency} to user ${userIdStr}...`);
 
 			// Validate currency type
