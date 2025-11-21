@@ -2,53 +2,51 @@
  * created by Tatyana Mikhniukevich on 28.05.2025
  * updated by Claude on 26.07.2025
  */
-const { User, UserState, Galaxy, PaymentTransaction } = require('../models/models');
-const ApiError = require('../exceptions/api-error');
-const sequelize = require('../db');
-const logger = require('../service/logger-service');
-const userStateService = require('./user-state-service');
-const { Op } = require('sequelize');
-const { SYSTEM_USER_ID } = require('../config/constants');
-const { serializeBigInt } = require('../utils/serialization');
+const { User, UserState, Galaxy, PaymentTransaction } = require("../models/models");
+const ApiError = require("../exceptions/api-error");
+const sequelize = require("../db");
+const logger = require("../service/logger-service");
+const userStateService = require("./user-state-service");
+const { Op } = require("sequelize");
+const { SYSTEM_USER_ID } = require("../config/constants");
+const { serializeBigInt } = require("../utils/serialization");
 
 class AdminUserService {
 	async getAllUsers() {
 		try {
-			logger.info(
-				'🔍 Executing getAllUsers query with UserState include...'
-			);
+			logger.info("🔍 Executing getAllUsers query with UserState include...");
 
 			const users = await User.findAll({
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 				include: [
 					{
 						model: UserState,
 						attributes: [
-							'stardust',
-							'darkMatter',
-							'stars',
-							'lockedStardust',
-							'lockedDarkMatter',
-							'lockedStars',
-							'lastLoginDate',
-							'currentStreak',
-							'maxStreak',
-							'chaosLevel',
-							'stabilityLevel',
-							'entropyVelocity',
+							"stardust",
+							"darkMatter",
+							"stars",
+							"lockedStardust",
+							"lockedDarkMatter",
+							"lockedStars",
+							"lastLoginDate",
+							"currentStreak",
+							"maxStreak",
+							"chaosLevel",
+							"stabilityLevel",
+							"entropyVelocity",
 						],
 					},
 				],
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 			});
 
 			logger.info(`🔍 Query successful, found ${users.length} users`);
@@ -56,7 +54,7 @@ class AdminUserService {
 			// Get referrals count for each user
 			// We'll do this in a separate query for better performance
 			const userIds = users.map((u) => BigInt(u.id));
-			
+
 			// Используем count для каждого пользователя отдельно для надежности
 			const referralsMap = {};
 			await Promise.all(
@@ -84,9 +82,7 @@ class AdminUserService {
 					userState: userData.userstate || null,
 					// Add lastLoginAt from UserState for convenience
 					lastLoginAt: userData.userstate?.lastLoginDate
-						? new Date(
-								userData.userstate.lastLoginDate
-						  ).toISOString()
+						? new Date(userData.userstate.lastLoginDate).toISOString()
 						: null,
 					// Add referrals count
 					referralsCount: referralsMap[userData.id.toString()] || 0,
@@ -97,7 +93,7 @@ class AdminUserService {
 
 			return plainUsers;
 		} catch (err) {
-			logger.error('❌ Database error in getAllUsers:', {
+			logger.error("❌ Database error in getAllUsers:", {
 				message: err.message,
 				stack: err.stack,
 				type: err.constructor.name,
@@ -112,31 +108,31 @@ class AdminUserService {
 		try {
 			const user = await User.findByPk(userId, {
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 				include: [
 					{
 						model: UserState,
 						attributes: [
-							'stardust',
-							'darkMatter',
-							'stars',
-							'lockedStardust',
-							'lockedDarkMatter',
-							'lockedStars',
-							'lastLoginDate',
-							'currentStreak',
-							'maxStreak',
-							'chaosLevel',
-							'stabilityLevel',
-							'entropyVelocity',
+							"stardust",
+							"darkMatter",
+							"stars",
+							"lockedStardust",
+							"lockedDarkMatter",
+							"lockedStars",
+							"lastLoginDate",
+							"currentStreak",
+							"maxStreak",
+							"chaosLevel",
+							"stabilityLevel",
+							"entropyVelocity",
 						],
 					},
 				],
@@ -145,7 +141,7 @@ class AdminUserService {
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			await t.commit();
@@ -170,7 +166,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in getUserById:', err);
+			logger.error("❌ Database error in getUserById:", err);
 			throw ApiError.Internal(`Failed to get user: ${err.message}`);
 		}
 	}
@@ -184,20 +180,20 @@ class AdminUserService {
 			const user = await User.findByPk(userId, {
 				transaction: t,
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 			});
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			user.blocked = true;
@@ -219,7 +215,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in blockUser:', err);
+			logger.error("❌ Database error in blockUser:", err);
 			throw ApiError.Internal(`Failed to block user: ${err.message}`);
 		}
 	}
@@ -233,20 +229,20 @@ class AdminUserService {
 			const user = await User.findByPk(userId, {
 				transaction: t,
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 			});
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			user.blocked = false;
@@ -268,7 +264,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in unblockUser:', err);
+			logger.error("❌ Database error in unblockUser:", err);
 			throw ApiError.Internal(`Failed to unblock user: ${err.message}`);
 		}
 	}
@@ -277,27 +273,25 @@ class AdminUserService {
 		const t = await sequelize.transaction();
 
 		try {
-			logger.info(
-				`🔄 Toggling user ${userId} block status to ${blocked}...`
-			);
+			logger.info(`🔄 Toggling user ${userId} block status to ${blocked}...`);
 
 			const user = await User.findByPk(userId, {
 				transaction: t,
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 			});
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			user.blocked = blocked;
@@ -319,10 +313,8 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in toggleUserBlock:', err);
-			throw ApiError.Internal(
-				`Failed to toggle user block: ${err.message}`
-			);
+			logger.error("❌ Database error in toggleUserBlock:", err);
+			throw ApiError.Internal(`Failed to toggle user block: ${err.message}`);
 		}
 	}
 
@@ -335,28 +327,26 @@ class AdminUserService {
 			const user = await User.findByPk(userId, {
 				transaction: t,
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 			});
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			// Validate role
-			if (!['USER', 'SYSTEM'].includes(role)) {
+			if (!["USER", "SYSTEM"].includes(role)) {
 				await t.rollback();
-				throw ApiError.BadRequest(
-					'Invalid role. Must be USER or SYSTEM'
-				);
+				throw ApiError.BadRequest("Invalid role. Must be USER or SYSTEM");
 			}
 
 			user.role = role;
@@ -378,10 +368,8 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in updateUserRole:', err);
-			throw ApiError.Internal(
-				`Failed to update user role: ${err.message}`
-			);
+			logger.error("❌ Database error in updateUserRole:", err);
+			throw ApiError.Internal(`Failed to update user role: ${err.message}`);
 		}
 	}
 
@@ -395,7 +383,7 @@ class AdminUserService {
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			// Delete associated UserState first (if exists)
@@ -409,25 +397,25 @@ class AdminUserService {
 			await t.commit();
 			logger.info(`✅ User ${userId} deleted successfully`);
 
-			return { success: true, message: 'User deleted successfully' };
+			return { success: true, message: "User deleted successfully" };
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in deleteUser:', err);
+			logger.error("❌ Database error in deleteUser:", err);
 			throw ApiError.Internal(`Failed to delete user: ${err.message}`);
 		}
 	}
 
 	async getUserStats() {
 		try {
-			logger.info('📊 Getting user statistics...');
+			logger.info("📊 Getting user statistics...");
 
 			const stats = await User.findAll({
 				attributes: [
-					'role',
-					'blocked',
-					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+					"role",
+					"blocked",
+					[sequelize.fn("COUNT", sequelize.col("id")), "count"],
 				],
-				group: ['role', 'blocked'],
+				group: ["role", "blocked"],
 				raw: true,
 			});
 
@@ -442,44 +430,51 @@ class AdminUserService {
 				blocked: blockedUsers,
 				byRole: stats.reduce((acc, stat) => {
 					const key = `${stat.role}_${
-						stat.blocked ? 'BLOCKED' : 'ACTIVE'
+						stat.blocked ? "BLOCKED" : "ACTIVE"
 					}`;
 					acc[key] = parseInt(stat.count);
 					return acc;
 				}, {}),
 			};
 
-			logger.info('✅ User statistics retrieved successfully');
+			logger.info("✅ User statistics retrieved successfully");
 			return result;
 		} catch (err) {
-			logger.error('❌ Database error in getUserStats:', err);
+			logger.error("❌ Database error in getUserStats:", err);
 			throw ApiError.Internal(`Failed to get user stats: ${err.message}`);
 		}
 	}
 
-	async giveCurrency(userId, currency, amount, reason = 'Admin grant', adminId = null) {
+	async giveCurrency(
+		userId,
+		currency,
+		amount,
+		reason = "Admin grant",
+		adminId = null
+	) {
 		const t = await sequelize.transaction();
-		
+
 		// Преобразуем userId в строку для логирования, чтобы избежать проблем с BigInt
 		// Делаем это ДО try блока, чтобы использовать в catch
-		const userIdStr = typeof userId === 'bigint' ? userId.toString() : String(userId);
+		const userIdStr =
+			typeof userId === "bigint" ? userId.toString() : String(userId);
 
 		try {
 			logger.info(`💰 Giving ${amount} ${currency} to user ${userIdStr}...`);
 
 			// Validate currency type
-			const validCurrencies = ['stardust', 'darkMatter', 'stars'];
+			const validCurrencies = ["stardust", "darkMatter", "stars"];
 			if (!validCurrencies.includes(currency)) {
 				await t.rollback();
 				throw ApiError.BadRequest(
-					`Invalid currency. Must be one of: ${validCurrencies.join(', ')}`
+					`Invalid currency. Must be one of: ${validCurrencies.join(", ")}`
 				);
 			}
 
 			// Validate amount
 			if (amount <= 0 || !Number.isFinite(amount)) {
 				await t.rollback();
-				throw ApiError.BadRequest('Amount must be a positive number');
+				throw ApiError.BadRequest("Amount must be a positive number");
 			}
 
 			// Get user state
@@ -490,7 +485,7 @@ class AdminUserService {
 
 			if (!userState) {
 				await t.rollback();
-				throw ApiError.BadRequest('User state not found');
+				throw ApiError.BadRequest("User state not found");
 			}
 
 			// Update currency
@@ -499,33 +494,11 @@ class AdminUserService {
 			userState[currency] = newAmount;
 			await userState.save({ transaction: t });
 
-			// Преобразуем userId в BigInt для PaymentTransaction, если нужно
-			const numericUserId = typeof userId === 'bigint' ? userId : BigInt(userId);
-			const numericSystemUserId = typeof SYSTEM_USER_ID === 'bigint' ? SYSTEM_USER_ID : BigInt(SYSTEM_USER_ID);
-
-			// Create transaction record
-			// Не сохраняем результат, чтобы избежать проблем с сериализацией
-			await PaymentTransaction.create(
-				{
-					marketTransactionId: 0, // Admin grant doesn't have market transaction
-					fromAccount: numericSystemUserId,
-					toAccount: numericUserId,
-					priceOrAmount: Math.floor(amount),
-					currencyOrResource: currency,
-					txType: 'RESOURCE_TRANSFER', // Using existing type, admin grant info in metadata
-					status: 'CONFIRMED',
-					metadata: {
-						reason: String(reason || 'Admin grant'),
-						adminGrant: true,
-						adminId: adminId ? String(adminId) : 'system',
-					},
-					confirmedAt: new Date(),
-				},
-				{ transaction: t }
-			);
+			// Для admin grants просто обновляем баланс пользователя
+			// Не создаем PaymentTransaction, так как это не рыночная транзакция
 
 			await t.commit();
-			
+
 			// Return all values as strings/numbers to avoid BigInt serialization issues
 			// Используем serializeBigInt для гарантированной сериализации
 			const result = {
@@ -535,60 +508,73 @@ class AdminUserService {
 				previousAmount: currentAmount.toString(),
 				newAmount: newAmount.toString(),
 			};
-			
+
 			// Сериализуем результат перед логированием
 			const serializedResult = serializeBigInt(result);
-			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userIdStr}`, {
-				result: serializedResult,
-			});
-			
+			logger.info(
+				`✅ Successfully gave ${amount} ${currency} to user ${userIdStr}`,
+				{
+					result: serializedResult,
+				}
+			);
+
 			// Возвращаем сериализованный результат
 			return serializedResult;
 		} catch (err) {
 			await t.rollback();
-			
+
 			// Безопасно извлекаем сообщение об ошибке, преобразуя все BigInt в строки
-			let errorMessage = 'Unknown error';
+			let errorMessage = "Unknown error";
 			try {
-				errorMessage = String(err.message || err.toString() || 'Unknown error');
+				errorMessage = String(
+					err.message || err.toString() || "Unknown error"
+				);
 			} catch (e) {
-				errorMessage = 'Error serialization failed';
+				errorMessage = "Error serialization failed";
 			}
-			
+
 			// Безопасно извлекаем стек, преобразуя все BigInt в строки
-			let errorStack = '';
+			let errorStack = "";
 			try {
-				errorStack = String(err.stack || '');
+				errorStack = String(err.stack || "");
 			} catch (e) {
-				errorStack = 'Stack serialization failed';
+				errorStack = "Stack serialization failed";
 			}
-			
+
 			// Преобразуем все значения в строки для логирования, чтобы избежать проблем с BigInt
-			
+
 			// Сериализуем контекст перед логированием
 			const errorContext = serializeBigInt({
 				userId: userIdStr,
-				currency: String(currency || 'unknown'),
-				amount: typeof amount === 'bigint' ? amount.toString() : String(amount || 0),
+				currency: String(currency || "unknown"),
+				amount:
+					typeof amount === "bigint"
+						? amount.toString()
+						: String(amount || 0),
 				error: errorMessage,
 				stack: errorStack,
 			});
-			
+
 			// Безопасное логирование
 			try {
-				logger.error(`❌ Database error in giveCurrency: ${errorMessage}`, errorContext);
+				logger.error(
+					`❌ Database error in giveCurrency: ${errorMessage}`,
+					errorContext
+				);
 			} catch (logError) {
 				// Если логирование тоже падает, просто выводим в консоль
-				console.error('Failed to log error:', logError);
-				console.error('Original error:', errorMessage);
+				console.error("Failed to log error:", logError);
+				console.error("Original error:", errorMessage);
 			}
-			
+
 			if (err instanceof ApiError) {
 				// Создаем новую ошибку с безопасным сообщением
-				const safeError = ApiError.Internal(`Failed to give currency: ${errorMessage}`);
+				const safeError = ApiError.Internal(
+					`Failed to give currency: ${errorMessage}`
+				);
 				throw safeError;
 			}
-			
+
 			// Создаем новую ошибку с безопасным сообщением
 			throw ApiError.Internal(`Failed to give currency: ${errorMessage}`);
 		}
@@ -603,28 +589,28 @@ class AdminUserService {
 			// Get user with state
 			const user = await User.findByPk(userId, {
 				attributes: [
-					'id',
-					'username',
-					'role',
-					'blocked',
-					'tonWallet',
-					'referral',
-					'createdAt',
-					'updatedAt',
+					"id",
+					"username",
+					"role",
+					"blocked",
+					"tonWallet",
+					"referral",
+					"createdAt",
+					"updatedAt",
 				],
 				include: [
 					{
 						model: UserState,
 						attributes: [
-							'stardust',
-							'darkMatter',
-							'stars',
-							'lockedStardust',
-							'lockedDarkMatter',
-							'lockedStars',
-							'lastLoginDate',
-							'currentStreak',
-							'maxStreak',
+							"stardust",
+							"darkMatter",
+							"stars",
+							"lockedStardust",
+							"lockedDarkMatter",
+							"lockedStars",
+							"lastLoginDate",
+							"currentStreak",
+							"maxStreak",
 						],
 					},
 				],
@@ -633,26 +619,26 @@ class AdminUserService {
 
 			if (!user) {
 				await t.rollback();
-				throw ApiError.BadRequest('User not found');
+				throw ApiError.BadRequest("User not found");
 			}
 
 			// Get galaxies
 			const galaxies = await Galaxy.findAll({
 				where: { userId },
 				attributes: [
-					'id',
-					'seed',
-					'name',
-					'starCurrent',
-					'maxStars',
-					'birthDate',
-					'lastCollectTime',
-					'galaxyType',
-					'colorPalette',
-					'backgroundType',
-					'createdAt',
+					"id",
+					"seed",
+					"name",
+					"starCurrent",
+					"maxStars",
+					"birthDate",
+					"lastCollectTime",
+					"galaxyType",
+					"colorPalette",
+					"backgroundType",
+					"createdAt",
 				],
-				order: [['starCurrent', 'DESC']],
+				order: [["starCurrent", "DESC"]],
 				transaction: t,
 			});
 
@@ -665,10 +651,13 @@ class AdminUserService {
 			// Get leaderboard position
 			let leaderboardPosition = null;
 			try {
-				const leaderboardResult = await userStateService.leaderboard(userId, t);
+				const leaderboardResult = await userStateService.leaderboard(
+					userId,
+					t
+				);
 				leaderboardPosition = leaderboardResult.userRating || null;
 			} catch (err) {
-				logger.warn('Failed to get leaderboard position:', err);
+				logger.warn("Failed to get leaderboard position:", err);
 			}
 
 			// Get referrals count (users who were invited by this user)
@@ -680,18 +669,20 @@ class AdminUserService {
 			await t.commit();
 
 			const userData = user.get({ plain: true });
-			
+
 			// Convert BigInt values in userState to strings
 			let userStateData = null;
 			if (userData.userstate) {
 				userStateData = {
 					...userData.userstate,
-					stardust: userData.userstate.stardust?.toString() || '0',
-					darkMatter: userData.userstate.darkMatter?.toString() || '0',
-					stars: userData.userstate.stars?.toString() || '0',
-					lockedStardust: userData.userstate.lockedStardust?.toString() || '0',
-					lockedDarkMatter: userData.userstate.lockedDarkMatter?.toString() || '0',
-					lockedStars: userData.userstate.lockedStars?.toString() || '0',
+					stardust: userData.userstate.stardust?.toString() || "0",
+					darkMatter: userData.userstate.darkMatter?.toString() || "0",
+					stars: userData.userstate.stars?.toString() || "0",
+					lockedStardust:
+						userData.userstate.lockedStardust?.toString() || "0",
+					lockedDarkMatter:
+						userData.userstate.lockedDarkMatter?.toString() || "0",
+					lockedStars: userData.userstate.lockedStars?.toString() || "0",
 				};
 			}
 
@@ -721,7 +712,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in getUserDetails:', err);
+			logger.error("❌ Database error in getUserDetails:", err);
 			if (err instanceof ApiError) {
 				throw err;
 			}
@@ -742,7 +733,7 @@ class AdminUserService {
 				where: {
 					[Op.or]: [{ fromAccount: userId }, { toAccount: userId }],
 				},
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 				limit: parseInt(limit),
 				offset: parseInt(offset),
 				transaction: t,
@@ -754,7 +745,9 @@ class AdminUserService {
 				transactions: transactions.rows.map((tx) => ({
 					...tx.get({ plain: true }),
 					priceOrAmount: parseFloat(tx.priceOrAmount),
-					createdAt: tx.createdAt ? new Date(tx.createdAt).toISOString() : null,
+					createdAt: tx.createdAt
+						? new Date(tx.createdAt).toISOString()
+						: null,
 					confirmedAt: tx.confirmedAt
 						? new Date(tx.confirmedAt).toISOString()
 						: null,
@@ -765,7 +758,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in getUserTransactions:', err);
+			logger.error("❌ Database error in getUserTransactions:", err);
 			throw ApiError.Internal(`Failed to get transactions: ${err.message}`);
 		}
 	}
@@ -779,7 +772,7 @@ class AdminUserService {
 			);
 
 			const transactions = await PaymentTransaction.findAndCountAll({
-				order: [['createdAt', 'DESC']],
+				order: [["createdAt", "DESC"]],
 				limit: parseInt(limit),
 				offset: parseInt(offset),
 				transaction: t,
@@ -791,7 +784,9 @@ class AdminUserService {
 				transactions: transactions.rows.map((tx) => ({
 					...tx.get({ plain: true }),
 					priceOrAmount: parseFloat(tx.priceOrAmount),
-					createdAt: tx.createdAt ? new Date(tx.createdAt).toISOString() : null,
+					createdAt: tx.createdAt
+						? new Date(tx.createdAt).toISOString()
+						: null,
 					confirmedAt: tx.confirmedAt
 						? new Date(tx.confirmedAt).toISOString()
 						: null,
@@ -802,7 +797,7 @@ class AdminUserService {
 			};
 		} catch (err) {
 			await t.rollback();
-			logger.error('❌ Database error in getAllTransactions:', err);
+			logger.error("❌ Database error in getAllTransactions:", err);
 			throw ApiError.Internal(`Failed to get transactions: ${err.message}`);
 		}
 	}
