@@ -499,6 +499,9 @@ class AdminUserService {
 				throw ApiError.BadRequest("User state not found");
 			}
 
+			// Сохраняем текущее значение валюты ДО выдачи
+			const currentAmount = BigInt(userState[currency] || 0);
+
 			// Преобразуем userId в BigInt для транзакций
 			const numericUserId =
 				typeof userId === "bigint" ? userId : BigInt(userId);
