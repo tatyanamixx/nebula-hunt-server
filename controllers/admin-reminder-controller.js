@@ -128,6 +128,7 @@ class AdminReminderController {
 				userIds,
 				showOpenGameButton = false,
 				showCommunityButton = false,
+				photoUrl = null,
 			} = req.body;
 
 			if (!message || !message.trim()) {
@@ -187,6 +188,7 @@ class AdminReminderController {
 					userIds: finalUserIds,
 					showOpenGameButton,
 					showCommunityButton,
+					photoUrl: photoUrl || null,
 				},
 				{
 					timeout: 300000, // 5 minutes for all users

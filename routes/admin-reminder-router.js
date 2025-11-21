@@ -82,6 +82,10 @@ router.get(
  *               showCommunityButton:
  *                 type: boolean
  *                 description: Show "Community" button
+ *               photoUrl:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Optional photo URL to attach to the message
  *     responses:
  *       200:
  *         description: Custom notification sent successfully
