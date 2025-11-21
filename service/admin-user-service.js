@@ -513,8 +513,8 @@ class AdminUserService {
 					? SYSTEM_USER_ID
 					: BigInt(SYSTEM_USER_ID);
 
-			// Создаем PaymentTransaction для учета через marketService.registerOffer
-			// (как это делается для farming rewards)
+			// Создаем PaymentTransaction напрямую для admin grants
+			// НЕ используем marketService.registerOffer, так как он списывает валюту у системы
 			console.log(
 				`💰 [ADMIN GRANT] Creating transaction: from=SYSTEM(${numericSystemUserId}), to=USER(${numericUserId}), amount=${Math.floor(
 					amount
@@ -526,54 +526,50 @@ class AdminUserService {
 				)}, currency=${currency}`
 			);
 
-			const marketService = require("./market-service");
-			const systemOffer = {
-				sellerId: numericSystemUserId,
-				buyerId: numericUserId,
-				txType: "RESOURCE_TRANSFER", // Используем существующий тип
-				itemType: "resource",
-				itemId: 0, // Для admin grants не нужен конкретный item
-				price: 0,
-				currency: "tonToken",
-				amount: Math.floor(amount), // Положительное значение - система отдает пользователю
-				resource: currency,
-				offerType: "SYSTEM",
-				metadata: {
-					reason: String(reason || "Admin grant"),
-					adminGrant: true,
-					adminId: adminId ? String(adminId) : "system",
+			// Создаем фиктивную MarketTransaction для foreign key constraint
+			const { MarketTransaction } = require("../models/models");
+			const systemMarketTransaction = await MarketTransaction.create(
+				{
+					offerId: 0, // Фиктивное значение
+					buyerId: numericUserId,
+					sellerId: numericSystemUserId,
+					status: "COMPLETED",
+					completedAt: new Date(),
 				},
-			};
+				{ transaction: t }
+			);
 
-			console.log(`💰 [ADMIN GRANT] System offer created:`, {
-				sellerId: systemOffer.sellerId.toString(),
-				buyerId: systemOffer.buyerId.toString(),
-				amount: systemOffer.amount,
-				resource: systemOffer.resource,
-			});
-			logger.info(`💰 [ADMIN GRANT] System offer created:`, {
-				sellerId: systemOffer.sellerId.toString(),
-				buyerId: systemOffer.buyerId.toString(),
-				amount: systemOffer.amount,
-				resource: systemOffer.resource,
-			});
-
-			// Используем marketService.registerOffer для создания транзакции
-			const registerResult = await marketService.registerOffer(systemOffer, t);
+			// Создаем PaymentTransaction для учета
+			const paymentTransaction = await PaymentTransaction.create(
+				{
+					marketTransactionId: systemMarketTransaction.id,
+					fromAccount: numericSystemUserId,
+					toAccount: numericUserId,
+					priceOrAmount: Math.floor(amount),
+					currencyOrResource: currency,
+					txType: "RESOURCE_TRANSFER",
+					status: "CONFIRMED",
+					metadata: {
+						reason: String(reason || "Admin grant"),
+						adminGrant: true,
+						adminId: adminId ? String(adminId) : "system",
+					},
+					confirmedAt: new Date(),
+				},
+				{ transaction: t }
+			);
 
 			console.log(`💰 [ADMIN GRANT] Transaction created:`, {
-				marketTransactionId:
-					registerResult?.marketTransaction?.id?.toString(),
-				transferResourceId: registerResult?.transferResource?.id?.toString(),
-				transferResourceAmount:
-					registerResult?.transferResource?.priceOrAmount?.toString(),
+				marketTransactionId: systemMarketTransaction.id.toString(),
+				paymentTransactionId: paymentTransaction.id.toString(),
+				amount: Math.floor(amount),
+				currency: currency,
 			});
 			logger.info(`💰 [ADMIN GRANT] Transaction created:`, {
-				marketTransactionId:
-					registerResult?.marketTransaction?.id?.toString(),
-				transferResourceId: registerResult?.transferResource?.id?.toString(),
-				transferResourceAmount:
-					registerResult?.transferResource?.priceOrAmount?.toString(),
+				marketTransactionId: systemMarketTransaction.id.toString(),
+				paymentTransactionId: paymentTransaction.id.toString(),
+				amount: Math.floor(amount),
+				currency: currency,
 			});
 
 			await t.commit();
