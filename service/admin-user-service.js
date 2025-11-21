@@ -9,6 +9,7 @@ const logger = require('../service/logger-service');
 const userStateService = require('./user-state-service');
 const { Op } = require('sequelize');
 const { SYSTEM_USER_ID } = require('../config/constants');
+const { serializeBigInt } = require('../utils/serialization');
 
 class AdminUserService {
 	async getAllUsers() {
@@ -498,20 +499,25 @@ class AdminUserService {
 			userState[currency] = newAmount;
 			await userState.save({ transaction: t });
 
+			// Преобразуем userId в BigInt для PaymentTransaction, если нужно
+			const numericUserId = typeof userId === 'bigint' ? userId : BigInt(userId);
+			const numericSystemUserId = typeof SYSTEM_USER_ID === 'bigint' ? SYSTEM_USER_ID : BigInt(SYSTEM_USER_ID);
+
 			// Create transaction record
+			// Не сохраняем результат, чтобы избежать проблем с сериализацией
 			await PaymentTransaction.create(
 				{
 					marketTransactionId: 0, // Admin grant doesn't have market transaction
-					fromAccount: SYSTEM_USER_ID,
-					toAccount: userId,
+					fromAccount: numericSystemUserId,
+					toAccount: numericUserId,
 					priceOrAmount: Math.floor(amount),
 					currencyOrResource: currency,
 					txType: 'RESOURCE_TRANSFER', // Using existing type, admin grant info in metadata
 					status: 'CONFIRMED',
 					metadata: {
-						reason,
+						reason: String(reason || 'Admin grant'),
 						adminGrant: true,
-						adminId: adminId || 'system',
+						adminId: adminId ? String(adminId) : 'system',
 					},
 					confirmedAt: new Date(),
 				},
@@ -519,11 +525,9 @@ class AdminUserService {
 			);
 
 			await t.commit();
-			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userIdStr}`);
-
+			
 			// Return all values as strings/numbers to avoid BigInt serialization issues
 			// Используем serializeBigInt для гарантированной сериализации
-			const { serializeBigInt } = require('../utils/serialization');
 			const result = {
 				userId: userIdStr,
 				currency,
@@ -532,23 +536,60 @@ class AdminUserService {
 				newAmount: newAmount.toString(),
 			};
 			
-			// Дополнительная сериализация на случай, если что-то пропустили
-			return serializeBigInt(result);
+			// Сериализуем результат перед логированием
+			const serializedResult = serializeBigInt(result);
+			logger.info(`✅ Successfully gave ${amount} ${currency} to user ${userIdStr}`, {
+				result: serializedResult,
+			});
+			
+			// Возвращаем сериализованный результат
+			return serializedResult;
 		} catch (err) {
 			await t.rollback();
+			
+			// Безопасно извлекаем сообщение об ошибке, преобразуя все BigInt в строки
+			let errorMessage = 'Unknown error';
+			try {
+				errorMessage = String(err.message || err.toString() || 'Unknown error');
+			} catch (e) {
+				errorMessage = 'Error serialization failed';
+			}
+			
+			// Безопасно извлекаем стек, преобразуя все BigInt в строки
+			let errorStack = '';
+			try {
+				errorStack = String(err.stack || '');
+			} catch (e) {
+				errorStack = 'Stack serialization failed';
+			}
+			
 			// Преобразуем все значения в строки для логирования, чтобы избежать проблем с BigInt
-			const errorMessage = err.message || 'Unknown error';
-			const errorStack = err.stack || '';
-			logger.error(`❌ Database error in giveCurrency: ${errorMessage}`, {
+			
+			// Сериализуем контекст перед логированием
+			const errorContext = serializeBigInt({
 				userId: userIdStr,
-				currency,
-				amount,
+				currency: String(currency || 'unknown'),
+				amount: typeof amount === 'bigint' ? amount.toString() : String(amount || 0),
 				error: errorMessage,
 				stack: errorStack,
 			});
-			if (err instanceof ApiError) {
-				throw err;
+			
+			// Безопасное логирование
+			try {
+				logger.error(`❌ Database error in giveCurrency: ${errorMessage}`, errorContext);
+			} catch (logError) {
+				// Если логирование тоже падает, просто выводим в консоль
+				console.error('Failed to log error:', logError);
+				console.error('Original error:', errorMessage);
 			}
+			
+			if (err instanceof ApiError) {
+				// Создаем новую ошибку с безопасным сообщением
+				const safeError = ApiError.Internal(`Failed to give currency: ${errorMessage}`);
+				throw safeError;
+			}
+			
+			// Создаем новую ошибку с безопасным сообщением
 			throw ApiError.Internal(`Failed to give currency: ${errorMessage}`);
 		}
 	}
