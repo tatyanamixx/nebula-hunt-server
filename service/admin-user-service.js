@@ -52,6 +52,27 @@ class AdminUserService {
 
 			logger.info(`🔍 Query successful, found ${users.length} users`);
 
+			// Get referrals count for each user
+			// We'll do this in a separate query for better performance
+			const userIds = users.map((u) => u.id);
+			const referralsCounts = await User.findAll({
+				attributes: [
+					'referral',
+					[sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+				],
+				where: {
+					referral: { [Op.in]: userIds },
+				},
+				group: ['referral'],
+				raw: true,
+			});
+
+			// Create a map of referral -> count
+			const referralsMap = {};
+			referralsCounts.forEach((item) => {
+				referralsMap[item.referral.toString()] = parseInt(item.count);
+			});
+
 			// Convert Sequelize instances to plain objects for JSON response
 			const plainUsers = users.map((user) => {
 				const userData = user.get({ plain: true });
@@ -72,6 +93,8 @@ class AdminUserService {
 								userData.userstate.lastLoginDate
 						  ).toISOString()
 						: null,
+					// Add referrals count
+					referralsCount: referralsMap[userData.id.toString()] || 0,
 					// Remove the original userstate field to avoid confusion
 					userstate: undefined,
 				};
@@ -594,9 +617,30 @@ class AdminUserService {
 				logger.warn('Failed to get leaderboard position:', err);
 			}
 
+			// Get referrals count (users who were invited by this user)
+			const referralsCount = await User.count({
+				where: { referral: userId },
+				transaction: t,
+			});
+
 			await t.commit();
 
 			const userData = user.get({ plain: true });
+			
+			// Convert BigInt values in userState to strings
+			let userStateData = null;
+			if (userData.userstate) {
+				userStateData = {
+					...userData.userstate,
+					stardust: userData.userstate.stardust?.toString() || '0',
+					darkMatter: userData.userstate.darkMatter?.toString() || '0',
+					stars: userData.userstate.stars?.toString() || '0',
+					lockedStardust: userData.userstate.lockedStardust?.toString() || '0',
+					lockedDarkMatter: userData.userstate.lockedDarkMatter?.toString() || '0',
+					lockedStars: userData.userstate.lockedStars?.toString() || '0',
+				};
+			}
+
 			return {
 				user: {
 					...userData,
@@ -606,7 +650,7 @@ class AdminUserService {
 					updatedAt: userData.updatedAt
 						? new Date(userData.updatedAt).toISOString()
 						: null,
-					userState: userData.userstate || null,
+					userState: userStateData,
 					lastLoginAt: userData.userstate?.lastLoginDate
 						? new Date(userData.userstate.lastLoginDate).toISOString()
 						: null,
@@ -619,6 +663,7 @@ class AdminUserService {
 				})),
 				totalStarsFromGalaxies,
 				leaderboardPosition,
+				referralsCount,
 			};
 		} catch (err) {
 			await t.rollback();
