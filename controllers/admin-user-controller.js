@@ -201,12 +201,14 @@ class AdminUserController {
 			// Сериализуем ошибку перед логированием, чтобы избежать проблем с BigInt
 			const { serializeBigInt } = require("../utils/serialization");
 			const errorMessage = e.message || "Unknown error";
-			// userId может быть не определен, если ошибка произошла до его объявления
+			// userId и currency могут быть не определены, если ошибка произошла до их объявления
 			const userIdStr = String(req.params?.userId || userId || "unknown");
+			const currencyStr = String(req.body?.currency || currency || "unknown");
+			const amountNum = req.body?.amount || amount || 0;
 			const errorContext = serializeBigInt({
 				userId: userIdStr,
-				currency: currency || "unknown",
-				amount: amount || 0,
+				currency: currencyStr,
+				amount: amountNum,
 				error: errorMessage,
 				stack: e.stack || "",
 			});
