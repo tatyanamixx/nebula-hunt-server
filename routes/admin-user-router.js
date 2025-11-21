@@ -72,4 +72,36 @@ router.delete(
 	adminUserController.deleteUser
 );
 
+// Give currency to user
+router.post(
+	'/users/:userId/currency',
+	adminAuthMiddleware,
+	rateLimitMiddleware(100, 10), // 100 requests per 10 minutes,
+	adminUserController.giveCurrency
+);
+
+// Get user details (galaxies, resources, leaderboard position)
+router.get(
+	'/users/:userId/details',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getUserDetails
+);
+
+// Get user transactions
+router.get(
+	'/users/:userId/transactions',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getUserTransactions
+);
+
+// Get all transactions
+router.get(
+	'/transactions',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getAllTransactions
+);
+
 module.exports = router;

@@ -165,6 +165,103 @@ class AdminUserController {
 			next(e);
 		}
 	}
+
+	async giveCurrency(req, res, next) {
+		try {
+			const { userId } = req.params;
+			const { currency, amount, reason } = req.body;
+			const adminId = req.user?.id || null;
+
+			logger.info(
+				`💰 Admin ${adminId} giving ${amount} ${currency} to user ${userId}...`
+			);
+
+			if (!currency || !amount) {
+				throw ApiError.BadRequest('currency and amount are required');
+			}
+
+			const result = await adminUserService.giveCurrency(
+				userId,
+				currency,
+				amount,
+				reason || 'Admin grant',
+				adminId
+			);
+
+			return res.json({
+				success: true,
+				message: `Successfully gave ${amount} ${currency} to user`,
+				data: result,
+			});
+		} catch (e) {
+			logger.error('❌ Error giving currency:', e);
+			next(e);
+		}
+	}
+
+	async getUserDetails(req, res, next) {
+		try {
+			const { userId } = req.params;
+			logger.info(`🔍 Getting detailed info for user ${userId}...`);
+
+			const details = await adminUserService.getUserDetails(userId);
+
+			return res.json({
+				success: true,
+				data: details,
+			});
+		} catch (e) {
+			logger.error('❌ Error getting user details:', e);
+			next(e);
+		}
+	}
+
+	async getUserTransactions(req, res, next) {
+		try {
+			const { userId } = req.params;
+			const limit = parseInt(req.query.limit) || 100;
+			const offset = parseInt(req.query.offset) || 0;
+
+			logger.info(
+				`🔍 Getting transactions for user ${userId} (limit: ${limit}, offset: ${offset})...`
+			);
+
+			const result = await adminUserService.getUserTransactions(
+				userId,
+				limit,
+				offset
+			);
+
+			return res.json({
+				success: true,
+				data: result,
+			});
+		} catch (e) {
+			logger.error('❌ Error getting user transactions:', e);
+			next(e);
+		}
+	}
+
+	async getAllTransactions(req, res, next) {
+		try {
+			const limit = parseInt(req.query.limit) || 100;
+			const offset = parseInt(req.query.offset) || 0;
+
+			logger.info(
+				`🔍 Getting all transactions (limit: ${limit}, offset: ${offset})...`
+			);
+
+			const result = await adminUserService.getAllTransactions(limit, offset);
+
+			return res.json({
+				success: true,
+				data: result,
+			});
+		} catch (e) {
+			logger.error('❌ Error getting all transactions:', e);
+			next(e);
+		}
+	}
 }
 
 module.exports = new AdminUserController();
