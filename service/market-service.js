@@ -708,10 +708,11 @@ class MarketService {
 
 		switch (currency) {
 			case "stardust":
-				if (
-					BigInt(userState.stardust) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
+				// Правильное сравнение для BigInt и числа
+				const isSystemUser =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
+				if (BigInt(userState.stardust) < BigInt(amount) && !isSystemUser) {
 					throw new ApiError(400, "Insufficient stardust");
 				}
 				await userState.update(
@@ -722,9 +723,13 @@ class MarketService {
 				);
 				break;
 			case "darkMatter":
+				// Правильное сравнение для BigInt и числа
+				const isSystemUserDM =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
 				if (
 					BigInt(userState.darkMatter) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
+					!isSystemUserDM
 				) {
 					throw new ApiError(400, "Insufficient dark matter");
 				}
@@ -736,10 +741,11 @@ class MarketService {
 				);
 				break;
 			case "stars":
-				if (
-					BigInt(userState.stars) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
+				// Правильное сравнение для BigInt и числа
+				const isSystemUserStars =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
+				if (BigInt(userState.stars) < BigInt(amount) && !isSystemUserStars) {
 					throw new ApiError(400, "Insufficient stars");
 				}
 				await userState.update(
@@ -1430,7 +1436,7 @@ class MarketService {
 		try {
 			// Initialize packages for user if userId is provided
 			if (userId) {
-				const packageStoreService = require('./package-store-service');
+				const packageStoreService = require("./package-store-service");
 				await packageStoreService.initializePackageStore(userId, t);
 			}
 
