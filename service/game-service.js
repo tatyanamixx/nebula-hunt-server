@@ -549,10 +549,10 @@ class GameService {
 			}
 
 			// ✅ Если визуальные свойства не установлены (null), генерируем их детерминированно на основе seed
-			// Это происходит при захвате галактики, когда клиент не передает свойства
+			// Это fallback на случай, если клиент не передал свойства
 			if (
-				!parsedGalaxyData.galaxyType &&
-				!parsedGalaxyData.colorPalette &&
+				!parsedGalaxyData.galaxyType ||
+				!parsedGalaxyData.colorPalette ||
 				!parsedGalaxyData.backgroundType
 			) {
 				const {
@@ -561,17 +561,17 @@ class GameService {
 					generateBackgroundFromSeed,
 				} = require("../utils/galaxy-utils");
 
-				parsedGalaxyData.galaxyType = generateGalaxyTypeFromSeed(
-					parsedGalaxyData.seed
-				);
-				parsedGalaxyData.colorPalette = generateColorPaletteFromSeed(
-					parsedGalaxyData.seed
-				);
-				parsedGalaxyData.backgroundType = generateBackgroundFromSeed(
-					parsedGalaxyData.seed
-				);
+				parsedGalaxyData.galaxyType =
+					parsedGalaxyData.galaxyType ||
+					generateGalaxyTypeFromSeed(parsedGalaxyData.seed);
+				parsedGalaxyData.colorPalette =
+					parsedGalaxyData.colorPalette ||
+					generateColorPaletteFromSeed(parsedGalaxyData.seed);
+				parsedGalaxyData.backgroundType =
+					parsedGalaxyData.backgroundType ||
+					generateBackgroundFromSeed(parsedGalaxyData.seed);
 
-				logger.debug("Generated visual properties for galaxy capture", {
+				logger.debug("Generated missing visual properties", {
 					seed: parsedGalaxyData.seed,
 					type: parsedGalaxyData.galaxyType,
 					colorPalette: parsedGalaxyData.colorPalette,

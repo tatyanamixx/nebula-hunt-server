@@ -212,36 +212,12 @@ function parseClientGalaxyData(clientGalaxyData) {
 		})(),
 
 		// === ВИЗУАЛЬНЫЕ СВОЙСТВА ===
-		// ✅ Для захвата галактики (starCurrent null) НЕ используем свойства от клиента
-		// Сервер сам сгенерирует их детерминированно в completeGalaxyCapturePayment
-		// Для других случаев используем свойства от клиента, если они есть
-		galaxyType: (() => {
-			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
-			const isCapture = !clientStarCurrent || clientStarCurrent < 40000;
-			// Для захвата не используем свойства от клиента - сервер сгенерирует
-			if (isCapture) {
-				return null;
-			}
-			return clientGalaxyData.type || clientGalaxyData.galaxyType || null;
-		})(),
-		colorPalette: (() => {
-			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
-			const isCapture = !clientStarCurrent || clientStarCurrent < 40000;
-			// Для захвата не используем свойства от клиента - сервер сгенерирует
-			if (isCapture) {
-				return null;
-			}
-			return clientGalaxyData.colorPalette || null;
-		})(),
-		backgroundType: (() => {
-			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
-			const isCapture = !clientStarCurrent || clientStarCurrent < 40000;
-			// Для захвата не используем свойства от клиента - сервер сгенерирует
-			if (isCapture) {
-				return null;
-			}
-			return clientGalaxyData.background || clientGalaxyData.backgroundType || null;
-		})(),
+		// ✅ Для захвата галактики используем свойства от клиента, если они переданы
+		// Это нужно, чтобы галактика не изменилась после захвата (пользователь видит те же свойства)
+		galaxyType: clientGalaxyData.type || clientGalaxyData.galaxyType || null,
+		colorPalette: clientGalaxyData.colorPalette || null,
+		backgroundType:
+			clientGalaxyData.background || clientGalaxyData.backgroundType || null,
 
 		// === ИГРОВЫЕ ПАРАМЕТРЫ ===
 		price: clientGalaxyData.price || null, // Будет установлен в game-service
