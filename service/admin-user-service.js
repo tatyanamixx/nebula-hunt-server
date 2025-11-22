@@ -124,6 +124,7 @@ class AdminUserService {
 							"stardust",
 							"darkMatter",
 							"stars",
+							"tgStars",
 							"lockedStardust",
 							"lockedDarkMatter",
 							"lockedStars",
@@ -695,6 +696,7 @@ class AdminUserService {
 							"stardust",
 							"darkMatter",
 							"stars",
+							"tgStars",
 							"lockedStardust",
 							"lockedDarkMatter",
 							"lockedStars",
@@ -768,6 +770,7 @@ class AdminUserService {
 					stardust: userData.userstate.stardust?.toString() || "0",
 					darkMatter: userData.userstate.darkMatter?.toString() || "0",
 					stars: userData.userstate.stars?.toString() || "0",
+					tgStars: userData.userstate.tgStars?.toString() || "0",
 					lockedStardust:
 						userData.userstate.lockedStardust?.toString() || "0",
 					lockedDarkMatter:
