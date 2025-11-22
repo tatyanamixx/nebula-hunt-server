@@ -1559,6 +1559,9 @@ class GameService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async completeGalaxyUpgradePayment(userId, payload, payment) {
+		const t = await sequelize.transaction();
+		const shouldCommit = true;
+
 		try {
 			logger.info("Completing galaxy upgrade payment", {
 				userId,
@@ -1573,6 +1576,7 @@ class GameService {
 			const upgradeValue = payload.uv || payload.upgradeValue;
 
 			if (!paymentPrice || !galaxySeed || !upgradeType || !upgradeValue) {
+				await t.rollback();
 				throw new Error(
 					"Missing required upgrade data: price (p), galaxySeed (gs), upgradeType (ut), upgradeValue (uv)"
 				);
@@ -1584,6 +1588,7 @@ class GameService {
 			// Validate upgrade type
 			const validUpgradeTypes = ["name", "type", "color", "background"];
 			if (!validUpgradeTypes.includes(upgradeType)) {
+				await t.rollback();
 				throw new Error(
 					`Invalid upgrade type: ${upgradeType}. Must be one of: ${validUpgradeTypes.join(", ")}`
 				);
@@ -1592,9 +1597,11 @@ class GameService {
 			// Find galaxy
 			const galaxy = await Galaxy.findOne({
 				where: { seed: galaxySeed, userId: userIdBigInt },
+				transaction: t,
 			});
 
 			if (!galaxy) {
+				await t.rollback();
 				throw new Error(
 					"Galaxy not found or not owned by user"
 				);
@@ -1602,19 +1609,28 @@ class GameService {
 
 			// Apply upgrade
 			const galaxyProperties = galaxy.galaxyProperties || {};
+			const updateData = {
+				galaxyProperties: galaxyProperties,
+			};
 
 			if (upgradeType === "name") {
-				galaxy.name = upgradeValue;
+				updateData.name = upgradeValue;
 			} else if (upgradeType === "type") {
 				galaxyProperties.type = upgradeValue;
+				updateData.galaxyType = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
 			} else if (upgradeType === "color") {
 				galaxyProperties.colorPalette = upgradeValue;
+				updateData.colorPalette = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
 			} else if (upgradeType === "background") {
 				galaxyProperties.background = upgradeValue;
+				updateData.backgroundType = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
 			}
 
-			galaxy.galaxyProperties = galaxyProperties;
-			await galaxy.save();
+			// ✅ Явно обновляем поля для гарантии сохранения
+			await galaxy.update(updateData, { transaction: t });
 
 			// Создаем offer для записи в БД через marketService для аудита
 			const paymentPriceNum = Number(paymentPrice);
@@ -1626,14 +1642,19 @@ class GameService {
 				itemId: BigInt(galaxy.id), // ID галактики
 				itemType: "galaxy",
 				amount: 0, // Для улучшения галактики не передаем ресурсы
-				resource: "", // Пустая строка вместо null, так как поле обязательное
+				resource: "stars", // Используем валидное значение enum (amount = 0, поэтому не влияет на логику)
 				offerType: "SYSTEM",
 				txType: "GALAXY_UPGRADE",
 			};
 
 			// Регистрируем offer через marketService для полного аудита
 			const marketService = require("./market-service");
-			const marketResult = await marketService.registerOffer(offerData);
+			const marketResult = await marketService.registerOffer(offerData, t);
+
+			// ✅ Коммитим транзакцию после успешного сохранения
+			if (shouldCommit) {
+				await t.commit();
+			}
 
 			logger.info("Galaxy upgrade payment completed", {
 				userId: userIdBigInt.toString(),
@@ -1656,6 +1677,9 @@ class GameService {
 				marketOffer: marketResult,
 			};
 		} catch (error) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
 			logger.error("Failed to complete galaxy upgrade payment", {
 				userId,
 				payload,
