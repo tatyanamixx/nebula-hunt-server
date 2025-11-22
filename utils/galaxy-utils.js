@@ -76,6 +76,33 @@ function getGalaxyNameFromSeed(seed) {
 }
 
 /**
+ * Генерирует детерминированное количество звезд для захвата галактики на основе seed
+ * @param {string} seed - Seed галактики
+ * @returns {number} Количество звезд (40,000 - 60,000)
+ */
+function generateStarCountForCapture(seed) {
+	if (!seed) {
+		// Fallback к случайной генерации, если seed не передан
+		return Math.floor(Math.random() * (60000 - 40000 + 1) + 40000);
+	}
+	
+	// Детерминированная генерация на основе seed
+	// Используем тот же алгоритм, что и на клиенте
+	let hash = 0;
+	for (let i = 0; i < seed.length; i++) {
+		hash = (hash * 31 + seed.charCodeAt(i)) % 1000000;
+	}
+	
+	// Генерируем число в диапазоне 40000-60000
+	const minStars = 40000;
+	const maxStars = 60000;
+	const range = maxStars - minStars + 1;
+	const starCount = minStars + (Math.abs(hash) % range);
+	
+	return starCount;
+}
+
+/**
  * Генерирует случайное максимальное количество звезд для галактики
  * @param {string} seed - Seed для детерминированной генерации (опционально)
  * @returns {number} Максимальное количество звезд (80,000 - 100,000)
@@ -140,7 +167,19 @@ function parseClientGalaxyData(clientGalaxyData) {
 
 		// === ЗВЕЗДЫ И РЕСУРСЫ ===
 		starMin: clientGalaxyData.starMin || 100,
-		starCurrent: clientGalaxyData.stars || clientGalaxyData.starCurrent || 1000,
+		// ✅ Для захвата галактики starCurrent должен быть 40000-60000 (рассчитывается на сервере)
+		// Если starCurrent не передан или меньше 40000, значит это захват - используем значение по умолчанию
+		// Сервер перезапишет это значение в completeGalaxyCapturePayment
+		starCurrent: (() => {
+			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
+			// Если значение от клиента меньше 40000, это неправильное значение для захвата - игнорируем
+			if (clientStarCurrent && clientStarCurrent >= 40000) {
+				return clientStarCurrent;
+			}
+			// Для захвата галактики сервер сам рассчитает 40000-60000
+			// Возвращаем null, чтобы сервер мог перезаписать
+			return null;
+		})(),
 		maxStars: clientGalaxyData.maxStars || generateMaxStars(seed),
 
 		// === ВРЕМЕННЫЕ МЕТКИ ===
@@ -190,6 +229,7 @@ function parseClientGalaxyData(clientGalaxyData) {
 module.exports = {
 	getGalaxyNameFromSeed,
 	generateMaxStars,
+	generateStarCountForCapture,
 	generateBirthDate,
 	parseClientGalaxyData,
 };

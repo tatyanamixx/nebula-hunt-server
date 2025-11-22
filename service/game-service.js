@@ -531,6 +531,23 @@ class GameService {
 			const parsedGalaxyData = parseClientGalaxyData(galaxyData);
 			logger.debug("Parsed galaxy data", parsedGalaxyData);
 
+			// ✅ Если starCurrent не установлен (null), это захват галактики - рассчитываем 40000-60000 детерминированно
+			if (
+				parsedGalaxyData.starCurrent === null ||
+				parsedGalaxyData.starCurrent === undefined
+			) {
+				const {
+					generateStarCountForCapture,
+				} = require("../utils/galaxy-utils");
+				parsedGalaxyData.starCurrent = generateStarCountForCapture(
+					parsedGalaxyData.seed
+				);
+				logger.debug("Calculated starCurrent for galaxy capture", {
+					seed: parsedGalaxyData.seed,
+					starCurrent: parsedGalaxyData.starCurrent,
+				});
+			}
+
 			// 1. Создаем галактику от имени SYSTEM
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
@@ -1293,6 +1310,11 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			logger.debug("Galaxy capture - star count calculation", {
+				minStars: 40000,
+				maxStars: 60000,
+			});
+
 			// Payload использует сокращенные имена: p=price, gs=galaxySeed, gn=galaxyName
 			const paymentPrice = payload.p || payload.price;
 			const galaxySeed = payload.gs || payload.galaxySeed;
@@ -1307,12 +1329,20 @@ class GameService {
 			const userIdBigInt = BigInt(userId);
 
 			// Создаем данные галактики из payload
+			// ✅ При захвате галактики должно быть 40000-60000 звезд (детерминированно на основе seed)
+			const {
+				generateStarCountForCapture,
+				generateMaxStars,
+			} = require("../utils/galaxy-utils");
+			const starCurrent = generateStarCountForCapture(galaxySeed);
+			const galaxyMaxStars = generateMaxStars(galaxySeed);
+
 			const galaxyData = {
 				seed: galaxySeed,
 				name: payload.gn || payload.galaxyName || `Galaxy-${galaxySeed}`,
 				starMin: 100,
-				starCurrent: 1000, // Базовое количество звезд
-				maxStars: 80000 + Math.floor(Math.random() * 20000), // Случайный максимум
+				starCurrent: starCurrent, // ✅ 40000-60000 звезд при захвате
+				maxStars: galaxyMaxStars,
 				birthDate: new Date().toISOString().split("T")[0],
 				lastCollectTime: new Date(),
 				type: "spiral", // Базовый тип
@@ -1370,7 +1400,12 @@ class GameService {
 			const paymentPrice = payload.p || payload.price;
 			const amount = payload.a || payload.amount;
 
-			if (paymentPrice === undefined || paymentPrice === null || amount === undefined || amount === null) {
+			if (
+				paymentPrice === undefined ||
+				paymentPrice === null ||
+				amount === undefined ||
+				amount === null
+			) {
 				logger.error("Missing required payload data", {
 					payload,
 					paymentPrice,
@@ -1389,7 +1424,12 @@ class GameService {
 			const paymentPriceNum = Number(paymentPrice);
 			const amountNum = Number(amount);
 
-			if (isNaN(paymentPriceNum) || isNaN(amountNum) || paymentPriceNum <= 0 || amountNum <= 0) {
+			if (
+				isNaN(paymentPriceNum) ||
+				isNaN(amountNum) ||
+				paymentPriceNum <= 0 ||
+				amountNum <= 0
+			) {
 				logger.error("Invalid payload data values", {
 					payload,
 					paymentPrice,
@@ -1470,7 +1510,12 @@ class GameService {
 			const paymentPrice = payload.p || payload.price;
 			const amount = payload.a || payload.amount;
 
-			if (paymentPrice === undefined || paymentPrice === null || amount === undefined || amount === null) {
+			if (
+				paymentPrice === undefined ||
+				paymentPrice === null ||
+				amount === undefined ||
+				amount === null
+			) {
 				logger.error("Missing required payload data", {
 					payload,
 					paymentPrice,
@@ -1489,7 +1534,12 @@ class GameService {
 			const paymentPriceNum = Number(paymentPrice);
 			const amountNum = Number(amount);
 
-			if (isNaN(paymentPriceNum) || isNaN(amountNum) || paymentPriceNum <= 0 || amountNum <= 0) {
+			if (
+				isNaN(paymentPriceNum) ||
+				isNaN(amountNum) ||
+				paymentPriceNum <= 0 ||
+				amountNum <= 0
+			) {
 				logger.error("Invalid payload data values", {
 					payload,
 					paymentPrice,
@@ -1590,7 +1640,9 @@ class GameService {
 			if (!validUpgradeTypes.includes(upgradeType)) {
 				await t.rollback();
 				throw new Error(
-					`Invalid upgrade type: ${upgradeType}. Must be one of: ${validUpgradeTypes.join(", ")}`
+					`Invalid upgrade type: ${upgradeType}. Must be one of: ${validUpgradeTypes.join(
+						", "
+					)}`
 				);
 			}
 
@@ -1602,9 +1654,7 @@ class GameService {
 
 			if (!galaxy) {
 				await t.rollback();
-				throw new Error(
-					"Galaxy not found or not owned by user"
-				);
+				throw new Error("Galaxy not found or not owned by user");
 			}
 
 			// Apply upgrade
@@ -1632,6 +1682,23 @@ class GameService {
 			// ✅ Явно обновляем поля для гарантии сохранения
 			await galaxy.update(updateData, { transaction: t });
 
+			// ✅ Перезагружаем галактику для получения обновленных данных
+			await galaxy.reload({ transaction: t });
+
+			logger.debug("Galaxy updated", {
+				galaxySeed,
+				upgradeType,
+				upgradeValue,
+				updatedFields: updateData,
+				galaxyAfterUpdate: {
+					name: galaxy.name,
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+					galaxyProperties: galaxy.galaxyProperties,
+				},
+			});
+
 			// Создаем offer для записи в БД через marketService для аудита
 			const paymentPriceNum = Number(paymentPrice);
 			const offerData = {
@@ -1651,7 +1718,9 @@ class GameService {
 			if (!offerData.resource || offerData.resource === "") {
 				logger.error("Invalid resource in offerData", { offerData });
 				await t.rollback();
-				throw new Error("Resource must be set to a valid enum value (stars, stardust, darkMatter)");
+				throw new Error(
+					"Resource must be set to a valid enum value (stars, stardust, darkMatter)"
+				);
 			}
 
 			logger.debug("Registering galaxy upgrade offer", {
@@ -1675,7 +1744,14 @@ class GameService {
 				upgradeType,
 				upgradeValue,
 				paymentId: payment.telegram_payment_charge_id,
-				marketOfferId: marketResult?.id,
+				marketOfferId: marketResult?.offer?.id,
+				galaxyAfterUpgrade: {
+					name: galaxy.name,
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+					galaxyProperties: galaxy.galaxyProperties,
+				},
 			});
 
 			return {
