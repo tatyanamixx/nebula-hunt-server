@@ -1625,8 +1625,8 @@ class GameService {
 				currency: "tgStars",
 				itemId: BigInt(galaxy.id), // ID галактики
 				itemType: "galaxy",
-				amount: 1,
-				resource: null,
+				amount: 0, // Для улучшения галактики не передаем ресурсы
+				resource: "", // Пустая строка вместо null, так как поле обязательное
 				offerType: "SYSTEM",
 				txType: "GALAXY_UPGRADE",
 			};
