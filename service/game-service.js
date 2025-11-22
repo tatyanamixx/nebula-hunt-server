@@ -1421,27 +1421,25 @@ class GameService {
 			};
 
 			// Регистрируем offer через marketService для полного аудита
+			// registerOffer уже добавляет валюту пользователю (строки 1830-1835 в market-service.js)
 			const marketResult = await marketService.registerOffer(offerData);
-
-			// Добавляем стардаст пользователю
-			const result = await userStateService.addCurrency(
-				userIdBigInt,
-				"stardust",
-				amountNum,
-				null // transaction будет создан внутри
-			);
 
 			logger.info("Stardust purchase payment completed", {
 				userId: userIdBigInt.toString(),
 				amount: amountNum,
 				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
-				marketOfferId: marketResult?.id,
+				marketOfferId: marketResult?.offer?.id,
 			});
 
 			return {
-				...result,
-				marketOffer: marketResult,
+				success: true,
+				message: "Stardust purchase payment completed",
+				data: {
+					amount: amountNum,
+					price: paymentPriceNum,
+					marketOffer: marketResult,
+				},
 			};
 		} catch (error) {
 			logger.error("Failed to complete stardust purchase payment", {
@@ -1523,27 +1521,25 @@ class GameService {
 			};
 
 			// Регистрируем offer через marketService для полного аудита
+			// registerOffer уже добавляет валюту пользователю (строки 1830-1835 в market-service.js)
 			const marketResult = await marketService.registerOffer(offerData);
-
-			// Добавляем темную материю пользователю
-			const result = await userStateService.addCurrency(
-				userIdBigInt,
-				"darkMatter",
-				amountNum,
-				null // transaction будет создан внутри
-			);
 
 			logger.info("Dark matter purchase payment completed", {
 				userId: userIdBigInt.toString(),
 				amount: amountNum,
 				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
-				marketOfferId: marketResult?.id,
+				marketOfferId: marketResult?.offer?.id,
 			});
 
 			return {
-				...result,
-				marketOffer: marketResult,
+				success: true,
+				message: "Dark matter purchase payment completed",
+				data: {
+					amount: amountNum,
+					price: paymentPriceNum,
+					marketOffer: marketResult,
+				},
 			};
 		} catch (error) {
 			logger.error("Failed to complete dark matter purchase payment", {
