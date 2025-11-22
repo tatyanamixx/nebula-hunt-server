@@ -1406,12 +1406,13 @@ class GameService {
 			const userIdBigInt = BigInt(userId);
 
 			// Создаем offer для записи в БД через marketService
+			// Используем getResourceId для получения правильного ID ресурса
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userIdBigInt,
 				price: paymentPriceNum,
 				currency: "tgStars",
-				itemId: null, // Нет конкретного item
+				itemId: this.getResourceId("stardust"), // Используем метод для получения ID ресурса
 				itemType: "resource",
 				amount: amountNum,
 				resource: "stardust",
@@ -1471,9 +1472,35 @@ class GameService {
 			const paymentPrice = payload.p || payload.price;
 			const amount = payload.a || payload.amount;
 
-			if (!paymentPrice || !amount) {
+			if (paymentPrice === undefined || paymentPrice === null || amount === undefined || amount === null) {
+				logger.error("Missing required payload data", {
+					payload,
+					paymentPrice,
+					amount,
+					hasP: payload.p !== undefined,
+					hasPrice: payload.price !== undefined,
+					hasA: payload.a !== undefined,
+					hasAmount: payload.amount !== undefined,
+				});
 				throw new Error(
 					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем в числа для безопасности
+			const paymentPriceNum = Number(paymentPrice);
+			const amountNum = Number(amount);
+
+			if (isNaN(paymentPriceNum) || isNaN(amountNum) || paymentPriceNum <= 0 || amountNum <= 0) {
+				logger.error("Invalid payload data values", {
+					payload,
+					paymentPrice,
+					amount,
+					paymentPriceNum,
+					amountNum,
+				});
+				throw new Error(
+					"Invalid payload data: price and amount must be positive numbers"
 				);
 			}
 
@@ -1481,14 +1508,15 @@ class GameService {
 			const userIdBigInt = BigInt(userId);
 
 			// Создаем offer для записи в БД через marketService
+			// Используем getResourceId для получения правильного ID ресурса
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userIdBigInt,
-				price: paymentPrice,
+				price: paymentPriceNum,
 				currency: "tgStars",
-				itemId: null, // Нет конкретного item
+				itemId: this.getResourceId("darkMatter"), // Используем метод для получения ID ресурса
 				itemType: "resource",
-				amount: amount,
+				amount: amountNum,
 				resource: "darkMatter",
 				offerType: "SYSTEM",
 				txType: "DARK_MATTER_PURCHASE",
@@ -1501,13 +1529,14 @@ class GameService {
 			const result = await userStateService.addCurrency(
 				userIdBigInt,
 				"darkMatter",
-				amount,
+				amountNum,
 				null // transaction будет создан внутри
 			);
 
 			logger.info("Dark matter purchase payment completed", {
 				userId: userIdBigInt.toString(),
-				amount,
+				amount: amountNum,
+				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
 				marketOfferId: marketResult?.id,
 			});
@@ -1591,12 +1620,32 @@ class GameService {
 			galaxy.galaxyProperties = galaxyProperties;
 			await galaxy.save();
 
+			// Создаем offer для записи в БД через marketService для аудита
+			const paymentPriceNum = Number(paymentPrice);
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userIdBigInt,
+				price: paymentPriceNum,
+				currency: "tgStars",
+				itemId: BigInt(galaxy.id), // ID галактики
+				itemType: "galaxy",
+				amount: 1,
+				resource: null,
+				offerType: "SYSTEM",
+				txType: "GALAXY_UPGRADE",
+			};
+
+			// Регистрируем offer через marketService для полного аудита
+			const marketService = require("./market-service");
+			const marketResult = await marketService.registerOffer(offerData);
+
 			logger.info("Galaxy upgrade payment completed", {
 				userId: userIdBigInt.toString(),
 				galaxySeed,
 				upgradeType,
 				upgradeValue,
 				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.id,
 			});
 
 			return {
@@ -1608,6 +1657,7 @@ class GameService {
 					upgradeValue,
 					galaxyName: galaxy.name,
 				},
+				marketOffer: marketResult,
 			};
 		} catch (error) {
 			logger.error("Failed to complete galaxy upgrade payment", {
