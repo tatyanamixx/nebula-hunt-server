@@ -1330,16 +1330,19 @@ class GameService {
 
 			// Создаем данные галактики из payload
 			// ✅ При захвате галактики должно быть 40000-60000 звезд (детерминированно на основе seed)
+			// ✅ Название также генерируется детерминированно на основе seed
 			const {
 				generateStarCountForCapture,
 				generateMaxStars,
+				getGalaxyNameFromSeed,
 			} = require("../utils/galaxy-utils");
 			const starCurrent = generateStarCountForCapture(galaxySeed);
 			const galaxyMaxStars = generateMaxStars(galaxySeed);
+			const galaxyName = getGalaxyNameFromSeed(galaxySeed); // ✅ Детерминированная генерация названия
 
 			const galaxyData = {
 				seed: galaxySeed,
-				name: payload.gn || payload.galaxyName || `Galaxy-${galaxySeed}`,
+				name: galaxyName, // ✅ Используем детерминированное название на основе seed
 				starMin: 100,
 				starCurrent: starCurrent, // ✅ 40000-60000 звезд при захвате
 				maxStars: galaxyMaxStars,

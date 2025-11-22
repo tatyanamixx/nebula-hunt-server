@@ -162,7 +162,20 @@ function parseClientGalaxyData(clientGalaxyData) {
 
 	const result = {
 		// === ОСНОВНЫЕ ПОЛЯ ===
-		name: clientGalaxyData.name || getGalaxyNameFromSeed(seed),
+		// ✅ Для захвата галактики НЕ используем название от клиента - сервер сам сгенерирует детерминированно
+		// Если клиент не отправил название или это захват (starCurrent null/undefined или < 40000), генерируем на основе seed
+		name: (() => {
+			// Проверяем, является ли это захватом галактики
+			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
+			const isCapture = !clientStarCurrent || clientStarCurrent < 40000;
+			
+			// Для захвата всегда генерируем название детерминированно на основе seed
+			if (isCapture || !clientGalaxyData.name) {
+				return getGalaxyNameFromSeed(seed);
+			}
+			// Для других случаев (например, создание новой галактики) используем название от клиента
+			return clientGalaxyData.name;
+		})(),
 		seed: seed,
 
 		// === ЗВЕЗДЫ И РЕСУРСЫ ===
