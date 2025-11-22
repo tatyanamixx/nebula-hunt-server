@@ -1330,15 +1330,21 @@ class GameService {
 
 			// Создаем данные галактики из payload
 			// ✅ При захвате галактики должно быть 40000-60000 звезд (детерминированно на основе seed)
-			// ✅ Название также генерируется детерминированно на основе seed
+			// ✅ Название, тип, цвет и фон также генерируются детерминированно на основе seed
 			const {
 				generateStarCountForCapture,
 				generateMaxStars,
 				getGalaxyNameFromSeed,
+				generateGalaxyTypeFromSeed,
+				generateColorPaletteFromSeed,
+				generateBackgroundFromSeed,
 			} = require("../utils/galaxy-utils");
 			const starCurrent = generateStarCountForCapture(galaxySeed);
 			const galaxyMaxStars = generateMaxStars(galaxySeed);
 			const galaxyName = getGalaxyNameFromSeed(galaxySeed); // ✅ Детерминированная генерация названия
+			const galaxyType = generateGalaxyTypeFromSeed(galaxySeed); // ✅ Детерминированная генерация типа
+			const colorPalette = generateColorPaletteFromSeed(galaxySeed); // ✅ Детерминированная генерация цвета
+			const background = generateBackgroundFromSeed(galaxySeed); // ✅ Детерминированная генерация фона
 
 			const galaxyData = {
 				seed: galaxySeed,
@@ -1348,9 +1354,9 @@ class GameService {
 				maxStars: galaxyMaxStars,
 				birthDate: new Date().toISOString().split("T")[0],
 				lastCollectTime: new Date(),
-				type: "spiral", // Базовый тип
-				colorPalette: "cosmic",
-				background: "stars",
+				type: galaxyType, // ✅ Детерминированная генерация типа на основе seed
+				colorPalette: colorPalette, // ✅ Детерминированная генерация цвета на основе seed
+				background: background, // ✅ Детерминированная генерация фона на основе seed
 			};
 
 			// Создаем offer для записи в БД
