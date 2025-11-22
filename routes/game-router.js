@@ -11,6 +11,18 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 const router = express.Router();
 
 /**
+ * @route GET /api/game/preview-galaxy/:seed
+ * @desc Get galaxy preview with deterministic visual properties
+ * @access Private
+ */
+router.get(
+	"/preview-galaxy/:seed",
+	validateTelegramWebAppData,
+	authMiddleware,
+	gameController.previewGalaxy
+);
+
+/**
  * @route POST /api/game/farming-reward
  * @desc Register farming reward
  * @access Private

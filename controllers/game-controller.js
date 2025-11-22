@@ -10,6 +10,47 @@ const axios = require("axios");
 
 class GameController {
 	/**
+	 * Get galaxy preview with deterministic visual properties
+	 * GET /api/game/preview-galaxy/:seed
+	 */
+	async previewGalaxy(req, res, next) {
+		try {
+			const { seed } = req.params;
+			
+			if (!seed) {
+				throw ApiError.BadRequest("Galaxy seed is required");
+			}
+			
+			// Генерируем детерминированные визуальные свойства на основе seed
+			const {
+				generateStarCountForCapture,
+				generateGalaxyTypeFromSeed,
+				generateColorPaletteFromSeed,
+				generateBackgroundFromSeed,
+				getGalaxyNameFromSeed,
+			} = require("../utils/galaxy-utils");
+			
+			const galaxyPreview = {
+				seed,
+				name: getGalaxyNameFromSeed(seed),
+				type: generateGalaxyTypeFromSeed(seed),
+				colorPalette: generateColorPaletteFromSeed(seed),
+				background: generateBackgroundFromSeed(seed),
+				starCount: generateStarCountForCapture(seed),
+			};
+			
+			logger.info("Galaxy preview generated", { seed, galaxyPreview });
+			
+			return res.json({
+				success: true,
+				data: galaxyPreview,
+			});
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
 	 * Register farming reward
 	 * @param {Object} req - Express request object
 	 * @param {Object} res - Express response object
