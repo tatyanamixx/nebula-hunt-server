@@ -13,7 +13,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
  */
 router.get(
 	'/validate/:token',
-	rateLimitMiddleware(5, 5), // 5 попыток за 5 минут
+	rateLimitMiddleware(25, 5), // 25 попыток за 5 минут
 	passwordResetController.validateResetToken
 );
 
@@ -24,7 +24,7 @@ router.get(
  */
 router.post(
 	'/reset',
-	rateLimitMiddleware(3, 10), // 3 попытки за 10 минут
+	rateLimitMiddleware(15, 10), // 15 попыток за 10 минут
 	validateRequest(),
 	passwordResetController.resetPassword
 );
@@ -36,7 +36,7 @@ router.post(
  */
 router.post(
 	'/resend',
-	rateLimitMiddleware(2, 15), // 2 попытки за 15 минут
+	rateLimitMiddleware(10, 15), // 10 попыток за 15 минут
 	validateRequest(),
 	passwordResetController.resendResetNotification
 );
@@ -48,7 +48,7 @@ router.post(
  */
 router.get(
 	'/status/:adminId',
-	rateLimitMiddleware(10, 1), // 10 попыток за минуту
+	rateLimitMiddleware(50, 1), // 50 попыток за минуту
 	passwordResetController.getPasswordStatus
 );
 

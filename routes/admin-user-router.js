@@ -12,7 +12,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/users',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	adminUserController.getUsers
 );
 
@@ -20,7 +20,7 @@ router.get(
 router.get(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
 	adminUserController.getUserById
 );
 
@@ -28,7 +28,7 @@ router.get(
 router.get(
 	'/users/stats',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.getUserStats
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.post(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.blockUser
 );
 
@@ -44,7 +44,7 @@ router.post(
 router.post(
 	'/users/:userId/unblock',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.unblockUser
 );
 
@@ -52,7 +52,7 @@ router.post(
 router.patch(
 	'/users/:userId/block',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.toggleUserBlock
 );
 
@@ -60,7 +60,7 @@ router.patch(
 router.patch(
 	'/users/:userId/role',
 	adminAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes,
 	adminUserController.updateUserRole
 );
 
@@ -68,8 +68,40 @@ router.patch(
 router.delete(
 	'/users/:userId',
 	adminAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes,
 	adminUserController.deleteUser
+);
+
+// Give currency to user
+router.post(
+	'/users/:userId/currency',
+	adminAuthMiddleware,
+	rateLimitMiddleware(100, 10), // 100 requests per 10 minutes,
+	adminUserController.giveCurrency
+);
+
+// Get user details (galaxies, resources, leaderboard position)
+router.get(
+	'/users/:userId/details',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getUserDetails
+);
+
+// Get user transactions
+router.get(
+	'/users/:userId/transactions',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getUserTransactions
+);
+
+// Get all transactions
+router.get(
+	'/transactions',
+	adminAuthMiddleware,
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes,
+	adminUserController.getAllTransactions
 );
 
 module.exports = router;

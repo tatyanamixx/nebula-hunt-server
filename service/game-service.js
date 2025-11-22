@@ -57,80 +57,263 @@ class GameService {
 	}
 
 	/**
-	 * Register farming reward for internal currency
-	 * @param {BigInt} userId - User ID
-	 * @param {Array} offerData - Array of farming rewards [{"resource": "stardust", "amount": 3890}, {"resource": "darkMatter", "amount": X}]
-	 * @param {Object} galaxyData - Galaxy data for updating lastCollectTime
-	 * @param {Object} transaction - Transaction object
-	 * @returns {Promise<Object>} Result of the operation
+	 * Calculate stardust generation rate based on star count and upgrades
+	 * @param {number} starCount - Current star count in galaxy
+	 * @param {Object} playerParameters - Player upgrade parameters
+	 * @returns {number} Stardust per hour
 	 */
-	async registerFarmingReward(userId, offerData, galaxyData = null, transaction) {
+	calculateStardustRate(starCount, playerParameters) {
+		const GAME_CONSTANTS = require("../config/game-constants");
+		const baseStardustPerHour =
+			GAME_CONSTANTS.ECONOMY.BASE_STARDUST_PER_HOUR || 5000;
+
+		// Formula: base rate + (star count effect)
+		const safeStarCount = Math.max(0, Number(starCount) || 0);
+		const starEffect = Math.sqrt(safeStarCount) * 60;
+		const baseRate = baseStardustPerHour + starEffect;
+
+		// ✅ Get modifiers from playerParameters - все улучшения из сиддера
+		// PRODUCTION UPGRADES
+		const stardustProductionLevel =
+			Number(playerParameters.stardust_production) || 0;
+		const stardustProduction = stardustProductionLevel * 0.1; // +10% per level
+
+		const starEfficiencyLevel = Number(playerParameters.star_efficiency) || 0;
+		const starEfficiency = starEfficiencyLevel * 0.08; // +8% per level (из сиддера)
+
+		const cosmicHarmonyLevel = Number(playerParameters.cosmic_harmony) || 0;
+		const cosmicHarmony = cosmicHarmonyLevel;
+
+		// MULTIPLIER UPGRADES
+		const stardustMultiplierLevel =
+			Number(playerParameters.stardust_multiplier) || 0;
+		const stardustMultiplier = stardustMultiplierLevel * 0.2; // +20% per level
+
+		const darkEnergyInfusionLevel =
+			Number(playerParameters.dark_energy_infusion) || 0;
+		const darkEnergyInfusion = darkEnergyInfusionLevel * 0.1; // +10% per level
+
+		const cosmicAccelerationLevel =
+			Number(playerParameters.cosmic_acceleration) || 0;
+		const cosmicAcceleration = cosmicAccelerationLevel * 0.1; // +10% per level
+
+		// Apply production bonus
+		const productionBonus = 1 + stardustProduction;
+
+		// ✅ Apply star efficiency bonus (учитывает количество звезд)
+		const efficiencyBonus = 1 + starEfficiency;
+
+		// Apply multiplier bonus
+		const multiplierBonus = 1 + stardustMultiplier;
+
+		// Apply cosmic harmony bonus (depends on star count)
+		// ✅ Даже при 0 звездах даем минимальный бонус, если уровень > 0
+		let harmonyBonus = 1;
+		if (cosmicHarmony > 0) {
+			if (safeStarCount === 0) {
+				// Минимальный бонус при 0 звездах: +15% за уровень
+				harmonyBonus = 1 + cosmicHarmony * 0.15;
+			} else {
+				// Бонус растет с количеством звезд
+				const starFactor =
+					Math.log10(Math.max(10, safeStarCount)) / Math.log10(10);
+				harmonyBonus = 1 + cosmicHarmony * 0.15 * starFactor; // +15% per level * starFactor
+			}
+		}
+
+		// Apply dark energy bonus
+		const darkEnergyBonus = 1 + darkEnergyInfusion;
+
+		// Apply speed bonus
+		const speedBonus = 1 + cosmicAcceleration;
+
+		// ✅ Calculate final rate - учитываем ВСЕ улучшения
+		const finalRate = Math.floor(
+			baseRate *
+				productionBonus *
+				efficiencyBonus *
+				multiplierBonus *
+				harmonyBonus *
+				darkEnergyBonus *
+				speedBonus
+		);
+
+		return finalRate;
+	}
+
+	/**
+	 * Calculate dark matter generation rate based on upgrades
+	 * @param {Object} playerParameters - Player upgrade parameters
+	 * @returns {number} Dark matter per hour
+	 */
+	calculateDarkMatterRate(playerParameters) {
+		const GAME_CONSTANTS = require("../config/game-constants");
+		const baseDarkMatterRate = GAME_CONSTANTS.ECONOMY.BASE_DARK_MATTER_RATE || 5;
+
+		// ✅ Dark matter upgrades - все улучшения из сиддера
+		// CHANCE UPGRADES
+		const darkMatterChanceLevel =
+			Number(playerParameters.dark_matter_chance) || 0;
+		const darkMatterChance = darkMatterChanceLevel * 0.5; // +50% per level
+
+		const quantumInstabilityLevel =
+			Number(playerParameters.quantum_instability) || 0;
+		const quantumInstability = quantumInstabilityLevel * 0.02; // +2% per level (из сиддера)
+
+		const voidResonanceLevel = Number(playerParameters.void_resonance) || 0;
+		const voidResonance = voidResonanceLevel * 0.05; // +5% per level (из сиддера)
+
+		// SPECIAL UPGRADES
+		const darkMatterSynthesisLevel =
+			Number(playerParameters.dark_matter_synthesis) || 0;
+		const darkMatterSynthesis = darkMatterSynthesisLevel * 0.1; // +10% per level
+
+		// ✅ Apply bonuses - учитываем ВСЕ улучшения
+		const chanceBonus = 1 + darkMatterChance;
+		const instabilityBonus = 1 + quantumInstability;
+		const resonanceBonus = 1 + voidResonance;
+		const synthesisBonus = 1 + darkMatterSynthesis;
+
+		// ✅ Calculate final rate - учитываем ВСЕ улучшения
+		const finalRate = Math.floor(
+			baseDarkMatterRate *
+				chanceBonus *
+				instabilityBonus *
+				resonanceBonus *
+				synthesisBonus
+		);
+
+		return finalRate;
+	}
+
+	/**
+	 * Register farming reward for internal currency
+	 * Now calculates resources on server based on lastCollectTime from DB
+	 * @param {BigInt} userId - User ID
+	 * @param {Object} galaxyData - Galaxy data with seed (required)
+	 * @param {Object} transaction - Transaction object
+	 * @returns {Promise<Object>} Result of the operation with calculated resources
+	 */
+	async registerFarmingReward(userId, galaxyData = null, transaction) {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
-		logger.debug("registerFarmingReward", { userId, offerData });
+		// ✅ Преобразуем userId в число для логирования (BigInt не сериализуется)
+		const debugUserId =
+			typeof userId === "bigint" ? Number(userId) : Number(userId);
+		logger.debug("registerFarmingReward", { userId: debugUserId, galaxyData });
 
 		try {
-			// Validate farming data structure
-			if (
-				!Array.isArray(offerData) ||
-				offerData.length === 0 ||
-				offerData.length > 2
-			) {
+			// Validate galaxyData
+			if (!galaxyData || !galaxyData.seed) {
 				throw ApiError.BadRequest(
-					"Farming data must be an array with 1 or 2 elements",
-					ERROR_CODES.VALIDATION.INVALID_FARMING_DATA
-				);
-			}
-
-			// Validate each farming reward
-			const validResources = ["stardust", "darkMatter"];
-			const processedResources = new Set();
-
-			for (const offer of offerData) {
-				// Validate required fields
-				if (!offer.resource || !offer.amount) {
-					throw ApiError.BadRequest(
-						"Each farming reward must have resource and amount",
-						ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-					);
-				}
-
-				// Validate resource type
-				if (!validResources.includes(offer.resource)) {
-					throw ApiError.BadRequest(
-						`Invalid resource: ${
-							offer.resource
-						}. Must be one of: ${validResources.join(", ")}`,
-						ERROR_CODES.VALIDATION.INVALID_RESOURCE
-					);
-				}
-
-				// Validate amount is positive
-				if (offer.amount <= 0) {
-					throw ApiError.BadRequest(
-						`Amount must be positive for resource: ${offer.resource}`,
-						ERROR_CODES.VALIDATION.INVALID_AMOUNT
-					);
-				}
-
-				// Check for duplicate resources
-				if (processedResources.has(offer.resource)) {
-					throw ApiError.BadRequest(
-						`Duplicate resource: ${offer.resource}`,
-						ERROR_CODES.VALIDATION.DUPLICATE_RESOURCE
-					);
-				}
-
-				processedResources.add(offer.resource);
-			}
-
-			// Ensure at least one resource is present
-			if (processedResources.size === 0) {
-				throw ApiError.BadRequest(
-					"Farming data must include at least one resource with positive amount",
+					"galaxyData with seed is required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
+			}
+
+			// Find galaxy by seed
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxyData.seed },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				throw ApiError.BadRequest(
+					`Galaxy with seed ${galaxyData.seed} not found`,
+					ERROR_CODES.VALIDATION.NOT_FOUND
+				);
+			}
+
+			// Verify galaxy belongs to user
+			if (galaxy.userId !== userId) {
+				throw ApiError.BadRequest(
+					"Galaxy does not belong to user",
+					ERROR_CODES.VALIDATION.UNAUTHORIZED
+				);
+			}
+
+			// Get user state with playerParameters
+			const userState = await userStateService.getUserState(userId, t);
+			const playerParameters = userState.playerParameters || {};
+
+			// ✅ Преобразуем userId в число для сериализации (BigInt не сериализуется)
+			const numericUserId =
+				typeof userId === "bigint" ? Number(userId) : Number(userId);
+
+			// Get lastCollectTime from DB (source of truth)
+			const lastCollectTime = galaxy.lastCollectTime
+				? new Date(galaxy.lastCollectTime).getTime()
+				: Date.now();
+
+			// Calculate time since last collection
+			const now = Date.now();
+			const timeDiff = Math.max(0, now - lastCollectTime);
+			const hoursSinceLastCollect = timeDiff / (1000 * 60 * 60);
+
+			// Get auto_collector level to determine max collection hours
+			const autoCollectorLevel = playerParameters.auto_collector || 0;
+			const maxCollectionHours = autoCollectorLevel > 0 ? 3 : 1;
+
+			// Cap hours to max collection time
+			const cappedHours = Math.min(hoursSinceLastCollect, maxCollectionHours);
+
+			// ✅ Calculate stardust generation
+			// ✅ Используем starCurrent, а не stars (в модели Galaxy поле называется starCurrent)
+			const starCount = galaxy.starCurrent || 0;
+			const stardustPerHour = this.calculateStardustRate(
+				starCount,
+				playerParameters
+			);
+			const stardustToAdd = Math.floor(stardustPerHour * cappedHours);
+
+			// Calculate dark matter generation
+			const darkMatterPerHour = this.calculateDarkMatterRate(playerParameters);
+			const darkMatterToAdd = Math.floor(darkMatterPerHour * cappedHours);
+
+			// Prepare offer data for resources
+			const offerData = [];
+			if (stardustToAdd > 0) {
+				offerData.push({ resource: "stardust", amount: stardustToAdd });
+			}
+			if (darkMatterToAdd > 0) {
+				offerData.push({ resource: "darkMatter", amount: darkMatterToAdd });
+			}
+
+			// If no resources to add, return early
+			if (offerData.length === 0) {
+				// Still update lastCollectTime to prevent immediate re-collection
+				const newLastCollectTime = new Date();
+				await galaxy.update(
+					{ lastCollectTime: newLastCollectTime },
+					{ transaction: t }
+				);
+
+				// Reload galaxy to get updated lastCollectTime
+				await galaxy.reload({ transaction: t });
+
+				if (shouldCommit && !t.finished) {
+					await t.commit();
+				}
+
+				// ✅ Преобразуем lastCollectTime в timestamp для клиента
+				const lastCollectTimeTimestamp = galaxy.lastCollectTime
+					? new Date(galaxy.lastCollectTime).getTime()
+					: newLastCollectTime.getTime();
+
+				return {
+					success: true,
+					message: "No resources to collect",
+					data: {
+						rewards: [],
+						lastCollectTime: lastCollectTimeTimestamp,
+						userState: {
+							stardust: userState.stardust,
+							darkMatter: userState.darkMatter,
+							stars: userState.stars,
+						},
+					},
+				};
 			}
 
 			// Process each farming reward using marketService.registerOffer
@@ -143,9 +326,9 @@ class GameService {
 					sellerId: SYSTEM_USER_ID,
 					buyerId: userId,
 					txType: "FARMING_REWARD",
-					itemType: "resource", // Используем 'resource' вместо 'farming'
+					itemType: "resource",
 					itemId: this.getResourceId(offer.resource),
-					price: 0, // Free from system user
+					price: 0,
 					currency: "tonToken",
 					amount: offer.amount,
 					resource: offer.resource,
@@ -153,7 +336,7 @@ class GameService {
 				};
 
 				logger.debug("Processing farming reward", {
-					userId,
+					userId: numericUserId,
 					resource: offer.resource,
 					amount: offer.amount,
 				});
@@ -161,73 +344,69 @@ class GameService {
 				// Use marketService.registerOffer for creating the transaction
 				const result = await marketService.registerOffer(systemOffer, t);
 
+				// ✅ Преобразуем BigInt в число для сериализации
+				const offerId =
+					typeof result.offer.id === "bigint"
+						? Number(result.offer.id)
+						: Number(result.offer.id);
+				const marketTransactionId =
+					typeof result.marketTransaction.id === "bigint"
+						? Number(result.marketTransaction.id)
+						: Number(result.marketTransaction.id);
+
 				results.push({
 					resource: offer.resource,
 					amount: offer.amount,
 					success: true,
-					offerId: result.offer.id,
-					marketTransactionId: result.marketTransaction.id,
+					offerId: offerId,
+					marketTransactionId: marketTransactionId,
 				});
 			}
 
-			// Update galaxy lastCollectTime if galaxyData.seed is provided
-			if (galaxyData && galaxyData.seed) {
-				try {
-					// Find galaxy by seed
-					const galaxy = await Galaxy.findOne({
-						where: { seed: galaxyData.seed },
-						transaction: t,
-					});
+			// Update galaxy lastCollectTime to current time
+			const newLastCollectTime = new Date();
+			await galaxy.update(
+				{ lastCollectTime: newLastCollectTime },
+				{ transaction: t }
+			);
 
-					if (galaxy) {
-						// Update lastCollectTime to current time
-						await galaxy.update(
-							{ lastCollectTime: new Date() },
-							{ transaction: t }
-						);
-
-						logger.debug("Updated galaxy lastCollectTime", {
-							galaxyId: galaxy.id,
-							galaxySeed: galaxy.seed,
-							newLastCollectTime: new Date(),
-						});
-					}
-				} catch (error) {
-					logger.warn("Failed to update galaxy lastCollectTime", {
-						userId,
-						galaxySeed: galaxyData.seed,
-						error: error.message,
-					});
-					// Don't fail the entire operation for this update
-				}
-			}
+			// Reload galaxy to get updated lastCollectTime
+			await galaxy.reload({ transaction: t });
 
 			// Get updated user state
-			const userState = await userStateService.getUserState(userId, t);
+			const updatedUserState = await userStateService.getUserState(userId, t);
 
 			if (shouldCommit && !t.finished) {
 				await t.commit();
 			}
 
 			logger.info("Farming rewards registered successfully", {
-				userId,
+				userId: numericUserId,
+				galaxySeed: galaxyData.seed,
 				rewards: results,
+				hoursSinceLastCollect: cappedHours,
 				userState: {
-					stardust: userState.stardust,
-					darkMatter: userState.darkMatter,
-					stars: userState.stars,
+					stardust: updatedUserState.stardust,
+					darkMatter: updatedUserState.darkMatter,
+					stars: updatedUserState.stars,
 				},
 			});
+
+			// ✅ Преобразуем lastCollectTime в timestamp для клиента
+			const lastCollectTimeTimestamp = galaxy.lastCollectTime
+				? new Date(galaxy.lastCollectTime).getTime()
+				: newLastCollectTime.getTime();
 
 			return {
 				success: true,
 				message: "Farming rewards transferred to user successfully",
 				data: {
 					rewards: results,
+					lastCollectTime: lastCollectTimeTimestamp,
 					userState: {
-						stardust: userState.stardust,
-						darkMatter: userState.darkMatter,
-						stars: userState.stars,
+						stardust: updatedUserState.stardust,
+						darkMatter: updatedUserState.darkMatter,
+						stars: updatedUserState.stars,
 					},
 				},
 			};
@@ -236,9 +415,12 @@ class GameService {
 				await t.rollback();
 			}
 
+			// ✅ Преобразуем userId в число для логирования (BigInt не сериализуется)
+			const errorUserId =
+				typeof userId === "bigint" ? Number(userId) : Number(userId);
 			logger.error("Failed to register farming reward", {
-				userId,
-				offerData,
+				userId: errorUserId,
+				galaxyData,
 				error: err.message,
 			});
 
@@ -349,6 +531,54 @@ class GameService {
 			const parsedGalaxyData = parseClientGalaxyData(galaxyData);
 			logger.debug("Parsed galaxy data", parsedGalaxyData);
 
+			// ✅ Если starCurrent не установлен (null), это захват галактики - рассчитываем 40000-60000 детерминированно
+			if (
+				parsedGalaxyData.starCurrent === null ||
+				parsedGalaxyData.starCurrent === undefined
+			) {
+				const {
+					generateStarCountForCapture,
+				} = require("../utils/galaxy-utils");
+				parsedGalaxyData.starCurrent = generateStarCountForCapture(
+					parsedGalaxyData.seed
+				);
+				logger.debug("Calculated starCurrent for galaxy capture", {
+					seed: parsedGalaxyData.seed,
+					starCurrent: parsedGalaxyData.starCurrent,
+				});
+			}
+
+			// ✅ Если визуальные свойства не установлены (null), генерируем их детерминированно на основе seed
+			// Это fallback на случай, если клиент не передал свойства
+			if (
+				!parsedGalaxyData.galaxyType ||
+				!parsedGalaxyData.colorPalette ||
+				!parsedGalaxyData.backgroundType
+			) {
+				const {
+					generateGalaxyTypeFromSeed,
+					generateColorPaletteFromSeed,
+					generateBackgroundFromSeed,
+				} = require("../utils/galaxy-utils");
+
+				parsedGalaxyData.galaxyType =
+					parsedGalaxyData.galaxyType ||
+					generateGalaxyTypeFromSeed(parsedGalaxyData.seed);
+				parsedGalaxyData.colorPalette =
+					parsedGalaxyData.colorPalette ||
+					generateColorPaletteFromSeed(parsedGalaxyData.seed);
+				parsedGalaxyData.backgroundType =
+					parsedGalaxyData.backgroundType ||
+					generateBackgroundFromSeed(parsedGalaxyData.seed);
+
+				logger.debug("Generated missing visual properties", {
+					seed: parsedGalaxyData.seed,
+					type: parsedGalaxyData.galaxyType,
+					colorPalette: parsedGalaxyData.colorPalette,
+					backgroundType: parsedGalaxyData.backgroundType,
+				});
+			}
+
 			// 1. Создаем галактику от имени SYSTEM
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
@@ -379,7 +609,7 @@ class GameService {
 				amount: galaxyData.starCurrent,
 				resource: "stars",
 				offerType: "SYSTEM",
-				txType: "GALAXY_RESOURCE",
+				txType: offer.txType || "GALAXY_RESOURCE", // ✅ Используем txType из offer, если передан, иначе GALAXY_RESOURCE
 			};
 			const result = await marketService.registerOffer(offerData, t);
 			const userState = await userStateService.getUserState(buyerId, t);
@@ -392,12 +622,39 @@ class GameService {
 				await t.commit();
 			}
 
+			// ✅ Извлекаем визуальные свойства из galaxyProperties (приоритет) или из прямых полей
+			// Это должно совпадать с логикой в galaxy-service.js
+			const galaxyJSON = galaxy.toJSON();
+			const galaxyProperties = galaxyJSON.galaxyProperties || {};
+			const extractedType =
+				galaxyProperties.type || galaxyJSON.galaxyType || galaxyJSON.type;
+			const extractedColorPalette =
+				galaxyProperties.colorPalette || galaxyJSON.colorPalette;
+			const extractedBackground =
+				galaxyProperties.background ||
+				galaxyJSON.backgroundType ||
+				galaxyJSON.background;
+
+			// ✅ Добавляем извлеченные свойства в ответ для удобства клиента
+			const galaxyResponse = {
+				...galaxyJSON,
+				type: extractedType,
+				colorPalette: extractedColorPalette,
+				background: extractedBackground,
+			};
+
 			const response = {
-				galaxy: galaxy.toJSON(),
+				galaxy: galaxyResponse,
 				userState,
 				marketOffer: result,
 			};
-			logger.debug("createGalaxyWithOffer response", response);
+			logger.debug("createGalaxyWithOffer response", {
+				...response,
+				galaxy: {
+					...galaxyResponse,
+					galaxyProperties: galaxyProperties, // Логируем для отладки
+				},
+			});
 			return response;
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
@@ -1062,6 +1319,7 @@ class GameService {
 				buyerId: userId,
 				price: offer.price,
 				currency: offer.currency,
+				txType: offer.txType || "GALAXY_CAPTURE", // ✅ Используем txType из offer (GALAXY_CAPTURE)
 			};
 
 			// Call the base method
@@ -1111,37 +1369,72 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			logger.debug("Galaxy capture - star count calculation", {
+				minStars: 40000,
+				maxStars: 60000,
+			});
+
+			// Payload использует сокращенные имена: p=price, gs=galaxySeed, gn=galaxyName
+			const paymentPrice = payload.p || payload.price;
+			const galaxySeed = payload.gs || payload.galaxySeed;
+
+			if (!paymentPrice || !galaxySeed) {
+				throw new Error(
+					"Missing required payload data: price (p) and galaxySeed (gs) are required"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем данные галактики из payload
+			// ✅ При захвате галактики должно быть 40000-60000 звезд (детерминированно на основе seed)
+			// ✅ Название, тип, цвет и фон также генерируются детерминированно на основе seed
+			const {
+				generateStarCountForCapture,
+				generateMaxStars,
+				getGalaxyNameFromSeed,
+				generateGalaxyTypeFromSeed,
+				generateColorPaletteFromSeed,
+				generateBackgroundFromSeed,
+			} = require("../utils/galaxy-utils");
+			const starCurrent = generateStarCountForCapture(galaxySeed);
+			const galaxyMaxStars = generateMaxStars(galaxySeed);
+			const galaxyName = getGalaxyNameFromSeed(galaxySeed); // ✅ Детерминированная генерация названия
+			const galaxyType = generateGalaxyTypeFromSeed(galaxySeed); // ✅ Детерминированная генерация типа
+			const colorPalette = generateColorPaletteFromSeed(galaxySeed); // ✅ Детерминированная генерация цвета
+			const background = generateBackgroundFromSeed(galaxySeed); // ✅ Детерминированная генерация фона
+
 			const galaxyData = {
-				seed: payload.galaxySeed,
-				name: payload.galaxyName || `Galaxy-${payload.galaxySeed}`,
+				seed: galaxySeed,
+				name: galaxyName, // ✅ Используем детерминированное название на основе seed
 				starMin: 100,
-				starCurrent: 1000, // Базовое количество звезд
-				maxStars: 80000 + Math.floor(Math.random() * 20000), // Случайный максимум
+				starCurrent: starCurrent, // ✅ 40000-60000 звезд при захвате
+				maxStars: galaxyMaxStars,
 				birthDate: new Date().toISOString().split("T")[0],
 				lastCollectTime: new Date(),
-				type: "spiral", // Базовый тип
-				colorPalette: "cosmic",
-				background: "stars",
+				type: galaxyType, // ✅ Детерминированная генерация типа на основе seed
+				colorPalette: colorPalette, // ✅ Детерминированная генерация цвета на основе seed
+				background: background, // ✅ Детерминированная генерация фона на основе seed
 			};
 
 			// Создаем offer для записи в БД
 			const offer = {
-				price: payload.price,
+				price: paymentPrice,
 				currency: "tgStars",
 				txType: "GALAXY_CAPTURE",
 			};
 
 			// Регистрируем захваченную галактику
 			const result = await this.registerCapturedGalaxy(
-				userId,
+				userIdBigInt,
 				galaxyData,
 				offer
 			);
 
 			logger.info("Galaxy capture payment completed", {
-				userId,
-				galaxySeed: payload.galaxySeed,
+				userId: userIdBigInt.toString(),
+				galaxySeed,
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
@@ -1171,41 +1464,90 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Payload использует сокращенные имена: p=price, a=amount
+			const paymentPrice = payload.p || payload.price;
+			const amount = payload.a || payload.amount;
+
+			if (
+				paymentPrice === undefined ||
+				paymentPrice === null ||
+				amount === undefined ||
+				amount === null
+			) {
+				logger.error("Missing required payload data", {
+					payload,
+					paymentPrice,
+					amount,
+					hasP: payload.p !== undefined,
+					hasPrice: payload.price !== undefined,
+					hasA: payload.a !== undefined,
+					hasAmount: payload.amount !== undefined,
+				});
+				throw new Error(
+					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем в числа для безопасности
+			const paymentPriceNum = Number(paymentPrice);
+			const amountNum = Number(amount);
+
+			if (
+				isNaN(paymentPriceNum) ||
+				isNaN(amountNum) ||
+				paymentPriceNum <= 0 ||
+				amountNum <= 0
+			) {
+				logger.error("Invalid payload data values", {
+					payload,
+					paymentPrice,
+					amount,
+					paymentPriceNum,
+					amountNum,
+				});
+				throw new Error(
+					"Invalid payload data: price and amount must be positive numbers"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем offer для записи в БД через marketService
+			// Используем getResourceId для получения правильного ID ресурса
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
+				buyerId: userIdBigInt,
+				price: paymentPriceNum,
 				currency: "tgStars",
-				itemId: null, // Нет конкретного item
+				itemId: this.getResourceId("stardust"), // Используем метод для получения ID ресурса
 				itemType: "resource",
-				amount: payload.amount,
+				amount: amountNum,
 				resource: "stardust",
 				offerType: "SYSTEM",
 				txType: "STARDUST_PURCHASE",
 			};
 
 			// Регистрируем offer через marketService для полного аудита
+			// registerOffer уже добавляет валюту пользователю (строки 1830-1835 в market-service.js)
 			const marketResult = await marketService.registerOffer(offerData);
 
-			// Добавляем стардаст пользователю
-			const result = await userStateService.addCurrency(
-				userId,
-				"stardust",
-				payload.amount,
-				null // transaction будет создан внутри
-			);
-
 			logger.info("Stardust purchase payment completed", {
-				userId,
-				amount: payload.amount,
+				userId: userIdBigInt.toString(),
+				amount: amountNum,
+				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
-				marketOfferId: marketResult?.id,
+				marketOfferId: marketResult?.offer?.id,
 			});
 
 			return {
-				...result,
-				marketOffer: marketResult,
+				success: true,
+				message: "Stardust purchase payment completed",
+				data: {
+					amount: amountNum,
+					price: paymentPriceNum,
+					marketOffer: marketResult,
+				},
 			};
 		} catch (error) {
 			logger.error("Failed to complete stardust purchase payment", {
@@ -1232,41 +1574,90 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Payload использует сокращенные имена: p=price, a=amount
+			const paymentPrice = payload.p || payload.price;
+			const amount = payload.a || payload.amount;
+
+			if (
+				paymentPrice === undefined ||
+				paymentPrice === null ||
+				amount === undefined ||
+				amount === null
+			) {
+				logger.error("Missing required payload data", {
+					payload,
+					paymentPrice,
+					amount,
+					hasP: payload.p !== undefined,
+					hasPrice: payload.price !== undefined,
+					hasA: payload.a !== undefined,
+					hasAmount: payload.amount !== undefined,
+				});
+				throw new Error(
+					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем в числа для безопасности
+			const paymentPriceNum = Number(paymentPrice);
+			const amountNum = Number(amount);
+
+			if (
+				isNaN(paymentPriceNum) ||
+				isNaN(amountNum) ||
+				paymentPriceNum <= 0 ||
+				amountNum <= 0
+			) {
+				logger.error("Invalid payload data values", {
+					payload,
+					paymentPrice,
+					amount,
+					paymentPriceNum,
+					amountNum,
+				});
+				throw new Error(
+					"Invalid payload data: price and amount must be positive numbers"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем offer для записи в БД через marketService
+			// Используем getResourceId для получения правильного ID ресурса
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
+				buyerId: userIdBigInt,
+				price: paymentPriceNum,
 				currency: "tgStars",
-				itemId: null, // Нет конкретного item
+				itemId: this.getResourceId("darkMatter"), // Используем метод для получения ID ресурса
 				itemType: "resource",
-				amount: payload.amount,
+				amount: amountNum,
 				resource: "darkMatter",
 				offerType: "SYSTEM",
 				txType: "DARK_MATTER_PURCHASE",
 			};
 
 			// Регистрируем offer через marketService для полного аудита
+			// registerOffer уже добавляет валюту пользователю (строки 1830-1835 в market-service.js)
 			const marketResult = await marketService.registerOffer(offerData);
 
-			// Добавляем темную материю пользователю
-			const result = await userStateService.addCurrency(
-				userId,
-				"darkMatter",
-				payload.amount,
-				null // transaction будет создан внутри
-			);
-
 			logger.info("Dark matter purchase payment completed", {
-				userId,
-				amount: payload.amount,
+				userId: userIdBigInt.toString(),
+				amount: amountNum,
+				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
-				marketOfferId: marketResult?.id,
+				marketOfferId: marketResult?.offer?.id,
 			});
 
 			return {
-				...result,
-				marketOffer: marketResult,
+				success: true,
+				message: "Dark matter purchase payment completed",
+				data: {
+					amount: amountNum,
+					price: paymentPriceNum,
+					marketOffer: marketResult,
+				},
 			};
 		} catch (error) {
 			logger.error("Failed to complete dark matter purchase payment", {
@@ -1286,6 +1677,9 @@ class GameService {
 	 * @returns {Promise<Object>} Result of the operation
 	 */
 	async completeGalaxyUpgradePayment(userId, payload, payment) {
+		const t = await sequelize.transaction();
+		const shouldCommit = true;
+
 		try {
 			logger.info("Completing galaxy upgrade payment", {
 				userId,
@@ -1293,26 +1687,280 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
-			// TODO: Реализовать логику улучшения галактики
-			// Пока просто логируем успешный платеж
+			// Extract upgrade data from payload (using short keys: p=price, gs=galaxySeed, ut=upgradeType, uv=upgradeValue)
+			const paymentPrice = payload.p || payload.price;
+			const galaxySeed = payload.gs || payload.galaxySeed;
+			const upgradeType = payload.ut || payload.upgradeType;
+			const upgradeValue = payload.uv || payload.upgradeValue;
+
+			if (!paymentPrice || !galaxySeed || !upgradeType || !upgradeValue) {
+				await t.rollback();
+				throw new Error(
+					"Missing required upgrade data: price (p), galaxySeed (gs), upgradeType (ut), upgradeValue (uv)"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
+			// Validate upgrade type
+			const validUpgradeTypes = ["name", "type", "color", "background"];
+			if (!validUpgradeTypes.includes(upgradeType)) {
+				await t.rollback();
+				throw new Error(
+					`Invalid upgrade type: ${upgradeType}. Must be one of: ${validUpgradeTypes.join(
+						", "
+					)}`
+				);
+			}
+
+			// Find galaxy
+			const galaxy = await Galaxy.findOne({
+				where: { seed: galaxySeed, userId: userIdBigInt },
+				transaction: t,
+			});
+
+			if (!galaxy) {
+				await t.rollback();
+				throw new Error("Galaxy not found or not owned by user");
+			}
+
+			// Apply upgrade
+			const galaxyProperties = galaxy.galaxyProperties || {};
+			const updateData = {
+				galaxyProperties: galaxyProperties,
+			};
+
+			if (upgradeType === "name") {
+				updateData.name = upgradeValue;
+			} else if (upgradeType === "type") {
+				galaxyProperties.type = upgradeValue;
+				updateData.galaxyType = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
+			} else if (upgradeType === "color") {
+				galaxyProperties.colorPalette = upgradeValue;
+				updateData.colorPalette = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
+			} else if (upgradeType === "background") {
+				galaxyProperties.background = upgradeValue;
+				updateData.backgroundType = upgradeValue; // ✅ Также обновляем прямое поле для совместимости
+				updateData.galaxyProperties = galaxyProperties;
+			}
+
+			// ✅ Явно обновляем поля для гарантии сохранения
+			await galaxy.update(updateData, { transaction: t });
+
+			// ✅ Перезагружаем галактику для получения обновленных данных
+			await galaxy.reload({ transaction: t });
+
+			logger.debug("Galaxy updated", {
+				galaxySeed,
+				upgradeType,
+				upgradeValue,
+				updatedFields: updateData,
+				galaxyAfterUpdate: {
+					name: galaxy.name,
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+					galaxyProperties: galaxy.galaxyProperties,
+				},
+			});
+
+			// Создаем offer для записи в БД через marketService для аудита
+			const paymentPriceNum = Number(paymentPrice);
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userIdBigInt,
+				price: paymentPriceNum,
+				currency: "tgStars",
+				itemId: BigInt(galaxy.id), // ID галактики
+				itemType: "galaxy",
+				amount: 0, // Для улучшения галактики не передаем ресурсы
+				resource: "stars", // ✅ Используем валидное значение enum (amount = 0, поэтому не влияет на логику)
+				offerType: "SYSTEM",
+				txType: "GALAXY_UPGRADE",
+			};
+
+			// ✅ Валидация: убеждаемся, что resource установлен
+			if (!offerData.resource || offerData.resource === "") {
+				logger.error("Invalid resource in offerData", { offerData });
+				await t.rollback();
+				throw new Error(
+					"Resource must be set to a valid enum value (stars, stardust, darkMatter)"
+				);
+			}
+
+			logger.debug("Registering galaxy upgrade offer", {
+				offerData,
+				resource: offerData.resource,
+				resourceType: typeof offerData.resource,
+			});
+
+			// Регистрируем offer через marketService для полного аудита
+			const marketService = require("./market-service");
+			const marketResult = await marketService.registerOffer(offerData, t);
+
+			// ✅ Коммитим транзакцию после успешного сохранения
+			if (shouldCommit) {
+				await t.commit();
+			}
 
 			logger.info("Galaxy upgrade payment completed", {
-				userId,
-				upgradeType: payload.upgradeType,
-				galaxyName: payload.galaxyName,
+				userId: userIdBigInt.toString(),
+				galaxySeed,
+				upgradeType,
+				upgradeValue,
 				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.offer?.id,
+				galaxyAfterUpgrade: {
+					name: galaxy.name,
+					galaxyType: galaxy.galaxyType,
+					colorPalette: galaxy.colorPalette,
+					backgroundType: galaxy.backgroundType,
+					galaxyProperties: galaxy.galaxyProperties,
+				},
 			});
 
 			return {
 				success: true,
 				message: "Galaxy upgrade payment completed",
 				data: {
-					upgradeType: payload.upgradeType,
-					galaxyName: payload.galaxyName,
+					galaxySeed,
+					upgradeType,
+					upgradeValue,
+					galaxyName: galaxy.name,
 				},
+				marketOffer: marketResult,
 			};
 		} catch (error) {
+			if (shouldCommit && !t.finished) {
+				await t.rollback();
+			}
 			logger.error("Failed to complete galaxy upgrade payment", {
+				userId,
+				payload,
+				error: error.message,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Complete package payment from Telegram webhook
+	 * @param {BigInt} userId - User ID from Telegram
+	 * @param {Object} payload - Payment payload data
+	 * @param {Object} payment - Telegram payment data
+	 * @returns {Promise<Object>} Result of the operation
+	 */
+	async completePackagePayment(userId, payload, payment) {
+		try {
+			logger.info("Completing package payment", {
+				userId,
+				payload,
+				paymentId: payment.telegram_payment_charge_id,
+			});
+
+			// Получаем slug пакета из payload
+			// Payload использует сокращенные имена для экономии места (t=type, s=slug, a=amount, r=resource, at=actionType, p=price, ts=timestamp)
+			let packageSlug = payload.s || payload.packageSlug;
+
+			// Если не нашли, пробуем из metadata
+			if (!packageSlug && payload.metadata) {
+				if (typeof payload.metadata === "string") {
+					try {
+						const metadataObj = JSON.parse(payload.metadata);
+						packageSlug = metadataObj.s || metadataObj.packageSlug;
+					} catch (e) {
+						// metadata не JSON, игнорируем
+					}
+				} else if (typeof payload.metadata === "object") {
+					packageSlug = payload.metadata.s || payload.metadata.packageSlug;
+				}
+			}
+
+			if (!packageSlug) {
+				logger.error("Package slug not found in payload", {
+					userId,
+					payloadKeys: Object.keys(payload),
+					payload,
+				});
+				throw new Error("Package slug is required in payload");
+			}
+
+			// Подготавливаем offer для usePackage
+			// Payload использует сокращенные имена: s=slug, a=amount, r=resource, at=actionType
+			const offer = {};
+
+			// Извлекаем данные из payload (сокращенные имена)
+			const amount = payload.a || payload.amount;
+			const actionType = payload.at || payload.packageActionType;
+
+			// Если есть amount, используем его для variableAmount пакетов
+			if (amount) {
+				if (actionType === "variableAmount") {
+					offer.amount = amount;
+				} else {
+					// Fallback для старой структуры
+					offer.amount = amount;
+				}
+			}
+
+			// Для updateField пакетов нужны field и value, но их нет в минимальном payload
+			// Они будут получены из packageTemplate при вызове usePackage
+
+			// Используем packageStoreService для выдачи ресурсов
+			const packageStoreService = require("./package-store-service");
+			const result = await packageStoreService.usePackage(
+				packageSlug,
+				userId,
+				offer
+			);
+
+			// Создаем offer для записи в БД через marketService для аудита
+			// Payload использует сокращенные имена: p=price, r=resource
+			const paymentPrice = payload.p || payload.price;
+			const resource = payload.r || payload.resource || "stars"; // ✅ Используем "stars" по умолчанию, если resource не указан
+			const offerData = {
+				sellerId: SYSTEM_USER_ID,
+				buyerId: userId,
+				price: paymentPrice || 0,
+				currency: "tgStars",
+				itemId: result.package?.id || null,
+				itemType: "package",
+				amount: 0, // ✅ Устанавливаем amount в 0, так как валюта уже добавлена через usePackage
+				resource: resource, // ✅ Используем валидное значение enum
+				offerType: "SYSTEM",
+				txType: "PACKAGE_PURCHASE",
+			};
+
+			// ✅ Валидация: убеждаемся, что resource установлен
+			if (!offerData.resource || offerData.resource === "") {
+				offerData.resource = "stars"; // Используем "stars" по умолчанию
+			}
+
+			// Регистрируем offer через marketService для полного аудита
+			// ВАЖНО: amount = 0, поэтому валюта НЕ будет добавлена повторно
+			// Валюта уже добавлена через usePackage выше
+			const marketService = require("./market-service");
+			const marketResult = await marketService.registerOffer(offerData);
+
+			logger.info("Package payment completed", {
+				userId,
+				packageSlug,
+				paymentId: payment.telegram_payment_charge_id,
+				marketOfferId: marketResult?.id,
+			});
+
+			return {
+				success: true,
+				message: "Package payment completed successfully",
+				userState: result.userState,
+				package: result.package,
+				marketOffer: marketResult,
+			};
+		} catch (error) {
+			logger.error("Failed to complete package payment", {
 				userId,
 				payload,
 				error: error.message,

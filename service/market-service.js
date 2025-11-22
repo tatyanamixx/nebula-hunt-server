@@ -708,10 +708,11 @@ class MarketService {
 
 		switch (currency) {
 			case "stardust":
-				if (
-					BigInt(userState.stardust) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
+				// Правильное сравнение для BigInt и числа
+				const isSystemUser =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
+				if (BigInt(userState.stardust) < BigInt(amount) && !isSystemUser) {
 					throw new ApiError(400, "Insufficient stardust");
 				}
 				await userState.update(
@@ -722,9 +723,13 @@ class MarketService {
 				);
 				break;
 			case "darkMatter":
+				// Правильное сравнение для BigInt и числа
+				const isSystemUserDM =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
 				if (
 					BigInt(userState.darkMatter) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
+					!isSystemUserDM
 				) {
 					throw new ApiError(400, "Insufficient dark matter");
 				}
@@ -736,10 +741,11 @@ class MarketService {
 				);
 				break;
 			case "stars":
-				if (
-					BigInt(userState.stars) < BigInt(amount) &&
-					userId !== SYSTEM_USER_ID
-				) {
+				// Правильное сравнение для BigInt и числа
+				const isSystemUserStars =
+					BigInt(userId) === BigInt(SYSTEM_USER_ID) ||
+					userId === SYSTEM_USER_ID;
+				if (BigInt(userState.stars) < BigInt(amount) && !isSystemUserStars) {
 					throw new ApiError(400, "Insufficient stars");
 				}
 				await userState.update(
@@ -1428,6 +1434,12 @@ class MarketService {
 		const t = await sequelize.transaction();
 
 		try {
+			// Initialize packages for user if userId is provided
+			if (userId) {
+				const packageStoreService = require("./package-store-service");
+				await packageStoreService.initializePackageStore(userId, t);
+			}
+
 			// Get system package offers
 			const offers = await MarketOffer.findAll({
 				where: {
@@ -1437,11 +1449,6 @@ class MarketService {
 				},
 				transaction: t,
 			});
-
-			// If the user ID is specified, initialize the packages based on active templates
-			if (userId) {
-				await packageStoreService.initializePackageStore(userId, t);
-			}
 
 			await t.commit();
 
@@ -1799,6 +1806,25 @@ class MarketService {
 		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 
 		try {
+			// ✅ Валидация: убеждаемся, что resource установлен (не может быть пустой строкой или undefined)
+			if (!offer.resource || offer.resource === "") {
+				// Если resource не установлен, используем "stars" как значение по умолчанию
+				// Это безопасно, так как amount = 0 означает, что ресурсы не передаются
+				if (offer.amount === 0 || offer.amount === "0") {
+					offer.resource = "stars";
+					logger.debug("Resource not set, using default 'stars' for zero-amount offer", {
+						offerType: offer.txType,
+						itemType: offer.itemType,
+					});
+				} else {
+					logger.error("Resource is required for non-zero amount offers", { offer });
+					if (shouldCommit) {
+						await t.rollback();
+					}
+					throw new Error("Resource must be set to a valid enum value (stars, stardust, darkMatter)");
+				}
+			}
+
 			// Устанавливаем отложенные ограничения для этой транзакции
 			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,

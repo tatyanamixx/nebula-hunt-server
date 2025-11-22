@@ -13,6 +13,7 @@ jest.mock('../../models/models', () => ({
 		findOne: jest.fn(),
 		findAll: jest.fn(),
 		create: jest.fn(),
+		findOrCreate: jest.fn(),
 	},
 	UserState: {
 		findOne: jest.fn(),
@@ -197,6 +198,192 @@ describe('PackageStoreService', () => {
 			await expect(
 				packageStoreService.initializePackageStore(userId, transaction)
 			).rejects.toThrow(ApiError);
+		});
+	});
+
+	describe('getUserPackages', () => {
+		it('should initialize packages for user if they do not exist', async () => {
+			// Mock активных шаблонов
+			const activeTemplates = [
+				{
+					id: 'template1',
+					slug: 'starter-pack',
+					title: 'Starter Pack',
+					description: 'Basic starter pack',
+					amount: 100,
+					resource: 'stardust',
+					price: 0,
+					currency: 'tgStars',
+					status: true,
+					icon: 'star',
+					sortOrder: 1,
+					toJSON: () => ({
+						id: 'template1',
+						slug: 'starter-pack',
+						title: 'Starter Pack',
+						description: 'Basic starter pack',
+						amount: 100,
+						resource: 'stardust',
+						price: 0,
+						currency: 'tgStars',
+						status: true,
+						icon: 'star',
+						sortOrder: 1,
+					}),
+				},
+			];
+
+			// Mock findOrCreate для создания нового пакета
+			const newPackage = {
+				id: 'package1',
+				userId: 12345,
+				packageTemplateId: 'template1',
+				amount: 100,
+				resource: 'stardust',
+				price: 0,
+				currency: 'tgStars',
+				status: true,
+				isUsed: false,
+				isLocked: false,
+				packagetemplate: activeTemplates[0],
+				toJSON: () => ({
+					id: 'package1',
+					userId: 12345,
+					packageTemplateId: 'template1',
+					amount: 100,
+					resource: 'stardust',
+					price: 0,
+					currency: 'tgStars',
+					status: true,
+					isUsed: false,
+					isLocked: false,
+				}),
+			};
+
+			PackageTemplate.findAll.mockResolvedValue(activeTemplates);
+			PackageStore.findOrCreate.mockResolvedValue([newPackage, true]); // true = created
+			PackageStore.findAll.mockResolvedValue([newPackage]);
+
+			const userId = 12345;
+
+			// Вызываем тестируемый метод
+			const result = await packageStoreService.getUserPackages(userId);
+
+			// Проверяем, что были вызваны нужные методы
+			expect(PackageTemplate.findAll).toHaveBeenCalledWith({
+				where: { status: true },
+				transaction: expect.any(Object),
+			});
+			expect(PackageStore.findOrCreate).toHaveBeenCalledWith({
+				where: {
+					userId,
+					packageTemplateId: 'template1',
+				},
+				defaults: {
+					packageTemplateId: 'template1',
+					userId,
+					amount: 100,
+					resource: 'stardust',
+					price: 0,
+					currency: 'tgStars',
+					status: true,
+					isUsed: false,
+					isLocked: false,
+				},
+				transaction: expect.any(Object),
+			});
+
+			// Проверяем результат
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveProperty('id', 'package1');
+			expect(result[0]).toHaveProperty('package');
+			expect(result[0].package).toHaveProperty('slug', 'starter-pack');
+		});
+
+		it('should return existing packages without creating new ones', async () => {
+			// Mock активных шаблонов
+			const activeTemplates = [
+				{
+					id: 'template1',
+					slug: 'starter-pack',
+					title: 'Starter Pack',
+					description: 'Basic starter pack',
+					amount: 100,
+					resource: 'stardust',
+					price: 0,
+					currency: 'tgStars',
+					status: true,
+					icon: 'star',
+					sortOrder: 1,
+					toJSON: () => ({
+						id: 'template1',
+						slug: 'starter-pack',
+						title: 'Starter Pack',
+						description: 'Basic starter pack',
+						amount: 100,
+						resource: 'stardust',
+						price: 0,
+						currency: 'tgStars',
+						status: true,
+						icon: 'star',
+						sortOrder: 1,
+					}),
+				},
+			];
+
+			// Mock существующего пакета
+			const existingPackage = {
+				id: 'package1',
+				userId: 12345,
+				packageTemplateId: 'template1',
+				amount: 100,
+				resource: 'stardust',
+				price: 0,
+				currency: 'tgStars',
+				status: true,
+				isUsed: false,
+				isLocked: false,
+				packagetemplate: activeTemplates[0],
+				toJSON: () => ({
+					id: 'package1',
+					userId: 12345,
+					packageTemplateId: 'template1',
+					amount: 100,
+					resource: 'stardust',
+					price: 0,
+					currency: 'tgStars',
+					status: true,
+					isUsed: false,
+					isLocked: false,
+				}),
+			};
+
+			PackageTemplate.findAll.mockResolvedValue(activeTemplates);
+			PackageStore.findOrCreate.mockResolvedValue([existingPackage, false]); // false = not created
+			PackageStore.findAll.mockResolvedValue([existingPackage]);
+
+			const userId = 12345;
+
+			// Вызываем тестируемый метод
+			const result = await packageStoreService.getUserPackages(userId);
+
+			// Проверяем, что findOrCreate был вызван, но пакет не создавался
+			expect(PackageStore.findOrCreate).toHaveBeenCalled();
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveProperty('id', 'package1');
+		});
+
+		it('should return empty array when no active templates exist', async () => {
+			PackageTemplate.findAll.mockResolvedValue([]);
+
+			const userId = 12345;
+
+			// Вызываем тестируемый метод
+			const result = await packageStoreService.getUserPackages(userId);
+
+			// Проверяем результат
+			expect(result).toEqual([]);
+			expect(PackageStore.findOrCreate).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -32,7 +32,7 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 router.get(
 	"/",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getUserGalaxies
 );
@@ -58,7 +58,7 @@ router.get(
 router.get(
 	"/:seed",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getUserGalaxy
 );
@@ -94,7 +94,7 @@ router.get(
 router.patch(
 	"/:seed",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	galaxyController.updateGalaxy
 );
@@ -114,7 +114,7 @@ router.patch(
 router.get(
 	"/show",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	galaxyController.getShowGalaxies
 );
@@ -144,7 +144,7 @@ router.get(
 router.post(
 	"/create",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	authMiddleware,
 	galaxyController.createGalaxyWithOffer
 );
@@ -164,7 +164,7 @@ router.post(
 router.post(
 	"/daily-bonus",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	gameController.claimDailyReward
 );
@@ -196,7 +196,7 @@ router.post(
 router.post(
 	"/transferstars",
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	galaxyController.transferStarsToUserGalaxy
 );
@@ -223,8 +223,46 @@ router.delete(
 	"/:seed",
 	telegramAuthMiddleware,
 	authMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	galaxyController.deleteUserGalaxy
+);
+
+/**
+ * @swagger
+ * /galaxies/{seed}/upgrade:
+ *   post:
+ *     summary: Upgrade a galaxy (change name, type, color, background)
+ *     tags: [Galaxy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: seed
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               upgradeType:
+ *                 type: string
+ *                 enum: [name, type, color, background]
+ *               upgradeValue:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Galaxy upgraded successfully
+ */
+router.post(
+	"/:seed/upgrade",
+	telegramAuthMiddleware,
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
+	authMiddleware,
+	galaxyController.upgradeGalaxy
 );
 
 module.exports = router;

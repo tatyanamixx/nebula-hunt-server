@@ -141,6 +141,7 @@ class PackageStoreService {
 			logger.debug("getUserPackages on start", { userId });
 
 			// Сначала проверяем, есть ли у пользователя пакеты
+			// ✅ Фильтруем только пакеты с активными шаблонами
 			let packages = await PackageStore.findAll({
 				where: {
 					userId,
@@ -149,6 +150,10 @@ class PackageStoreService {
 				include: [
 					{
 						model: PackageTemplate,
+						where: {
+							status: true, // ✅ Только активные шаблоны пакетов
+						},
+						required: true, // ✅ INNER JOIN - только пакеты с активными шаблонами
 						attributes: [
 							"id",
 							"slug",
@@ -164,6 +169,7 @@ class PackageStoreService {
 							"labelKey",
 							"isPromoted",
 							"validUntil",
+							"status",
 						],
 					},
 				],
@@ -193,6 +199,10 @@ class PackageStoreService {
 					include: [
 						{
 							model: PackageTemplate,
+							where: {
+								status: true, // ✅ Только активные шаблоны пакетов
+							},
+							required: true, // ✅ INNER JOIN - только пакеты с активными шаблонами
 							attributes: [
 								"id",
 								"slug",
@@ -208,6 +218,7 @@ class PackageStoreService {
 								"labelKey",
 								"isPromoted",
 								"validUntil",
+								"status",
 							],
 						},
 					],

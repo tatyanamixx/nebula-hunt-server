@@ -3,14 +3,18 @@
  */
 const ApiError = require('../exceptions/api-error');
 const logger = require('../service/logger-service');
+const { serializeBigInt } = require('../utils/serialization');
 
 module.exports = function (err, req, res, next) {
+	// Сериализуем body перед логированием, чтобы избежать проблем с BigInt
+	const serializedBody = serializeBigInt(req.body || {});
+	
 	// Логируем ошибку с контекстом запроса
 	logger.error(err.message, {
 		url: req.originalUrl,
 		method: req.method,
 		headers: req.headers,
-		body: req.body,
+		body: serializedBody,
 		status: err.status || 500,
 		errors: err.errors,
 		stack: err.stack,
@@ -32,13 +36,17 @@ module.exports = function (err, req, res, next) {
 			errorResponse.severity = err.severity;
 		}
 
-		return res.status(err.status).json(errorResponse);
+		// Сериализуем ответ перед отправкой
+		return res.status(err.status).json(serializeBigInt(errorResponse));
 	}
 
 	// Для неизвестных ошибок возвращаем системный код
-	return res.status(500).json({
+	const unknownErrorResponse = {
 		message: err.message,
 		errorCode: 'SYS_002',
 		severity: 'CRITICAL',
-	});
+	};
+	
+	// Сериализуем ответ перед отправкой
+	return res.status(500).json(serializeBigInt(unknownErrorResponse));
 };

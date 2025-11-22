@@ -37,18 +37,29 @@ class GalaxyService {
 			const galaxies = galaxiesRaw.map((item) => {
 				const galaxy = item.toJSON();
 				// Преобразуем данные для совместимости с клиентом
+				// ✅ Преобразуем lastCollectTime в timestamp для клиента
+				const lastCollectTimeTimestamp = galaxy.lastCollectTime
+					? new Date(galaxy.lastCollectTime).getTime()
+					: null;
+				
+				// ✅ Извлекаем визуальные свойства из galaxyProperties (приоритет) или из прямых полей
+				const galaxyProperties = galaxy.galaxyProperties || {};
+				const type = galaxyProperties.type || galaxy.galaxyType || galaxy.type;
+				const colorPalette = galaxyProperties.colorPalette || galaxy.colorPalette;
+				const background = galaxyProperties.background || galaxy.backgroundType || galaxy.background;
+				
 				return {
 					seed: galaxy.seed,
 					name: galaxy.name,
 					stars: galaxy.starCurrent || 0,
 					maxStars: galaxy.maxStars || 100000,
 					birthDate: galaxy.birthDate,
-					lastCollectTime: galaxy.lastCollectTime,
-					type: galaxy.type,
-					colorPalette: galaxy.colorPalette,
-					background: galaxy.background,
+					lastCollectTime: lastCollectTimeTimestamp,
+					type: type,
+					colorPalette: colorPalette,
+					background: background,
 					particleCount: galaxy.particleCount || 100,
-					galaxyProperties: galaxy.galaxyProperties || {},
+					galaxyProperties: galaxyProperties,
 				};
 			});
 
