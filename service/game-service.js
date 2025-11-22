@@ -578,7 +578,7 @@ class GameService {
 				amount: galaxyData.starCurrent,
 				resource: "stars",
 				offerType: "SYSTEM",
-				txType: "GALAXY_RESOURCE",
+				txType: offer.txType || "GALAXY_RESOURCE", // ✅ Используем txType из offer, если передан, иначе GALAXY_RESOURCE
 			};
 			const result = await marketService.registerOffer(offerData, t);
 			const userState = await userStateService.getUserState(buyerId, t);
@@ -1261,6 +1261,7 @@ class GameService {
 				buyerId: userId,
 				price: offer.price,
 				currency: offer.currency,
+				txType: offer.txType || "GALAXY_CAPTURE", // ✅ Используем txType из offer (GALAXY_CAPTURE)
 			};
 
 			// Call the base method
