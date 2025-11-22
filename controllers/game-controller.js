@@ -453,8 +453,23 @@ class GameController {
 	 * @param {Function} next - Express next function
 	 */
 	async completePayment(req, res, next) {
+		// Дополнительное логирование в консоль для отладки
+		console.log("🔐 [COMPLETE PAYMENT] Request received:", {
+			body: req.body,
+			headers: req.headers,
+			ip: req.ip,
+		});
+
 		try {
 			const { payment, payload, user } = req.body;
+
+			console.log("🔐 [COMPLETE PAYMENT] Parsed data:", {
+				payment: payment ? "present" : "missing",
+				payload: payload ? "present" : "missing",
+				user: user ? "present" : "missing",
+				userId: user?.id,
+				paymentType: payload?.t || payload?.type,
+			});
 
 			logger.info("🔐 Payment completion request received from webhook", {
 				paymentId: payment?.telegram_payment_charge_id,
@@ -580,10 +595,20 @@ class GameController {
 				data: result,
 			});
 		} catch (error) {
+			// Дополнительное логирование в консоль для отладки
+			console.error("❌ [COMPLETE PAYMENT] Error:", {
+				message: error.message,
+				stack: error.stack,
+				name: error.name,
+				body: req.body,
+			});
+
 			logger.error("Failed to complete payment", {
 				payment: req.body?.payment,
 				payload: req.body?.payload,
 				error: error.message,
+				stack: error.stack,
+				errorName: error.name,
 			});
 			next(error);
 		}

@@ -1370,9 +1370,35 @@ class GameService {
 			const paymentPrice = payload.p || payload.price;
 			const amount = payload.a || payload.amount;
 
-			if (!paymentPrice || !amount) {
+			if (paymentPrice === undefined || paymentPrice === null || amount === undefined || amount === null) {
+				logger.error("Missing required payload data", {
+					payload,
+					paymentPrice,
+					amount,
+					hasP: payload.p !== undefined,
+					hasPrice: payload.price !== undefined,
+					hasA: payload.a !== undefined,
+					hasAmount: payload.amount !== undefined,
+				});
 				throw new Error(
 					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем в числа для безопасности
+			const paymentPriceNum = Number(paymentPrice);
+			const amountNum = Number(amount);
+
+			if (isNaN(paymentPriceNum) || isNaN(amountNum) || paymentPriceNum <= 0 || amountNum <= 0) {
+				logger.error("Invalid payload data values", {
+					payload,
+					paymentPrice,
+					amount,
+					paymentPriceNum,
+					amountNum,
+				});
+				throw new Error(
+					"Invalid payload data: price and amount must be positive numbers"
 				);
 			}
 
@@ -1383,11 +1409,11 @@ class GameService {
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userIdBigInt,
-				price: paymentPrice,
+				price: paymentPriceNum,
 				currency: "tgStars",
 				itemId: null, // Нет конкретного item
 				itemType: "resource",
-				amount: amount,
+				amount: amountNum,
 				resource: "stardust",
 				offerType: "SYSTEM",
 				txType: "STARDUST_PURCHASE",
@@ -1400,13 +1426,14 @@ class GameService {
 			const result = await userStateService.addCurrency(
 				userIdBigInt,
 				"stardust",
-				amount,
+				amountNum,
 				null // transaction будет создан внутри
 			);
 
 			logger.info("Stardust purchase payment completed", {
 				userId: userIdBigInt.toString(),
-				amount,
+				amount: amountNum,
+				price: paymentPriceNum,
 				paymentId: payment.telegram_payment_charge_id,
 				marketOfferId: marketResult?.id,
 			});
