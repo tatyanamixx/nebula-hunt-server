@@ -1642,10 +1642,23 @@ class GameService {
 				itemId: BigInt(galaxy.id), // ID галактики
 				itemType: "galaxy",
 				amount: 0, // Для улучшения галактики не передаем ресурсы
-				resource: "stars", // Используем валидное значение enum (amount = 0, поэтому не влияет на логику)
+				resource: "stars", // ✅ Используем валидное значение enum (amount = 0, поэтому не влияет на логику)
 				offerType: "SYSTEM",
 				txType: "GALAXY_UPGRADE",
 			};
+
+			// ✅ Валидация: убеждаемся, что resource установлен
+			if (!offerData.resource || offerData.resource === "") {
+				logger.error("Invalid resource in offerData", { offerData });
+				await t.rollback();
+				throw new Error("Resource must be set to a valid enum value (stars, stardust, darkMatter)");
+			}
+
+			logger.debug("Registering galaxy upgrade offer", {
+				offerData,
+				resource: offerData.resource,
+				resourceType: typeof offerData.resource,
+			});
 
 			// Регистрируем offer через marketService для полного аудита
 			const marketService = require("./market-service");
@@ -1763,21 +1776,28 @@ class GameService {
 			// Создаем offer для записи в БД через marketService для аудита
 			// Payload использует сокращенные имена: p=price, r=resource
 			const paymentPrice = payload.p || payload.price;
-			const resource = payload.r || payload.resource || null;
+			const resource = payload.r || payload.resource || "stars"; // ✅ Используем "stars" по умолчанию, если resource не указан
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userId,
-				price: paymentPrice,
+				price: paymentPrice || 0,
 				currency: "tgStars",
 				itemId: result.package?.id || null,
 				itemType: "package",
-				amount: 1,
-				resource: resource,
+				amount: 0, // ✅ Устанавливаем amount в 0, так как валюта уже добавлена через usePackage
+				resource: resource, // ✅ Используем валидное значение enum
 				offerType: "SYSTEM",
 				txType: "PACKAGE_PURCHASE",
 			};
 
+			// ✅ Валидация: убеждаемся, что resource установлен
+			if (!offerData.resource || offerData.resource === "") {
+				offerData.resource = "stars"; // Используем "stars" по умолчанию
+			}
+
 			// Регистрируем offer через marketService для полного аудита
+			// ВАЖНО: amount = 0, поэтому валюта НЕ будет добавлена повторно
+			// Валюта уже добавлена через usePackage выше
 			const marketService = require("./market-service");
 			const marketResult = await marketService.registerOffer(offerData);
 

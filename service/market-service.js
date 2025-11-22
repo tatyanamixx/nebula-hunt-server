@@ -1806,6 +1806,25 @@ class MarketService {
 		const shouldCommit = !transaction; // Коммитим только если транзакция не была передана
 
 		try {
+			// ✅ Валидация: убеждаемся, что resource установлен (не может быть пустой строкой или undefined)
+			if (!offer.resource || offer.resource === "") {
+				// Если resource не установлен, используем "stars" как значение по умолчанию
+				// Это безопасно, так как amount = 0 означает, что ресурсы не передаются
+				if (offer.amount === 0 || offer.amount === "0") {
+					offer.resource = "stars";
+					logger.debug("Resource not set, using default 'stars' for zero-amount offer", {
+						offerType: offer.txType,
+						itemType: offer.itemType,
+					});
+				} else {
+					logger.error("Resource is required for non-zero amount offers", { offer });
+					if (shouldCommit) {
+						await t.rollback();
+					}
+					throw new Error("Resource must be set to a valid enum value (stars, stardust, darkMatter)");
+				}
+			}
+
 			// Устанавливаем отложенные ограничения для этой транзакции
 			await sequelize.query("SET CONSTRAINTS ALL DEFERRED", {
 				transaction: t,
