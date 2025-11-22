@@ -1293,10 +1293,23 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Payload использует сокращенные имена: p=price, gs=galaxySeed, gn=galaxyName
+			const paymentPrice = payload.p || payload.price;
+			const galaxySeed = payload.gs || payload.galaxySeed;
+
+			if (!paymentPrice || !galaxySeed) {
+				throw new Error(
+					"Missing required payload data: price (p) and galaxySeed (gs) are required"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем данные галактики из payload
 			const galaxyData = {
-				seed: payload.galaxySeed,
-				name: payload.galaxyName || `Galaxy-${payload.galaxySeed}`,
+				seed: galaxySeed,
+				name: payload.gn || payload.galaxyName || `Galaxy-${galaxySeed}`,
 				starMin: 100,
 				starCurrent: 1000, // Базовое количество звезд
 				maxStars: 80000 + Math.floor(Math.random() * 20000), // Случайный максимум
@@ -1309,21 +1322,21 @@ class GameService {
 
 			// Создаем offer для записи в БД
 			const offer = {
-				price: payload.price,
+				price: paymentPrice,
 				currency: "tgStars",
 				txType: "GALAXY_CAPTURE",
 			};
 
 			// Регистрируем захваченную галактику
 			const result = await this.registerCapturedGalaxy(
-				userId,
+				userIdBigInt,
 				galaxyData,
 				offer
 			);
 
 			logger.info("Galaxy capture payment completed", {
-				userId,
-				galaxySeed: payload.galaxySeed,
+				userId: userIdBigInt.toString(),
+				galaxySeed,
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
@@ -1353,15 +1366,28 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Payload использует сокращенные имена: p=price, a=amount
+			const paymentPrice = payload.p || payload.price;
+			const amount = payload.a || payload.amount;
+
+			if (!paymentPrice || !amount) {
+				throw new Error(
+					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем offer для записи в БД через marketService
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
+				buyerId: userIdBigInt,
+				price: paymentPrice,
 				currency: "tgStars",
 				itemId: null, // Нет конкретного item
 				itemType: "resource",
-				amount: payload.amount,
+				amount: amount,
 				resource: "stardust",
 				offerType: "SYSTEM",
 				txType: "STARDUST_PURCHASE",
@@ -1372,15 +1398,15 @@ class GameService {
 
 			// Добавляем стардаст пользователю
 			const result = await userStateService.addCurrency(
-				userId,
+				userIdBigInt,
 				"stardust",
-				payload.amount,
+				amount,
 				null // transaction будет создан внутри
 			);
 
 			logger.info("Stardust purchase payment completed", {
-				userId,
-				amount: payload.amount,
+				userId: userIdBigInt.toString(),
+				amount,
 				paymentId: payment.telegram_payment_charge_id,
 				marketOfferId: marketResult?.id,
 			});
@@ -1414,15 +1440,28 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
+			// Payload использует сокращенные имена: p=price, a=amount
+			const paymentPrice = payload.p || payload.price;
+			const amount = payload.a || payload.amount;
+
+			if (!paymentPrice || !amount) {
+				throw new Error(
+					"Missing required payload data: price (p) and amount (a) are required"
+				);
+			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
+
 			// Создаем offer для записи в БД через marketService
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
-				buyerId: userId,
-				price: payload.price,
+				buyerId: userIdBigInt,
+				price: paymentPrice,
 				currency: "tgStars",
 				itemId: null, // Нет конкретного item
 				itemType: "resource",
-				amount: payload.amount,
+				amount: amount,
 				resource: "darkMatter",
 				offerType: "SYSTEM",
 				txType: "DARK_MATTER_PURCHASE",
@@ -1433,15 +1472,15 @@ class GameService {
 
 			// Добавляем темную материю пользователю
 			const result = await userStateService.addCurrency(
-				userId,
+				userIdBigInt,
 				"darkMatter",
-				payload.amount,
+				amount,
 				null // transaction будет создан внутри
 			);
 
 			logger.info("Dark matter purchase payment completed", {
-				userId,
-				amount: payload.amount,
+				userId: userIdBigInt.toString(),
+				amount,
 				paymentId: payment.telegram_payment_charge_id,
 				marketOfferId: marketResult?.id,
 			});
@@ -1475,16 +1514,20 @@ class GameService {
 				paymentId: payment.telegram_payment_charge_id,
 			});
 
-			// Extract upgrade data from payload (using short keys: gs=galaxySeed, ut=upgradeType, uv=upgradeValue)
+			// Extract upgrade data from payload (using short keys: p=price, gs=galaxySeed, ut=upgradeType, uv=upgradeValue)
+			const paymentPrice = payload.p || payload.price;
 			const galaxySeed = payload.gs || payload.galaxySeed;
 			const upgradeType = payload.ut || payload.upgradeType;
 			const upgradeValue = payload.uv || payload.upgradeValue;
 
-			if (!galaxySeed || !upgradeType || !upgradeValue) {
+			if (!paymentPrice || !galaxySeed || !upgradeType || !upgradeValue) {
 				throw new Error(
-					"Missing required upgrade data: galaxySeed, upgradeType, upgradeValue"
+					"Missing required upgrade data: price (p), galaxySeed (gs), upgradeType (ut), upgradeValue (uv)"
 				);
 			}
+
+			// Преобразуем userId в BigInt если нужно
+			const userIdBigInt = BigInt(userId);
 
 			// Validate upgrade type
 			const validUpgradeTypes = ["name", "type", "color", "background"];
@@ -1496,7 +1539,7 @@ class GameService {
 
 			// Find galaxy
 			const galaxy = await Galaxy.findOne({
-				where: { seed: galaxySeed, userId },
+				where: { seed: galaxySeed, userId: userIdBigInt },
 			});
 
 			if (!galaxy) {
@@ -1522,7 +1565,7 @@ class GameService {
 			await galaxy.save();
 
 			logger.info("Galaxy upgrade payment completed", {
-				userId,
+				userId: userIdBigInt.toString(),
 				galaxySeed,
 				upgradeType,
 				upgradeValue,

@@ -467,9 +467,9 @@ class GameController {
 			});
 
 			// Validate required fields
-			if (!payment || !payload) {
+			if (!payment || !payload || !user || !user.id) {
 				throw ApiError.BadRequest(
-					"Payment and payload are required",
+					"Payment, payload, and user are required",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
 				);
 			}
@@ -493,6 +493,9 @@ class GameController {
 				);
 			}
 
+			// Преобразуем userId в BigInt для консистентности
+			const userId = BigInt(user.id);
+
 			// Process payment based on type
 			// Payload использует сокращенные имена: t=type, s=slug
 			let result;
@@ -500,7 +503,7 @@ class GameController {
 				case "galaxyCapture":
 					// Handle galaxy capture payment
 					result = await gameService.completeGalaxyCapturePayment(
-						user?.id,
+						userId,
 						payload,
 						payment
 					);
@@ -510,14 +513,14 @@ class GameController {
 					// Проверяем наличие slug (сокращенное имя s или полное packageSlug)
 					if (payload.s || payload.packageSlug) {
 						result = await gameService.completePackagePayment(
-							user?.id,
+							userId,
 							payload,
 							payment
 						);
 					} else {
 						// Handle stardust purchase payment (legacy)
 						result = await gameService.completeStardustPayment(
-							user?.id,
+							userId,
 							payload,
 							payment
 						);
@@ -528,14 +531,14 @@ class GameController {
 					// Проверяем наличие slug (сокращенное имя s или полное packageSlug)
 					if (payload.s || payload.packageSlug) {
 						result = await gameService.completePackagePayment(
-							user?.id,
+							userId,
 							payload,
 							payment
 						);
 					} else {
 						// Handle dark matter purchase payment (legacy)
 						result = await gameService.completeDarkMatterPayment(
-							user?.id,
+							userId,
 							payload,
 							payment
 						);
@@ -544,7 +547,7 @@ class GameController {
 				case "package":
 					// ✅ Handle package payment
 					result = await gameService.completePackagePayment(
-						user?.id,
+						userId,
 						payload,
 						payment
 					);
@@ -552,22 +555,22 @@ class GameController {
 				case "galaxyUpgrade":
 					// Handle galaxy upgrade payment
 					result = await gameService.completeGalaxyUpgradePayment(
-						user?.id,
+						userId,
 						payload,
 						payment
 					);
 					break;
 				default:
 					throw ApiError.BadRequest(
-						`Unsupported payment type: ${payload.type}`,
+						`Unsupported payment type: ${paymentType}`,
 						ERROR_CODES.VALIDATION.UNSUPPORTED_PAYMENT_TYPE
 					);
 			}
 
 			logger.info("Payment completed successfully", {
 				paymentId: payment.telegram_payment_charge_id,
-				type: payload.t || payload.type,
-				userId: user?.id,
+				type: paymentType,
+				userId: userId.toString(),
 				result,
 			});
 
@@ -773,6 +776,19 @@ class GameController {
 				invoicePayload = invoicePayload.substring(0, 128);
 			}
 
+			// Проверяем тестовый режим платежей
+			// Если включен, цена в инвойсе будет 1 звезда, но в payload останется реальная цена
+			const testPaymentMode = global.testPaymentMode || false;
+			const invoicePrice = testPaymentMode ? 1 : Math.round(price);
+
+			if (testPaymentMode) {
+				logger.info("Test payment mode enabled - using 1 star price", {
+					userId,
+					originalPrice: price,
+					invoicePrice: 1,
+				});
+			}
+
 			// Create invoice via Telegram Bot API
 			const telegramApiUrl = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
 
@@ -784,7 +800,7 @@ class GameController {
 				prices: [
 					{
 						label: title,
-						amount: Math.round(price), // For Stars, amount is in Stars (not multiplied by 100)
+						amount: invoicePrice, // For Stars, amount is in Stars (not multiplied by 100)
 					},
 				],
 			};
@@ -832,8 +848,9 @@ class GameController {
 			logger.info("Invoice created successfully", {
 				userId,
 				title,
-				price,
+				price: testPaymentMode ? `1 (test mode, original: ${price})` : price,
 				invoiceUrl: response.data.result,
+				testPaymentMode,
 			});
 
 			res.status(200).json({

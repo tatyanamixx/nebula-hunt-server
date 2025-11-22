@@ -726,6 +726,54 @@ class AdminController {
 			next(e);
 		}
 	}
+
+	/**
+	 * Get test payment mode flag
+	 */
+	async getTestPaymentMode(req, res, next) {
+		try {
+			// Глобальная переменная для хранения флага (в памяти)
+			// При перезапуске сервера сбрасывается в false
+			const testPaymentMode = global.testPaymentMode || false;
+			return res.status(200).json({
+				enabled: testPaymentMode,
+			});
+		} catch (e) {
+			logger.error("Get test payment mode error", { error: e.message });
+			next(e);
+		}
+	}
+
+	/**
+	 * Set test payment mode flag
+	 */
+	async setTestPaymentMode(req, res, next) {
+		try {
+			const { enabled } = req.body;
+			if (typeof enabled !== "boolean") {
+				throw ApiError.BadRequest("enabled must be a boolean");
+			}
+
+			// Сохраняем флаг в глобальной переменной
+			global.testPaymentMode = enabled;
+
+			logger.info("Test payment mode updated", {
+				enabled,
+				adminId: req.user?.id,
+			});
+
+			return res.status(200).json({
+				success: true,
+				enabled: global.testPaymentMode,
+				message: enabled
+					? "Test payment mode enabled (all payments will cost 1 star)"
+					: "Test payment mode disabled",
+			});
+		} catch (e) {
+			logger.error("Set test payment mode error", { error: e.message });
+			next(e);
+		}
+	}
 }
 
 module.exports = new AdminController();

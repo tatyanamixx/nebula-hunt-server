@@ -204,4 +204,19 @@ router.get(
 	adminController.testSMTP
 );
 
+// Test payment mode management
+router.get(
+	"/test-payment-mode",
+	adminAuthMiddleware,
+	rateLimitMiddleware(500, 10), // 500 requests per 10 minutes
+	adminController.getTestPaymentMode
+);
+
+router.put(
+	"/test-payment-mode",
+	adminAuthMiddleware,
+	rateLimitMiddleware(250, 10), // 250 requests per 10 minutes
+	adminController.setTestPaymentMode
+);
+
 module.exports = router;
