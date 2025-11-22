@@ -548,6 +548,37 @@ class GameService {
 				});
 			}
 
+			// ✅ Если визуальные свойства не установлены (null), генерируем их детерминированно на основе seed
+			// Это происходит при захвате галактики, когда клиент не передает свойства
+			if (
+				!parsedGalaxyData.galaxyType &&
+				!parsedGalaxyData.colorPalette &&
+				!parsedGalaxyData.backgroundType
+			) {
+				const {
+					generateGalaxyTypeFromSeed,
+					generateColorPaletteFromSeed,
+					generateBackgroundFromSeed,
+				} = require("../utils/galaxy-utils");
+
+				parsedGalaxyData.galaxyType = generateGalaxyTypeFromSeed(
+					parsedGalaxyData.seed
+				);
+				parsedGalaxyData.colorPalette = generateColorPaletteFromSeed(
+					parsedGalaxyData.seed
+				);
+				parsedGalaxyData.backgroundType = generateBackgroundFromSeed(
+					parsedGalaxyData.seed
+				);
+
+				logger.debug("Generated visual properties for galaxy capture", {
+					seed: parsedGalaxyData.seed,
+					type: parsedGalaxyData.galaxyType,
+					colorPalette: parsedGalaxyData.colorPalette,
+					backgroundType: parsedGalaxyData.backgroundType,
+				});
+			}
+
 			// 1. Создаем галактику от имени SYSTEM
 			const [galaxy, created] = await Galaxy.findOrCreate({
 				where: {
@@ -591,12 +622,39 @@ class GameService {
 				await t.commit();
 			}
 
+			// ✅ Извлекаем визуальные свойства из galaxyProperties (приоритет) или из прямых полей
+			// Это должно совпадать с логикой в galaxy-service.js
+			const galaxyJSON = galaxy.toJSON();
+			const galaxyProperties = galaxyJSON.galaxyProperties || {};
+			const extractedType =
+				galaxyProperties.type || galaxyJSON.galaxyType || galaxyJSON.type;
+			const extractedColorPalette =
+				galaxyProperties.colorPalette || galaxyJSON.colorPalette;
+			const extractedBackground =
+				galaxyProperties.background ||
+				galaxyJSON.backgroundType ||
+				galaxyJSON.background;
+
+			// ✅ Добавляем извлеченные свойства в ответ для удобства клиента
+			const galaxyResponse = {
+				...galaxyJSON,
+				type: extractedType,
+				colorPalette: extractedColorPalette,
+				background: extractedBackground,
+			};
+
 			const response = {
-				galaxy: galaxy.toJSON(),
+				galaxy: galaxyResponse,
 				userState,
 				marketOffer: result,
 			};
-			logger.debug("createGalaxyWithOffer response", response);
+			logger.debug("createGalaxyWithOffer response", {
+				...response,
+				galaxy: {
+					...galaxyResponse,
+					galaxyProperties: galaxyProperties, // Логируем для отладки
+				},
+			});
 			return response;
 		} catch (err) {
 			if (shouldCommit && !t.finished) {
