@@ -41,6 +41,13 @@ class GalaxyService {
 				const lastCollectTimeTimestamp = galaxy.lastCollectTime
 					? new Date(galaxy.lastCollectTime).getTime()
 					: null;
+				
+				// ✅ Извлекаем визуальные свойства из galaxyProperties (приоритет) или из прямых полей
+				const galaxyProperties = galaxy.galaxyProperties || {};
+				const type = galaxyProperties.type || galaxy.galaxyType || galaxy.type;
+				const colorPalette = galaxyProperties.colorPalette || galaxy.colorPalette;
+				const background = galaxyProperties.background || galaxy.backgroundType || galaxy.background;
+				
 				return {
 					seed: galaxy.seed,
 					name: galaxy.name,
@@ -48,11 +55,11 @@ class GalaxyService {
 					maxStars: galaxy.maxStars || 100000,
 					birthDate: galaxy.birthDate,
 					lastCollectTime: lastCollectTimeTimestamp,
-					type: galaxy.type,
-					colorPalette: galaxy.colorPalette,
-					background: galaxy.background,
+					type: type,
+					colorPalette: colorPalette,
+					background: background,
 					particleCount: galaxy.particleCount || 100,
-					galaxyProperties: galaxy.galaxyProperties || {},
+					galaxyProperties: galaxyProperties,
 				};
 			});
 
