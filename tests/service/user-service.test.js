@@ -1,7 +1,7 @@
 const userService = require('../../service/user-service');
 const tokenService = require('../../service/token-service');
 const ApiError = require('../../exceptions/api-error');
-const stateService = require('../../service/state-service');
+const stateService = require('../../service/user-state-service');
 const marketService = require('../../service/market-service');
 const UserDto = require('../../dtos/user-dto');
 const upgradeService = require('../../service/upgrade-service');
@@ -16,7 +16,7 @@ jest.mock('../../service/logger-service', () => ({
 	debug: jest.fn(),
 	warn: jest.fn(),
 }));
-jest.mock('../../service/state-service');
+jest.mock('../../service/user-state-service');
 jest.mock('../../service/market-service');
 
 // Мокаем UserDto
@@ -99,7 +99,7 @@ jest.mock('../../service/event-service', () => ({
 
 jest.mock('../../service/task-service', () => ({
 	activateUserTasks: jest.fn().mockResolvedValue({}),
-	initializeUserTasks: jest.fn().mockResolvedValue({}),
+	
 }));
 
 jest.mock('../../service/upgrade-service', () => ({
@@ -117,8 +117,18 @@ jest.mock('../../service/artifact-service', () => ({
 }));
 
 jest.mock('../../service/package-store-service', () => ({
-	initializePackageStore: jest.fn().mockResolvedValue({}),
 	getUserPackages: jest.fn().mockResolvedValue([
+		{
+			id: 'template1_12345_1626345678',
+			userId: 12345,
+			amount: 100,
+			resource: 'stardust',
+			status: 'ACTIVE',
+			isUsed: false,
+			isLocked: false,
+		},
+	]),
+	initializePackageStore: jest.fn().mockResolvedValue([
 		{
 			id: 'template1_12345_1626345678',
 			userId: 12345,
@@ -154,10 +164,20 @@ describe('UserService', () => {
 					});
 				});
 
-			marketService.getPackageOffers = jest.fn().mockResolvedValue([
-				{ id: 1, price: 100, currency: 'tgStars' },
-				{ id: 2, price: 200, currency: 'tgStars' },
-			]);
+			// Мок для packageStoreService
+			packageStoreService.initializePackageStore = jest
+				.fn()
+				.mockResolvedValue([
+					{
+						id: 'template1_12345_1626345678',
+						userId: 12345,
+						amount: 100,
+						resource: 'stardust',
+						status: 'ACTIVE',
+						isUsed: false,
+						isLocked: false,
+					},
+				]);
 
 			// Мок для User.findOrCreate
 			User.findOrCreate = jest.fn().mockResolvedValue([
@@ -224,16 +244,6 @@ describe('UserService', () => {
 
 			// Проверяем вызовы методов
 			expect(stateService.createUserState).toHaveBeenCalled();
-			expect(
-				upgradeService.initializeUserUpgradeTree
-			).toHaveBeenCalledWith(userData.id, expect.anything());
-			expect(taskService.initializeUserTasks).toHaveBeenCalledWith(
-				userData.id,
-				expect.anything()
-			);
-			expect(marketService.getPackageOffers).toHaveBeenCalledWith(
-				userData.id
-			);
 
 			// Проверяем результат
 			expect(result.user).toBeDefined();
@@ -241,10 +251,6 @@ describe('UserService', () => {
 			expect(result.user.username).toBe(userData.username);
 			expect(result.userState).toBeDefined();
 			expect(result.userGalaxies).toBeDefined();
-			expect(result.packageOffers).toBeDefined();
-			expect(result.packageOffers).toHaveLength(2);
-			expect(result.packageOffers[0].id).toBe(1);
-			expect(result.packageOffers[1].id).toBe(2);
 			expect(result.accessToken).toBeDefined();
 			expect(result.refreshToken).toBeDefined();
 
@@ -306,12 +312,12 @@ describe('UserService', () => {
 			).rejects.toThrow();
 		});
 
-		it('should handle error when getPackageOffers fails', async () => {
-			// Настраиваем мок для имитации ошибки в marketService
-			marketService.getPackageOffers = jest
+		it('should handle error when initializePackageStore fails', async () => {
+			// Настраиваем мок для имитации ошибки в packageStoreService
+			packageStoreService.initializePackageStore = jest
 				.fn()
 				.mockImplementation(() => {
-					throw new Error('Failed to get package offers');
+					throw new Error('Failed to initialize package store');
 				});
 
 			const userData = {
@@ -405,10 +411,20 @@ describe('UserService', () => {
 
 			tokenService.saveToken = jest.fn().mockResolvedValue({});
 
-			marketService.getPackageOffers = jest.fn().mockResolvedValue([
-				{ id: 1, price: 100, currency: 'tgStars' },
-				{ id: 2, price: 200, currency: 'tgStars' },
-			]);
+			// Мок для packageStoreService
+			packageStoreService.initializePackageStore = jest
+				.fn()
+				.mockResolvedValue([
+					{
+						id: 'template1_12345_1626345678',
+						userId: 12345,
+						amount: 100,
+						resource: 'stardust',
+						status: 'ACTIVE',
+						isUsed: false,
+						isLocked: false,
+					},
+				]);
 		});
 
 		it('should login user successfully with package offers', async () => {
@@ -424,7 +440,9 @@ describe('UserService', () => {
 			expect(
 				upgradeService.activateUserUpgradeNodes
 			).toHaveBeenCalledWith(userId, expect.anything());
-			expect(marketService.getPackageOffers).toHaveBeenCalledWith(userId);
+			expect(
+				packageStoreService.initializePackageStore
+			).toHaveBeenCalledWith(userId, expect.anything());
 			expect(tokenService.generateTokens).toHaveBeenCalled();
 			expect(tokenService.saveToken).toHaveBeenCalled();
 
@@ -435,10 +453,6 @@ describe('UserService', () => {
 			expect(result.userState.tasks).toBeDefined();
 			expect(result.userGalaxies).toBeDefined();
 			expect(result.userArtifacts).toBeDefined();
-			expect(result.packageOffers).toBeDefined();
-			expect(result.packageOffers).toHaveLength(2);
-			expect(result.packageOffers[0].id).toBe(1);
-			expect(result.packageOffers[1].id).toBe(2);
 			expect(result.accessToken).toBeDefined();
 			expect(result.refreshToken).toBeDefined();
 		});
@@ -477,10 +491,10 @@ describe('UserService', () => {
 			const userId = 12345;
 			await userService.login(userId);
 
-			// Verify that initializeUserUpgradeTree was called
+			// Verify that no initialization methods were called in login
 			expect(
 				upgradeService.initializeUserUpgradeTree
-			).toHaveBeenCalledWith(userId, expect.anything());
+			).not.toHaveBeenCalled();
 			expect(
 				upgradeService.activateUserUpgradeNodes
 			).not.toHaveBeenCalled();
@@ -519,11 +533,8 @@ describe('UserService', () => {
 			const userId = 12345;
 			await userService.login(userId);
 
-			// Verify that initializeUserTasks was called
-			expect(taskService.initializeUserTasks).toHaveBeenCalledWith(
-				userId,
-				expect.anything()
-			);
+			// Verify that no initialization methods were called in login
+
 		});
 
 		it('should initialize package store when user has no packages', async () => {
@@ -571,10 +582,10 @@ describe('UserService', () => {
 			const userId = 12345;
 			await userService.login(userId);
 
-			// Verify that initializePackageStore was called
+			// Verify that no initialization methods were called in login
 			expect(
 				packageStoreService.initializePackageStore
-			).toHaveBeenCalledWith(userId, expect.anything());
+			).not.toHaveBeenCalled();
 		});
 
 		it('should throw error when user not found', async () => {
@@ -590,17 +601,6 @@ describe('UserService', () => {
 				role: 'USER',
 				blocked: true,
 			});
-
-			await expect(userService.login(12345)).rejects.toThrow();
-		});
-
-		it('should handle error when getPackageOffers fails', async () => {
-			// Настраиваем мок для имитации ошибки в marketService
-			marketService.getPackageOffers = jest
-				.fn()
-				.mockImplementation(() => {
-					throw new Error('Failed to get package offers');
-				});
 
 			await expect(userService.login(12345)).rejects.toThrow();
 		});

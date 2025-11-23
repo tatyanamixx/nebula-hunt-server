@@ -6,6 +6,7 @@ const { User, UserState } = require("../models/models");
 const tokenService = require("./token-service");
 const galaxyService = require("./galaxy-service");
 const userStateService = require("./user-state-service");
+const referralService = require("./referral-service");
 const logger = require("./logger-service");
 // Removed: eventService, upgradeService, taskService imports - no longer used in login
 const UserDto = require("../dtos/user-dto");
@@ -88,9 +89,8 @@ class UserService {
 		const shouldCommit = !transaction;
 		try {
 			// Create system user
-			const systemUser = await User.findOrCreate({
+			const [systemUser, created] = await User.findOrCreate({
 				where: { id: SYSTEM_USER_ID },
-				transaction: t,
 				defaults: {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
@@ -98,6 +98,7 @@ class UserService {
 					role: "SYSTEM",
 					blocked: false,
 				},
+				transaction: t,
 			});
 			logger.debug("systemUser", systemUser);
 
@@ -105,34 +106,23 @@ class UserService {
 			const systemUserState = await UserState.findOrCreate({
 				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
-				defaults: {
-					userId: SYSTEM_USER_ID,
-					stardust: 0,
-					darkMatter: 0,
-					stars: 0,
-					tgStars: 0,
-					tonToken: 0,
-					lockedStardust: 0,
-					lockedDarkMatter: 0,
-					lockedStars: 0,
-					lastDailyBonus: null,
-					lastLoginDate: null,
-					currentStreak: 0,
-					maxStreak: 0,
-					streakUpdatedAt: null,
-					stateHistory: [],
-				},
 			});
 			logger.debug("systemUserState", systemUserState);
 
+			if (created) {
+				logger.info("System user created successfully");
+			} else {
+				logger.debug("System user already exists");
+			}
+
 			if (shouldCommit) await t.commit();
-			return { systemUser, systemUserState };
+			return systemUser;
 		} catch (err) {
 			if (!t.finished && shouldCommit) await t.rollback();
 			throw ApiError.withCode(
 				500,
 				`Failed to create system user: ${err.message}`,
-				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -151,8 +141,7 @@ class UserService {
 				);
 				const result = await this.createSystemUser(t);
 				logger.info("System user and state created successfully", {
-					userId: result.systemUser[0].id,
-					stateId: result.systemUserState[0].id,
+					userId: result.id,
 				});
 			} else {
 				logger.debug("System user already exists with ID:", systemUser.id);
@@ -241,8 +230,6 @@ class UserService {
 		}
 	}
 
-	// Removed: initializeUser method - no longer needed
-
 	/**
 	 * Формирует единый структурированный ответ для клиента
 	 * @param {Object} tokens - Токены аутентификации
@@ -273,6 +260,7 @@ class UserService {
 					user: {
 						id: user.id,
 						role: user.role,
+						blocked: user.blocked || false,
 					},
 				},
 
@@ -311,7 +299,10 @@ class UserService {
 
 					// Временные метки
 					birthDate: galaxy.birthDate,
-					lastCollectTime: galaxy.lastCollectTime,
+					// ✅ Преобразуем lastCollectTime в timestamp для клиента
+					lastCollectTime: galaxy.lastCollectTime
+						? new Date(galaxy.lastCollectTime).getTime()
+						: null,
 
 					// Визуальные свойства
 					galaxyType: galaxy.galaxyType,
@@ -357,7 +348,13 @@ class UserService {
 	 * @param {Object} galaxyData - Данные о галактике пользователя (для регистрации) - может быть null
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async login(userId, username, referral = null, galaxyData = null) {
+	async login(
+		userId,
+		username,
+		referral = null,
+		galaxyData = null,
+		language = "en"
+	) {
 		const transaction = await sequelize.transaction();
 		try {
 			// Откладываем проверку всех deferrable ограничений в начале транзакции
@@ -388,6 +385,7 @@ class UserService {
 						username: username || null,
 						referral: referral || 0,
 						role: "USER",
+						language: language || "en",
 					},
 					{
 						transaction: transaction,
@@ -395,6 +393,22 @@ class UserService {
 				);
 
 				isNewUser = true;
+			} else if (user) {
+				// ✅ Update language and username on each login (users can change these in Telegram)
+				const updates = {};
+
+				if (language && user.language !== language) {
+					updates.language = language;
+				}
+
+				if (username && user.username !== username) {
+					updates.username = username;
+				}
+
+				if (Object.keys(updates).length > 0) {
+					await user.update(updates, { transaction });
+					logger.debug("Updated user profile", { userId, updates });
+				}
 			}
 
 			// Если пользователь все еще не найден
@@ -446,11 +460,41 @@ class UserService {
 					transaction
 				);
 
-				// Коммитим всю транзакцию
-				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
-					transaction,
+			// Commit main transaction first
+			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+				transaction,
+			});
+			await transaction.commit();
+
+			// Process referral system AFTER commit (in separate transaction)
+			if (referral && referral !== 0) {
+				logger.debug("Processing referral for new user", {
+					refereeId: user.id,
+					referrerId: referral,
 				});
-				await transaction.commit();
+
+				try {
+					// Pass null as transaction - referralService will create its own
+					await referralService.processReferral(
+						referral,
+						user.id,
+						null
+					);
+					logger.info("Referral rewards processed successfully", {
+						refereeId: user.id,
+						referrerId: referral,
+					});
+				} catch (referralError) {
+					logger.error(
+						"Failed to process referral rewards, but registration will continue",
+						{
+							refereeId: user.id,
+							referrerId: referral,
+							error: referralError.message,
+						}
+					);
+				}
+			}
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});

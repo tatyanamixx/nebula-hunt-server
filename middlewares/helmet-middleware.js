@@ -14,7 +14,7 @@ const helmetMiddleware = helmet({
 			scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'], // Allow CDN for Swagger UI
 			styleSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'], // Allow CDN for Swagger UI
 			imgSrc: ["'self'", 'data:', 'cdn.jsdelivr.net'], // Allow data: for Swagger UI images
-			connectSrc: ["'self'"],
+			connectSrc: ["'self'", 'https://api.nebulahunt.site', 'https://nebulahunt.site'], // Allow API subdomain
 			fontSrc: ["'self'", 'cdn.jsdelivr.net'],
 			objectSrc: ["'none'"],
 			mediaSrc: ["'self'"],
@@ -22,10 +22,10 @@ const helmetMiddleware = helmet({
 			sandbox: ['allow-forms', 'allow-scripts', 'allow-same-origin'],
 		},
 	},
-	// Cross-Origin settings
-	crossOriginEmbedderPolicy: { policy: 'require-corp' },
-	crossOriginOpenerPolicy: { policy: 'same-origin' },
-	crossOriginResourcePolicy: { policy: 'same-origin' },
+	// Cross-Origin settings (disabled to prevent CORS conflicts)
+	crossOriginEmbedderPolicy: false,
+	crossOriginOpenerPolicy: false,
+	crossOriginResourcePolicy: false,
 	// DNS prefetching
 	dnsPrefetchControl: { allow: false },
 	// Prevent iframe embedding
