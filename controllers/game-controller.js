@@ -16,11 +16,11 @@ class GameController {
 	async previewGalaxy(req, res, next) {
 		try {
 			const { seed } = req.params;
-			
+
 			if (!seed) {
 				throw ApiError.BadRequest("Galaxy seed is required");
 			}
-			
+
 			// Генерируем детерминированные визуальные свойства на основе seed
 			const {
 				generateStarCountForCapture,
@@ -29,18 +29,24 @@ class GameController {
 				generateBackgroundFromSeed,
 				getGalaxyNameFromSeed,
 			} = require("../utils/galaxy-utils");
-			
+
+			const starCount = generateStarCountForCapture(seed);
+
+			// Расчёт цены захвата: Base pricing: 99 Stars per 10,000 stars, multiplied by 10 for galaxy capture
+			const capturePrice = Math.ceil((starCount / 10000) * 99 * 10);
+
 			const galaxyPreview = {
 				seed,
 				name: getGalaxyNameFromSeed(seed),
 				type: generateGalaxyTypeFromSeed(seed),
 				colorPalette: generateColorPaletteFromSeed(seed),
 				background: generateBackgroundFromSeed(seed),
-				starCount: generateStarCountForCapture(seed),
+				starCount: starCount,
+				capturePrice: capturePrice, // ✅ Добавляем цену захвата
 			};
-			
+
 			logger.info("Galaxy preview generated", { seed, galaxyPreview });
-			
+
 			return res.json({
 				success: true,
 				data: galaxyPreview,
