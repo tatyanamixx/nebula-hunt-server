@@ -34,6 +34,12 @@ class ReferralService {
 	 * @returns {Promise<Object>} Result with rewards information
 	 */
 	async processReferral(referrerId, refereeId, transaction) {
+		console.log("🎁 REFERRAL SERVICE - processReferral CALLED:", {
+			referrerId,
+			refereeId,
+			hasTransaction: !!transaction,
+		});
+		
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
@@ -41,6 +47,11 @@ class ReferralService {
 			// Convert to BigInt for consistency
 			const numericReferrerId = BigInt(referrerId);
 			const numericRefereeId = BigInt(refereeId);
+			
+			console.log("🎁 REFERRAL SERVICE - Processing:", {
+				referrerId: numericReferrerId.toString(),
+				refereeId: numericRefereeId.toString(),
+			});
 			
 			logger.info("Processing referral rewards", {
 				referrerId: numericReferrerId.toString(),

@@ -460,41 +460,68 @@ class UserService {
 					transaction
 				);
 
-			// Commit main transaction first
-			await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
-				transaction,
-			});
-			await transaction.commit();
+				// Commit main transaction first
+				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
+					transaction,
+				});
+				await transaction.commit();
 
-			// Process referral system AFTER commit (in separate transaction)
-			if (referral && referral !== 0) {
-				logger.debug("Processing referral for new user", {
-					refereeId: user.id,
-					referrerId: referral,
+				// Process referral system AFTER commit (in separate transaction)
+				console.log("🔍 REFERRAL CHECK:", {
+					referral,
+					referralType: typeof referral,
+					isNewUser,
+					userId: user.id,
 				});
 
-				try {
-					// Pass null as transaction - referralService will create its own
-					await referralService.processReferral(
-						referral,
-						user.id,
-						null
-					);
-					logger.info("Referral rewards processed successfully", {
+				if (referral && referral !== 0) {
+					console.log("🎯 PROCESSING REFERRAL:", {
 						refereeId: user.id,
 						referrerId: referral,
 					});
-				} catch (referralError) {
-					logger.error(
-						"Failed to process referral rewards, but registration will continue",
-						{
+
+					logger.debug("Processing referral for new user", {
+						refereeId: user.id,
+						referrerId: referral,
+					});
+
+					try {
+						// Pass null as transaction - referralService will create its own
+						await referralService.processReferral(
+							referral,
+							user.id,
+							null
+						);
+						console.log("✅ REFERRAL REWARDS PROCESSED:", {
+							refereeId: user.id,
+							referrerId: referral,
+						});
+						logger.info("Referral rewards processed successfully", {
+							refereeId: user.id,
+							referrerId: referral,
+						});
+					} catch (referralError) {
+						console.error("❌ REFERRAL ERROR:", {
 							refereeId: user.id,
 							referrerId: referral,
 							error: referralError.message,
-						}
-					);
+							stack: referralError.stack,
+						});
+						logger.error(
+							"Failed to process referral rewards, but registration will continue",
+							{
+								refereeId: user.id,
+								referrerId: referral,
+								error: referralError.message,
+							}
+						);
+					}
+				} else {
+					console.log("⚠️ NO REFERRAL TO PROCESS:", {
+						referral,
+						isNewUser,
+					});
 				}
-			}
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});
@@ -506,10 +533,10 @@ class UserService {
 						"Creating first galaxy for new user (server-generated)",
 						{ userId: user.id }
 					);
-					
+
 					try {
 						const galaxyTransaction = await sequelize.transaction();
-						
+
 						// ✅ Генерируем все данные галактики НА СЕРВЕРЕ
 						const {
 							getGalaxyNameFromSeed,
@@ -518,35 +545,38 @@ class UserService {
 							generateBackgroundFromSeed,
 							generateMaxStars,
 						} = require("../utils/galaxy-utils");
-						
+
 						const GAME_CONSTANTS = require("../config/game-constants");
-						
+
 						// Генерируем уникальный seed для пользователя
 						const timestamp = Date.now();
 						const serverGeneratedSeed = `user_${user.id}_${timestamp}`;
-						
+
 						// Создаём данные галактики полностью на сервере
 						const serverGalaxyData = {
 							seed: serverGeneratedSeed,
 							name: getGalaxyNameFromSeed(serverGeneratedSeed),
 							starMin: 100,
-							starCurrent: GAME_CONSTANTS.ECONOMY?.INITIAL_STARS || 1000, // ✅ 1000 звёзд для новых пользователей
+							starCurrent:
+								GAME_CONSTANTS.ECONOMY?.INITIAL_STARS || 1000, // ✅ 1000 звёзд для новых пользователей
 							maxStars: generateMaxStars(serverGeneratedSeed),
 							birthDate: new Date(),
 							lastCollectTime: new Date(),
 							type: generateGalaxyTypeFromSeed(serverGeneratedSeed),
-							colorPalette: generateColorPaletteFromSeed(serverGeneratedSeed),
-							background: generateBackgroundFromSeed(serverGeneratedSeed),
+							colorPalette:
+								generateColorPaletteFromSeed(serverGeneratedSeed),
+							background:
+								generateBackgroundFromSeed(serverGeneratedSeed),
 							price: 0,
 						};
-						
+
 						logger.debug("Server-generated galaxy data for new user", {
 							userId: user.id,
 							serverGalaxyData,
 						});
-						
+
 						const offer = { price: 0, currency: "tonToken" };
-						
+
 						try {
 							const result = await gameService.createGalaxyWithOffer(
 								serverGalaxyData,
@@ -558,7 +588,7 @@ class UserService {
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
 							await galaxyTransaction.commit();
-							
+
 							logger.info("✅ First galaxy created for new user", {
 								userId: user.id,
 								galaxySeed: serverGeneratedSeed,

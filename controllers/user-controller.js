@@ -49,6 +49,17 @@ class UserController {
 				referral = null;
 			}
 
+		// ✅ Используем console.log для гарантированного вывода в Docker
+		console.log("📋 USER LOGIN REQUEST:", {
+			userId: id,
+			username,
+			referral: referral !== null && referral !== undefined ? referral.toString() : "NOT PROVIDED",
+			referralType: typeof referral,
+			hasGalaxy: !!galaxy,
+			language,
+			bodyKeys: Object.keys(req.body),
+		});
+		
 		logger.info("📋 User login/registration request", {
 			userId: id,
 			username,
