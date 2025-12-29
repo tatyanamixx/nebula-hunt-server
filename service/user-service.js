@@ -499,17 +499,57 @@ class UserService {
 					userId: user.id,
 				});
 
-				if (galaxyData && isNewUser) {
+				// ✅ Для новых пользователей СЕРВЕР сам генерирует первую галактику
+				// Игнорируем любые данные от клиента (могут быть из старого localStorage)
+				if (isNewUser) {
 					logger.debug(
-						"Creating galaxy as gift after main transaction commit",
-						{ galaxyData }
+						"Creating first galaxy for new user (server-generated)",
+						{ userId: user.id }
 					);
+					
 					try {
 						const galaxyTransaction = await sequelize.transaction();
+						
+						// ✅ Генерируем все данные галактики НА СЕРВЕРЕ
+						const {
+							getGalaxyNameFromSeed,
+							generateGalaxyTypeFromSeed,
+							generateColorPaletteFromSeed,
+							generateBackgroundFromSeed,
+							generateMaxStars,
+						} = require("../utils/galaxy-utils");
+						
+						const GAME_CONSTANTS = require("../config/game-constants");
+						
+						// Генерируем уникальный seed для пользователя
+						const timestamp = Date.now();
+						const serverGeneratedSeed = `user_${user.id}_${timestamp}`;
+						
+						// Создаём данные галактики полностью на сервере
+						const serverGalaxyData = {
+							seed: serverGeneratedSeed,
+							name: getGalaxyNameFromSeed(serverGeneratedSeed),
+							starMin: 100,
+							starCurrent: GAME_CONSTANTS.ECONOMY?.INITIAL_STARS || 1000, // ✅ 1000 звёзд для новых пользователей
+							maxStars: generateMaxStars(serverGeneratedSeed),
+							birthDate: new Date(),
+							lastCollectTime: new Date(),
+							type: generateGalaxyTypeFromSeed(serverGeneratedSeed),
+							colorPalette: generateColorPaletteFromSeed(serverGeneratedSeed),
+							background: generateBackgroundFromSeed(serverGeneratedSeed),
+							price: 0,
+						};
+						
+						logger.debug("Server-generated galaxy data for new user", {
+							userId: user.id,
+							serverGalaxyData,
+						});
+						
 						const offer = { price: 0, currency: "tonToken" };
+						
 						try {
 							const result = await gameService.createGalaxyWithOffer(
-								galaxyData,
+								serverGalaxyData,
 								user.id,
 								offer,
 								galaxyTransaction
@@ -518,6 +558,12 @@ class UserService {
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
 							await galaxyTransaction.commit();
+							
+							logger.info("✅ First galaxy created for new user", {
+								userId: user.id,
+								galaxySeed: serverGeneratedSeed,
+								starCurrent: serverGalaxyData.starCurrent,
+							});
 						} catch (galaxyError) {
 							await galaxyTransaction.rollback();
 							logger.error("Failed to create galaxy", galaxyError);
@@ -525,11 +571,6 @@ class UserService {
 					} catch (galaxyError) {
 						logger.error("Failed to create galaxy", galaxyError);
 					}
-				} else if (isNewUser && !galaxyData) {
-					logger.debug(
-						"New user registered without galaxy data - galaxy will not be created",
-						{ userId: user.id }
-					);
 				}
 
 				// Получаем галактики и артефакты для нового пользователя

@@ -162,35 +162,24 @@ function parseClientGalaxyData(clientGalaxyData) {
 
 	const result = {
 		// === ОСНОВНЫЕ ПОЛЯ ===
-		// ✅ Для захвата галактики НЕ используем название от клиента - сервер сам сгенерирует детерминированно
-		// Если клиент не отправил название или это захват (starCurrent null/undefined или < 40000), генерируем на основе seed
-		name: (() => {
-			// Проверяем, является ли это захватом галактики
-			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
-			const isCapture = !clientStarCurrent || clientStarCurrent < 40000;
-			
-			// Для захвата всегда генерируем название детерминированно на основе seed
-			if (isCapture || !clientGalaxyData.name) {
-				return getGalaxyNameFromSeed(seed);
-			}
-			// Для других случаев (например, создание новой галактики) используем название от клиента
-			return clientGalaxyData.name;
-		})(),
+		// ✅ Генерируем название на основе seed, если клиент не передал
+		name: clientGalaxyData.name || getGalaxyNameFromSeed(seed),
 		seed: seed,
 
 		// === ЗВЕЗДЫ И РЕСУРСЫ ===
 		starMin: clientGalaxyData.starMin || 100,
-		// ✅ Для захвата галактики starCurrent должен быть 40000-60000 (рассчитывается на сервере)
-		// Если starCurrent не передан или меньше 40000, значит это захват - используем значение по умолчанию
-		// Сервер перезапишет это значение в completeGalaxyCapturePayment
+		// ✅ Принимаем starCurrent от клиента как есть:
+		// - Для регистрации нового пользователя: 1000 звёзд
+		// - Для награды за максимум звёзд: 1000 звёзд  
+		// - Для захвата галактики: 40000-60000 (клиент получает от /preview-galaxy)
+		// Если не передан - сервер сгенерирует в createGalaxyWithOffer
 		starCurrent: (() => {
 			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
-			// Если значение от клиента меньше 40000, это неправильное значение для захвата - игнорируем
-			if (clientStarCurrent && clientStarCurrent >= 40000) {
+			// Принимаем любое положительное значение от клиента
+			if (clientStarCurrent && clientStarCurrent > 0) {
 				return clientStarCurrent;
 			}
-			// Для захвата галактики сервер сам рассчитает 40000-60000
-			// Возвращаем null, чтобы сервер мог перезаписать
+			// Если не передано - возвращаем null, сервер сам рассчитает
 			return null;
 		})(),
 		maxStars: clientGalaxyData.maxStars || generateMaxStars(seed),
