@@ -1009,9 +1009,10 @@ const PaymentTransaction = sequelize.define(
 					"DARK_MATTER_PURCHASE",
 					"GALAXY_CAPTURE",
 					"GALAXY_UPGRADE",
-					"REFERRER_REWARD",
-					"REFEREE_REWARD",
-					"REGISTRATION_BONUS"
+				"REFERRER_REWARD",
+				"REFEREE_REWARD",
+				"REGISTRATION_BONUS",
+				"UPGRADE_PURCHASE"
 				),
 				allowNull: false,
 			},

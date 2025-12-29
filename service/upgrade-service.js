@@ -880,16 +880,18 @@ class UpgradeService {
 			}
 
 			// ✅ Используем marketService для списания ресурсов И создания транзакции
+			// В registerOffer: seller получает price, buyer платит price
+			// Пользователь ПОКУПАЕТ улучшение, значит он buyer (платит)
 			const upgradeOfferData = {
-				sellerId: userId, // Пользователь платит
-				buyerId: SYSTEM_USER_ID, // Система получает
+				sellerId: SYSTEM_USER_ID, // Система продаёт улучшение (получает оплату)
+				buyerId: userId, // Пользователь покупает (платит)
 				itemType: "upgrade",
 				itemId: upgradeNode.id,
-				amount: price,
-				resource: resourceField,
+				amount: 0, // Ничего не передаётся обратно пользователю
+				resource: "stardust", // Требуется для валидации (amount=0 игнорирует это)
 				price: price,
 				currency: resourceField,
-				offerType: "UPGRADE_PURCHASE",
+				offerType: "SYSTEM",
 				txType: "UPGRADE_PURCHASE",
 				metadata: {
 					upgradeSlug: upgradeNode.slug,
