@@ -13,6 +13,7 @@ const sequelize = require('../db');
 const logger = require('./logger-service');
 const { Op } = require('sequelize');
 const marketService = require('./market-service');
+const { SYSTEM_USER_ID } = require('../config/constants');
 
 class EventService {
 	/**
@@ -953,49 +954,83 @@ class EventService {
 			userEvent.completedAt = new Date();
 			await userEvent.save({ transaction: t });
 
-			// Apply rewards if any
+			// Apply rewards if any - ✅ Используем marketService для создания транзакций
 			let rewardsApplied = {};
 			if (event.effect.rewards) {
-				const userState = await UserState.findOne({
-					where: { userId },
-					transaction: t,
-				});
+				const rewards = event.effect.rewards;
 
-				if (userState) {
-					const oldValues = {
-						stardust: userState.stardust,
-						darkMatter: userState.darkMatter,
-						stars: userState.stars,
-					};
-
-					// Apply resource rewards
-					if (event.effect.rewards.stardust) {
-						userState.stardust += event.effect.rewards.stardust;
-						rewardsApplied.stardust = event.effect.rewards.stardust;
-					}
-					if (event.effect.rewards.darkMatter) {
-						userState.darkMatter += event.effect.rewards.darkMatter;
-						rewardsApplied.darkMatter =
-							event.effect.rewards.darkMatter;
-					}
-					if (event.effect.rewards.stars) {
-						userState.stars += event.effect.rewards.stars;
-						rewardsApplied.stars = event.effect.rewards.stars;
-					}
-
-					await userState.save({ transaction: t });
-
-					logger.debug('Rewards applied to user state', {
-						userId,
-						rewardsApplied,
-						oldValues,
-						newValues: {
-							stardust: userState.stardust,
-							darkMatter: userState.darkMatter,
-							stars: userState.stars,
+				// ✅ Создаём транзакции для каждого типа награды
+				if (rewards.stardust && rewards.stardust > 0) {
+					const offerData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: userId,
+						itemType: "event",
+						itemId: userEvent.id,
+						amount: rewards.stardust,
+						resource: "stardust",
+						price: 0,
+						currency: "stardust",
+						offerType: "SYSTEM",
+						txType: "EVENT_REWARD",
+						metadata: {
+							eventSlug: event.slug,
+							eventName: event.name,
+							resource: "stardust",
 						},
-					});
+					};
+					await marketService.registerOffer(offerData, t);
+					rewardsApplied.stardust = rewards.stardust;
 				}
+
+				if (rewards.darkMatter && rewards.darkMatter > 0) {
+					const offerData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: userId,
+						itemType: "event",
+						itemId: userEvent.id,
+						amount: rewards.darkMatter,
+						resource: "darkMatter",
+						price: 0,
+						currency: "darkMatter",
+						offerType: "SYSTEM",
+						txType: "EVENT_REWARD",
+						metadata: {
+							eventSlug: event.slug,
+							eventName: event.name,
+							resource: "darkMatter",
+						},
+					};
+					await marketService.registerOffer(offerData, t);
+					rewardsApplied.darkMatter = rewards.darkMatter;
+				}
+
+				if (rewards.stars && rewards.stars > 0) {
+					const offerData = {
+						sellerId: SYSTEM_USER_ID,
+						buyerId: userId,
+						itemType: "event",
+						itemId: userEvent.id,
+						amount: rewards.stars,
+						resource: "stars",
+						price: 0,
+						currency: "stars",
+						offerType: "SYSTEM",
+						txType: "EVENT_REWARD",
+						metadata: {
+							eventSlug: event.slug,
+							eventName: event.name,
+							resource: "stars",
+						},
+					};
+					await marketService.registerOffer(offerData, t);
+					rewardsApplied.stars = rewards.stars;
+				}
+
+				logger.debug('Event rewards applied via marketService', {
+					userId,
+					eventSlug: event.slug,
+					rewardsApplied,
+				});
 			}
 
 			// Set cooldown if specified

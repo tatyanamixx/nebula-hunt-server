@@ -6,6 +6,8 @@ const ApiError = require("../exceptions/api-error");
 const sequelize = require("../db");
 const { Op } = require("sequelize");
 const logger = require("./logger-service");
+const marketService = require("./market-service");
+const { SYSTEM_USER_ID } = require("../config/constants");
 class UpgradeService {
 	/**
 	 * Initialize the upgrade tree for a new user
@@ -867,18 +869,6 @@ class UpgradeService {
 						`Not enough ${resourceField} to purchase upgrade`
 					);
 				}
-
-				// Deduct the resources using BigInt
-				const newResourceValue =
-					BigInt(userState[resourceField]) - BigInt(price);
-				await userState.update(
-					{
-						[resourceField]: newResourceValue,
-					},
-					{ transaction: t }
-				);
-				// Сохраняем изменения в базу данных
-				await userState.save({ transaction: t });
 			} else {
 				// Handle non-BigInt resources (tonToken, etc.)
 				if (userState[resourceField] < price) {
@@ -887,19 +877,29 @@ class UpgradeService {
 						`Not enough ${resourceField} to purchase upgrade`
 					);
 				}
-
-				// Deduct the resources
-				const newResourceValue =
-					parseFloat(userState[resourceField]) - parseFloat(price);
-				await userState.update(
-					{
-						[resourceField]: newResourceValue,
-					},
-					{ transaction: t }
-				);
-				// Сохраняем изменения в базу данных
-				await userState.save({ transaction: t });
 			}
+
+			// ✅ Используем marketService для списания ресурсов И создания транзакции
+			const upgradeOfferData = {
+				sellerId: userId, // Пользователь платит
+				buyerId: SYSTEM_USER_ID, // Система получает
+				itemType: "upgrade",
+				itemId: upgradeNode.id,
+				amount: price,
+				resource: resourceField,
+				price: price,
+				currency: resourceField,
+				offerType: "UPGRADE_PURCHASE",
+				txType: "UPGRADE_PURCHASE",
+				metadata: {
+					upgradeSlug: upgradeNode.slug,
+					upgradeName: upgradeNode.name,
+					fromLevel: currentLevel,
+					toLevel: currentLevel + 1,
+				},
+			};
+
+			await marketService.registerOffer(upgradeOfferData, t);
 
 			// Reload userState to get updated values
 			await userState.reload({ transaction: t });
