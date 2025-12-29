@@ -15,8 +15,8 @@ const GAME_CONSTANTS = {
 		BASE_DARK_MATTER_RATE: 5, // Base dark matter rate per hour
 
 		// Initial resources for new players
-		INITIAL_STARDUST: 1000,
-		INITIAL_DARK_MATTER: 10,
+		INITIAL_STARDUST: 10000,
+		INITIAL_DARK_MATTER: 50,
 		INITIAL_STARS: 1000,
 
 		// Resource limits

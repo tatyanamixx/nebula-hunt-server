@@ -12,7 +12,7 @@ const SYSTEM_USER_USERNAME = "SYSTEM";
 const LEADERBOARD_LIMIT = 100;
 
 // Общий лимит галактик для пользователя (включая купленные)
-const GALAXY_LIMIT_FOR_USER = 10;
+const GALAXY_LIMIT_FOR_USER = 100;
 
 // Лимит бесплатных галактик (при заполнении до максимума звезд)
 const FREE_GALAXY_LIMIT = 3;
