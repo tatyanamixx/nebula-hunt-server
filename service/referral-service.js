@@ -15,13 +15,13 @@ const axios = require("axios");
 const REFERRAL_REWARDS = {
 	REFERRER: {
 		// Reward for the person who invited (inviter)
-		stardust: 5000,
-		darkMatter: 10,
+		stardust: 10000,
+		darkMatter: 50,
 	},
 	REFEREE: {
 		// Reward for the person who was invited (new user)
-		stardust: 5000,
-		darkMatter: 10,
+		stardust: 10000,
+		darkMatter: 50,
 	},
 };
 
