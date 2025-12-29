@@ -49,12 +49,14 @@ class UserController {
 				referral = null;
 			}
 
-		logger.debug("User login/registration", {
+		logger.info("📋 User login/registration request", {
 			userId: id,
 			username,
-			referral: referral || "not provided",
+			referral: referral !== null && referral !== undefined ? referral.toString() : "NOT PROVIDED",
+			referralType: typeof referral,
 			hasGalaxy: !!galaxy,
 			language,
+			bodyKeys: Object.keys(req.body),
 		});
 
 		const result = await userService.login(id, username, referral, galaxy, language);
