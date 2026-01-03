@@ -288,6 +288,43 @@ class GameController {
 	}
 
 	/**
+	 * Get current star creation price (server-calculated)
+	 * @param {Object} req - Express request object
+	 * @param {Object} res - Express response object
+	 * @param {Function} next - Express next function
+	 */
+	async getStarPrice(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { galaxySeed, starsToCreate = 1 } = req.query;
+
+			if (!galaxySeed) {
+				throw ApiError.BadRequest(
+					"Galaxy seed is required",
+					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
+				);
+			}
+
+			const result = await gameService.getStarPrice(
+				userId,
+				galaxySeed,
+				Number(starsToCreate)
+			);
+
+			res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			logger.error("Failed to get star price", {
+				userId: req.user?.id,
+				error: error.message,
+			});
+			next(error);
+		}
+	}
+
+	/**
 	 * Claim daily reward for user
 	 * @param {Object} req - Express request object
 	 * @param {Object} res - Express response object

@@ -36,6 +36,19 @@ router.post(
 );
 
 /**
+ * @route GET /api/game/star-price
+ * @desc Get current star creation price (server-calculated)
+ * @access Private
+ */
+router.get(
+	"/star-price",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(600, 10), // 600 requests per 10 minutes (high frequency for UI updates)
+	authMiddleware,
+	gameController.getStarPrice
+);
+
+/**
  * @route POST /api/game/register-transfer-stardust-to-galaxy
  * @desc Register transfer stardust to galaxy - create offer for galaxy purchase
  * @access Private
