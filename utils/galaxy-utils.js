@@ -76,6 +76,33 @@ function getGalaxyNameFromSeed(seed) {
 }
 
 /**
+ * Генерирует детерминированное количество звезд для захвата галактики на основе seed
+ * @param {string} seed - Seed галактики
+ * @returns {number} Количество звезд (40,000 - 60,000)
+ */
+function generateStarCountForCapture(seed) {
+	if (!seed) {
+		// Fallback к случайной генерации, если seed не передан
+		return Math.floor(Math.random() * (60000 - 40000 + 1) + 40000);
+	}
+	
+	// Детерминированная генерация на основе seed
+	// Используем тот же алгоритм, что и на клиенте
+	let hash = 0;
+	for (let i = 0; i < seed.length; i++) {
+		hash = (hash * 31 + seed.charCodeAt(i)) % 1000000;
+	}
+	
+	// Генерируем число в диапазоне 40000-60000
+	const minStars = 40000;
+	const maxStars = 60000;
+	const range = maxStars - minStars + 1;
+	const starCount = minStars + (Math.abs(hash) % range);
+	
+	return starCount;
+}
+
+/**
  * Генерирует случайное максимальное количество звезд для галактики
  * @param {string} seed - Seed для детерминированной генерации (опционально)
  * @returns {number} Максимальное количество звезд (80,000 - 100,000)
@@ -135,12 +162,26 @@ function parseClientGalaxyData(clientGalaxyData) {
 
 	const result = {
 		// === ОСНОВНЫЕ ПОЛЯ ===
+		// ✅ Генерируем название на основе seed, если клиент не передал
 		name: clientGalaxyData.name || getGalaxyNameFromSeed(seed),
 		seed: seed,
 
 		// === ЗВЕЗДЫ И РЕСУРСЫ ===
 		starMin: clientGalaxyData.starMin || 100,
-		starCurrent: clientGalaxyData.stars || clientGalaxyData.starCurrent || 1000,
+		// ✅ Принимаем starCurrent от клиента как есть:
+		// - Для регистрации нового пользователя: 1000 звёзд
+		// - Для награды за максимум звёзд: 1000 звёзд  
+		// - Для захвата галактики: 40000-60000 (клиент получает от /preview-galaxy)
+		// Если не передан - сервер сгенерирует в createGalaxyWithOffer
+		starCurrent: (() => {
+			const clientStarCurrent = clientGalaxyData.stars || clientGalaxyData.starCurrent;
+			// Принимаем любое положительное значение от клиента
+			if (clientStarCurrent && clientStarCurrent > 0) {
+				return clientStarCurrent;
+			}
+			// Если не передано - возвращаем null, сервер сам рассчитает
+			return null;
+		})(),
 		maxStars: clientGalaxyData.maxStars || generateMaxStars(seed),
 
 		// === ВРЕМЕННЫЕ МЕТКИ ===
@@ -160,6 +201,8 @@ function parseClientGalaxyData(clientGalaxyData) {
 		})(),
 
 		// === ВИЗУАЛЬНЫЕ СВОЙСТВА ===
+		// ✅ Для захвата галактики используем свойства от клиента, если они переданы
+		// Это нужно, чтобы галактика не изменилась после захвата (пользователь видит те же свойства)
 		galaxyType: clientGalaxyData.type || clientGalaxyData.galaxyType || null,
 		colorPalette: clientGalaxyData.colorPalette || null,
 		backgroundType:
@@ -187,9 +230,98 @@ function parseClientGalaxyData(clientGalaxyData) {
 	return result;
 }
 
+/**
+ * Генерирует детерминированный тип галактики на основе seed
+ * @param {string} seed - Seed галактики
+ * @returns {string} Тип галактики
+ */
+function generateGalaxyTypeFromSeed(seed) {
+	if (!seed || typeof seed !== "string" || !seed.length) {
+		return "spiral";
+	}
+	
+	const types = [
+		"spiral",
+		"barred",
+		"elliptical",
+		"irregular",
+		"ring",
+		"lenticular",
+	];
+	
+	// Используем тот же алгоритм хеширования, что и на клиенте
+	const hash = seed.split("").reduce((a, b) => {
+		a = (a << 5) - a + b.charCodeAt(0);
+		return a & a;
+	}, 0);
+	
+	return types[Math.abs(hash) % types.length];
+}
+
+/**
+ * Генерирует детерминированную цветовую палитру на основе seed
+ * @param {string} seed - Seed галактики
+ * @returns {string} Цветовая палитра
+ */
+function generateColorPaletteFromSeed(seed) {
+	if (!seed || typeof seed !== "string" || !seed.length) {
+		return "cosmic";
+	}
+	
+	const palettes = [
+		"spiral",
+		"barred",
+		"elliptical",
+		"irregular",
+		"ring",
+		"lenticular",
+		"quasar",
+		"dwarf",
+		"nebula",
+		"aurora",
+		"cosmic",
+		"stellar",
+		"plasma",
+		"crystal",
+	];
+	
+	// Используем тот же алгоритм хеширования, что и на клиенте (+1 для смещения)
+	const hash = seed.split("").reduce((a, b) => {
+		a = (a << 5) - a + b.charCodeAt(0);
+		return a & a;
+	}, 0);
+	
+	return palettes[Math.abs(hash + 1) % palettes.length];
+}
+
+/**
+ * Генерирует детерминированный фон галактики на основе seed
+ * @param {string} seed - Seed галактики
+ * @returns {string} Фон галактики
+ */
+function generateBackgroundFromSeed(seed) {
+	if (!seed || typeof seed !== "string" || !seed.length) {
+		return "stars";
+	}
+	
+	const backgrounds = ["stars", "nebula", "cosmic", "aurora", "plasma"];
+	
+	// Используем тот же алгоритм хеширования, что и на клиенте (+2 для смещения)
+	const hash = seed.split("").reduce((a, b) => {
+		a = (a << 5) - a + b.charCodeAt(0);
+		return a & a;
+	}, 0);
+	
+	return backgrounds[Math.abs(hash + 2) % backgrounds.length];
+}
+
 module.exports = {
 	getGalaxyNameFromSeed,
 	generateMaxStars,
+	generateStarCountForCapture,
+	generateGalaxyTypeFromSeed,
+	generateColorPaletteFromSeed,
+	generateBackgroundFromSeed,
 	generateBirthDate,
 	parseClientGalaxyData,
 };

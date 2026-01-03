@@ -31,7 +31,7 @@ const rateLimitMiddleware = require('../middlewares/rate-limit-middleware');
 router.get(
 	'/',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	artifactController.getUserArtifacts
 );
@@ -57,7 +57,7 @@ router.get(
 router.get(
 	'/:artifactId',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(60, 60), // 60 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	artifactController.getArtifact
 );
@@ -77,7 +77,7 @@ router.get(
 router.post(
 	'/generate',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(10, 60), // 10 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	authMiddleware,
 	artifactController.generateArtifact
 );
@@ -103,7 +103,7 @@ router.post(
 router.post(
 	'/:artifactId/activate',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	artifactController.activateArtifact
 );
@@ -129,7 +129,7 @@ router.post(
 router.post(
 	'/:artifactId/deactivate',
 	telegramAuthMiddleware,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	artifactController.deactivateArtifact
 );

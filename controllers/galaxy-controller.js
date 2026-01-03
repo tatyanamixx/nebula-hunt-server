@@ -172,6 +172,81 @@ class GalaxyController {
 			next(e);
 		}
 	}
+
+	async upgradeGalaxy(req, res, next) {
+		try {
+			const userId = req.initdata.id;
+			const seed = req.params.seed;
+			const { upgradeType, upgradeValue } = req.body;
+
+			// Validate upgrade type
+			const validUpgradeTypes = ["name", "type", "color", "background"];
+			if (!validUpgradeTypes.includes(upgradeType)) {
+				return res.status(400).json({
+					success: false,
+					error: `Invalid upgrade type. Must be one of: ${validUpgradeTypes.join(
+						", "
+					)}`,
+				});
+			}
+
+			// Validate required fields
+			if (!upgradeValue) {
+				return res.status(400).json({
+					success: false,
+					error: "upgradeValue is required",
+				});
+			}
+
+			// Check if galaxy exists and belongs to user
+			const galaxy = await Galaxy.findOne({
+				where: { seed, userId },
+			});
+
+			if (!galaxy) {
+				return res.status(404).json({
+					success: false,
+					error: "Galaxy not found or not owned by user",
+				});
+			}
+
+			// Apply upgrade based on type
+			const galaxyProperties = galaxy.galaxyProperties || {};
+
+			if (upgradeType === "name") {
+				galaxy.name = upgradeValue;
+			} else if (upgradeType === "type") {
+				galaxyProperties.type = upgradeValue;
+			} else if (upgradeType === "color") {
+				galaxyProperties.colorPalette = upgradeValue;
+			} else if (upgradeType === "background") {
+				galaxyProperties.background = upgradeValue;
+			}
+
+			// Update galaxy properties
+			galaxy.galaxyProperties = galaxyProperties;
+			await galaxy.save();
+
+			logger.info("Galaxy upgraded", {
+				userId,
+				seed,
+				upgradeType,
+				upgradeValue,
+			});
+
+			return res.json({
+				success: true,
+				message: "Galaxy upgraded successfully",
+				galaxy: {
+					seed: galaxy.seed,
+					name: galaxy.name,
+					galaxyProperties: galaxy.galaxyProperties,
+				},
+			});
+		} catch (e) {
+			next(e);
+		}
+	}
 }
 
 module.exports = new GalaxyController();

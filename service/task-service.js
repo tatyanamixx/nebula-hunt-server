@@ -19,9 +19,9 @@ const logger = require("./logger-service");
 
 class TaskService {
 	/**
-	 * Initialize tasks for a new user using findOrCreate
+	 * Initialize user tasks
 	 * @param {number} userId - User ID
-	 * @param {Transaction} transaction - Optional transaction object
+	 * @param {Object} transaction - Optional transaction
 	 * @returns {Promise<Object>} - Initialized tasks
 	 */
 	async initializeUserTasks(userId, transaction) {
@@ -137,11 +137,16 @@ class TaskService {
 			}
 
 			// Получаем все задачи пользователя с информацией о задачах
+			// ✅ Фильтруем только задачи с активными шаблонами
 			const userTasks = await UserTask.findAll({
 				where: { userId },
 				include: [
 					{
 						model: TaskTemplate,
+						where: {
+							active: true, // ✅ Только активные шаблоны заданий
+						},
+						required: true, // ✅ INNER JOIN - только задачи с активными шаблонами
 						attributes: [
 							"slug",
 							"title",
@@ -159,7 +164,7 @@ class TaskService {
 				transaction: t,
 			});
 
-			// Получаем только активные задачи для оценки
+			// Получаем только активные задачи для оценки (фильтруем по userTask.active)
 			const activeTasks = userTasks.filter((task) => task.active);
 
 			// Оцениваем доступность задач и обновляем их статусы
@@ -1624,6 +1629,12 @@ class TaskService {
 				status: userTask.status,
 				active: userTask.active,
 				completedAt: userTask.completedAt,
+				sortOrder: userTask.tasktemplate.sortOrder,
+				reward: userTask.tasktemplate.reward,
+				condition: userTask.tasktemplate.condition,
+				icon: userTask.tasktemplate.icon,
+				active: userTask.tasktemplate.active,
+				sortOrder: userTask.tasktemplate.sortOrder,
 			};
 
 			logger.debug("getTaskStatus completed successfully", {

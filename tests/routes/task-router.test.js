@@ -53,9 +53,7 @@ jest.mock('../../controllers/task-controller', () => ({
 			completed: true,
 		})
 	),
-	initializeUserTasks: jest.fn((req, res) =>
-		res.status(200).json({ tasks: [] })
-	),
+
 }));
 
 describe('Task Router', () => {
@@ -179,21 +177,5 @@ describe('Task Router', () => {
 		});
 	});
 
-	describe('POST /tasks/initialize', () => {
-		it('should use correct middleware and controller', async () => {
-			// Выполняем запрос
-			const response = await request(app).post('/tasks/initialize');
 
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(taskController.initializeUserTasks).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('tasks');
-		});
-	});
 });

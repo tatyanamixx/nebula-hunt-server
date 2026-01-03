@@ -9,18 +9,19 @@ const sequelize = require("../db");
 const logger = require("./logger-service");
 const ApiError = require("../exceptions/api-error");
 const { ERROR_CODES } = require("../config/error-codes");
+const axios = require("axios");
 
 // Referral rewards configuration
 const REFERRAL_REWARDS = {
 	REFERRER: {
 		// Reward for the person who invited (inviter)
-		stardust: 5000,
-		darkMatter: 10,
+		stardust: 10000,
+		darkMatter: 50,
 	},
 	REFEREE: {
 		// Reward for the person who was invited (new user)
-		stardust: 5000,
-		darkMatter: 10,
+		stardust: 10000,
+		darkMatter: 50,
 	},
 };
 
@@ -33,6 +34,12 @@ class ReferralService {
 	 * @returns {Promise<Object>} Result with rewards information
 	 */
 	async processReferral(referrerId, refereeId, transaction) {
+		console.log("🎁 REFERRAL SERVICE - processReferral CALLED:", {
+			referrerId,
+			refereeId,
+			hasTransaction: !!transaction,
+		});
+		
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 
@@ -40,11 +47,44 @@ class ReferralService {
 			// Convert to BigInt for consistency
 			const numericReferrerId = BigInt(referrerId);
 			const numericRefereeId = BigInt(refereeId);
-
+			
+			console.log("🎁 REFERRAL SERVICE - Processing:", {
+				referrerId: numericReferrerId.toString(),
+				refereeId: numericRefereeId.toString(),
+			});
+			
 			logger.info("Processing referral rewards", {
 				referrerId: numericReferrerId.toString(),
 				refereeId: numericRefereeId.toString(),
 			});
+
+			// ✅ Проверка: уже обработан ли этот реферал?
+			// Ищем PaymentTransaction с txType='REFEREE_REWARD' для этого referee
+			const existingReward = await PaymentTransaction.findOne({
+				where: {
+					txType: "REFEREE_REWARD",
+					toAccount: numericRefereeId, // Награда начислена referee
+				},
+				transaction: t,
+			});
+
+			if (existingReward) {
+				logger.warn("Referral rewards already processed", {
+					referrerId: numericReferrerId.toString(),
+					refereeId: numericRefereeId.toString(),
+					existingTransactionId: existingReward.id,
+				});
+				
+				if (shouldCommit) {
+					await t.commit();
+				}
+				
+				return {
+					success: true,
+					alreadyProcessed: true,
+					message: "Referral rewards already processed",
+				};
+			}
 
 			// 1. Validate that referrer exists and is not the same as referee
 			if (numericReferrerId === numericRefereeId) {
@@ -79,47 +119,55 @@ class ReferralService {
 				);
 			}
 
-			// 4. Check if referee already has a referrer (prevent multiple referrals)
-			if (referee.referral && referee.referral !== 0) {
-				throw ApiError.withCode(
-					400,
-					"User already has a referrer",
-					ERROR_CODES.VALIDATION.INVALID_REFERRAL
-				);
-			}
+		// 4. Check if referee already has a referrer (prevent multiple referrals)
+		// Разрешаем если referral уже установлен на того же реферера (из User.create)
+		if (referee.referral && referee.referral !== 0 && BigInt(referee.referral) !== numericReferrerId) {
+			throw ApiError.withCode(
+				400,
+				"User already has a different referrer",
+				ERROR_CODES.VALIDATION.INVALID_REFERRAL
+			);
+		}
 
-			// 5. Update referee's referral field
+		// 5. Update referee's referral field (если еще не установлено)
+		if (!referee.referral || referee.referral === 0 || referee.referral === "0") {
 			referee.referral = numericReferrerId;
 			await referee.save({ transaction: t });
-
+			
 			logger.debug("Updated referee's referral field", {
 				refereeId: numericRefereeId.toString(),
 				referrerId: numericReferrerId.toString(),
 			});
+		} else {
+			logger.debug("Referee's referral field already set correctly", {
+				refereeId: numericRefereeId.toString(),
+				referrerId: numericReferrerId.toString(),
+			});
+		}
 
-			// 6. Give reward to REFERRER (person who invited)
-			const referrerReward = await this._giveReferralReward(
-				numericReferrerId,
-				REFERRAL_REWARDS.REFERRER,
-				"REFERRER_REWARD",
-				{
-					refereeId: numericRefereeId.toString(),
-					type: "referrer",
-				},
-				t
-			);
+		// 6. Give reward to REFERRER (person who invited)
+		const referrerReward = await this._giveReferralReward(
+			numericReferrerId,
+			REFERRAL_REWARDS.REFERRER,
+			"REFERRER_REWARD",
+			{
+				refereeId: numericRefereeId.toString(),
+				type: "referrer",
+			},
+			t
+		);
 
-			// 7. Give reward to REFEREE (new user)
-			const refereeReward = await this._giveReferralReward(
-				numericRefereeId,
-				REFERRAL_REWARDS.REFEREE,
-				"REFEREE_REWARD",
-				{
-					referrerId: numericReferrerId.toString(),
-					type: "referee",
-				},
-				t
-			);
+		// 7. Give reward to REFEREE (new user)
+		const refereeReward = await this._giveReferralReward(
+			numericRefereeId,
+			REFERRAL_REWARDS.REFEREE,
+			"REFEREE_REWARD",
+			{
+				referrerId: numericReferrerId.toString(),
+				type: "referee",
+			},
+			t
+		);
 
 			if (shouldCommit) {
 				await t.commit();
@@ -131,6 +179,20 @@ class ReferralService {
 				referrerReward,
 				refereeReward,
 			});
+
+		// Send notification to referrer via bot
+		this._sendReferralNotification(
+			numericRefereeId,
+			numericReferrerId,
+			referee
+		).catch((notifError) => {
+			// Log error but don't interrupt execution
+			logger.error("Failed to send referral notification", {
+				referrerId: numericReferrerId.toString(),
+				refereeId: numericRefereeId.toString(),
+				error: notifError.message,
+			});
+		});
 
 			return {
 				success: true,
@@ -276,6 +338,55 @@ class ReferralService {
 				`Failed to get referrals: ${error.message}`,
 				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
 			);
+		}
+	}
+
+	/**
+	 * Send referral notification to referrer via Telegram bot
+	 * @param {BigInt} refereeId - New user ID
+	 * @param {BigInt} referrerId - Referrer user ID
+	 * @param {Object} referee - Referee user object (to get language)
+	 * @returns {Promise<void>}
+	 * @private
+	 */
+	async _sendReferralNotification(refereeId, referrerId, referee) {
+		try {
+			// Get user language from database
+			const referrerUser = await User.findByPk(referrerId);
+			const language = referrerUser?.language || referee?.language || "en";
+			const BOT_URL = process.env.BOT_URL || "http://localhost:3001";
+
+			const payload = {
+				userId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				language: language,
+			};
+
+			logger.debug("Sending referral notification to bot", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				language,
+			});
+
+			const response = await axios.post(
+				`${BOT_URL}/api/process-referral`,
+				payload,
+				{
+					timeout: 5000,
+				}
+			);
+
+			logger.info("Referral notification sent successfully", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+			});
+		} catch (error) {
+			// Don't throw error, just log
+			logger.warn("Failed to send referral notification to bot", {
+				refereeId: refereeId.toString(),
+				referrerId: referrerId.toString(),
+				error: error.message,
+			});
 		}
 	}
 }

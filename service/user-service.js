@@ -6,6 +6,7 @@ const { User, UserState } = require("../models/models");
 const tokenService = require("./token-service");
 const galaxyService = require("./galaxy-service");
 const userStateService = require("./user-state-service");
+const referralService = require("./referral-service");
 const logger = require("./logger-service");
 // Removed: eventService, upgradeService, taskService imports - no longer used in login
 const UserDto = require("../dtos/user-dto");
@@ -88,9 +89,8 @@ class UserService {
 		const shouldCommit = !transaction;
 		try {
 			// Create system user
-			const systemUser = await User.findOrCreate({
+			const [systemUser, created] = await User.findOrCreate({
 				where: { id: SYSTEM_USER_ID },
-				transaction: t,
 				defaults: {
 					id: SYSTEM_USER_ID,
 					username: SYSTEM_USER_USERNAME,
@@ -98,6 +98,7 @@ class UserService {
 					role: "SYSTEM",
 					blocked: false,
 				},
+				transaction: t,
 			});
 			logger.debug("systemUser", systemUser);
 
@@ -105,34 +106,23 @@ class UserService {
 			const systemUserState = await UserState.findOrCreate({
 				where: { userId: SYSTEM_USER_ID },
 				transaction: t,
-				defaults: {
-					userId: SYSTEM_USER_ID,
-					stardust: 0,
-					darkMatter: 0,
-					stars: 0,
-					tgStars: 0,
-					tonToken: 0,
-					lockedStardust: 0,
-					lockedDarkMatter: 0,
-					lockedStars: 0,
-					lastDailyBonus: null,
-					lastLoginDate: null,
-					currentStreak: 0,
-					maxStreak: 0,
-					streakUpdatedAt: null,
-					stateHistory: [],
-				},
 			});
 			logger.debug("systemUserState", systemUserState);
 
+			if (created) {
+				logger.info("System user created successfully");
+			} else {
+				logger.debug("System user already exists");
+			}
+
 			if (shouldCommit) await t.commit();
-			return { systemUser, systemUserState };
+			return systemUser;
 		} catch (err) {
 			if (!t.finished && shouldCommit) await t.rollback();
 			throw ApiError.withCode(
 				500,
 				`Failed to create system user: ${err.message}`,
-				ERROR_CODES.SYSTEM.INTERNAL_SERVER_ERROR
+				ERROR_CODES.SYSTEM.DATABASE_ERROR
 			);
 		}
 	}
@@ -151,8 +141,7 @@ class UserService {
 				);
 				const result = await this.createSystemUser(t);
 				logger.info("System user and state created successfully", {
-					userId: result.systemUser[0].id,
-					stateId: result.systemUserState[0].id,
+					userId: result.id,
 				});
 			} else {
 				logger.debug("System user already exists with ID:", systemUser.id);
@@ -241,8 +230,6 @@ class UserService {
 		}
 	}
 
-	// Removed: initializeUser method - no longer needed
-
 	/**
 	 * Формирует единый структурированный ответ для клиента
 	 * @param {Object} tokens - Токены аутентификации
@@ -273,6 +260,7 @@ class UserService {
 					user: {
 						id: user.id,
 						role: user.role,
+						blocked: user.blocked || false,
 					},
 				},
 
@@ -311,7 +299,10 @@ class UserService {
 
 					// Временные метки
 					birthDate: galaxy.birthDate,
-					lastCollectTime: galaxy.lastCollectTime,
+					// ✅ Преобразуем lastCollectTime в timestamp для клиента
+					lastCollectTime: galaxy.lastCollectTime
+						? new Date(galaxy.lastCollectTime).getTime()
+						: null,
 
 					// Визуальные свойства
 					galaxyType: galaxy.galaxyType,
@@ -357,7 +348,13 @@ class UserService {
 	 * @param {Object} galaxyData - Данные о галактике пользователя (для регистрации) - может быть null
 	 * @returns {Promise<Object>} Данные пользователя, токены и состояние
 	 */
-	async login(userId, username, referral = null, galaxyData = null) {
+	async login(
+		userId,
+		username,
+		referral = null,
+		galaxyData = null,
+		language = "en"
+	) {
 		const transaction = await sequelize.transaction();
 		try {
 			// Откладываем проверку всех deferrable ограничений в начале транзакции
@@ -388,6 +385,7 @@ class UserService {
 						username: username || null,
 						referral: referral || 0,
 						role: "USER",
+						language: language || "en",
 					},
 					{
 						transaction: transaction,
@@ -395,6 +393,22 @@ class UserService {
 				);
 
 				isNewUser = true;
+			} else if (user) {
+				// ✅ Update language and username on each login (users can change these in Telegram)
+				const updates = {};
+
+				if (language && user.language !== language) {
+					updates.language = language;
+				}
+
+				if (username && user.username !== username) {
+					updates.username = username;
+				}
+
+				if (Object.keys(updates).length > 0) {
+					await user.update(updates, { transaction });
+					logger.debug("Updated user profile", { userId, updates });
+				}
 			}
 
 			// Если пользователь все еще не найден
@@ -446,26 +460,126 @@ class UserService {
 					transaction
 				);
 
-				// Коммитим всю транзакцию
+				// Commit main transaction first
 				await sequelize.query("SET CONSTRAINTS ALL IMMEDIATE", {
 					transaction,
 				});
 				await transaction.commit();
+
+				// Process referral system AFTER commit (in separate transaction)
+				console.log("🔍 REFERRAL CHECK:", {
+					referral,
+					referralType: typeof referral,
+					isNewUser,
+					userId: user.id,
+				});
+
+				if (referral && referral !== 0) {
+					console.log("🎯 PROCESSING REFERRAL:", {
+						refereeId: user.id,
+						referrerId: referral,
+					});
+
+					logger.debug("Processing referral for new user", {
+						refereeId: user.id,
+						referrerId: referral,
+					});
+
+					try {
+						// Pass null as transaction - referralService will create its own
+						await referralService.processReferral(
+							referral,
+							user.id,
+							null
+						);
+						console.log("✅ REFERRAL REWARDS PROCESSED:", {
+							refereeId: user.id,
+							referrerId: referral,
+						});
+						logger.info("Referral rewards processed successfully", {
+							refereeId: user.id,
+							referrerId: referral,
+						});
+					} catch (referralError) {
+						console.error("❌ REFERRAL ERROR:", {
+							refereeId: user.id,
+							referrerId: referral,
+							error: referralError.message,
+							stack: referralError.stack,
+						});
+						logger.error(
+							"Failed to process referral rewards, but registration will continue",
+							{
+								refereeId: user.id,
+								referrerId: referral,
+								error: referralError.message,
+							}
+						);
+					}
+				} else {
+					console.log("⚠️ NO REFERRAL TO PROCESS:", {
+						referral,
+						isNewUser,
+					});
+				}
 				logger.debug("All registration data committed to database", {
 					userId: user.id,
 				});
 
-				if (galaxyData && isNewUser) {
+				// ✅ Для новых пользователей СЕРВЕР сам генерирует первую галактику
+				// Игнорируем любые данные от клиента (могут быть из старого localStorage)
+				if (isNewUser) {
 					logger.debug(
-						"Creating galaxy as gift after main transaction commit",
-						{ galaxyData }
+						"Creating first galaxy for new user (server-generated)",
+						{ userId: user.id }
 					);
+
 					try {
 						const galaxyTransaction = await sequelize.transaction();
+
+						// ✅ Генерируем все данные галактики НА СЕРВЕРЕ
+						const {
+							getGalaxyNameFromSeed,
+							generateGalaxyTypeFromSeed,
+							generateColorPaletteFromSeed,
+							generateBackgroundFromSeed,
+							generateMaxStars,
+						} = require("../utils/galaxy-utils");
+
+						const GAME_CONSTANTS = require("../config/game-constants");
+
+						// Генерируем уникальный seed для пользователя
+						const timestamp = Date.now();
+						const serverGeneratedSeed = `user_${user.id}_${timestamp}`;
+
+						// Создаём данные галактики полностью на сервере
+						const serverGalaxyData = {
+							seed: serverGeneratedSeed,
+							name: getGalaxyNameFromSeed(serverGeneratedSeed),
+							starMin: 100,
+							starCurrent:
+								GAME_CONSTANTS.ECONOMY?.INITIAL_STARS || 1000, // ✅ 1000 звёзд для новых пользователей
+							maxStars: generateMaxStars(serverGeneratedSeed),
+							birthDate: new Date(),
+							lastCollectTime: new Date(),
+							type: generateGalaxyTypeFromSeed(serverGeneratedSeed),
+							colorPalette:
+								generateColorPaletteFromSeed(serverGeneratedSeed),
+							background:
+								generateBackgroundFromSeed(serverGeneratedSeed),
+							price: 0,
+						};
+
+						logger.debug("Server-generated galaxy data for new user", {
+							userId: user.id,
+							serverGalaxyData,
+						});
+
 						const offer = { price: 0, currency: "tonToken" };
+
 						try {
 							const result = await gameService.createGalaxyWithOffer(
-								galaxyData,
+								serverGalaxyData,
 								user.id,
 								offer,
 								galaxyTransaction
@@ -474,6 +588,12 @@ class UserService {
 							userGalaxy = result.galaxy;
 							userStateNew = result.userState;
 							await galaxyTransaction.commit();
+
+							logger.info("✅ First galaxy created for new user", {
+								userId: user.id,
+								galaxySeed: serverGeneratedSeed,
+								starCurrent: serverGalaxyData.starCurrent,
+							});
 						} catch (galaxyError) {
 							await galaxyTransaction.rollback();
 							logger.error("Failed to create galaxy", galaxyError);
@@ -481,11 +601,6 @@ class UserService {
 					} catch (galaxyError) {
 						logger.error("Failed to create galaxy", galaxyError);
 					}
-				} else if (isNewUser && !galaxyData) {
-					logger.debug(
-						"New user registered without galaxy data - galaxy will not be created",
-						{ userId: user.id }
-					);
 				}
 
 				// Получаем галактики и артефакты для нового пользователя
