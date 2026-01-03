@@ -91,8 +91,6 @@ module.exports = {
 					active: true,
 					modifiers: JSON.stringify({
 						starCostMultiplier: -0.05, // -5% per level
-						saleChance: 0.02,
-						saleDiscount: 0.2,
 					}),
 					conditions: JSON.stringify({}),
 					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
@@ -300,28 +298,6 @@ module.exports = {
 					active: true,
 					modifiers: JSON.stringify({
 						specialEvents: 1, // +1 per level
-					}),
-					conditions: JSON.stringify({}),
-					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
-					weight: 1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
-				{
-					slug: "stellar_forge",
-					name: '{"en": "Stellar Forge", "ru": "Звездная кузница"}',
-					description:
-						'{"en": "Automatically creates stars over time using accumulated stardust", "ru": "Автоматически создает звезды со временем, используя накопленную звездную пыль"}',
-					maxLevel: 5,
-					basePrice: 200,
-					priceMultiplier: 2.0,
-					effectPerLevel: 0.05,
-					icon: "🔨",
-					currency: "darkmatter",
-					category: "special",
-					active: true,
-					modifiers: JSON.stringify({
-						autoCreateStars: 0.05, // +5% per level
 					}),
 					conditions: JSON.stringify({}),
 					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
