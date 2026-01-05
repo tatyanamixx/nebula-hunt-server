@@ -57,6 +57,42 @@ class GameController {
 	}
 
 	/**
+	 * Get server-calculated star price for a galaxy
+	 * GET /api/game/star-price/:galaxySeed
+	 */
+	async getStarPrice(req, res, next) {
+		try {
+			const userId = req.user.id;
+			const { galaxySeed } = req.params;
+			const starsToCreate = parseInt(req.query.stars) || 1;
+
+			if (!galaxySeed) {
+				throw ApiError.BadRequest("Galaxy seed is required");
+			}
+
+			const priceData = await gameService.getStarPrice(
+				userId,
+				galaxySeed,
+				starsToCreate
+			);
+
+			logger.debug("Star price calculated", {
+				userId,
+				galaxySeed,
+				starsToCreate,
+				priceData,
+			});
+
+			return res.json({
+				success: true,
+				data: priceData,
+			});
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
 	 * Register farming reward
 	 * @param {Object} req - Express request object
 	 * @param {Object} res - Express response object
@@ -282,43 +318,6 @@ class GameController {
 				error: error.message,
 				galaxy: req.body?.galaxy,
 				reward: req.body?.reward,
-			});
-			next(error);
-		}
-	}
-
-	/**
-	 * Get current star creation price (server-calculated)
-	 * @param {Object} req - Express request object
-	 * @param {Object} res - Express response object
-	 * @param {Function} next - Express next function
-	 */
-	async getStarPrice(req, res, next) {
-		try {
-			const userId = req.user.id;
-			const { galaxySeed, starsToCreate = 1 } = req.query;
-
-			if (!galaxySeed) {
-				throw ApiError.BadRequest(
-					"Galaxy seed is required",
-					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-				);
-			}
-
-			const result = await gameService.getStarPrice(
-				userId,
-				galaxySeed,
-				Number(starsToCreate)
-			);
-
-			res.status(200).json({
-				success: true,
-				data: result,
-			});
-		} catch (error) {
-			logger.error("Failed to get star price", {
-				userId: req.user?.id,
-				error: error.message,
 			});
 			next(error);
 		}

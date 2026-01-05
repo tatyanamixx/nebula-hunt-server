@@ -23,6 +23,19 @@ router.get(
 );
 
 /**
+ * @route GET /api/game/star-price/:galaxySeed
+ * @desc Get server-calculated star price for a galaxy
+ * @access Private
+ */
+router.get(
+	"/star-price/:galaxySeed",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(600, 10), // 600 requests per 10 minutes
+	authMiddleware,
+	gameController.getStarPrice
+);
+
+/**
  * @route POST /api/game/farming-reward
  * @desc Register farming reward
  * @access Private
@@ -33,19 +46,6 @@ router.post(
 	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	gameController.registerFarmingReward
-);
-
-/**
- * @route GET /api/game/star-price
- * @desc Get current star creation price (server-calculated)
- * @access Private
- */
-router.get(
-	"/star-price",
-	validateTelegramWebAppData,
-	rateLimitMiddleware(600, 10), // 600 requests per 10 minutes (high frequency for UI updates)
-	authMiddleware,
-	gameController.getStarPrice
 );
 
 /**

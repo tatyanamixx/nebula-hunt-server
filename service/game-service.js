@@ -187,74 +187,66 @@ class GameService {
 	}
 
 	/**
-	 * Calculate the cost to create stars based on current star count, galaxies, and upgrades
-	 * THIS IS THE AUTHORITATIVE SERVER-SIDE CALCULATION
-	 * @param {number} currentStarCount - Current star count in the galaxy
+	 * Calculate the cost to create stars in a galaxy
+	 * This is the AUTHORITATIVE server-side calculation - client should NOT be trusted
+	 * @param {number} currentStarCount - Current number of stars in the galaxy
 	 * @param {number} galaxiesCount - Number of galaxies the user owns
 	 * @param {Object} playerParameters - Player upgrade parameters
-	 * @param {number} requestedStars - Number of stars to create (for bulk discount)
-	 * @returns {number} Cost in stardust per star
+	 * @param {number} requestedStars - Number of stars to create (default 1)
+	 * @returns {number} Cost per single star
 	 */
-	calculateStarCost(
-		currentStarCount,
-		galaxiesCount,
-		playerParameters,
-		requestedStars = 1
-	) {
+	calculateStarCost(currentStarCount, galaxiesCount, playerParameters, requestedStars = 1) {
 		const GAME_CONSTANTS = require("../config/game-constants");
-
-		// Base cost is 100 stardust per star
 		const baseCost = GAME_CONSTANTS.ECONOMY.STARDUST_TO_STARS_RATIO || 100;
 
-		// Ensure safe values
+		// Cost multiplier based on existing stars - starts at 1 and increases
+		// Using logarithmic scaling to make early stars affordable
 		const safeStarCount = Math.max(0, Number(currentStarCount) || 0);
-		const safeGalaxiesCount = Math.max(1, Number(galaxiesCount) || 1);
-
-		// Cost multiplier based on existing stars - logarithmic scaling
 		const costMultiplier =
 			safeStarCount === 0
 				? 1
 				: 1 + (Math.log10(safeStarCount + 100) - 2) * 1.337;
 
-		// Galaxy multiplier - more galaxies = higher base cost
-		const galaxyMultiplier = safeGalaxiesCount;
+		// Galaxy multiplier - more galaxies = higher price
+		const galaxyMultiplier = Math.max(1, Number(galaxiesCount) || 1);
 
-		// Get discount modifiers from player parameters
-		const starDiscountLevel = Number(playerParameters.star_discount) || 0;
-		const bulkCreationLevel = Number(playerParameters.bulk_creation) || 0;
+		// Get upgrade modifiers
+		// star_cost_reduction upgrade: -5% per level (stored as starCostMultiplier: -0.05)
+		const starCostReductionLevel = Number(playerParameters.star_cost_reduction) || 0;
+		const starCostMultiplier = starCostReductionLevel * -0.05; // -5% per level
+
+		// bulk_star_creation upgrade: +3% discount per level for bulk
+		const bulkStarCreationLevel = Number(playerParameters.bulk_star_creation) || 0;
+		const bulkDiscount = bulkStarCreationLevel * 0.03; // +3% per level
+
+		// stellar_market upgrade: sale chance and discount
 		const stellarMarketLevel = Number(playerParameters.stellar_market) || 0;
+		const saleChance = stellarMarketLevel * 0.1; // +10% per level
+		const saleDiscount = 0.2; // Fixed 20% discount during sales
 
-		// Star discount: -5% per level (starCostMultiplier is negative)
-		// Matches client: modifiers.starCostMultiplier = starCostMultiplier from seeder (-0.05 per level)
-		const starCostMultiplier = starDiscountLevel * -0.05;
+		// Apply star cost discount (starCostMultiplier is negative, so 1 + (-0.05) = 0.95)
+		// Minimum 0.05 (5%) to ensure price is never zero or negative
 		const discountMultiplier = Math.max(0.05, 1 + starCostMultiplier);
 
-		// Bulk discount: +3% per level when creating multiple stars
-		// Matches client: modifiers.bulkDiscount = 0.03 * level
+		// Bulk discount for creating multiple stars at once
 		let bulkDiscountMultiplier = 1;
-		const bulkDiscount = bulkCreationLevel * 0.03;
 		if (requestedStars > 1 && bulkDiscount > 0) {
+			// Maximum discount reached at 10+ stars
 			const bulkFactor = Math.min(1, (requestedStars - 1) / 9);
 			bulkDiscountMultiplier = 1 - bulkDiscount * bulkFactor;
 		}
 
-		// Sale chance and discount - matches client logic exactly
-		// saleChance comes from: star_discount (0.02 * level) + stellar_market (0.1 * level)
-		// saleDiscount comes from: star_discount (0.2 * level) + stellar_market (0.2 * level)
-		const saleChance = starDiscountLevel * 0.02 + stellarMarketLevel * 0.1;
-		const saleDiscountValue = starDiscountLevel * 0.2 + stellarMarketLevel * 0.2;
-
+		// Periodic sales based on current hour
 		let saleDiscountMultiplier = 1;
 		if (saleChance > 0) {
-			// Deterministic sale check based on current hour (same as client)
 			const currentHour = Math.floor(Date.now() / (1000 * 60 * 60));
 			const hourSeed = currentHour % 100;
 			const isSaleActive = hourSeed / 100 < saleChance;
 
 			if (isSaleActive) {
-				// Скидка во время распродажи (максимум 95%) - same as client
-				const saleDiscount = Math.min(0.95, saleDiscountValue || 0.2);
-				saleDiscountMultiplier = 1 - saleDiscount;
+				// Maximum 95% discount during sale
+				const actualSaleDiscount = Math.min(0.95, saleDiscount);
+				saleDiscountMultiplier = 1 - actualSaleDiscount;
 			}
 		}
 
@@ -268,23 +260,18 @@ class GameService {
 				saleDiscountMultiplier
 		);
 
-		return Math.max(1, finalCost);
+		return Math.max(1, finalCost); // Minimum 1 stardust per star
 	}
 
 	/**
-	 * Get the expected total cost for creating stars (for validation)
-	 * @param {number} currentStarCount - Current star count
-	 * @param {number} galaxiesCount - Number of galaxies
-	 * @param {Object} playerParameters - Player parameters
+	 * Calculate total cost for creating multiple stars
+	 * @param {number} currentStarCount - Current number of stars in the galaxy
+	 * @param {number} galaxiesCount - Number of galaxies the user owns
+	 * @param {Object} playerParameters - Player upgrade parameters
 	 * @param {number} starsToCreate - Number of stars to create
-	 * @returns {number} Total stardust cost
+	 * @returns {number} Total cost for all stars
 	 */
-	calculateTotalStarCost(
-		currentStarCount,
-		galaxiesCount,
-		playerParameters,
-		starsToCreate
-	) {
+	calculateTotalStarCost(currentStarCount, galaxiesCount, playerParameters, starsToCreate) {
 		const costPerStar = this.calculateStarCost(
 			currentStarCount,
 			galaxiesCount,
@@ -295,77 +282,57 @@ class GameService {
 	}
 
 	/**
-	 * Get the current star price for a specific galaxy
-	 * Used by client to display accurate pricing before purchase
+	 * Get star price for a specific galaxy (API endpoint helper)
 	 * @param {BigInt} userId - User ID
 	 * @param {string} galaxySeed - Galaxy seed
-	 * @param {number} starsToCreate - Number of stars to create
+	 * @param {number} starsToCreate - Number of stars (default 1)
 	 * @returns {Promise<Object>} Price information
 	 */
 	async getStarPrice(userId, galaxySeed, starsToCreate = 1) {
-		const t = await sequelize.transaction();
+		// Get galaxy
+		const galaxy = await Galaxy.findOne({
+			where: { seed: galaxySeed, userId },
+		});
 
-		try {
-			// Find galaxy
-			const galaxy = await Galaxy.findOne({
-				where: { seed: galaxySeed },
-				transaction: t,
-			});
-
-			if (!galaxy) {
-				await t.commit();
-				throw ApiError.BadRequest(
-					"Galaxy not found",
-					ERROR_CODES.GALAXY.GALAXY_NOT_FOUND
-				);
-			}
-
-			// Get user state
-			const userState = await userStateService.getUserState(userId, t);
-
-			// Count user's galaxies
-			const galaxiesCount = await Galaxy.count({
-				where: { userId },
-				transaction: t,
-			});
-
-			await t.commit();
-
-			const currentStarCount = Number(galaxy.starCurrent) || 0;
-			const playerParameters = userState.playerParameters || {};
-
-			const pricePerStar = this.calculateStarCost(
-				currentStarCount,
-				galaxiesCount,
-				playerParameters,
-				starsToCreate
-			);
-
-			const totalPrice = this.calculateTotalStarCost(
-				currentStarCount,
-				galaxiesCount,
-				playerParameters,
-				starsToCreate
-			);
-
-			return {
-				pricePerStar,
-				totalPrice,
-				starsToCreate,
-				currentStarCount,
-				galaxiesCount,
-				discounts: {
-					starDiscount: playerParameters.star_discount || 0,
-					bulkCreation: playerParameters.bulk_creation || 0,
-					stellarMarket: playerParameters.stellar_market || 0,
-				},
-			};
-		} catch (err) {
-			if (!t.finished) {
-				await t.rollback();
-			}
-			throw err;
+		if (!galaxy) {
+			throw ApiError.BadRequest("Galaxy not found or doesn't belong to user");
 		}
+
+		// Get user state with player parameters
+		const userState = await userStateService.getUserState(userId);
+		const playerParameters = userState.playerParameters || {};
+
+		// Get number of user's galaxies
+		const galaxiesCount = await Galaxy.count({ where: { userId } });
+
+		// Calculate price
+		const pricePerStar = this.calculateStarCost(
+			galaxy.starCurrent,
+			galaxiesCount,
+			playerParameters,
+			starsToCreate
+		);
+		const totalPrice = this.calculateTotalStarCost(
+			galaxy.starCurrent,
+			galaxiesCount,
+			playerParameters,
+			starsToCreate
+		);
+
+		return {
+			pricePerStar,
+			totalPrice,
+			starsToCreate,
+			currentStarCount: galaxy.starCurrent,
+			galaxiesCount,
+			// Debug info for price breakdown
+			debug: {
+				baseCost: 100,
+				starCostReductionLevel: playerParameters.star_cost_reduction || 0,
+				bulkStarCreationLevel: playerParameters.bulk_star_creation || 0,
+				stellarMarketLevel: playerParameters.stellar_market || 0,
+			},
+		};
 	}
 
 	/**
@@ -854,9 +821,10 @@ class GameService {
 
 	/**
 	 * Register transfer stardust to galaxy - create offer for galaxy purchase with funds check
+	 * ⚠️ SECURITY: Price is calculated SERVER-SIDE, client price is IGNORED
 	 * @param {BigInt} userId - User ID from initdata
 	 * @param {Object} galaxyData - Galaxy data {seed: string}
-	 * @param {Object} reward - Reward data {currency: string, price: number, resource: string, amount: number}
+	 * @param {Object} reward - Reward data {currency: string, price: number (IGNORED), resource: string, amount: number}
 	 * @param {Object} transaction - Database transaction
 	 * @returns {Promise<Object>} Result of the operation
 	 */
@@ -887,21 +855,12 @@ class GameService {
 			if (
 				!reward ||
 				!reward.currency ||
-				!reward.price ||
 				!reward.resource ||
 				!reward.amount
 			) {
 				throw ApiError.BadRequest(
-					"Reward must have currency, price, resource, and amount",
+					"Reward must have currency, resource, and amount",
 					ERROR_CODES.VALIDATION.MISSING_REQUIRED_FIELDS
-				);
-			}
-
-			// Validate price and amount are positive
-			if (reward.price <= 0) {
-				throw ApiError.BadRequest(
-					"Price must be positive",
-					ERROR_CODES.VALIDATION.INVALID_AMOUNT
 				);
 			}
 
@@ -925,81 +884,73 @@ class GameService {
 				);
 			}
 
+			// Verify galaxy belongs to user
+			if (galaxy.userId !== userId) {
+				throw ApiError.BadRequest(
+					"Galaxy does not belong to user",
+					ERROR_CODES.VALIDATION.UNAUTHORIZED
+				);
+			}
+
 			logger.debug("Found galaxy", {
 				galaxyId: galaxy.id,
 				seed: galaxy.seed,
 				starCurrent: galaxy.starCurrent,
 			});
 
-			// Get user state and galaxy count for server-side price calculation
+			// Get user state with player parameters for price calculation
 			const userState = await userStateService.getUserState(userId, t);
-
-			// Count user's galaxies for price multiplier
-			const userGalaxiesCount = await Galaxy.count({
-				where: { userId },
-				transaction: t,
-			});
-
-			// ✅ SERVER-SIDE PRICE CALCULATION - DO NOT TRUST CLIENT PRICE
-			// Calculate the expected price based on server data
-			const starsToCreate = Number(reward.amount) || 1;
-			const currentStarCount = Number(galaxy.starCurrent) || 0;
 			const playerParameters = userState.playerParameters || {};
 
+			// Get number of user's galaxies for price multiplier
+			const galaxiesCount = await Galaxy.count({ where: { userId }, transaction: t });
+
+			// ⚠️ SECURITY: Calculate price SERVER-SIDE - ignore client's reward.price
 			const serverCalculatedPrice = this.calculateTotalStarCost(
-				currentStarCount,
-				userGalaxiesCount,
+				galaxy.starCurrent,
+				galaxiesCount,
 				playerParameters,
-				starsToCreate
+				reward.amount
 			);
 
-			logger.debug("Server-side price calculation", {
+			logger.info("Server-side price calculation", {
 				userId,
-				currentStarCount,
-				userGalaxiesCount,
-				starsToCreate,
-				clientPrice: reward.price,
-				serverCalculatedPrice,
-				playerParameters: {
-					star_discount: playerParameters.star_discount || 0,
-					bulk_creation: playerParameters.bulk_creation || 0,
-					stellar_market: playerParameters.stellar_market || 0,
-				},
+				galaxySeed: galaxy.seed,
+				starsToCreate: reward.amount,
+				currentStarCount: galaxy.starCurrent,
+				galaxiesCount,
+				clientPrice: reward.price, // For debugging - this is IGNORED
+				serverPrice: serverCalculatedPrice, // This is the ACTUAL price
+				pricePerStar: this.calculateStarCost(galaxy.starCurrent, galaxiesCount, playerParameters, reward.amount),
 			});
 
-			// ✅ USE SERVER PRICE - ignore client price for security
-			const actualPrice = serverCalculatedPrice;
-
-			// Check if user has sufficient funds with SERVER-calculated price
-			if (reward.currency === "stardust" && userState.stardust < actualPrice) {
+			// Check if user has sufficient funds using SERVER-CALCULATED price
+			if (reward.currency === "stardust" && userState.stardust < serverCalculatedPrice) {
 				throw ApiError.BadRequest(
-					`Insufficient stardust. Need ${actualPrice}, have ${userState.stardust}`,
+					`Insufficient stardust. Need ${serverCalculatedPrice}, have ${userState.stardust}`,
 					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
 				);
 			}
 
-			if (
-				reward.currency === "darkMatter" &&
-				userState.darkMatter < actualPrice
-			) {
+			if (reward.currency === "darkMatter" && userState.darkMatter < serverCalculatedPrice) {
 				throw ApiError.BadRequest(
-					`Insufficient dark matter. Need ${actualPrice}, have ${userState.darkMatter}`,
+					`Insufficient dark matter. Need ${serverCalculatedPrice}, have ${userState.darkMatter}`,
 					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
 				);
 			}
 
-			if (reward.currency === "stars" && userState.stars < actualPrice) {
+			if (reward.currency === "stars" && userState.stars < serverCalculatedPrice) {
 				throw ApiError.BadRequest(
-					`Insufficient stars. Need ${actualPrice}, have ${userState.stars}`,
+					`Insufficient stars. Need ${serverCalculatedPrice}, have ${userState.stars}`,
 					ERROR_CODES.MARKET.INSUFFICIENT_FUNDS
 				);
 			}
 
-			logger.debug("User has sufficient funds", {
+			logger.debug("User has sufficient funds for server-calculated price", {
 				userId,
 				currency: reward.currency,
-				actualPrice,
-				userState: {
+				serverPrice: serverCalculatedPrice,
+				userBalance: {
 					stardust: userState.stardust,
 					darkMatter: userState.darkMatter,
 					stars: userState.stars,
@@ -1010,7 +961,7 @@ class GameService {
 			const offerData = {
 				sellerId: SYSTEM_USER_ID,
 				buyerId: userId,
-				price: actualPrice, // ✅ Use server price, not client price
+				price: serverCalculatedPrice, // ⚠️ Use SERVER price, not client price!
 				currency: reward.currency,
 				itemId: galaxy.id,
 				itemType: "galaxy",
@@ -1052,13 +1003,21 @@ class GameService {
 				userId,
 				galaxyId: galaxy.id,
 				galaxySeed: galaxy.seed,
-				price: reward.price,
+				serverPrice: serverCalculatedPrice,
 				currency: reward.currency,
 				amount: reward.amount,
 				resource: reward.resource,
 				offerId: result.offer.id,
 				marketTransactionId: result.marketTransaction.id,
 			});
+
+			// Calculate new price for UI update
+			const newPricePerStar = this.calculateStarCost(
+				galaxy.starCurrent, // This is now the UPDATED star count after increment
+				galaxiesCount,
+				playerParameters,
+				1
+			);
 
 			return {
 				success: true,
@@ -1072,7 +1031,9 @@ class GameService {
 					},
 					offer: {
 						id: result.offer.id,
-						price: reward.price,
+						price: serverCalculatedPrice, // Return actual price used
+						pricePerStar: Math.round(serverCalculatedPrice / reward.amount), // Price per star that was charged
+						newPricePerStar, // New price per star for UI update
 						currency: reward.currency,
 						amount: reward.amount,
 						resource: reward.resource,
