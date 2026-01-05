@@ -31,9 +31,9 @@ app.use(customLoggingMiddleware);
 // Security middlewares
 app.use(blockBlacklistedIPs); // IP blacklisting should be first
 app.use(detectSuspiciousIP); // Log suspicious IPs
+app.use(corsMiddleware); // CORS must be before helmet to prevent conflicts
 app.use(helmetMiddleware);
 app.use(securityHeadersMiddleware);
-app.use(corsMiddleware);
 app.use(validateRequestSize(2 * 1024 * 1024)); // 2MB max request size
 
 // Body parsing

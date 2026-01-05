@@ -19,32 +19,23 @@ jest.mock('../../middlewares/rate-limit-middleware', () =>
 
 // Мокаем контроллер
 jest.mock('../../controllers/upgrade-controller', () => ({
-	getUserUpgradeNodes: jest.fn((req, res) =>
-		res.status(200).json({ nodes: [] })
+	getAvailableUpgrades: jest.fn((req, res) =>
+		res.status(200).json({ upgrades: [] })
 	),
-	getUserUpgradeNode: jest.fn((req, res) =>
-		res.status(200).json({ node: { id: req.params.nodeId } })
+	getUserUpgrade: jest.fn((req, res) =>
+		res.status(200).json({ upgrade: { id: req.params.upgradeId } })
 	),
-	completeUpgradeNode: jest.fn((req, res) =>
+	purchaseUpgrade: jest.fn((req, res) =>
 		res.status(200).json({ success: true })
 	),
 	updateUpgradeProgress: jest.fn((req, res) =>
 		res.status(200).json({ success: true })
 	),
-	getUpgradeProgress: jest.fn((req, res) =>
-		res.status(200).json({ progress: 50 })
-	),
-	initializeUserUpgradeTree: jest.fn((req, res) =>
-		res.status(200).json({ initialized: true })
-	),
-	getUserUpgradeStats: jest.fn((req, res) =>
+	getUpgradeStats: jest.fn((req, res) =>
 		res.status(200).json({ stats: {} })
 	),
-	createUpgradeNodes: jest.fn((req, res) =>
-		res.status(201).json({ created: true })
-	),
-	getAllUpgradeNodes: jest.fn((req, res) =>
-		res.status(200).json({ nodes: [] })
+	resetUpgrades: jest.fn((req, res) =>
+		res.status(200).json({ success: true })
 	),
 }));
 
@@ -69,31 +60,31 @@ describe('Upgrade Router', () => {
 		app.use('/upgrades', upgradeRouter);
 	});
 
-	describe('GET /upgrades/nodes', () => {
+	describe('GET /upgrades', () => {
 		it('should use correct middleware and controller', async () => {
 			// Выполняем запрос
-			const response = await request(app).get('/upgrades/nodes');
+			const response = await request(app).get('/upgrades');
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.getUserUpgradeNodes).toHaveBeenCalled();
+			expect(upgradeController.getAvailableUpgrades).toHaveBeenCalled();
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ nodes: [] });
+			expect(response.body).toEqual({ upgrades: [] });
 		});
 	});
 
-	describe('GET /upgrades/nodes/:nodeId', () => {
-		it('should use correct middleware and controller with nodeId param', async () => {
-			const nodeId = '123';
+	describe('GET /upgrades/:upgradeId', () => {
+		it('should use correct middleware and controller with upgradeId param', async () => {
+			const upgradeId = '123';
 
 			// Выполняем запрос
 			const response = await request(app).get(
-				`/upgrades/nodes/${nodeId}`
+				`/upgrades/${upgradeId}`
 			);
 
 			// Проверяем, что использовались правильные middleware
@@ -101,34 +92,31 @@ describe('Upgrade Router', () => {
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.getUserUpgradeNode).toHaveBeenCalled();
+			expect(upgradeController.getUserUpgrade).toHaveBeenCalled();
 
-			// Проверяем, что nodeId передан правильно
-			expect(response.body.node.id).toBe(nodeId);
+			// Проверяем, что upgradeId передан правильно
+			expect(response.body.upgrade.id).toBe(upgradeId);
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
 		});
 	});
 
-	describe('POST /upgrades/complete', () => {
+	describe('POST /upgrades/purchase/:upgradeId', () => {
 		it('should use correct middleware and controller', async () => {
-			// Подготавливаем тестовые данные
-			const requestData = {
-				nodeId: '123',
-			};
+			const upgradeId = '123';
 
 			// Выполняем запрос
-			const response = await request(app)
-				.post('/upgrades/complete')
-				.send(requestData);
+			const response = await request(app).post(
+				`/upgrades/purchase/${upgradeId}`
+			);
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.completeUpgradeNode).toHaveBeenCalled();
+			expect(upgradeController.purchaseUpgrade).toHaveBeenCalled();
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
@@ -136,17 +124,14 @@ describe('Upgrade Router', () => {
 		});
 	});
 
-	describe('POST /upgrades/progress', () => {
+	describe('PUT /upgrades/:upgradeId/progress', () => {
 		it('should use correct middleware and controller', async () => {
-			// Подготавливаем тестовые данные
-			const requestData = {
-				nodeId: '123',
-				progress: 50,
-			};
+			const upgradeId = '123';
+			const requestData = { progress: 75 };
 
 			// Выполняем запрос
 			const response = await request(app)
-				.post('/upgrades/progress')
+				.put(`/upgrades/${upgradeId}/progress`)
 				.send(requestData);
 
 			// Проверяем, что использовались правильные middleware
@@ -162,45 +147,21 @@ describe('Upgrade Router', () => {
 		});
 	});
 
-	describe('GET /upgrades/progress/:nodeId', () => {
-		it('should use correct middleware and controller with nodeId param', async () => {
-			const nodeId = '123';
-
-			// Выполняем запрос
-			const response = await request(app).get(
-				`/upgrades/progress/${nodeId}`
-			);
-
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.getUpgradeProgress).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ progress: 50 });
-		});
-	});
-
-	describe('POST /upgrades/initialize', () => {
+	describe('POST /upgrades/reset', () => {
 		it('should use correct middleware and controller', async () => {
 			// Выполняем запрос
-			const response = await request(app).post('/upgrades/initialize');
+			const response = await request(app).post('/upgrades/reset');
 
 			// Проверяем, что использовались правильные middleware
 			expect(telegramAuthMiddleware).toHaveBeenCalled();
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(
-				upgradeController.initializeUserUpgradeTree
-			).toHaveBeenCalled();
+			expect(upgradeController.resetUpgrades).toHaveBeenCalled();
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ initialized: true });
+			expect(response.body).toEqual({ success: true });
 		});
 	});
 
@@ -214,7 +175,7 @@ describe('Upgrade Router', () => {
 			expect(authMiddleware).toHaveBeenCalled();
 
 			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.getUserUpgradeStats).toHaveBeenCalled();
+			expect(upgradeController.getUpgradeStats).toHaveBeenCalled();
 
 			// Проверяем ответ
 			expect(response.status).toBe(200);
@@ -222,50 +183,5 @@ describe('Upgrade Router', () => {
 		});
 	});
 
-	describe('POST /upgrades/admin/nodes', () => {
-		it('should use correct middleware and controller including admin middleware', async () => {
-			// Подготавливаем тестовые данные
-			const requestData = {
-				nodes: [{ name: 'Test Node' }],
-			};
 
-			// Выполняем запрос
-			const response = await request(app)
-				.post('/upgrades/admin/nodes')
-				.send(requestData);
-
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminAuthMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.createUpgradeNodes).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(201);
-			expect(response.body).toEqual({ created: true });
-		});
-	});
-
-	describe('GET /upgrades/admin/available', () => {
-		it('should use correct middleware and controller including admin middleware', async () => {
-			// Выполняем запрос
-			const response = await request(app).get(
-				'/upgrades/admin/available'
-			);
-
-			// Проверяем, что использовались правильные middleware
-			expect(telegramAuthMiddleware).toHaveBeenCalled();
-			expect(authMiddleware).toHaveBeenCalled();
-			expect(adminAuthMiddleware).toHaveBeenCalled();
-
-			// Проверяем, что вызван правильный метод контроллера
-			expect(upgradeController.getAllUpgradeNodes).toHaveBeenCalled();
-
-			// Проверяем ответ
-			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ nodes: [] });
-		});
-	});
 });

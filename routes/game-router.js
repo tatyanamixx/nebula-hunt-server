@@ -11,6 +11,31 @@ const rateLimitMiddleware = require("../middlewares/rate-limit-middleware");
 const router = express.Router();
 
 /**
+ * @route GET /api/game/preview-galaxy/:seed
+ * @desc Get galaxy preview with deterministic visual properties
+ * @access Private
+ */
+router.get(
+	"/preview-galaxy/:seed",
+	validateTelegramWebAppData,
+	authMiddleware,
+	gameController.previewGalaxy
+);
+
+/**
+ * @route GET /api/game/star-price/:galaxySeed
+ * @desc Get server-calculated star price for a galaxy
+ * @access Private
+ */
+router.get(
+	"/star-price/:galaxySeed",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(600, 10), // 600 requests per 10 minutes
+	authMiddleware,
+	gameController.getStarPrice
+);
+
+/**
  * @route POST /api/game/farming-reward
  * @desc Register farming reward
  * @access Private
@@ -18,7 +43,7 @@ const router = express.Router();
 router.post(
 	"/farming-reward",
 	validateTelegramWebAppData,
-	rateLimitMiddleware(60 * 60 * 60, 60), // 30 requests per hour
+	rateLimitMiddleware(300, 10), // 300 requests per 10 minutes
 	authMiddleware,
 	gameController.registerFarmingReward
 );
@@ -31,7 +56,7 @@ router.post(
 router.post(
 	"/register-transfer-stardust-to-galaxy",
 	validateTelegramWebAppData,
-	rateLimitMiddleware(30, 60), // 30 requests per hour
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
 	authMiddleware,
 	gameController.registerTransferStardustToGalaxy
 );
@@ -44,7 +69,7 @@ router.post(
 router.post(
 	"/daily-reward",
 	validateTelegramWebAppData,
-	rateLimitMiddleware(5, 60), // 5 requests per hour for daily rewards
+	rateLimitMiddleware(25, 10), // 25 requests per 10 minutes for daily rewards
 	authMiddleware,
 	gameController.claimDailyReward
 );
@@ -57,7 +82,7 @@ router.post(
 router.post(
 	"/register-generated-galaxy",
 	validateTelegramWebAppData,
-	rateLimitMiddleware(10, 60), // 10 requests per hour
+	rateLimitMiddleware(50, 10), // 50 requests per 10 minutes
 	authMiddleware,
 	gameController.registerGeneratedGalaxy
 );
@@ -70,7 +95,7 @@ router.post(
 router.post(
 	"/register-captured-galaxy",
 	validateTelegramWebAppData,
-	rateLimitMiddleware(20, 60), // 20 requests per hour
+	rateLimitMiddleware(100, 10), // 100 requests per 10 minutes
 	authMiddleware,
 	gameController.registerCapturedGalaxy
 );
@@ -82,8 +107,34 @@ router.post(
  */
 router.post(
 	"/complete-payment",
-	rateLimitMiddleware(100, 60), // 100 requests per hour for webhooks
+	rateLimitMiddleware(500, 10), // 500 requests per 10 minutes for webhooks
 	gameController.completePayment
+);
+
+/**
+ * @route POST /api/game/send-collection-notification
+ * @desc Send collection notification to user via Telegram bot
+ * @access Private
+ */
+router.post(
+	"/send-collection-notification",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(150, 10), // 150 requests per 10 minutes
+	authMiddleware,
+	gameController.sendCollectionNotification
+);
+
+/**
+ * @route POST /api/game/create-invoice
+ * @desc Create Telegram invoice for payment
+ * @access Private
+ */
+router.post(
+	"/create-invoice",
+	validateTelegramWebAppData,
+	rateLimitMiddleware(500, 10), // 500 requests per 10 minutes
+	authMiddleware,
+	gameController.createInvoice
 );
 
 module.exports = router;

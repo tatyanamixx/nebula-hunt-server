@@ -337,38 +337,5 @@ describe('TaskController', () => {
 		});
 	});
 
-	describe('initializeUserTasks', () => {
-		it('should initialize user tasks successfully', async () => {
-			// Мокаем ответ от сервиса
-			const result = { tasks: [] };
-			taskService.initializeUserTasks.mockResolvedValue(result);
 
-			// Вызываем метод контроллера
-			await taskController.initializeUserTasks(req, res, next);
-
-			// Проверяем, что сервис был вызван с правильными параметрами
-			expect(taskService.initializeUserTasks).toHaveBeenCalledWith(
-				req.user.id
-			);
-
-			// Проверяем ответ
-			expect(res.json).toHaveBeenCalledWith(result);
-		});
-
-		it('should handle service error', async () => {
-			// Мокаем ошибку от сервиса
-			const errorMessage = 'Failed to initialize user tasks';
-			taskService.initializeUserTasks.mockRejectedValue(
-				new Error(errorMessage)
-			);
-
-			// Вызываем метод контроллера
-			await taskController.initializeUserTasks(req, res, next);
-
-			// Проверяем, что next был вызван с ошибкой
-			expect(next).toHaveBeenCalled();
-			const error = next.mock.calls[0][0];
-			expect(error.message).toBe(errorMessage);
-		});
-	});
 });

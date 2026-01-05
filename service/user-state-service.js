@@ -67,7 +67,6 @@ class UserStateService {
 		const t = transaction || (await sequelize.transaction());
 		const shouldCommit = !transaction;
 		try {
-			logger.debug("getUserState on start", { userId });
 			// Get basic user state
 			let userState = await UserState.findOne({
 				where: { userId: userId },
@@ -79,11 +78,36 @@ class UserStateService {
 				await this.updateStreak(userState);
 				await userState.save({ transaction: t });
 
+				// ✅ Синхронизируем playerParameters с реальными уровнями из userUpgrades
+				// ИСТОЧНИК ПРАВДЫ - userUpgrades, а не playerParameters!
+				// ✅ Добавляем таймаут для getUserUpgrades, чтобы избежать зависания
+				try {
+					const upgradeService = require("./upgrade-service");
+					// Вызываем getUserUpgrades с таймаутом (5 секунд)
+					const upgradePromise = upgradeService.getUserUpgrades(userId);
+					const timeoutPromise = new Promise((_, reject) =>
+						setTimeout(() => reject(new Error("getUserUpgrades timeout")), 5000)
+					);
+					
+					await Promise.race([upgradePromise, timeoutPromise]);
+					// Перезагружаем userState, чтобы получить обновленные playerParameters
+					await userState.reload({ transaction: t });
+				} catch (error) {
+					// Если таймаут или другая ошибка - логируем, но не прерываем выполнение
+					logger.warn(
+						`⚠️ [USER-STATE-SERVICE] Failed to sync playerParameters with userUpgrades for user ${userId}: ${error.message}`,
+						{
+							userId,
+							error: error.message,
+						}
+					);
+					// Не прерываем выполнение, так как это не критично
+				}
+
 				if (shouldCommit) {
 					await t.commit();
 				}
 
-				logger.debug("getUserState completed successfully", { userId });
 				return userState.toJSON();
 			}
 			if (shouldCommit) {

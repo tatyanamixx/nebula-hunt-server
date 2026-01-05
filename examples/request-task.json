@@ -1,23 +1,20 @@
 [
 	{
 		"slug": "create_stars_100",
-		"title": {
-			"en": "First Steps",
-			"ru": "Первые шаги"
-		},
-		"description": {
-			"en": "Create 100 stars in your galaxy",
-			"ru": "Создайте 100 звезд в вашей галактике"
-		},
+		"name": "First Steps",
+		"description": "Create 100 stars in your galaxy",
+		"labelKey": "create_stars_100",
+		"category": "stars_threshold",
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 500
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
-			"amount": 100,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 100
 		},
 		"icon": "⭐",
 		"active": true,
@@ -25,23 +22,20 @@
 	},
 	{
 		"slug": "create_stars_1000",
-		"title": {
-			"en": "Star Crafter",
-			"ru": "Создатель звезд"
-		},
-		"description": {
-			"en": "Create 1,000 stars in your galaxy",
-			"ru": "Создайте 1,000 звезд в вашей галактике"
-		},
+		"name": "Star Crafter",
+		"description": "Create 1,000 stars in your galaxy",
+		"labelKey": "create_stars_1000",
+		"category": "stars_threshold",
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 2000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
-			"amount": 1000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 1000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -49,23 +43,20 @@
 	},
 	{
 		"slug": "create_stars_10000",
-		"title": {
-			"en": "Stellar Engineer",
-			"ru": "Звездный инженер"
-		},
-		"description": {
-			"en": "Create 10,000 stars in your galaxy",
-			"ru": "Создайте 10,000 звезд в вашей галактике"
-		},
+		"name": "Stellar Engineer",
+		"description": "Create 10,000 stars in your galaxy",
+		"labelKey": "create_stars_10000",
+		"category": "stars_threshold",
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 10000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
-			"amount": 10000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 10000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -73,23 +64,20 @@
 	},
 	{
 		"slug": "create_stars_50000",
-		"title": {
-			"en": "Master of Stars",
-			"ru": "Мастер звезд"
-		},
-		"description": {
-			"en": "Create 50,000 stars in your galaxy",
-			"ru": "Создайте 50,000 звезд в вашей галактике"
-		},
+		"name": "Master of Stars",
+		"description": "Create 50,000 stars in your galaxy",
+		"labelKey": "create_stars_50000",
+		"category": "stars_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
-			"amount": 50000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 50000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -97,23 +85,20 @@
 	},
 	{
 		"slug": "create_stars_100000",
-		"title": {
-			"en": "Cosmic Architect",
-			"ru": "Космический архитектор"
-		},
-		"description": {
-			"en": "Create 100,000 stars in your galaxy",
-			"ru": "Создайте 100,000 звезд в вашей галактике"
-		},
+		"name": "Cosmic Architect",
+		"description": "Create 100,000 stars in your galaxy",
+		"labelKey": "create_stars_100000",
+		"category": "stars_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stars",
-			"amount": 100000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "TRANSFER_REWARD",
+			"checkResource": "stars",
+			"threshold": 100000
 		},
 		"icon": "⭐",
 		"active": true,
@@ -121,23 +106,20 @@
 	},
 	{
 		"slug": "collect_stardust_5000",
-		"title": {
-			"en": "Dust Collector",
-			"ru": "Сборщик пыли"
-		},
-		"description": {
-			"en": "Collect 5,000 stardust",
-			"ru": "Соберите 5,000 звездной пыли"
-		},
+		"name": "Dust Collector",
+		"description": "Collect 5,000 stardust",
+		"labelKey": "collect_stardust_5000",
+		"category": "stardust_threshold",
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 1000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stardust",
-			"amount": 5000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "stardust",
+			"threshold": 5000
 		},
 		"icon": "✨",
 		"active": true,
@@ -145,23 +127,20 @@
 	},
 	{
 		"slug": "collect_stardust_25000",
-		"title": {
-			"en": "Dust Magnet",
-			"ru": "Магнит пыли"
-		},
-		"description": {
-			"en": "Collect 25,000 stardust",
-			"ru": "Соберите 25,000 звездной пыли"
-		},
+		"name": "Dust Magnet",
+		"description": "Collect 25,000 stardust",
+		"labelKey": "collect_stardust_25000",
+		"category": "stardust_threshold",
 		"reward": {
-			"type": "stardust",
+			"resource": "stardust",
 			"amount": 5000
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stardust",
-			"amount": 25000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "stardust",
+			"threshold": 25000
 		},
 		"icon": "✨",
 		"active": true,
@@ -169,23 +148,20 @@
 	},
 	{
 		"slug": "collect_stardust_100000",
-		"title": {
-			"en": "Stardust Master",
-			"ru": "Мастер звездной пыли"
-		},
-		"description": {
-			"en": "Collect 100,000 stardust",
-			"ru": "Соберите 100,000 звездной пыли"
-		},
+		"name": "Stardust Master",
+		"description": "Collect 100,000 stardust",
+		"labelKey": "collect_stardust_100000",
+		"category": "stardust_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 25
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "stardust",
-			"amount": 100000,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "stardust",
+			"threshold": 100000
 		},
 		"icon": "✨",
 		"active": true,
@@ -193,23 +169,20 @@
 	},
 	{
 		"slug": "collect_dark_matter_10",
-		"title": {
-			"en": "Dark Explorer",
-			"ru": "Темный исследователь"
-		},
-		"description": {
-			"en": "Collect 10 dark matter",
-			"ru": "Соберите 10 темной материи"
-		},
+		"name": "Dark Explorer",
+		"description": "Collect 10 dark matter",
+		"labelKey": "collect_dark_matter_10",
+		"category": "dark_matter_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 5
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "darkMatter",
-			"amount": 10,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "darkMatter",
+			"threshold": 10
 		},
 		"icon": "🌑",
 		"active": true,
@@ -217,23 +190,20 @@
 	},
 	{
 		"slug": "collect_dark_matter_50",
-		"title": {
-			"en": "Void Master",
-			"ru": "Мастер пустоты"
-		},
-		"description": {
-			"en": "Collect 50 dark matter",
-			"ru": "Соберите 50 темной материи"
-		},
+		"name": "Void Master",
+		"description": "Collect 50 dark matter",
+		"labelKey": "collect_dark_matter_50",
+		"category": "dark_matter_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 20
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "darkMatter",
-			"amount": 50,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "darkMatter",
+			"threshold": 50
 		},
 		"icon": "🌑",
 		"active": true,
@@ -241,23 +211,20 @@
 	},
 	{
 		"slug": "collect_dark_matter_200",
-		"title": {
-			"en": "Dark Matter Sage",
-			"ru": "Мудрец темной материи"
-		},
-		"description": {
-			"en": "Collect 200 dark matter",
-			"ru": "Соберите 200 темной материи"
-		},
+		"name": "Dark Matter Sage",
+		"description": "Collect 200 dark matter",
+		"labelKey": "collect_dark_matter_200",
+		"category": "dark_matter_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 50
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "darkMatter",
-			"amount": 200,
-			"operator": ">="
+			"type": "sum_resource",
+			"entity": "paymentTransaction",
+			"filter": "FARMING_REWARD",
+			"checkResource": "darkMatter",
+			"threshold": 200
 		},
 		"icon": "🌑",
 		"active": true,
@@ -265,23 +232,18 @@
 	},
 	{
 		"slug": "own_galaxies_3",
-		"title": {
-			"en": "Galaxy Explorer",
-			"ru": "Исследователь галактик"
-		},
-		"description": {
-			"en": "Own 3 galaxies",
-			"ru": "Владейте 3 галактиками"
-		},
+		"name": "Galaxy Explorer",
+		"description": "Own 3 galaxies",
+		"labelKey": "own_galaxies_3",
+		"category": "galaxies_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 15
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "galaxies",
-			"amount": 3,
-			"operator": ">="
+			"type": "count_entity",
+			"entity": "galaxy",
+			"threshold": 3
 		},
 		"icon": "🌌",
 		"active": true,
@@ -289,23 +251,18 @@
 	},
 	{
 		"slug": "own_galaxies_5",
-		"title": {
-			"en": "Cosmic Emperor",
-			"ru": "Космический император"
-		},
-		"description": {
-			"en": "Own 5 galaxies",
-			"ru": "Владейте 5 галактиками"
-		},
+		"name": "Cosmic Emperor",
+		"description": "Own 5 galaxies",
+		"labelKey": "own_galaxies_5",
+		"category": "galaxies_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 30
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "galaxies",
-			"amount": 5,
-			"operator": ">="
+			"type": "count_entity",
+			"entity": "galaxy",
+			"threshold": 5
 		},
 		"icon": "🌌",
 		"active": true,
@@ -313,184 +270,126 @@
 	},
 	{
 		"slug": "own_galaxies_10",
-		"title": {
-			"en": "Universal Sovereign",
-			"ru": "Вселенский суверен"
-		},
-		"description": {
-			"en": "Own 10 galaxies",
-			"ru": "Владейте 10 галактиками"
-		},
+		"name": "Universal Sovereign",
+		"description": "Own 10 galaxies",
+		"labelKey": "own_galaxies_10",
+		"category": "galaxies_threshold",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 100
 		},
 		"condition": {
-			"type": "resource_threshold",
-			"resource": "galaxies",
-			"amount": 10,
-			"operator": ">="
+			"type": "count_entity",
+			"entity": "galaxy",
+			"filter": "FARMING_REWARD",
+			"checkResource": "galaxy",
+			"threshold": 10
 		},
 		"icon": "🌌",
 		"active": true,
 		"sortOrder": 14
 	},
 	{
-		"slug": "daily_login",
-		"title": {
-			"en": "Daily Explorer",
-			"ru": "Ежедневный исследователь"
-		},
-		"description": {
-			"en": "Log in daily to receive rewards",
-			"ru": "Входите ежедневно для получения наград"
-		},
+		"slug": "upgrade_galaxy",
+		"name": "Galaxy Enhancement",
+		"description": "Upgrade your galaxy for the first time",
+		"labelKey": "upgrade_galaxy",
+		"category": "galaxies_upgrade",
 		"reward": {
-			"type": "stardust",
-			"amount": 1000
+			"resource": "darkMatter",
+			"amount": 20
 		},
 		"condition": {
-			"type": "daily_login",
-			"resetTime": "00:00"
+			"type": "upgrade_entity",
+			"entity": "paymentTransaction",
+			"filter": "UPGRADE_GALAXY",
+			"checkResource": "galaxy",
+			"threshold": 1
 		},
-		"icon": "📆",
+		"icon": "⚙️",
 		"active": true,
 		"sortOrder": 15
 	},
 	{
-		"slug": "weekly_login",
-		"title": {
-			"en": "Weekly Pioneer",
-			"ru": "Еженедельный пионер"
-		},
-		"description": {
-			"en": "Log in 7 days in a row",
-			"ru": "Входите 7 дней подряд"
-		},
+		"slug": "scan_galaxy_10",
+		"name": "Cosmic Researcher",
+		"description": "Scan your galaxy 10 times",
+		"labelKey": "scan_galaxy_10",
+		"category": "scan_galaxies",
 		"reward": {
-			"type": "darkMatter",
-			"amount": 10
+			"resource": "stardust",
+			"amount": 2000
 		},
 		"condition": {
-			"type": "login_streak",
-			"days": 7
+			"type": "scan_galaxies",
+			"entity": "paymentTransaction",
+			"filter": "SCAN_GALAXY",
+			"checkResource": "galaxy",
+			"threshold": 10
 		},
-		"icon": "📆",
+		"icon": "🔭",
 		"active": true,
 		"sortOrder": 16
 	},
 	{
-		"slug": "upgrade_galaxy",
-		"title": {
-			"en": "Galaxy Enhancement",
-			"ru": "Улучшение галактики"
-		},
-		"description": {
-			"en": "Upgrade your galaxy for the first time",
-			"ru": "Улучшите вашу галактику впервые"
-		},
+		"slug": "share_galaxy",
+		"name": "Stellar Ambassador",
+		"description": "Share your galaxy with a friend",
+		"labelKey": "share_galaxy",
+		"category": "galaxies_share",
 		"reward": {
-			"type": "darkMatter",
-			"amount": 20
+			"resource": "darkMatter",
+			"amount": 5
 		},
 		"condition": {
-			"type": "galaxy_upgrade",
-			"count": 1
+			"type": "share_galaxies",
+			"entity": "paymentTransaction",
+			"filter": "SHARE_GALAXY",
+			"checkResource": "galaxy",
+			"threshold": 1
 		},
-		"icon": "⚙️",
+		"icon": "🔗",
 		"active": true,
 		"sortOrder": 17
 	},
 	{
-		"slug": "scan_galaxy_10",
-		"title": {
-			"en": "Cosmic Researcher",
-			"ru": "Космический исследователь"
-		},
-		"description": {
-			"en": "Scan your galaxy 10 times",
-			"ru": "Сканируйте вашу галактику 10 раз"
-		},
+		"slug": "daily_login_stardust",
+		"name": "Daily login reward",
+		"description": "Login daily to receive rewards",
+		"labelKey": "daily_login_stardust",
+		"category": "daily_login",
 		"reward": {
-			"type": "stardust",
-			"amount": 2000
+			"resource": "stardust",
+			"amount": 2500,
+			"multiplier": 1.25
 		},
 		"condition": {
-			"type": "galaxy_scan",
-			"count": 10
+			"type": "login_daily",
+			"days": [1, 2, 3, 4, 5, 6, 7],
+			"resetTime": "00:00"
 		},
-		"icon": "🔭",
+		"icon": "📆",
 		"active": true,
 		"sortOrder": 18
 	},
 	{
-		"slug": "share_galaxy",
-		"title": {
-			"en": "Stellar Ambassador",
-			"ru": "Звездный посол"
-		},
-		"description": {
-			"en": "Share your galaxy with a friend",
-			"ru": "Поделитесь вашей галактикой с другом"
-		},
-		"reward": {
-			"type": "darkMatter",
-			"amount": 5
-		},
-		"condition": {
-			"type": "galaxy_share",
-			"count": 1
-		},
-		"icon": "🔗",
-		"active": true,
-		"sortOrder": 19
-	},
-	{
-		"slug": "daily_login_stardust",
-		"title": {
-			"en": "Daily login reward",
-			"ru": "Ежедневный логин"
-		},
-		"description": {
-			"en": "Login daily to receive rewards",
-			"ru": "Входите ежедневно для получения наград"
-		},
-		"reward": {
-			"type": "stardust",
-			"amount": 2500, 
-			"multiplier": 1.25
-		},
-		"condition": {
-			"type": "daily_login_stardust",
-			"days": [1,2,3,4,5,6,7],
-			"resetTime": "00:00"
-		},
-		"icon": "📆",	
-		"active": true,
-		"sortOrder": 20
-	},
-	{
 		"slug": "daily_login_darkmatter",
-		"title": {
-			"en": "Daily login reward darkmatter",
-			"ru": "Ежедневный логин темная материя"
-		},
-		"description": {
-			"en": "Login daily to receive rewards",
-			"ru": "Входите ежедневно для получения наград"
-		},
+		"name": "Daily login reward darkmatter",
+		"description": "Login daily to receive rewards",
+		"labelKey": "daily_login_darkmatter",
+		"category": "daily_login",
 		"reward": {
-			"type": "darkMatter",
+			"resource": "darkMatter",
 			"amount": 5,
 			"multiplier": 1
 		},
 		"condition": {
-			"type": "daily_login_darkmatter",
+			"type": "login_daily",
 			"days": [3, 5, 7],
 			"resetTime": "00:00"
 		},
-		"icon": "📆",	
+		"icon": "📆",
 		"active": true,
-		"sortOrder": 21
+		"sortOrder": 19
 	}
 ]

@@ -10,13 +10,13 @@ const GAME_CONSTANTS = {
 	ECONOMY: {
 		// Base resource generation
 		BASE_STARDUST_PER_HOUR: 5000, // Base stardust generation per hour (when player has few stars)
-		STARDUST_TO_STARS_RATIO: 700, // Base ratio - will be adjusted based on star count (increased for better balance with upgrades)
+		STARDUST_TO_STARS_RATIO: 100, // Base ratio - will be adjusted based on star count (increased for better balance with upgrades)
 		DARK_MATTER_DROP_CHANCE: 0.1, // 10% chance to get Dark Matter when collecting stardust
 		BASE_DARK_MATTER_RATE: 5, // Base dark matter rate per hour
 
 		// Initial resources for new players
-		INITIAL_STARDUST: 50234234,
-		INITIAL_DARK_MATTER: 123213,
+		INITIAL_STARDUST: 10000,
+		INITIAL_DARK_MATTER: 50,
 		INITIAL_STARS: 1000,
 
 		// Resource limits

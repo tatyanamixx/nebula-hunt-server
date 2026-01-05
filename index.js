@@ -1,7 +1,15 @@
 /**
  * created by Tatyana Mikhniukevich on 04.05.2025
  */
-require("dotenv").config();
+// Загружаем правильный .env файл в зависимости от окружения
+const path = require("path");
+const env = process.env.NODE_ENV || "development";
+if (env === "production") {
+	const envPath = path.resolve(__dirname, ".env.production");
+	require("dotenv").config({ path: envPath });
+} else {
+	require("dotenv").config();
+}
 const app = require("./app");
 const sequelize = require("./db");
 const loggerService = require("./service/logger-service");

@@ -17,12 +17,14 @@ const packageStoreRouter = require("./package-store-router");
 const marketRouter = require("./market-router");
 const gameRouter = require("./game-router");
 const referralRouter = require("./referral-router");
+const reminderRouter = require("./reminder-router");
 
 const gameMetricsRouter = require("./game-metrics-router");
 const prometheusRouter = require("./prometheus-router");
 
 const adminRouter = require("./admin-router");
 const adminUserRouter = require("./admin-user-router");
+const adminReminderRouter = require("./admin-reminder-router");
 const passwordResetRouter = require("./password-reset-router");
 
 const taskTemplateRouter = require("./task-template-router");
@@ -44,10 +46,12 @@ router.use("/market", marketRouter);
 router.use("/packages", packageStoreRouter);
 router.use("/game", gameRouter);
 router.use("/referral", referralRouter);
+router.use("/users", reminderRouter);
 
 // Admin routes
 router.use("/admin", adminRouter);
 router.use("/admin/password-reset", passwordResetRouter);
+router.use("/admin/reminders", adminReminderRouter);
 router.use("/task-templates", taskTemplateRouter);
 router.use("/event-templates", eventTemplateRouter);
 router.use("/upgrade-templates", upgradeTemplateRouter);

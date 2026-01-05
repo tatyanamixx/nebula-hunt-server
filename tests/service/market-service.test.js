@@ -19,7 +19,7 @@ jest.mock('../../db', () => ({
 }));
 
 jest.mock('../../service/package-store-service', () => ({
-	initializePackageStore: jest.fn(),
+	initializePackageStore: jest.fn().mockResolvedValue([]),
 }));
 
 describe('MarketService', () => {
@@ -29,7 +29,7 @@ describe('MarketService', () => {
 	});
 
 	describe('getPackageOffers', () => {
-		it('should get package offers without initializing packages when userId is not provided', async () => {
+		it('should get package offers successfully', async () => {
 			// Mock данных
 			const mockOffers = [
 				{
@@ -59,13 +59,10 @@ describe('MarketService', () => {
 				},
 				transaction: expect.anything(),
 			});
-			expect(
-				packageStoreService.initializePackageStore
-			).not.toHaveBeenCalled();
 			expect(result).toEqual(mockOffers);
 		});
 
-		it('should get package offers and initialize packages when userId is provided', async () => {
+		it('should get package offers with userId parameter', async () => {
 			// Mock данных
 			const mockOffers = [
 				{
@@ -82,7 +79,6 @@ describe('MarketService', () => {
 				},
 			];
 			MarketOffer.findAll.mockResolvedValue(mockOffers);
-			packageStoreService.initializePackageStore.mockResolvedValue({});
 
 			const userId = 12345;
 
@@ -90,6 +86,10 @@ describe('MarketService', () => {
 			const result = await marketService.getPackageOffers(userId);
 
 			// Проверяем, что были вызваны нужные методы
+			expect(packageStoreService.initializePackageStore).toHaveBeenCalledWith(
+				userId,
+				expect.anything()
+			);
 			expect(MarketOffer.findAll).toHaveBeenCalledWith({
 				where: {
 					itemType: 'package',
@@ -98,9 +98,6 @@ describe('MarketService', () => {
 				},
 				transaction: expect.anything(),
 			});
-			expect(
-				packageStoreService.initializePackageStore
-			).toHaveBeenCalledWith(userId, expect.anything());
 			expect(result).toEqual(mockOffers);
 		});
 

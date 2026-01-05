@@ -361,10 +361,41 @@ class UpgradeTemplateService {
 				);
 			}
 
+			const wasActive = node.active;
 			node.active = !node.active;
 			await node.save({ transaction: t });
 
 			await t.commit();
+
+			// ✅ Если улучшение было выключено, обнуляем уровни всех пользователей
+			if (wasActive && !node.active) {
+				const upgradeService = require("./upgrade-service");
+				try {
+					await upgradeService.resetUpgradeLevelsForAllUsers(slug);
+					logger.debug("Reset upgrade levels for all users", { slug });
+				} catch (error) {
+					logger.error("Failed to reset upgrade levels", {
+						slug,
+						error: error.message,
+					});
+					// Не прерываем выполнение, так как статус уже изменен
+				}
+			}
+
+			// ✅ Если улучшение было включено обратно, восстанавливаем уровни из userUpgrades
+			if (!wasActive && node.active) {
+				const upgradeService = require("./upgrade-service");
+				try {
+					await upgradeService.restoreUpgradeLevelsForAllUsers(slug);
+					logger.debug("Restored upgrade levels for all users", { slug });
+				} catch (error) {
+					logger.error("Failed to restore upgrade levels", {
+						slug,
+						error: error.message,
+					});
+					// Не прерываем выполнение, так как статус уже изменен
+				}
+			}
 
 			// Convert BigInt to regular numbers for JSON serialization
 			const nodeDataSerialized = node.toJSON();

@@ -50,6 +50,15 @@ function decodeInitData(rawData) {
 }
 
 module.exports = function telegramAuthMiddleware(req, res, next) {
+	logger.info("🔐 Telegram Auth Middleware triggered", {
+		method: req.method,
+		url: req.url,
+		hasAuthHeader: !!req.headers.authorization,
+		hasTelegramHeader: !!req.headers["x-telegram-init-data"],
+		botTokenExists: !!botToken,
+		botTokenLength: botToken ? botToken.length : 0,
+	});
+
 	try {
 		let initData = null;
 		let source = "unknown";
@@ -111,11 +120,20 @@ module.exports = function telegramAuthMiddleware(req, res, next) {
 		const isMockData =
 			initData.includes("mock_hash") ||
 			initData.includes('"id":10') ||
-			initData.includes("testuser");
+			initData.includes("testuser") ||
+			initData.includes("12345678");
 
 		if (isDevelopment && isMockData) {
 			logger.debug(
 				"Mock data detected in development mode, skipping validation"
+			);
+		} else if (isMockData) {
+			// TEMPORARY: Allow mock in production until Web App is properly configured
+			logger.warn(
+				"⚠️ Mock data in production - Web App not properly configured in BotFather!"
+			);
+			logger.warn(
+				"⚠️ Configure Web App URL: https://t.me/NebulaHuntBot/nebulahunt2025"
 			);
 		} else {
 			// Валидируем данные

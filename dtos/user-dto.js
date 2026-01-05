@@ -4,9 +4,11 @@
 module.exports = class UserDto {
 	id;
 	role;
+	blocked;
 
 	constructor(model) {
 		this.id = model.id;
 		this.role = model.role;
+		this.blocked = model.blocked || false;
 	}
 };

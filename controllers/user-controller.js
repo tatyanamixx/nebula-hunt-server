@@ -12,6 +12,7 @@ class UserController {
 		try {
 			const id = req.initdata.id;
 			const username = req.initdata.username;
+			const language = req.initdata.language_code || "en"; // Extract language from Telegram
 
 			let { referral, galaxy } = req.body;
 
@@ -48,14 +49,40 @@ class UserController {
 				referral = null;
 			}
 
-			logger.debug("User login/registration", {
+			// ✅ Используем console.log для гарантированного вывода в Docker
+			console.log("📋 USER LOGIN REQUEST:", {
 				userId: id,
 				username,
-				referral: referral || "not provided",
+				referral:
+					referral !== null && referral !== undefined
+						? referral.toString()
+						: "NOT PROVIDED",
+				referralType: typeof referral,
 				hasGalaxy: !!galaxy,
+				language,
+				bodyKeys: Object.keys(req.body),
 			});
 
-			const result = await userService.login(id, username, referral, galaxy);
+			logger.info("📋 User login/registration request", {
+				userId: id,
+				username,
+				referral:
+					referral !== null && referral !== undefined
+						? referral.toString()
+						: "NOT PROVIDED",
+				referralType: typeof referral,
+				hasGalaxy: !!galaxy,
+				language,
+				bodyKeys: Object.keys(req.body),
+			});
+
+			const result = await userService.login(
+				id,
+				username,
+				referral,
+				galaxy,
+				language
+			);
 			logger.debug("User login result", { result });
 
 			res.cookie("refreshToken", result.data.auth.refreshToken, {

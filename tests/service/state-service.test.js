@@ -54,7 +54,7 @@ jest.mock('../../service/upgrade-service', () => ({
 	initializeUserUpgradeTree: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../service/task-service', () => ({
-	initializeUserTasks: jest.fn().mockResolvedValue([]),
+	
 }));
 jest.mock('../../service/event-service', () => ({
 	initializeUserEvents: jest.fn().mockResolvedValue({}),
