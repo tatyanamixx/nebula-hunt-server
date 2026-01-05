@@ -120,6 +120,29 @@ module.exports = {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
+				{
+					slug: "stellar_market",
+					name: '{"en": "Stellar Market", "ru": "Звездный рынок"}',
+					description:
+						'{"en": "Occasional sales on star creation costs", "ru": "Периодические скидки на создание звезд"}',
+					maxLevel: 5,
+					basePrice: 10000,
+					priceMultiplier: 2.0,
+					effectPerLevel: 0.1,
+					icon: "🏪",
+					currency: "stardust",
+					category: "economy",
+					active: true,
+					modifiers: JSON.stringify({
+						saleChance: 0.1, // +10% per level
+						saleDiscount: 0.2,
+					}),
+					conditions: JSON.stringify({}),
+					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
+					weight: 1,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
 
 				// ============= DARK MATTER UPGRADES =============
 				// CHANCE UPGRADES
