@@ -210,19 +210,29 @@ class GameService {
 		// Galaxy multiplier - more galaxies = higher price
 		const galaxyMultiplier = Math.max(1, Number(galaxiesCount) || 1);
 
-		// Get upgrade modifiers
-		// star_cost_reduction upgrade: -5% per level (stored as starCostMultiplier: -0.05)
-		const starCostReductionLevel = Number(playerParameters.star_cost_reduction) || 0;
-		const starCostMultiplier = starCostReductionLevel * -0.05; // -5% per level
+		// Get upgrade modifiers from playerParameters
+		// ✅ CORRECT SLUGS from seeders:
+		// star_discount upgrade: -5% per level (modifier: starCostMultiplier: -0.05)
+		const starDiscountLevel = Number(playerParameters.star_discount) || 0;
+		const starCostMultiplier = starDiscountLevel * -0.05; // -5% per level
 
-		// bulk_star_creation upgrade: +3% discount per level for bulk
-		const bulkStarCreationLevel = Number(playerParameters.bulk_star_creation) || 0;
-		const bulkDiscount = bulkStarCreationLevel * 0.03; // +3% per level
+		// bulk_creation upgrade: +3% discount per level for bulk
+		const bulkCreationLevel = Number(playerParameters.bulk_creation) || 0;
+		const bulkDiscount = bulkCreationLevel * 0.03; // +3% per level
 
 		// stellar_market upgrade: sale chance and discount
 		const stellarMarketLevel = Number(playerParameters.stellar_market) || 0;
 		const saleChance = stellarMarketLevel * 0.1; // +10% per level
 		const saleDiscount = 0.2; // Fixed 20% discount during sales
+
+		logger.debug("calculateStarCost modifiers", {
+			starDiscountLevel,
+			starCostMultiplier,
+			bulkCreationLevel,
+			bulkDiscount,
+			stellarMarketLevel,
+			saleChance,
+		});
 
 		// Apply star cost discount (starCostMultiplier is negative, so 1 + (-0.05) = 0.95)
 		// Minimum 0.05 (5%) to ensure price is never zero or negative
@@ -328,8 +338,8 @@ class GameService {
 			// Debug info for price breakdown
 			debug: {
 				baseCost: 100,
-				starCostReductionLevel: playerParameters.star_cost_reduction || 0,
-				bulkStarCreationLevel: playerParameters.bulk_star_creation || 0,
+				starDiscountLevel: playerParameters.star_discount || 0,
+				bulkCreationLevel: playerParameters.bulk_creation || 0,
 				stellarMarketLevel: playerParameters.stellar_market || 0,
 			},
 		};

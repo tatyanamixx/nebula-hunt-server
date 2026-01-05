@@ -120,29 +120,6 @@ module.exports = {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				{
-					slug: "stellar_market",
-					name: '{"en": "Stellar Market", "ru": "Звездный рынок"}',
-					description:
-						'{"en": "Occasional sales on star creation costs", "ru": "Периодические скидки на создание звезд"}',
-					maxLevel: 5,
-					basePrice: 10000,
-					priceMultiplier: 2.0,
-					effectPerLevel: 0.1,
-					icon: "🏪",
-					currency: "stardust",
-					category: "economy",
-					active: true,
-					modifiers: JSON.stringify({
-						saleChance: 0.1, // +10% per level
-						saleDiscount: 0.2,
-					}),
-					conditions: JSON.stringify({}),
-					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
-					weight: 1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
 
 				// ============= DARK MATTER UPGRADES =============
 				// CHANCE UPGRADES
@@ -183,29 +160,6 @@ module.exports = {
 					active: true,
 					modifiers: JSON.stringify({
 						extraDarkMatterChance: 0.02, // +2% per level
-					}),
-					conditions: JSON.stringify({}),
-					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
-					weight: 1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
-				{
-					slug: "void_resonance",
-					name: '{"en": "Void Resonance", "ru": "Резонанс пустоты"}',
-					description:
-						'{"en": "Occasional bursts of dark matter from cosmic anomalies", "ru": "Периодические всплески темной материи от космических аномалий"}',
-					maxLevel: 5,
-					basePrice: 60,
-					priceMultiplier: 1.8,
-					effectPerLevel: 0.05,
-					icon: "🌀",
-					currency: "darkmatter",
-					category: "chance",
-					active: true,
-					modifiers: JSON.stringify({
-						anomalyChance: 0.05, // +5% per level
-						anomalyBonus: 2,
 					}),
 					conditions: JSON.stringify({}),
 					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
@@ -283,28 +237,6 @@ module.exports = {
 				},
 
 				// SPECIAL UPGRADES
-				{
-					slug: "galaxy_explorer",
-					name: '{"en": "Galaxy Explorer", "ru": "Исследователь галактик"}',
-					description:
-						'{"en": "Chance to get special events when exploring galaxies", "ru": "Шанс получить особые события при исследовании галактик"}',
-					maxLevel: 5,
-					basePrice: 100,
-					priceMultiplier: 1.8,
-					effectPerLevel: 1,
-					icon: "🔭",
-					currency: "darkmatter",
-					category: "special",
-					active: true,
-					modifiers: JSON.stringify({
-						specialEvents: 1, // +1 per level
-					}),
-					conditions: JSON.stringify({}),
-					children: Sequelize.literal("ARRAY[]::VARCHAR[]"),
-					weight: 1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
 				{
 					slug: "dark_matter_synthesis",
 					name: '{"en": "Dark Matter Synthesis", "ru": "Синтез темной материи"}',
