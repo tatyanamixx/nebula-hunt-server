@@ -275,6 +275,7 @@ class GameService {
 		let bulkDiscountMultiplier = 1;
 		let bulkDiscountApplied = false;
 		let bulkDiscountPercent = 0;
+		let bulkSavedAmount = 0;
 		if (requestedStars > 1 && bulkDiscount > 0) {
 			// Maximum discount reached at 10+ stars
 			const bulkFactor = Math.min(1, (requestedStars - 1) / 9);
@@ -327,28 +328,59 @@ class GameService {
 			}
 		}
 
-		// Calculate final cost per star
-		const costPerStar = Math.max(
+		// Calculate cost WITHOUT bulk and sale discounts (for savings calculation)
+		const costWithoutDiscounts = Math.max(
 			1,
 			Math.floor(
-				baseCost *
-					costMultiplier *
-					galaxyMultiplier *
-					discountMultiplier *
-					bulkDiscountMultiplier *
-					saleDiscountMultiplier
+				baseCost * costMultiplier * galaxyMultiplier * discountMultiplier
 			)
 		);
 
+		// Calculate cost WITH bulk but WITHOUT sale (for bulk savings)
+		const costWithBulkOnly = Math.max(
+			1,
+			Math.floor(costWithoutDiscounts * bulkDiscountMultiplier)
+		);
+
+		// Calculate final cost per star (with all discounts)
+		const costPerStar = Math.max(
+			1,
+			Math.floor(costWithBulkOnly * saleDiscountMultiplier)
+		);
+
 		const totalCost = Math.round(costPerStar * requestedStars);
+		const totalWithoutDiscounts = Math.round(
+			costWithoutDiscounts * requestedStars
+		);
+		const totalWithBulkOnly = Math.round(costWithBulkOnly * requestedStars);
+
+		// Calculate actual saved amounts
+		if (bulkDiscountApplied) {
+			bulkSavedAmount = totalWithoutDiscounts - totalWithBulkOnly;
+		}
+		const saleSavedAmount = saleApplied ? totalWithBulkOnly - totalCost : 0;
+
+		logger.info("💰 PRICE CALCULATION COMPLETE", {
+			requestedStars,
+			costWithoutDiscounts,
+			costWithBulkOnly,
+			costPerStar,
+			totalWithoutDiscounts,
+			totalWithBulkOnly,
+			totalCost,
+			bulkSavedAmount,
+			saleSavedAmount,
+		});
 
 		return {
 			costPerStar,
 			totalCost,
 			saleApplied,
 			saleDiscountPercent,
+			saleSavedAmount,
 			bulkDiscountApplied,
 			bulkDiscountPercent,
+			bulkSavedAmount,
 		};
 	}
 
@@ -1149,8 +1181,10 @@ class GameService {
 					discounts: {
 						saleApplied: priceDetails.saleApplied,
 						saleDiscountPercent: priceDetails.saleDiscountPercent,
+						saleSavedAmount: priceDetails.saleSavedAmount || 0,
 						bulkDiscountApplied: priceDetails.bulkDiscountApplied,
 						bulkDiscountPercent: priceDetails.bulkDiscountPercent,
+						bulkSavedAmount: priceDetails.bulkSavedAmount || 0,
 					},
 					transaction: {
 						id: result.marketTransaction.id,
